@@ -287,7 +287,7 @@ private fun QuickTools(ui: AppState) {
     val focusOn = fr.pepsgoal.app.sys.Focus.running(ctx)
     val items = listOfNotNull(
         Triple(if (focusOn) "Focus en cours" else "Focus", "timer") { ui.fs = Fs.Focus() },
-        Triple("Statistiques", "trend") { ui.push(fr.pepsgoal.app.Screen.Stats) },
+        Triple("Stats", "trend") { ui.push(fr.pepsgoal.app.Screen.Stats) },
         Triple("Journal", "book") { ui.push(fr.pepsgoal.app.Screen.Journal) },
         if (fr.pepsgoal.app.ai.LocalAi.on(ctx)) Triple("Coach", "sparkle") { ui.push(fr.pepsgoal.app.Screen.CoachChat) } else null,
     )
