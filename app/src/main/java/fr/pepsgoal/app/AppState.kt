@@ -55,6 +55,8 @@ sealed class Fs {
     class Celebrate(val c: Celebration) : Fs()
     class Recap(val p: String, val slides: List<Slide>, val st: RecapStats, var i: Int = 0) : Fs()
     class Stories(val groups: List<Pg.StoryGroup>, val ui: Int, val si: Int, val archive: Boolean = false) : Fs()
+    /** Tutoriel plein écran (premiers pas et réglages de base). */
+    class Tuto(val start: Int = 0) : Fs()
 }
 
 /** Écrans plein écran empilés au-dessus des onglets. */
@@ -116,7 +118,7 @@ class AppState(private val app: PepsApp) : Hooks {
 
     fun sessionChanged() {
         sheet = null; fs = null; screens.clear(); tab = "today"; fsQueue.clear()
-        pg.me()?.let { if (!it.tutorialDone) sheet = Sheet.Tuto(0) }
+        pg.me()?.let { if (!it.tutorialDone) fs = Fs.Tuto() }
         bump(); WidgetUpdater.update(app); LiveUpdates.refresh(app)
     }
 

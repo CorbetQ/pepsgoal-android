@@ -86,61 +86,6 @@ fun AvatarSheet(ui: AppState) {
     }
 }
 
-/* ================================================================== tutoriel */
-private class TutoStep(val t: String, val p: String, val v: @Composable () -> Unit)
-
-@Composable
-fun TutoSheet(ui: AppState, step: Int) {
-    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
-    val steps = remember {
-        listOf(
-            TutoStep("Bienvenue sur PepsGoal", "Fixe tes caps, valide chaque jour ce que tu as fait et garde ta flamme allumée. Voici les bases en une minute.") { HeroFlame(1, true) },
-            TutoStep("Quinze façons d’avancer", "Les essentiels (routine, période, objectif chiffré, deadline, abstinence, mensuel), mais aussi limite, durée avec minuteur, mesure en courbe, horaire, projet, challenge, paliers, défi de groupe et duel. Tout se crée depuis le bouton « + ».") {
-                FlowRowCompat(gap = 6.dp) { listOf("routine", "objective", "limit", "duration", "measure", "challenge", "group", "duel").forEach { TypeChip(it) } }
-            },
-            TutoStep("Valide, gagne des flammes", "Touche le rond pour valider. Chaque validation rapporte des flammes, qui te font passer de niveau : Étincelle, Braise, Flamme… jusqu’à Supernova. Tu peux aussi valider depuis la notification ou le widget.") {
-                val tc = LocalPal.current.type("routine")
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(tc.c.copy(alpha = .14f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Emoji("🏃", 30.dp); Column(Modifier.weight(1f)) { Text("Courir 30 minutes", fontWeight = FontWeight.ExtraBold); Chip("+10 flammes", color = tc.c) }
-                    CheckButton(true, false, "Validé", tc.c) {}
-                }
-            },
-            TutoStep("Ta série", "Une validation par jour suffit pour allumer la flamme du jour. Les jours d’affilée forment ta série, visible en haut de l’écran.") {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { WD.forEachIndexed { i, d -> Column(horizontalAlignment = Alignment.CenterHorizontally) { Flame(24.dp, dim = i >= 5); Text(d, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold) } } }
-            },
-            TutoStep("Les gels de série", "Un jour sans validation ? Un gel protège ta série automatiquement. Tu gagnes un gel chaque fois que tes publications reçoivent $FREEZE_EVERY encouragements.") {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Pi("snow", size = 56.dp, tint = p.type("objective").ink); Text("×$TUTO_GELS", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp) }
-            },
-            TutoStep("Avance avec tes amis", "Ajoute des amis, publie tes victoires pour tes amis ou pour tout le monde, et encourage les autres avec une flamme. Pas envie de social ? Tu peux le désactiver dans Profil.") { fr.pepsgoal.app.ui.screens.CheerButton(true, 12) {} },
-            TutoStep("Rappels et style", "Règle tes rappels du matin et du soir, choisis ta couleur d’accent ou les couleurs Material You de ton téléphone, et ton icône de profil dans l’onglet Profil. Et chaque semaine, mois et année, ton récap t’attend sur l’accueil.") {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { (0 until 8).forEach { i -> Box(Modifier.size(28.dp).clip(CircleShape).background(accentBrush(i))) } }
-            }
-        )
-    }
-    val i = step.coerceIn(0, steps.lastIndex); val s = steps[i]; val last = i == steps.lastIndex; val bonus = !u.tutoBonus
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Eyebrow("${i + 1} / ${steps.size}"); Spacer(Modifier.weight(1f))
-        if (!last) PButton("Passer", { ui.sheet = Sheet.Tuto(steps.lastIndex) }, kind = "ghost", small = true)
-    }
-    Box(Modifier.fillMaxWidth().heightIn(min = 150.dp).padding(vertical = 10.dp), contentAlignment = Alignment.Center) { s.v() }
-    Text(s.t, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-    Text(s.p, color = p.ink2)
-    if (last && bonus) Text("Cadeau de bienvenue : $TUTO_GELS gels de série pour bien démarrer.", fontWeight = FontWeight.Bold)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) { steps.indices.forEach { k -> Box(Modifier.size(if (k == i) 20.dp else 8.dp, 8.dp).clip(CircleShape).background(if (k == i) p.flame else p.line)) } }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        if (i > 0) PButton("Précédent", { ui.sheet = Sheet.Tuto(i - 1) }, kind = "ghost") else Spacer(Modifier)
-        if (last) PButton(if (bonus) "Récupérer mes $TUTO_GELS gels" else "C’est parti", {
-            u.tutorialDone = true; ui.close()
-            if (bonus) {
-                u.tutoBonus = true
-                if (pg.store.acct) { pg.store.commit(); ui.cloud.welcomeBonus() }
-                else { u.freezes += TUTO_GELS; pg.notify(u.id, "Cadeau de bienvenue : $TUTO_GELS gels de série ajoutés à ton stock.", "freeze"); pg.store.commit(); ui.sparks(TUTO_GELS); ui.toast("$TUTO_GELS gels de série ajoutés !", "snow") }
-            } else pg.store.commit()
-        }, icon = if (bonus) "snow" else null, kind = "primary")
-        else PButton("Suivant", { ui.sheet = Sheet.Tuto(i + 1) }, kind = "primary")
-    }
-}
-
 /* ================================================================== documents légaux, notes de version */
 private fun asset(ctx: Context, name: String): String = ctx.assets.open(name).bufferedReader().use { it.readText() }
 

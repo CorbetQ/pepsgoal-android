@@ -40,6 +40,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Screen
+import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.sys.LiveUpdates
 import fr.pepsgoal.app.sys.Notifier
@@ -668,7 +669,7 @@ private fun HelpSettings(ui: AppState) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         UpdateCard(ui)
         Glass {
-            SetRow("Tutoriel", "Revoir les bases de PepsGoal") { PButton("Revoir", { ui.open(Sheet.Tuto(0)) }, small = true, leading = { Flame(18.dp) }) }
+            SetRow("Tutoriel", "Revoir les bases de PepsGoal") { PButton("Revoir", { ui.fs = Fs.Tuto() }, small = true, leading = { Flame(18.dp) }) }
             SetRow("Notes de version", "Les nouveautés de chaque version de PepsGoal") { PButton("Voir", { ui.open(Sheet.Notes) }, icon = "list", small = true) }
             SetRow("À propos", "PepsGoal $APP_VERSION · application Android native${if (ui.pg.db.sandbox) " · mode démonstration" else ""}. ${if (ui.pg.store.acct) "Compte synchronisé avec le serveur PepsGoal." else "Les données restent sur cet appareil."} Édité par Quentin CORBET.")
             SetRow("Site de PepsGoal", "Présentation, nouveautés et téléchargement des applications") { PButton("Ouvrir", { open(Links.SITE) }, icon = "globe", small = true) }
