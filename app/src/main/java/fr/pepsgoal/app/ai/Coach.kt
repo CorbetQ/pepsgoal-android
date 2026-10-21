@@ -45,7 +45,7 @@ Demande : ${request.trim().take(200)}
         return d
     }
 
-    private fun parseLine(line: String, request: String): Draft? {
+    fun parseLine(line: String, request: String): Draft? {
         val p = line.split('|').map { it.trim() }
         val type = p.getOrNull(0)?.lowercase()?.takeIf { it in TYPES } ?: return null
         val title = p.getOrNull(1)?.takeIf { it.length in 2..80 } ?: return null
@@ -105,7 +105,7 @@ Demande : ${request.trim().take(200)}
 
     class Pick(val goal: Goal, val reason: String)
 
-    private fun weather(ctx: Context): Pair<String, Double?>? {
+    fun weather(ctx: Context): Pair<String, Double?>? {
         val w = Wx.cached(ctx, ctx.peps.pg.me()?.settings?.weather)?.data ?: return null
         return Weather.wmo(w.current.code, w.current.isDay).label to w.current.temp
     }

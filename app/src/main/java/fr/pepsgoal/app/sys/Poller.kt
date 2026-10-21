@@ -56,6 +56,7 @@ object Poller {
             val ok = withTimeoutOrNull(30_000) {
                 app.cloud.navOnline = app.networkUp()
                 if (app.cloud.poll()) WidgetUpdater.update(app)
+                try { SmartReminders.check(app); Health.sync(app) } catch (e: Exception) {}
                 true
             }
             if (ok == null) app.cloud.pollStatus = "délai dépassé"

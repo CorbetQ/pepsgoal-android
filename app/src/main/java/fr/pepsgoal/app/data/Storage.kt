@@ -120,6 +120,14 @@ class DevicePrefs(context: Context) {
     /** Onglet Objectifs : affichage ("list" compact ou "cards") et regroupement par groupe d'objectifs. */
     var goalView get() = p.getString("goalView", "list") ?: "list"; set(v) = p.edit().putString("goalView", v).apply()
     var goalGroupBy get() = p.getBoolean("goalGroupBy", true); set(v) = p.edit().putBoolean("goalGroupBy", v).apply()
+    var smartReminders get() = p.getBoolean("smartReminders", true); set(v) = p.edit().putBoolean("smartReminders", v).apply()
+    /** Liens Santé (Health Connect) : lignes « objectif|mesure|seuil ». */
+    var healthLinks get() = p.getString("healthLinks", "") ?: ""; set(v) = p.edit().putString("healthLinks", v).apply()
+    var healthLast get() = p.getString("healthLast", "") ?: ""; set(v) = p.edit().putString("healthLast", v).apply()
+    /** Mode Focus : fin de la session en cours (ms), objectif lié, durée (minutes). */
+    var focusEnd get() = p.getLong("focusEnd", 0L); set(v) = p.edit().putLong("focusEnd", v).apply()
+    var focusGoal get() = p.getString("focusGoal", "") ?: ""; set(v) = p.edit().putString("focusGoal", v).apply()
+    var focusDnd get() = p.getBoolean("focusDnd", true); set(v) = p.edit().putBoolean("focusDnd", v).apply()
     var voiceRate get() = p.getFloat("voiceRate", 1f); set(v) = p.edit().putFloat("voiceRate", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp).count { it }
 }

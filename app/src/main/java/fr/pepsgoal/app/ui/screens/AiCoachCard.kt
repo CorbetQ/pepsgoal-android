@@ -68,6 +68,7 @@ fun AiTipCard(ui: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             IconTile("sparkle", p.type("program").c, p.type("measure").c, 36.dp, 12.dp)
             Text("Conseil du coach", Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+            IconBtn("comment", "Discuter avec le coach", { ui.push(Screen.CoachChat) }, plain = true, size = 36.dp)
             IconBtn("repeat", "Nouveau conseil", renew, plain = true, size = 36.dp)
         }
         AnimatedContent(tip to busy, transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(150)) }, label = "tip") { (t, b) ->

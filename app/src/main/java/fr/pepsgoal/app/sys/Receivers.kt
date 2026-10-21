@@ -74,6 +74,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val app = ctx.peps
         app.pg.timerTick()
         app.pg.checkReminders()
+        SmartReminders.check(ctx)
         LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx); Reminders.reschedule(ctx)
     }
 }

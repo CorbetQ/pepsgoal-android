@@ -3,6 +3,14 @@
     <string name="app_name">PepsGoal</string>
     <string name="widget_name">Ta journée</string>
     <string name="widget_desc">Ta série et tes validations du jour, à valider d’un geste</string>
+    <string name="tile_validate">Valider (PepsGoal)</string>
+    <string name="tile_focus">Focus (PepsGoal)</string>
+    <string name="sc_focus">Focus</string>
+    <string name="sc_focus_long">Lancer une session Focus</string>
+    <string name="sc_coach">Coach</string>
+    <string name="sc_coach_long">Discuter avec le coach</string>
+    <string name="sc_stats">Statistiques</string>
+    <string name="sc_stats_long">Voir mes statistiques</string>
     <string name="widget_streak_name">Ta série</string>
     <string name="widget_streak_desc">Ta flamme, le nombre de jours de série et ta semaine</string>
     <string name="widget_progress_name">Ta progression</string>

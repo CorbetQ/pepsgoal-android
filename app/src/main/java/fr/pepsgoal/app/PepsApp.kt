@@ -86,6 +86,7 @@ class PepsApp : Application() {
         Notifier.clearReminders(this)
         Poller.startLink(this)
         scope.launch { fr.pepsgoal.app.sys.Updater.autoCheck(this@PepsApp) }
+        scope.launch { try { fr.pepsgoal.app.sys.Health.sync(this@PepsApp) } catch (e: Exception) {} }
     }
 
     private fun onBackground() {

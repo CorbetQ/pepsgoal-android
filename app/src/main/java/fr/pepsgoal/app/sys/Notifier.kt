@@ -65,6 +65,14 @@ object Notifier {
         }
     }
 
+    /** Notification simple (rappels intelligents, mode Focus…), avec un éventuel bouton « Valider ». */
+    fun simple(ctx: Context, id: Int, ch: String, title: String, text: String, tab: String = "today", goalId: String? = null) {
+        val b = base(ctx, ch).setContentTitle(title).setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(open(ctx, id) { putExtra(MainActivity.EXTRA_TAB, tab); goalId?.let { putExtra(MainActivity.EXTRA_GOAL, it) } })
+        if (goalId != null) b.addAction(R.drawable.ic_notif, "Valider", action(ctx, id, ActionReceiver.VALIDATE) { putExtra("goal", goalId); putExtra("nid", id) })
+        post(ctx, id, b.build())
+    }
+
     /** Notification permanente et discrète du service de connexion en direct. */
     fun link(ctx: Context): android.app.Notification = NotificationCompat.Builder(ctx, CH_LINK).setSmallIcon(R.drawable.ic_notif).setColor(0xFFFF4A12.toInt())
         .setContentTitle("PepsGoal reste connecté").setContentText("Messages et notifications reçus même application fermée")

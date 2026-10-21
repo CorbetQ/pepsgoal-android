@@ -68,6 +68,7 @@ val SET_CATS = listOf(
     listOf("weather", "Météo", "Ville, carte du jour et thème Météo", "cloud"),
     listOf("privacy", "Social et confidentialité", "Fonctions sociales, visibilité, stories", "lock"),
     listOf("ai", "Assistant IA", "Coach IA 100 % local : installation, fonctions et mémoire", "sparkle"),
+    listOf("health", "Santé", "Health Connect : pas, sommeil, sport, eau et validation automatique", "heart"),
     listOf("widgets", "Widgets", "Widgets de l’écran d’accueil : ajout et apparence", "sun"),
     listOf("data", "Données", "Synchronisation, export, réinitialisation", "archive"),
     listOf("a11y", "Accessibilité", "Contraste élevé, daltonisme, monochrome, animations, transparence", "eye"),
@@ -76,7 +77,7 @@ val SET_CATS = listOf(
 
 /** Couleurs des catégories de réglages (reprises des couleurs des types d'objectifs). */
 val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
-    "weather" to ("objective" to "period"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
+    "weather" to ("objective" to "period"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
 
 /** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
 @Composable
@@ -146,6 +147,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
             "data" -> item("b") { DataSettings(ui, u) }
             "widgets" -> item("b") { WidgetsSettings(ui) }
             "ai" -> item("b") { AiSettings(ui) }
+            "health" -> item("b") { HealthSettings(ui) }
             "a11y" -> item("b") { Glass { A11yRows(ui); Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(top = 10.dp), small = true) } }
             else -> item("b") { HelpSettings(ui) }
         }
@@ -310,6 +312,12 @@ private fun RemindersSettings(ui: AppState, u: User) {
             }
             if (granted) SetRow("Catégories de notifications", "Choisis le son, la vibration et l’importance de chaque catégorie dans Android.") { PButton("Gérer", { Notifier.openSettings(ctx) }, icon = "gear", small = true) }
             if (!Reminders.canExact(ctx)) SetRow("Rappels à l’heure exacte", "Android peut retarder les rappels de quelques minutes. Autorise les alarmes exactes pour qu’ils arrivent pile à l’heure, et pour relever messages et publications chaque minute application fermée.") { PButton("Autoriser", { Reminders.openExactSettings(ctx) }, icon = "clock", small = true) }
+            run {
+                var smart by remember { mutableStateOf(ui.prefs.smartReminders) }
+                SetRow("Rappels intelligents", "PepsGoal apprend l’heure à laquelle tu valides chaque objectif et te le rappelle juste avant, plus un rappel « dernière chance » le soir si ta flamme n’est pas allumée.") {
+                    PSwitch(smart, { smart = it; ui.prefs.smartReminders = it; Reminders.reschedule(ctx) })
+                }
+            }
             if (ui.pg.store.acct) {
                 var unr by remember { mutableStateOf(Poller.unrestricted(ctx)) }
                 var instant by remember { mutableStateOf(ui.prefs.instantNotifs) }
