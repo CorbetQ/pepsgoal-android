@@ -23,6 +23,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -38,10 +43,51 @@ import kotlinx.coroutines.delay
 
 /** Valider (ou ouvrir la saisie adaptée au type). */
 fun doValidate(ui: AppState, id: String) {
-    when (val r = ui.pg.validate(id)) {
+    val pg = ui.pg; val g = pg.goalById(id); val before = myDone(pg, id)
+    when (val r = pg.validate(id)) {
         is Pg.VResult.AskProgress -> ui.open(Sheet.Progress(r.goalId))
         is Pg.VResult.OpenGoal -> ui.open(Sheet.Goal(r.goalId))
         else -> {}
+    }
+    // Validation simple : « Annuler » pendant 5 secondes
+    if (g != null && myDone(pg, id) > before && g.type in setOf("routine", "abstinence", "limit", "timed", "challenge", "deadline")) {
+        ui.undoable("« ${g.title} » validé.", "check") {
+            when {
+                g.type == "deadline" -> { pg.reopen(id); ui.toast("Validation annulée.", "x") }
+                g.type == "challenge" && g.completedAt != null -> ui.toast("Challenge terminé : ouvre l’objectif pour le rouvrir.", "x")
+                myDone(pg, id) > before -> pg.validate(id)
+            }
+            pg.hooks.liveChanged()
+        }
+    } else if (g != null && myDone(pg, id) < before) Feedback.undo()
+}
+
+private fun myDone(pg: Pg, id: String) = pg.db.checkins.count { it.goalId == id && it.kind == "done" && it.userId == pg.meId() }
+
+/** Archiver (ou réactiver) avec « Annuler ». */
+fun archiveWithUndo(ui: AppState, id: String) {
+    val pg = ui.pg; pg.archive(id, toast = false)
+    val on = pg.goalById(id)?.archived == true
+    ui.undoable(if (on) "Objectif archivé." else "Objectif réactivé.", "archive") { pg.archive(id, toast = false) }
+}
+
+/** Supprimer avec « Annuler » : l'objectif et ses validations sont gardés en mémoire le temps du message. */
+fun deleteWithUndo(ui: AppState, id: String) {
+    val pg = ui.pg; val g = pg.goalById(id) ?: return
+    val checks = pg.db.checkins.filter { it.goalId == id }; val posts = pg.db.posts.filter { it.goalId == id }.map { it.id }
+    pg.deleteGoal(id, toast = false); pg.hooks.liveChanged()
+    ui.undoable("« ${g.title} » supprimé.", "trash") { pg.restoreGoal(g, checks, posts) }
+}
+
+/** Objectifs reportés à demain depuis les actions rapides : masqués de « À valider aujourd'hui » jusqu'à minuit. */
+object Snooze {
+    fun ids(ui: AppState): Set<String> {
+        val (d, l) = ui.prefs.snoozed.split('|', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+        return if (d == today()) l.split(',').filter { it.isNotBlank() }.toSet() else emptySet()
+    }
+    fun set(ui: AppState, id: String, on: Boolean) {
+        val now = ids(ui).let { if (on) it + id else it - id }
+        ui.prefs.snoozed = "${today()}|${now.joinToString(",")}"; ui.bump()
     }
 }
 
@@ -138,25 +184,99 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
     }
     val pend = pg.db.checkins.any { it.goalId == g.id && it.pending && it.userId == pg.meId() }
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(
-        Modifier.bounce(inter, .97f).fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if (done) tc.c.copy(alpha = .14f) else Color.Transparent).springClick(inter) { ui.open(Sheet.Goal(g.id)) }.padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        GoalIcon(g)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                FavStar(pg, g)
-                Text(g.title, fontWeight = FontWeight.ExtraBold, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, textDecoration = null)
+    // Balayage : vers la droite pour valider (ou annuler), vers la gauche pour les actions rapides
+    val swipe = ui.prefs.swipe
+    var dx by remember { mutableFloatStateOf(0f) }
+    var w by remember { mutableIntStateOf(1) }
+    var armed by remember { mutableIntStateOf(0) }
+    val th = w * .26f
+    val rightLabel = if (g.type == "duration") (if (running) "Pause" else "Minuteur") else if (done && g.type in setOf("routine", "abstinence", "limit", "timed", "challenge")) "Annuler" else "Valider"
+    val drag = androidx.compose.foundation.gestures.rememberDraggableState { d ->
+        dx = (dx + d).coerceIn(-w * .45f, w * .45f)
+        val a = when { dx > th -> 1; dx < -th -> -1; else -> 0 }
+        if (a != armed) { armed = a; if (a != 0) Feedback.tick() }
+    }
+    val status = when { running -> "minuteur en cours"; done -> "validé aujourd’hui"; urgent -> "à faire, urgent"; else -> "à faire" }
+    Box(Modifier.fillMaxWidth().onSizeChanged { w = it.width.coerceAtLeast(1) }) {
+        if (dx != 0f) {
+            val toRight = dx > 0; val k = (kotlin.math.abs(dx) / th).coerceIn(0f, 1f)
+            val bg = if (toRight) p.ok else p.focus
+            Row(Modifier.matchParentSize().clip(RoundedCornerShape(18.dp)).background(bg.copy(alpha = .12f + .28f * k)).padding(horizontal = 18.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = if (toRight) Arrangement.Start else Arrangement.End) {
+                Row(Modifier.scale(.85f + .25f * k), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Pi(if (toRight) (if (rightLabel == "Annuler") "x" else if (g.type == "duration") "play" else "check") else "list", size = 22.dp, tint = readable(bg))
+                    Text(if (toRight) rightLabel else "Actions", fontWeight = FontWeight.ExtraBold, color = readable(bg))
+                }
             }
-            FlowRowCompat(gap = 6.dp) {
-                TypeChip(g.type)
-                Text(meta, fontSize = 13.sp, color = if (urgent) p.danger else p.ink2, fontWeight = if (urgent) FontWeight.Bold else FontWeight.Medium)
-                if (pend) Chip("En attente de ${first(pg.userById(g.buddy)?.name)}", "clock")
-                extra?.invoke()
-            }
-            bar?.let { Bar(it, Modifier.padding(top = 3.dp), tc.c, 6.dp) }
         }
-        right()
+        Row(
+            Modifier.offset { androidx.compose.ui.unit.IntOffset(dx.toInt(), 0) }
+                .then(if (swipe) Modifier.draggable(drag, androidx.compose.foundation.gestures.Orientation.Horizontal, onDragStopped = {
+                    val a = armed; armed = 0
+                    when (a) { 1 -> doValidate(ui, g.id); -1 -> ui.open(Sheet.Quick(g.id)) }
+                    androidx.compose.animation.core.animate(dx, 0f, animationSpec = spring(dampingRatio = .62f, stiffness = 520f)) { v, _ -> dx = v }
+                }) else Modifier)
+                .bounce(inter, .97f).fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                .background(if (done) tc.c.copy(alpha = .14f) else if (dx != 0f) p.glassStrong else Color.Transparent)
+                .springClick(inter, label = "Ouvrir les détails") { ui.open(Sheet.Goal(g.id)) }
+                .semantics {
+                    stateDescription = status
+                    customActions = listOf(
+                        CustomAccessibilityAction(rightLabel) { doValidate(ui, g.id); true },
+                        CustomAccessibilityAction("Actions rapides") { ui.open(Sheet.Quick(g.id)); true }
+                    )
+                }.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            GoalIcon(g)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FavStar(pg, g)
+                    Text(g.title, fontWeight = FontWeight.ExtraBold, color = p.ink, maxLines = if (p.easy) 3 else 1, overflow = TextOverflow.Ellipsis, textDecoration = null)
+                }
+                FlowRowCompat(gap = 6.dp) {
+                    // Lecture facile : l'état est écrit en toutes lettres
+                    if (p.easy) Chip(if (done) "Fait" else if (running) "En cours" else "À faire", if (done) "check" else "clock", if (done) p.ok else p.ink3)
+                    TypeChip(g.type)
+                    Text(meta, fontSize = 13.sp, color = if (urgent) p.danger else p.ink2, fontWeight = if (urgent) FontWeight.Bold else FontWeight.Medium)
+                    if (pend) Chip("En attente de ${first(pg.userById(g.buddy)?.name)}", "clock")
+                    extra?.invoke()
+                }
+                bar?.let { Bar(it, Modifier.padding(top = 3.dp), tc.c, 6.dp) }
+            }
+            right()
+        }
+    }
+}
+
+/** Actions rapides d'un objectif (balayage vers la gauche ou action TalkBack). */
+@Composable
+fun QuickSheet(ui: AppState, id: String) {
+    val p = LocalPal.current; val pg = ui.pg; val g = pg.goalById(id) ?: run { LaunchedEffect(Unit) { ui.close() }; return }
+    val snoozed = id in Snooze.ids(ui)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        GoalIcon(g, 48.dp)
+        Column(Modifier.weight(1f)) { Text(g.title, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis); Muted(typeInfo(g.type).label, small = true) }
+    }
+    val acts = listOfNotNull(
+        Triple("Valider ou saisir un progrès", "check") { ui.close(); doValidate(ui, id) },
+        Triple(if (pg.isFav(g)) "Retirer des favoris" else "Ajouter aux favoris", "star") { pg.toggleFav(id); ui.close() },
+        Triple("Lancer une session Focus", "timer") { ui.close(); ui.fs = fr.pepsgoal.app.Fs.Focus(id) },
+        Triple(if (snoozed) "Remettre aujourd’hui" else "Reporter à demain", "clock") {
+            Snooze.set(ui, id, !snoozed); ui.close()
+            if (!snoozed) ui.undoable("« ${g.title} » reporté à demain.", "clock") { Snooze.set(ui, id, false) } else ui.toast("« ${g.title} » est de retour aujourd’hui.", "clock")
+        },
+        Triple("Voir les détails", "list") { ui.open(Sheet.Goal(id)) },
+        if (g.userId == pg.meId()) Triple(if (g.archived) "Réactiver" else "Archiver", "archive") { ui.close(); archiveWithUndo(ui, id) } else null
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        acts.forEach { (l, ic, go) ->
+            val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bounce(inter, .97f).clip(RoundedCornerShape(16.dp)).background(p.ink.copy(alpha = .05f)).springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = go).padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Pi(ic, size = 22.dp, tint = p.ink); Text(l, fontWeight = FontWeight.ExtraBold)
+            }
+        }
     }
 }
 

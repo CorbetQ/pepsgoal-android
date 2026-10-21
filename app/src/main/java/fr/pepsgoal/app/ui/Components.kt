@@ -45,6 +45,11 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -313,7 +318,7 @@ fun Modifier.bounce(inter: MutableInteractionSource, pressed: Float = .94f): Mod
 /** Zone cliquable avec effet ressort et ondulation (à placer après le clip/fond de l'élément). */
 @Composable
 fun Modifier.springClick(inter: MutableInteractionSource, enabled: Boolean = true, label: String? = null, role: Role? = null, onClick: () -> Unit): Modifier =
-    this.clickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role, onClick = onClick)
+    this.clickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role) { Feedback.tap(); onClick() }
 
 /** Fond « verre givré » : arrière-plan flouté et teinté (backdrop-filter de la version web), sinon simple teinte. */
 @Composable
@@ -335,7 +340,7 @@ fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 2
     Column(
         // Toute la largeur disponible par défaut : une carte au contenu court reste alignée sur les autres
         (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).enter().then(if (onClick != null) Modifier.bounce(inter, .97f) else Modifier)
-            .then(if (ai) Modifier.aiGlow(radius) else Modifier)
+            .then(if (ai && !p.easy) Modifier.aiGlow(radius) else if (ai) Modifier.border(2.dp, p.flame, shape) else Modifier)
             .shadow(if (p.oled || p.transp) 0.dp else 18.dp, shape, ambientColor = Color(0x4428186E), spotColor = Color(0x5528186E))
             .glassBg(shape, strong)
             // Profondeur : reflet en haut de la carte et liseré lumineux dégradé (plus vif en haut, discret en bas)
@@ -349,7 +354,7 @@ fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 2
 @Composable
 fun CardHead(title: String, modifier: Modifier = Modifier, right: @Composable RowScope.() -> Unit = {}) {
     Row(modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).semantics { heading() })
         right()
     }
 }
@@ -382,7 +387,8 @@ fun PButton(
     Row(
         modifier.bounce(inter, .92f).alpha(if (enabled) 1f else .45f).clip(shape).then(bg)
             .then(if (kind == "danger") Modifier.border(1.dp, p.danger.copy(alpha = .4f), shape) else Modifier)
-            .clickable(enabled = enabled, interactionSource = inter, indication = LocalIndication.current, role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, interactionSource = inter, indication = LocalIndication.current, role = Role.Button) { Feedback.tap(); onClick() }
+            .then(if (p.big) Modifier.heightIn(min = 48.dp) else Modifier)
             .padding(horizontal = if (small) 14.dp else 18.dp, vertical = if (small) 8.dp else 11.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
     ) {
@@ -399,9 +405,10 @@ private fun Modifier.alpha(a: Float) = this.graphicsLayer { alpha = a }
 fun IconBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier, plain: Boolean = false, badge: Int = 0, tint: Color? = null, size: Dp = 42.dp) {
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
-    Box(modifier) {
+    // Grandes cibles (TalkBack, Lecture facile) : zone tactile d'au moins 48 dp
+    Box(modifier.then(if (p.big) Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp) else Modifier), contentAlignment = Alignment.Center) {
         Box(
-            Modifier.bounce(inter, .86f).size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(p.glassStrong).border(1.dp, ctlEdge(p), CircleShape))
+            Modifier.semantics { contentDescription = desc; role = Role.Button }.bounce(inter, .86f).size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(p.glassStrong).border(1.dp, ctlEdge(p), CircleShape))
                 .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center
         ) { Pi(icon, size = 20.dp, tint = tint ?: if (plain) p.ink2 else p.ink) }
         if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp))
@@ -459,7 +466,7 @@ fun FChip(text: String, on: Boolean, onClick: () -> Unit, leading: (@Composable 
     val inter = remember { MutableInteractionSource() }
     Row(
         Modifier.bounce(inter, .9f).scale(sc).clip(CircleShape).background(if (on) (if (p.contrast) SolidColor(p.ink) else p.accent) else SolidColor(if (dashed) Color.Transparent else p.glassStrong))
-            .border(1.dp, if (on) Color.Transparent else ctlEdge(p), CircleShape).springClick(inter, onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+            .border(1.dp, if (on) Color.Transparent else ctlEdge(p), CircleShape).springClick(inter, onClick = onClick).semantics { selected = on }.then(if (p.big) Modifier.heightIn(min = 48.dp) else Modifier).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         leading?.invoke()
@@ -584,7 +591,7 @@ fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, mod
         options.forEachIndexed { i, (k, l) ->
             val on = k == value
             val inter = remember { MutableInteractionSource() }
-            Row(Modifier.bounce(inter, .9f).clip(RoundedCornerShape(14.dp)).background(if (on) p.glassStrong else Color.Transparent).then(if (on) Modifier.border(1.dp, ctlEdge(p), RoundedCornerShape(14.dp)) else Modifier).springClick(inter) { onChange(k) }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.bounce(inter, .9f).clip(RoundedCornerShape(14.dp)).background(if (on) p.glassStrong else Color.Transparent).then(if (on) Modifier.border(1.dp, ctlEdge(p), RoundedCornerShape(14.dp)) else Modifier).springClick(inter, role = Role.RadioButton) { onChange(k) }.semantics { selected = on }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
                 Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) p.ink else p.ink2)
             }
@@ -620,4 +627,4 @@ fun Field(value: String, onChange: (String) -> Unit, label: String, modifier: Mo
 fun Err(text: String?) { if (!text.isNullOrEmpty()) Text(text, color = LocalPal.current.danger, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
 
 @Composable
-fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp), modifier = Modifier.padding(bottom = 8.dp, top = 4.dp))
+fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp), modifier = Modifier.padding(bottom = 8.dp, top = 4.dp).semantics { heading() })

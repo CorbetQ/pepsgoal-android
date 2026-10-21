@@ -129,5 +129,24 @@ class DevicePrefs(context: Context) {
     var focusGoal get() = p.getString("focusGoal", "") ?: ""; set(v) = p.edit().putString("focusGoal", v).apply()
     var focusDnd get() = p.getBoolean("focusDnd", true); set(v) = p.edit().putBoolean("focusDnd", v).apply()
     var voiceRate get() = p.getFloat("voiceRate", 1f); set(v) = p.edit().putFloat("voiceRate", v).apply()
-    fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp).count { it }
+    /* Confort et accessibilité */
+    /** Taille du texte propre à l'application (multiplie celle d'Android). */
+    var textScale get() = p.getFloat("textScale", 1f); set(v) = p.edit().putFloat("textScale", v).apply()
+    /** Densité de l'affichage : "compact", "normal" ou "large". */
+    var density get() = p.getString("density", "normal") ?: "normal"; set(v) = p.edit().putString("density", v).apply()
+    /** Vibrations : "off", "light" ou "strong". */
+    var haptics get() = p.getString("haptics", "light") ?: "light"; set(v) = p.edit().putString("haptics", v).apply()
+    var sounds get() = p.getBoolean("sounds", false); set(v) = p.edit().putBoolean("sounds", v).apply()
+    /** Mode une main : boutons d'en-tête en bas, et tirer l'écran vers le bas rapproche le haut sous le pouce. */
+    var oneHand get() = p.getBoolean("oneHand", false); set(v) = p.edit().putBoolean("oneHand", v).apply()
+    /** Mode Lecture facile : mots simples, statuts écrits en toutes lettres, pas d'effets de verre ni d'animations. */
+    var easy get() = p.getBoolean("easy", false); set(v) = p.edit().putBoolean("easy", v).apply()
+    /** Gestes de balayage sur les objectifs du jour. */
+    var swipe get() = p.getBoolean("swipe", true); set(v) = p.edit().putBoolean("swipe", v).apply()
+    /** Cartes de l'accueil dans l'ordre choisi ; « -clé » = carte masquée. */
+    var homeCards: List<String> get() = (p.getString("homeCards", "") ?: "").split(",").filter { it.isNotBlank() }; set(v) = p.edit().putString("homeCards", v.joinToString(",")).apply()
+    /** Objectifs reportés à demain : « date|id,id ». */
+    var snoozed get() = p.getString("snoozed", "") ?: ""; set(v) = p.edit().putString("snoozed", v).apply()
+    var swipeHint get() = p.getBoolean("swipeHint", false); set(v) = p.edit().putBoolean("swipeHint", v).apply()
+    fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp, easy, oneHand, textScale != 1f).count { it }
 }

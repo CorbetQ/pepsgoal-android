@@ -49,6 +49,7 @@ fun SheetHost(ui: AppState) {
 private fun SheetBody(ui: AppState, s: Sheet) {
     when (s) {
         is Sheet.GoalForm -> GoalFormSheet(ui, s)
+        is Sheet.Quick -> QuickSheet(ui, s.id)
         is Sheet.Goal -> GoalSheet(ui, s.id)
         is Sheet.Progress -> ProgressSheet(ui, s.id)
         is Sheet.User -> UserSheet(ui, s.id)

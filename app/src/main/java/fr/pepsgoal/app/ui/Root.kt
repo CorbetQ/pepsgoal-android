@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -50,6 +51,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.shadow
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.hazeEffect
@@ -62,6 +67,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 val NAV = listOf(Triple("today", "Jour", "sun"), Triple("goals", "Objectifs", "target"), Triple("feed", "Feed", "feed"), Triple("friends", "Amis", "users"), Triple("profile", "Profil", "user"))
+val EASY_NAV = mapOf("today" to "Aujourd’hui", "feed" to "Actus", "friends" to "Amis", "goals" to "Objectifs")
 val NAV_TITLES = mapOf("today" to "Aujourd’hui", "goals" to "Objectifs", "feed" to "Feed", "friends" to "Amis", "profile" to "Profil", "mod" to "Modération")
 
 /** Lecture de la révision de la base : l'appelant est redessiné à chaque changement. */
@@ -75,8 +81,14 @@ fun PepsRoot(ui: AppState) {
     val pg = ui.pg; val u = pg.me(); val s = u?.settings
     val wx = Wx.cached(ctx, s?.weather)
     val input = ThemeInput(s?.theme ?: "system", s?.accent ?: 0, s?.accentCustom, s?.glassBlur ?: "mid", ui.prefs.materialYou,
-        ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion, ui.prefs.transp, Weather.skyDark(wx?.data), ui.prefs.glassOpacity)
+        ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion, ui.prefs.transp, Weather.skyDark(wx?.data), ui.prefs.glassOpacity,
+        ui.prefs.easy, rememberTalkBack(), ui.prefs.oneHand)
     LaunchedEffect(s?.weather?.lat, s?.weather?.lon) { if (s?.weather != null) Wx.ensure(ctx, ui, false) }
+    // Taille du texte et densité propres à l'application (en plus des réglages d'Android)
+    val d0 = LocalDensity.current
+    val zoom = when (ui.prefs.density) { "compact" -> .9f; "large" -> 1.1f; else -> 1f }
+    val fontK = ui.prefs.textScale * (if (ui.prefs.easy) 1.1f else 1f)
+    CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(d0.density * zoom, d0.fontScale * fontK)) {
     PepsTheme(input) {
         val p = LocalPal.current
         val haze = rememberHazeState()
@@ -105,6 +117,7 @@ fun PepsRoot(ui: AppState) {
                 LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
             }
             CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze) {
+                Reachable(ui) {
                 when {
                     u == null -> AuthScreen(ui)
                     pg.maintNow()?.mode == "full" && !pg.isAdmin(u) -> MaintenanceScreen(ui)
@@ -113,6 +126,7 @@ fun PepsRoot(ui: AppState) {
                 val top = ui.screens.lastOrNull()
                 AnimatedContent(top, transitionSpec = { (slideInHorizontally { it / 3 } + fadeIn()) togetherWith (fadeOut()) }, label = "screen") { sc ->
                     when (sc) {
+                        is Screen.Search -> SearchScreen(ui, sc.q)
                         is Screen.Settings -> SettingsScreen(ui, sc.cat)
                         is Screen.Chat -> ChatScreen(ui, sc.with, sc.group)
                         is Screen.Stories -> StoryHistoryScreen(ui)
@@ -124,6 +138,7 @@ fun PepsRoot(ui: AppState) {
                         null -> {}
                     }
                 }
+                }
                 SheetHost(ui)
                 FullscreenHost(ui)
                 Toasts(ui)
@@ -131,7 +146,59 @@ fun PepsRoot(ui: AppState) {
             }
         }
     }
+    }
     rev.hashCode()
+}
+
+/** TalkBack (exploration au toucher) est-il actif ? Suivi en direct. */
+@Composable
+private fun rememberTalkBack(): Boolean {
+    val ctx = LocalContext.current
+    val am = remember { ctx.getSystemService(android.content.Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager }
+    var on by remember { mutableStateOf(am.isTouchExplorationEnabled) }
+    DisposableEffect(am) {
+        val l = android.view.accessibility.AccessibilityManager.TouchExplorationStateChangeListener { on = it }
+        am.addTouchExplorationStateChangeListener(l)
+        onDispose { am.removeTouchExplorationStateChangeListener(l) }
+    }
+    return on
+}
+
+/**
+ * Mode une main : tirer l'écran vers le bas en haut d'une liste fait descendre toute l'interface sous le pouce
+ * (comme le mode une main d'Android). Toucher la zone libérée en haut, ou faire défiler, la remonte.
+ */
+@Composable
+private fun Reachable(ui: AppState, content: @Composable () -> Unit) {
+    val p = LocalPal.current
+    if (!p.oneHand) { content(); return }
+    val reach = remember { Animatable(0f) }
+    var on by remember { mutableStateOf(false) }
+    LaunchedEffect(on) { reach.animateTo(if (on) 1f else 0f, if (p.motion) snap() else spring(dampingRatio = .78f, stiffness = 380f)) }
+    LaunchedEffect(ui.tab, ui.screens.size, ui.sheet, ui.fs) { on = false }
+    val pullPx = with(LocalDensity.current) { 80.dp.toPx() }
+    val conn = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            var pull = 0f
+            override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                if (source != androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput) return Offset.Zero
+                if (available.y > 0f && consumed.y <= 0f) { pull += available.y; if (pull > pullPx && !on) { on = true; Feedback.tick() } }
+                else { pull = 0f; if (on && consumed.y < -6f) on = false }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity { pull = 0f; return androidx.compose.ui.unit.Velocity.Zero }
+        }
+    }
+    BoxWithConstraints(Modifier.fillMaxSize().nestedScroll(conn)) {
+        val shift = maxHeight * .4f
+        Box(Modifier.fillMaxSize().graphicsLayer { translationY = shift.toPx() * reach.value }) { content() }
+        if (reach.value > .01f) Box(Modifier.fillMaxWidth().height(shift * reach.value).clickable(onClickLabel = "Remonter l’écran") { on = false }
+            .semantics { contentDescription = "Mode une main : touche pour remonter l’écran" }, contentAlignment = Alignment.Center) {
+            Row(Modifier.graphicsLayer { alpha = reach.value }.statusBarsPadding(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pi("up", size = 18.dp, tint = p.ink2); Muted("Touche ici pour remonter", small = true)
+            }
+        }
+    }
 }
 
 private fun Modifier.grayscale() = this.drawWithContent {
@@ -190,7 +257,9 @@ private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>,
             val x by animateDpAsState(w * idx, if (p.motion) snap() else spring(dampingRatio = .58f, stiffness = 480f), label = "nav")
             Box(Modifier.offset(x = x).width(w).height(56.dp).shadow(if (p.transp) 0.dp else 6.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
             Row(Modifier.fillMaxWidth()) {
-                items.forEachIndexed { i, (k, l, ic) ->
+                items.forEachIndexed { i, (k, l0, ic) ->
+                    // Lecture facile : libellés en mots courants
+                    val l = if (p.easy) EASY_NAV[k] ?: l0 else l0
                     val sel = i == idx
                     val col by animateColorAsState(if (sel) p.bg else p.ink2, tween(if (p.motion) 0 else 200), label = "navc")
                     val pop by animateFloatAsState(if (sel && !p.motion) 1.14f else 1f, spring(dampingRatio = .35f, stiffness = 520f), label = "navi")
@@ -238,11 +307,12 @@ private fun TopBar(ui: AppState) {
             val inter = remember { MutableInteractionSource() }
             val pill = RoundedCornerShape(50)
             Row(Modifier.bounce(inter, .9f).height(46.dp).shadow(if (p.transp || p.oled) 0.dp else 10.dp, pill, ambientColor = Color(0x4428186E), spotColor = Color(0x3328186E))
-                .glassBg(pill, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, pill).springClick(inter, label = "Série") { ui.nav("profile") }.padding(horizontal = 12.dp),
+                .glassBg(pill, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, pill).springClick(inter, label = "Ouvrir le profil") { ui.nav("profile") }.semantics(mergeDescendants = true) { contentDescription = "Série de ${pl(st.n, "jour", "jours")}${if (u.freezes > 0) ", ${u.freezes} gel${if (u.freezes > 1) "s" else ""} de série" else ""}" }.padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(Modifier.graphicsLayer { scaleX = bump.value; scaleY = bump.value }, verticalAlignment = Alignment.CenterVertically) { Flame(22.dp); Text("${st.n}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp) }
                 if (u.freezes > 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { Pi("snow", size = 16.dp, tint = p.type("objective").ink); Text("${u.freezes}", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp) }
             }
+            RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 21.dp, tint = p.ink) }
             RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 21.dp, tint = p.ink) }
             RoundGlass("Profil", { ui.nav("profile") }) { Av(u, 38.dp) }
         }
@@ -261,7 +331,8 @@ private fun RoundGlass(desc: String, onClick: () -> Unit, badge: Int = 0, conten
     val inter = remember { MutableInteractionSource() }
     Box {
         Box(Modifier.bounce(inter, .86f).size(46.dp).shadow(if (p.transp || p.oled) 0.dp else 12.dp, CircleShape, ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
-            .glassBg(CircleShape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, CircleShape).springClick(inter, label = desc, onClick = onClick),
+            .glassBg(CircleShape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, CircleShape).springClick(inter, label = desc, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = if (badge > 0) "$desc, $badge non lus" else desc; role = Role.Button },
             contentAlignment = Alignment.Center, content = content)
         if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-2).dp))
     }
@@ -276,10 +347,23 @@ private fun Toasts(ui: AppState) {
                 var shown by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { shown = true }
                 AnimatedVisibility(shown, enter = fadeIn(tween(120)) + scaleIn(spring(dampingRatio = .45f, stiffness = 500f), initialScale = .8f) + slideInVertically(spring(dampingRatio = .55f, stiffness = 500f)) { it / 2 }) {
-                    Row(Modifier.clip(RoundedCornerShape(18.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 11.dp),
+                    // Annoncé par TalkBack dès son apparition (région « live »)
+                    Row(Modifier.clip(RoundedCornerShape(18.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(18.dp)).semantics { liveRegion = LiveRegionMode.Polite }
+                        .padding(start = 14.dp, end = if (t.action != null) 6.dp else 14.dp, top = if (t.action != null) 6.dp else 11.dp, bottom = if (t.action != null) 6.dp else 11.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (t.icon == "flame") Flame(22.dp) else Pi(t.icon, size = 20.dp, tint = p.ink)
-                        Text(t.text, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = p.ink)
+                        Text(t.text, Modifier.weight(1f, fill = false), fontWeight = FontWeight.Bold, fontSize = if (p.easy) 16.sp else 14.sp, color = p.ink)
+                        if (t.action != null) {
+                            // Compte à rebours discret autour du bouton : le temps restant pour annuler
+                            val left = remember { Animatable(1f) }
+                            LaunchedEffect(Unit) { left.animateTo(0f, tween(5000, easing = LinearEasing)) }
+                            val inter = remember { MutableInteractionSource() }
+                            Box(Modifier.bounce(inter, .9f).heightIn(min = 44.dp).clip(RoundedCornerShape(14.dp)).background(p.ink)
+                                .drawWithContent { drawContent(); drawRect(p.flame.copy(alpha = .9f), topLeft = Offset(0f, size.height - 3.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width * left.value, 3.dp.toPx())) }
+                                .springClick(inter, label = t.action, role = Role.Button) { ui.toasts.remove(t); t.onAction?.invoke() }.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+                                Text(t.action, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = p.bg)
+                            }
+                        }
                     }
                 }
             }
