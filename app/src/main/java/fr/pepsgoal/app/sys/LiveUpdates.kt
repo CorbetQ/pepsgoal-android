@@ -90,7 +90,7 @@ object LiveUpdates {
             val quick = pending.firstOrNull { it.g.type in setOf("routine", "abstinence", "challenge", "timed") }
             val acts = mutableListOf<Pair<String, PendingIntent>>()
             quick?.let { q -> acts += "✓ ${q.g.title.take(20)}" to Notifier.action(ctx, ID_STREAK, ActionReceiver.VALIDATE) { putExtra("goal", q.g.id); putExtra("keep", true) } }
-            acts += "Plus tard" to Notifier.action(ctx, ID_STREAK + 1, ActionReceiver.DISMISS_LIVE) { putExtra("which", "streak") }
+            acts += "Plus tard" to Notifier.action(ctx, ID_STREAK + 1, ActionReceiver.DISMISS_LIVE) { putExtra("which", "streak"); putExtra("token", today()) }
             val h = left / 3_600_000; val mi = (left / 60_000) % 60
             out += Live(ID_STREAK, "streak", today(), "Ta série de ${pl(st.n, "jour", "jours")} s’éteint à minuit",
                 "Encore ${pl(pending.size, "validation", "validations")} : ${pending.take(3).joinToString(", ") { it.g.icon + " " + it.g.title }}",
@@ -110,7 +110,7 @@ object LiveUpdates {
             .setSmallIcon(R.drawable.ic_notif).setContentTitle(l.title).setContentText(l.text).setStyle(style)
             .setOngoing(true).setOnlyAlertOnce(true).setCategory(if (l.which == "timer") Notification.CATEGORY_STOPWATCH else Notification.CATEGORY_PROGRESS)
             .setContentIntent(l.tap).setColor(l.color).setShortCriticalText(l.short)
-            .setDeleteIntent(Notifier.action(ctx, l.id + 50, ActionReceiver.DISMISS_LIVE) { putExtra("which", l.which) })
+            .setDeleteIntent(Notifier.action(ctx, l.id + 50, ActionReceiver.DISMISS_LIVE) { putExtra("which", l.which); putExtra("token", l.token) })
         l.chrono?.let { b.setWhen(it).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(l.countDown) }
         l.actions.forEach { (t, pi) -> b.addAction(Notification.Action.Builder(Icon.createWithResource(ctx, R.drawable.ic_notif), t, pi).build()) }
         b.extras.putBoolean(Notification.EXTRA_REQUEST_PROMOTED_ONGOING, true)
@@ -123,7 +123,7 @@ object LiveUpdates {
             .setContentTitle(l.title).setContentText(l.text).setStyle(NotificationCompat.BigTextStyle().bigText(l.text))
             .setOngoing(true).setOnlyAlertOnce(true).setProgress(1000, l.progress, false).setContentIntent(l.tap)
             .setCategory(if (l.which == "timer") NotificationCompat.CATEGORY_STOPWATCH else NotificationCompat.CATEGORY_PROGRESS)
-            .setDeleteIntent(Notifier.action(ctx, l.id + 50, ActionReceiver.DISMISS_LIVE) { putExtra("which", l.which) })
+            .setDeleteIntent(Notifier.action(ctx, l.id + 50, ActionReceiver.DISMISS_LIVE) { putExtra("which", l.which); putExtra("token", l.token) })
             .setSubText(l.short)
         l.chrono?.let { b.setWhen(it).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(l.countDown) }
         l.actions.forEach { (t, pi) -> b.addAction(R.drawable.ic_notif, t, pi) }

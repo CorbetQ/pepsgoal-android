@@ -184,7 +184,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
             } else Composer(ui, u, g?.members, replyTo, { replyTo = null }, send)
         }
     }
-    photoView?.let { b -> val bmp = remember(b) { BitmapFactory.decodeByteArray(b, 0, b.size)?.asImageBitmap() }; if (bmp != null) PhotoViewer(bmp) { photoView = null } }
+    photoView?.let { b -> PhotoViewer(b) { photoView = null } }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

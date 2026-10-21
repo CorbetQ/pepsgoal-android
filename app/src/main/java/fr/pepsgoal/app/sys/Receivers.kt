@@ -38,7 +38,7 @@ class ActionReceiver : BroadcastReceiver() {
                 val g = pg.goalById(intent.getStringExtra("goal")) ?: pg.runningTimer()?.let { pg.goalById(it.goalId) } ?: return
                 pg.toggleTimer(g); LiveUpdates.refresh(ctx); Reminders.reschedule(ctx); WidgetUpdater.update(ctx)
             }
-            DISMISS_LIVE -> { app.prefs.liveDismissed = intent.getStringExtra("which") + "|" + fr.pepsgoal.core.today(); LiveUpdates.refresh(ctx) }
+            DISMISS_LIVE -> { app.prefs.liveDismissed = intent.getStringExtra("which") + "|" + intent.getStringExtra("token"); LiveUpdates.refresh(ctx) }
             REPLY -> {
                 val key = intent.getStringExtra("key") ?: return
                 val text = RemoteInput.getResultsFromIntent(intent)?.getCharSequence(Notifier.KEY_REPLY)?.toString()?.trim().orEmpty()

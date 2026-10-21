@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -159,7 +160,7 @@ private fun BadgeFs(ui: AppState, c: Celebration.Badge) {
         LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = .45f, stiffness = 180f)) }
         Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize().rotate(rot)) { for (i in 0 until 16) { val a = i * PI.toFloat() / 8; drawLine(tc.copy(alpha = .35f), center, center + Offset(cos(a), sin(a)) * size.minDimension / 2, 10f) } }
-            Box(Modifier.scale(pop.value)) { BadgeMedal(BadgeState(f, c.tier, 0, null, 1.0), 140) }
+            Box(Modifier.scale(pop.value)) { BadgeMedal(BadgeState(f, 0, c.tier, null, 1.0), 140) }
             Text(label, Modifier.align(Alignment.BottomCenter).clip(RoundedCornerShape(10.dp)).background(tc).padding(horizontal = 14.dp, vertical = 4.dp), color = INK, fontWeight = FontWeight.ExtraBold)
         }
         Pop(1) { Eyebrow("Badge débloqué · palier ${c.tier + 1} sur ${f.t.size}") }
