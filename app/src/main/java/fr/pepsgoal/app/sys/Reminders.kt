@@ -43,6 +43,8 @@ object Reminders {
         // Fin du minuteur : la journée se valide toute seule
         pg.runningTimer()?.let { t -> pg.goalById(t.goalId)?.let { g -> val left = (g.minutes - pg.durationLiveMins(g)) * 60_000; if (left > 0) c += now + left.toLong() } }
         c += day1 + 60_000
+        // Rappels intelligents (heure habituelle de chaque objectif, « dernière chance » du soir)
+        try { SmartReminders.nextAt(ctx)?.let { c += it } } catch (e: Exception) {}
         return c.filter { it > now + 5_000 }.minOrNull()
     }
 

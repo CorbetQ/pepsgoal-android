@@ -13,8 +13,8 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 317
-        versionName = "3.1.2"
+        versionCode = 320
+        versionName = "3.2.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
@@ -93,5 +93,7 @@ dependencies {
     implementation("dev.chrisbanes.haze:haze:1.6.10")
     // Assistant IA 100 % local : exécution d'un petit modèle de langage sur le téléphone (MediaPipe LLM Inference)
     implementation("com.google.mediapipe:tasks-genai:0.10.24")
+    // Health Connect (Santé d'Android) : validation automatique à partir des pas, du sommeil, du sport, de l'eau
+    implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
 }

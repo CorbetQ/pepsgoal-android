@@ -118,6 +118,9 @@ fun PepsRoot(ui: AppState) {
                         is Screen.Stories -> StoryHistoryScreen(ui)
                         is Screen.Comments -> CommentsScreen(ui, sc.postId)
                         is Screen.Badge -> BadgeScreen(ui, sc.key)
+                        is Screen.CoachChat -> CoachChatScreen(ui)
+                        is Screen.Journal -> JournalScreen(ui)
+                        is Screen.Stats -> StatsScreen(ui)
                         null -> {}
                     }
                 }

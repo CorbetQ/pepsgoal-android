@@ -57,6 +57,8 @@ sealed class Fs {
     class Stories(val groups: List<Pg.StoryGroup>, val ui: Int, val si: Int, val archive: Boolean = false) : Fs()
     /** Tutoriel plein écran (premiers pas et réglages de base). */
     class Tuto(val start: Int = 0) : Fs()
+    /** Mode Focus (session de concentration). */
+    class Focus(val goalId: String? = null) : Fs()
 }
 
 /** Écrans plein écran empilés au-dessus des onglets. */
@@ -69,6 +71,12 @@ sealed class Screen {
     class Comments(val postId: String) : Screen()
     /** Page dédiée à un badge : la médaille, la progression et toutes ses étapes. */
     class Badge(val key: String) : Screen()
+    /** Conversation avec le coach IA. */
+    object CoachChat : Screen()
+    /** Journal et humeur du jour. */
+    object Journal : Screen()
+    /** Statistiques avancées. */
+    object Stats : Screen()
 }
 
 class Toast(val id: Long, val text: String, val icon: String)

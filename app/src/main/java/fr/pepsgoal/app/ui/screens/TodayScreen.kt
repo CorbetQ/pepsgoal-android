@@ -83,7 +83,9 @@ fun TodayScreen(ui: AppState) {
                 }
             }
         }
+        item("tools") { QuickTools(ui) }
         item("tip") { AiTipCard(ui) }
+        item("mood") { MoodCard(ui) }
         item("wx") { WeatherCard(ui) }
         if (pg.socialOn(u)) item("board") { Board(ui) }
         item("due") { DueCard(ui, plan, done, total) }
@@ -274,6 +276,29 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
                     }
                 }
             } }
+        }
+    }
+}
+
+/** Raccourcis de l'accueil : mode Focus, statistiques, journal et coach IA. */
+@Composable
+private fun QuickTools(ui: AppState) {
+    val p = LocalPal.current; val ctx = androidx.compose.ui.platform.LocalContext.current
+    val focusOn = fr.pepsgoal.app.sys.Focus.running(ctx)
+    val items = listOfNotNull(
+        Triple(if (focusOn) "Focus en cours" else "Focus", "timer") { ui.fs = Fs.Focus() },
+        Triple("Statistiques", "trend") { ui.push(fr.pepsgoal.app.Screen.Stats) },
+        Triple("Journal", "book") { ui.push(fr.pepsgoal.app.Screen.Journal) },
+        if (fr.pepsgoal.app.ai.LocalAi.on(ctx)) Triple("Coach", "sparkle") { ui.push(fr.pepsgoal.app.Screen.CoachChat) } else null,
+    )
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEach { (l, ic, go) ->
+            Glass(Modifier.weight(1f).fillMaxHeight(), pad = 10.dp, fill = false, onClick = go, ai = ic == "sparkle", border = if (ic == "timer" && focusOn) p.flame else null) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Pi(ic, size = 22.dp, tint = if (ic == "sparkle" || (ic == "timer" && focusOn)) p.flame else p.ink)
+                    Text(l, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                }
+            }
         }
     }
 }

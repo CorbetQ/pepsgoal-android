@@ -21,6 +21,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_TAB = "tab"; const val EXTRA_GOAL = "goal"; const val EXTRA_PROGRESS = "progress"; const val EXTRA_NOTIF = "notif"; const val EXTRA_CHAT = "chat"; const val EXTRA_SETTINGS = "settings"
         const val ACTION_NEW_GOAL = "fr.pepsgoal.app.NEW_GOAL"; const val ACTION_TODAY = "fr.pepsgoal.app.TODAY"; const val ACTION_MESSAGES = "fr.pepsgoal.app.MESSAGES"
+        const val ACTION_FOCUS = "fr.pepsgoal.app.FOCUS"; const val ACTION_COACH = "fr.pepsgoal.app.COACH"; const val ACTION_STATS = "fr.pepsgoal.app.STATS"
+        const val ACTION_JOURNAL = "fr.pepsgoal.app.JOURNAL"; const val ACTION_FEATURE = "fr.pepsgoal.app.FEATURE"
     }
 
     private val askNotif = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> peps.pg.me()?.let { it.settings.browser = ok; peps.store.commit() } }
@@ -67,6 +69,22 @@ class MainActivity : ComponentActivity() {
             ACTION_NEW_GOAL -> { ui.nav("today"); ui.open(Sheet.GoalForm()); return }
             ACTION_TODAY -> { ui.nav("today"); return }
             ACTION_MESSAGES -> { if (pg.socialOn()) ui.nav("friends"); return }
+            ACTION_FOCUS -> { ui.fs = Fs.Focus(); return }
+            ACTION_COACH -> { ui.push(Screen.CoachChat); return }
+            ACTION_STATS -> { ui.push(Screen.Stats); return }
+            ACTION_JOURNAL -> { ui.push(Screen.Journal); return }
+            // Raccourcis de l'Assistant Google : « Ouvre focus sur PepsGoal »…
+            ACTION_FEATURE -> {
+                when (i.getStringExtra("feature")?.lowercase()?.trim()) {
+                    "focus", "concentration", "pomodoro" -> ui.fs = Fs.Focus()
+                    "coach", "assistant" -> ui.push(Screen.CoachChat)
+                    "statistiques", "stats" -> ui.push(Screen.Stats)
+                    "journal", "humeur" -> ui.push(Screen.Journal)
+                    "valider", "validation" -> pg.todayPlan(pg.meId()).due.firstOrNull { !it.done }?.let { fr.pepsgoal.app.ui.doValidate(ui, it.g.id) } ?: ui.nav("today")
+                    else -> ui.nav("today")
+                }
+                return
+            }
         }
         i.getStringExtra(EXTRA_SETTINGS)?.let { cat -> i.removeExtra(EXTRA_SETTINGS); ui.push(Screen.Settings(cat)); return }
         i.getStringExtra(EXTRA_CHAT)?.let { key ->
