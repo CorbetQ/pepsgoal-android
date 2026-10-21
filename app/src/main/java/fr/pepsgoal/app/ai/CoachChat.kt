@@ -31,7 +31,7 @@ object CoachChat {
     fun clear(ctx: Context) { file(ctx).delete(); rev++ }
 
     /** Résumé de la situation de l'utilisateur donné au coach. */
-    private fun situation(ctx: Context): String {
+    private fun situation(ctx: Context, health: String = ""): String {
         val pg = ctx.peps.pg; val u = pg.me() ?: return ""
         val st = pg.globalStreak(u.id); val plan = pg.todayPlan(u.id)
         val goals = pg.myGoals(u.id).filter { !pg.isClosedGoal(it) }.take(12).joinToString("\n") { g ->
@@ -40,18 +40,20 @@ object CoachChat {
         }
         val mood = Journal.recent(ctx, 7).let { l -> if (l.isEmpty()) "" else "\nHumeur des derniers jours : " + l.joinToString(", ") { "${it.date.takeLast(5)} ${Journal.MOODS.getOrNull(it.mood - 1)?.second ?: ""}" } }
         val wx = Coach.weather(ctx)?.let { "\nMétéo : ${it.first.lowercase()}${it.second?.let { t -> ", ${Math.round(t)} °C" } ?: ""}" } ?: ""
-        return "Il est ${LocalTime.now().hour} h. Série globale : ${st.n} jour(s)${if (st.lit) " (flamme allumée aujourd’hui)" else ""}. ${plan.due.count { it.done }}/${plan.due.size} validations aujourd’hui.\nObjectifs :\n${goals.ifEmpty { "aucun" }}$mood$wx"
+        val hs = if (health.isNotBlank()) "\n$health" else ""
+        return "Il est ${LocalTime.now().hour} h. Série globale : ${st.n} jour(s)${if (st.lit) " (flamme allumée aujourd’hui)" else ""}. ${plan.due.count { it.done }}/${plan.due.size} validations aujourd’hui.\nObjectifs :\n${goals.ifEmpty { "aucun" }}$mood$wx$hs"
     }
 
     /** Envoie un message et renvoie la réponse du coach (ajoutées à la conversation). */
     suspend fun send(ctx: Context, text: String): ChatMsg {
+        val health = try { fr.pepsgoal.app.sys.Health.summary(ctx) } catch (e: Exception) { "" }
         val hist = all(ctx) + ChatMsg(System.currentTimeMillis(), "user", text.trim().take(600))
         save(ctx, hist)
         val turns = hist.takeLast(8).joinToString("\n") { (if (it.role == "user") "Utilisateur : " else "Coach : ") + it.text }
         val mem = AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }
         val prompt = """Tu es le coach bienveillant de PepsGoal, une application de suivi d’objectifs et d’habitudes. Tu tutoies, tu réponds en français, de façon concrète et courte (5 phrases maximum).$mem
 Situation actuelle :
-${situation(ctx)}
+${situation(ctx, health)}
 Si l’utilisateur veut créer un objectif, ajoute à la fin une ligne exactement au format : OBJECTIF: type|titre|emoji|paramètre (type parmi routine, objective, abstinence, limit, duration, deadline, challenge).
 Conversation :
 $turns

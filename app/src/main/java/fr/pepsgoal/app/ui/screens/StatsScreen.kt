@@ -48,6 +48,7 @@ fun StatsScreen(ui: AppState) {
                 "$thisMonth" to "ce mois-ci", (if (lastMonth == 0) "—" else "${if (thisMonth >= lastMonth) "+" else ""}${Math.round((thisMonth - lastMonth) * 100.0 / lastMonth)} %") to "vs mois dernier",
             ))
         }
+        item("health") { HealthStatsCard(ui) }
         // Carte de chaleur des 53 dernières semaines
         item("heat") {
             Glass {
@@ -137,5 +138,54 @@ private fun Bars(values: List<Int>, labels: List<String>, hi: Int, height: Int =
             }
         }
         Row(Modifier.fillMaxWidth()) { labels.forEach { Text(it, Modifier.weight(1f), fontSize = 10.sp, color = p.ink3, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1) } }
+    }
+}
+
+/** Santé sur 7 jours (Health Connect) : valeur du jour, moyenne et mini-histogramme pour chaque mesure disponible. */
+@Composable
+private fun HealthStatsCard(ui: AppState) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current; val p = LocalPal.current
+    var data by remember { mutableStateOf<Map<String, List<Double?>>?>(null) }
+    var ok by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        ok = fr.pepsgoal.app.sys.Health.available(ctx) && fr.pepsgoal.app.sys.Health.granted(ctx).containsAll(fr.pepsgoal.app.sys.Health.PERMS)
+        if (ok) data = fr.pepsgoal.app.sys.Health.METRICS.associate { it.key to fr.pepsgoal.app.sys.Health.series(ctx, it.key, 7) }.filterValues { l -> l.any { it != null && it > 0 } }
+    }
+    if (!ok) {
+        Glass(onClick = { ui.push(fr.pepsgoal.app.Screen.Settings("health")) }) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Pi("heart", size = 20.dp, tint = p.flame); Column(Modifier.weight(1f)) { Text("Ajoute tes données Santé", fontWeight = FontWeight.ExtraBold); Muted("Pas, distances, sommeil, coucher, réveil, poids… avec Health Connect.", small = true) }; Text("›", color = p.ink3, fontSize = 20.sp)
+            }
+        }
+        return
+    }
+    Glass {
+        CardHead("Santé · 7 derniers jours")
+        val d = data
+        if (d == null) Muted("Lecture de tes données Santé…", small = true)
+        else if (d.isEmpty()) Muted("Aucune donnée Santé sur les 7 derniers jours.", small = true)
+        else Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            d.forEach { (k, vals) ->
+                val m = fr.pepsgoal.app.sys.Health.metric(k) ?: return@forEach
+                val nn = vals.filterNotNull().filter { it > 0 }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Emoji(m.emoji, 26.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text(m.label, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Muted("Aujourd’hui ${fr.pepsgoal.app.sys.Health.format(k, vals.last())} · moy. ${fr.pepsgoal.app.sys.Health.format(k, nn.average().takeIf { !it.isNaN() })}", small = true, maxLines = 1)
+                    }
+                    // Mini-histogramme (les heures et le poids sont tracés entre leur minimum et leur maximum)
+                    val lo = if (m.kind == "time" || k == "weight") (nn.minOrNull() ?: 0.0) * .98 else 0.0
+                    val hi = (nn.maxOrNull() ?: 1.0).coerceAtLeast(lo + .01)
+                    Canvas(Modifier.width(84.dp).height(30.dp)) {
+                        val gap = size.width / 7; val bw = gap * .6f
+                        vals.forEachIndexed { i, v ->
+                            val h = if (v == null || v <= 0) 2f else (size.height * ((v - lo) / (hi - lo)).toFloat()).coerceIn(3f, size.height)
+                            drawRoundRect(if (i == vals.lastIndex) p.flame else p.ink.copy(alpha = .22f), Offset(i * gap + (gap - bw) / 2, size.height - h), Size(bw, h), CornerRadius(bw / 3))
+                        }
+                    }
+                }
+            }
+        }
     }
 }
