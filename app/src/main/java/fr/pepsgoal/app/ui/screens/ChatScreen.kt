@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
+import fr.pepsgoal.app.ui.theme.hex
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -116,10 +118,13 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
         } }
     }
 
-    Box(Modifier.fillMaxSize().background(p.bg)) { CompositionLocalProvider(LocalHaze provides null) {
+    // Fond aux couleurs de l'interlocuteur (couleur de son avatar) ou de PepsGoal pour un groupe
+    val cc = x?.let { hex((fr.pepsgoal.core.ACCENTS.getOrNull(it.avatar.color) ?: fr.pepsgoal.core.ACCENTS[0]).c[1]) } ?: p.flame
+    Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
+        PageBackdrop(cc, p.pink)
         Column(Modifier.fillMaxSize().imePadding()) {
             // En-tête
-            Row(Modifier.fillMaxWidth().background(p.glassStrong).statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().shadow(if (p.transp) 0.dp else 12.dp, androidx.compose.ui.graphics.RectangleShape, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E)).background(p.glassStrong).statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconBtn("chevronleft", "Retour", { ui.back() }, plain = true)
                 Row(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable { if (g != null) ui.open(Sheet.GroupInfo(g.id)) else ui.open(Sheet.User(x!!.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (g != null) GroupAv(g.emoji, 40) else Av(x, 40.dp)

@@ -134,6 +134,57 @@ val LocalBars = compositionLocalOf { PaddingValues(0.dp) }
 /** Contour des commandes (puces, boutons-icônes, sélecteurs) : visible sur le verre clair comme sombre. */
 fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink.copy(alpha = if (p.dark) .24f else .18f)
 
+/**
+ * Apparition en cascade des cartes : à l'ouverture d'un onglet ou d'une page, les cartes arrivent l'une après
+ * l'autre (léger décalage), en glissant vers le haut avec un rebond.
+ */
+object Stagger {
+    private var t0 = 0L; private var n = 0
+    fun reset() { t0 = android.os.SystemClock.uptimeMillis(); n = 0 }
+    fun next(): Long = if (android.os.SystemClock.uptimeMillis() - t0 < 700) (n++ * 55L).coerceAtMost(385L) else 0L
+}
+
+@Composable
+fun Modifier.enter(): Modifier {
+    val motionOff = LocalPal.current.motion
+    val a = remember { Animatable(if (motionOff) 1f else 0f) }
+    LaunchedEffect(Unit) { if (a.value < 1f) { kotlinx.coroutines.delay(Stagger.next()); a.animateTo(1f, spring(dampingRatio = .62f, stiffness = 230f)) } }
+    return this.graphicsLayer {
+        val v = a.value
+        alpha = v.coerceIn(0f, 1f); translationY = (1f - v) * 34.dp.toPx()
+        val s = .93f + .07f * v; scaleX = s; scaleY = s
+    }
+}
+
+/**
+ * Fond coloré des pages secondaires (réglages, messages, historique…) : halos de couleur fixes, dessinés une seule
+ * fois (aucun coût d'animation), qui transparaissent à travers les cartes en verre.
+ */
+@Composable
+fun PageBackdrop(c1: Color, c2: Color, modifier: Modifier = Modifier) {
+    val p = LocalPal.current
+    Canvas(modifier.fillMaxSize()) {
+        drawRect(p.bg)
+        if (p.contrast || p.transp) return@Canvas
+        val w = size.width; val h = size.height; val k = if (p.dark) .8f else 1f
+        fun halo(c: Color, x: Float, y: Float, r: Float, a: Float) = drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a * k), c.copy(alpha = a * k * .35f), Color.Transparent), Offset(x, y), r), r, Offset(x, y))
+        halo(c1, w * .08f, h * .02f, w * 1.05f, .55f)
+        halo(c2, w * 1.02f, h * .3f, w * .85f, .38f)
+        halo(androidx.compose.ui.graphics.lerp(c1, c2, .5f), w * .25f, h * 1.02f, w * .95f, .32f)
+        drawRect(Brush.verticalGradient(0f to c1.copy(alpha = .18f * k), .35f to Color.Transparent))
+    }
+}
+
+/** Pastille d'icône colorée (dégradé, icône foncée) : en-têtes et listes des pages secondaires. */
+@Composable
+fun IconTile(icon: String, c1: Color, c2: Color, size: Dp = 40.dp, radius: Dp = 13.dp) {
+    val p = LocalPal.current
+    Box(Modifier.size(size).shadow(if (p.transp) 0.dp else 8.dp, RoundedCornerShape(radius), ambientColor = c1, spotColor = c1).clip(RoundedCornerShape(radius))
+        .background(if (p.contrast) SolidColor(p.ink) else Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
+        Pi(icon, size = size * .5f, tint = if (p.contrast) p.bg else Color(0xFF10102A))
+    }
+}
+
 /** Ressorts communs : réponses vives avec un léger rebond. */
 object Springs {
     val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .42f, stiffness = 520f)
@@ -188,8 +239,12 @@ fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 2
     val inter = remember { MutableInteractionSource() }
     Column(
         // Toute la largeur disponible par défaut : une carte au contenu court reste alignée sur les autres
-        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).then(if (onClick != null) Modifier.bounce(inter, .97f) else Modifier).shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E))
-            .glassBg(shape, strong).border(1.dp, border ?: if (p.contrast) p.line else p.glassEdge, shape)
+        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).enter().then(if (onClick != null) Modifier.bounce(inter, .97f) else Modifier)
+            .shadow(if (p.oled || p.transp) 0.dp else 18.dp, shape, ambientColor = Color(0x4428186E), spotColor = Color(0x5528186E))
+            .glassBg(shape, strong)
+            // Profondeur : reflet en haut de la carte et liseré lumineux dégradé (plus vif en haut, discret en bas)
+            .then(if (p.contrast || p.transp) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .07f else .3f), .45f to Color.Transparent)))
+            .border(1.dp, if (border != null) SolidColor(border) else if (p.contrast) SolidColor(p.line) else Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .3f else .95f), p.glassEdge.copy(alpha = p.glassEdge.alpha * .35f))), shape)
             .then(if (onClick != null) Modifier.springClick(inter, onClick = onClick) else Modifier).padding(pad),
         content = content
     )

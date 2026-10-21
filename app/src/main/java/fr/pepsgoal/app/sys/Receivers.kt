@@ -81,6 +81,6 @@ class AlarmReceiver : BroadcastReceiver() {
 /** Redémarrage du téléphone, mise à jour de l'application, changement d'heure : les alarmes sont reprogrammées. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
-        Reminders.reschedule(ctx); SyncWorker.schedule(ctx); Poller.schedule(ctx); LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
+        Reminders.reschedule(ctx); SyncWorker.schedule(ctx); Poller.schedule(ctx); Poller.startLink(ctx); LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
     }
 }

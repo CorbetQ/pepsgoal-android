@@ -6,8 +6,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import android.app.Service
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.IBinder
+import android.os.PowerManager
+import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
+import fr.pepsgoal.app.PepsApp
 import fr.pepsgoal.app.peps
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -33,6 +45,41 @@ object Poller {
 
     fun cancel(ctx: Context) = ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
 
+    private val lock = Mutex()
+
+    /** Une relève : réseau relu, serveur interrogé, nouveautés notifiées ; le processeur reste éveillé le temps de la relève. */
+    suspend fun run(app: PepsApp, src: String) {
+        if (!lock.tryLock()) return
+        val wl = app.getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pepsgoal:poll")
+        try {
+            wl.acquire(40_000)
+            val ok = withTimeoutOrNull(30_000) {
+                app.cloud.navOnline = app.networkUp()
+                if (app.cloud.poll()) WidgetUpdater.update(app)
+                true
+            }
+            if (ok == null) app.cloud.pollStatus = "délai dépassé"
+            val now = System.currentTimeMillis()
+            if (app.store.online) app.prefs.lastPoll = now
+            val hm = java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE).format(java.util.Date(now))
+            app.prefs.pollLog = (listOf("$hm · $src · ${app.cloud.pollStatus}") + app.prefs.pollLog).take(6)
+            if (app.prefs.pollTest > 0 && now - app.prefs.pollTest > 20_000) {
+                app.prefs.pollTest = 0
+                Notifier.test(app, "✓ Relève en arrière-plan reçue ($src, ${app.cloud.pollStatus}). Les messages t’arriveront aussi application fermée.")
+            }
+        } catch (e: Exception) {
+            app.cloud.pollStatus = "erreur : ${e::class.simpleName}"
+        } finally { if (wl.isHeld) wl.release(); lock.unlock() }
+    }
+
+    /** (Re)lance le service de connexion en direct si le compte et le réglage le permettent (sinon l'arrête). */
+    fun startLink(ctx: Context) {
+        val app = ctx.peps
+        val i = Intent(ctx, LinkService::class.java)
+        if (!app.store.acct || !app.prefs.instantNotifs) { ctx.stopService(i); return }
+        try { ContextCompat.startForegroundService(ctx, i) } catch (e: Exception) { /* démarrage refusé hors premier plan : l'alarme prend le relais */ }
+    }
+
     /** L'application est-elle exemptée de l'optimisation de batterie (réveils plus réguliers en veille) ? */
     fun unrestricted(ctx: Context) = ctx.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)
 
@@ -47,16 +94,38 @@ class PollReceiver : BroadcastReceiver() {
         val app = ctx.peps
         // Au premier plan, la boucle de l'application s'en charge déjà
         if (app.foreground) { Poller.schedule(ctx); return }
+        // Une alarme exacte autorise à (re)lancer le service de connexion, s'il a été arrêté par le système
+        Poller.startLink(ctx)
         val done = goAsync()
         app.scope.launch {
-            try {
-                withTimeoutOrNull(25_000) {
-                    app.cloud.navOnline = app.networkUp()
-                    if (app.cloud.poll()) WidgetUpdater.update(ctx)
-                    if (app.store.online) app.prefs.lastPoll = System.currentTimeMillis()
-                }
-            } catch (e: Exception) {
-            } finally { Poller.schedule(ctx); done.finish() }
+            try { Poller.run(app, "alarme") } finally { Poller.schedule(ctx); done.finish() }
         }
     }
+}
+
+/**
+ * Service « connexion en direct » : garde PepsGoal éveillé en arrière-plan (petite notification discrète) pour relever
+ * messages, publications et notifications du serveur chaque minute, même application fermée. Sans lui, Android gèle
+ * ou ferme l'application et certains fabricants suppriment ses alarmes quand on la retire des applications récentes.
+ */
+class LinkService : Service() {
+    private var job: Job? = null
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val app = peps
+        try {
+            ServiceCompat.startForeground(this, Notifier.LINK_ID, Notifier.link(this), if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0)
+        } catch (e: Exception) { stopSelf(); return START_NOT_STICKY }
+        if (!app.store.acct || !app.prefs.instantNotifs) { stopSelf(); return START_NOT_STICKY }
+        if (job?.isActive != true) job = app.scope.launch {
+            while (isActive) {
+                delay(Poller.EVERY_MS)
+                if (!app.foreground) Poller.run(app, "service")
+            }
+        }
+        return START_STICKY
+    }
+
+    override fun onDestroy() { job?.cancel(); super.onDestroy() }
 }
