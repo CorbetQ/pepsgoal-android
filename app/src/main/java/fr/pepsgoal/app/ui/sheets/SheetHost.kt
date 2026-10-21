@@ -58,7 +58,7 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.ShareFeed -> ShareFeedSheet(ui, s.goalId, s.text)
         is Sheet.ShareText -> ShareTextSheet(ui, s.text)
         is Sheet.Avatar -> AvatarSheet(ui)
-        is Sheet.Tuto -> TutoSheet(ui, s.step)
+        is Sheet.Tuto -> LaunchedEffect(Unit) { ui.sheet = null; ui.fs = fr.pepsgoal.app.Fs.Tuto(s.step) }
         is Sheet.Legal -> LegalSheet(ui, s.doc)
         is Sheet.A11y -> { SheetHead(ui, "Accessibilité"); fr.pepsgoal.app.ui.screens.A11yRows(ui); Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", small = true) }
         is Sheet.GoalGroups -> GoalGroupsSheet(ui)
