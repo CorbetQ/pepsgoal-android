@@ -138,7 +138,7 @@ fun NotifsSheet(ui: AppState) {
     list.forEach { n ->
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (n.read) Color.Transparent else p.flame.copy(alpha = .1f)).clickable {
             when {
-                n.goalId != null && pg.goalById(n.goalId) != null -> ui.sheet = Sheet.Goal(n.goalId)
+                n.goalId != null && pg.goalById(n.goalId) != null -> ui.sheet = Sheet.Goal(n.goalId!!)
                 n.view == "profile" -> ui.nav("profile")
                 n.view == "feed" || n.type in setOf("like", "comment") -> if (pg.socialOn()) ui.nav("feed")
                 n.type == "friend" -> if (pg.socialOn()) ui.nav("friends")

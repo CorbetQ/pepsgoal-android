@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
+import fr.pepsgoal.core.model.unit
 import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet

@@ -113,7 +113,7 @@ object LiveUpdates {
             .setDeleteIntent(Notifier.action(ctx, l.id + 50, ActionReceiver.DISMISS_LIVE) { putExtra("which", l.which); putExtra("token", l.token) })
         l.chrono?.let { b.setWhen(it).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(l.countDown) }
         l.actions.forEach { (t, pi) -> b.addAction(Notification.Action.Builder(Icon.createWithResource(ctx, R.drawable.ic_notif), t, pi).build()) }
-        b.extras.putBoolean(Notification.EXTRA_REQUEST_PROMOTED_ONGOING, true)
+        b.extras.putBoolean("android.requestPromotedOngoing", true)
         return b.build()
     }
 

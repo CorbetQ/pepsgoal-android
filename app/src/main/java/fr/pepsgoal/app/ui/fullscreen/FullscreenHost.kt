@@ -48,7 +48,6 @@ import fr.pepsgoal.app.ui.theme.hex
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.cloud.deleteStory
 import fr.pepsgoal.core.cloud.likeStory
-import fr.pepsgoal.core.cloud.loadStoryViews
 import fr.pepsgoal.core.cloud.viewStory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -159,7 +158,7 @@ private fun BadgeFs(ui: AppState, c: Celebration.Badge) {
         val pop = remember { Animatable(if (p.motion) 1f else .2f) }
         LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = .45f, stiffness = 180f)) }
         Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize().rotate(rot)) { for (i in 0 until 16) { val a = i * PI.toFloat() / 8; drawLine(tc.copy(alpha = .35f), center, center + Offset(cos(a), sin(a)) * size.minDimension / 2, 10f) } }
+            Canvas(Modifier.fillMaxSize().rotate(rot)) { for (i in 0 until 16) { val a = i * PI.toFloat() / 8; drawLine(tc.copy(alpha = .35f), center, center + Offset(cos(a), sin(a)) * (size.minDimension / 2), 10f) } }
             Box(Modifier.scale(pop.value)) { BadgeMedal(BadgeState(f, 0, c.tier, null, 1.0), 140) }
             Text(label, Modifier.align(Alignment.BottomCenter).clip(RoundedCornerShape(10.dp)).background(tc).padding(horizontal = 14.dp, vertical = 4.dp), color = INK, fontWeight = FontWeight.ExtraBold)
         }
