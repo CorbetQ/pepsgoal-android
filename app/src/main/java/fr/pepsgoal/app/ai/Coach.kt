@@ -181,8 +181,9 @@ Choisis les ${minOf(3, left.size)} objectifs les plus adaptés à ce moment (heu
         val key = "${LocalDate.now()}|${hour / 4}|$done/${plan.due.size}|${st.n}"
         if (!force && app.prefs.aiTipKey == key && app.prefs.aiTip.isNotBlank()) return fixEncoding(app.prefs.aiTip)
         val wx = weather(ctx)
+        val health = try { fr.pepsgoal.app.sys.Health.summary(ctx) } catch (e: Exception) { "" }
         val prompt = """$ROLE${memory(ctx)}
-Contexte : il est $hour h${wx?.let { ", météo ${it.first.lowercase()}${it.second?.let { t -> " (${Math.round(t)} °C)" } ?: ""}" } ?: ""}, série de ${st.n} jour(s)${if (st.lit) " déjà allumée aujourd’hui" else " pas encore allumée aujourd’hui"}, $done validation(s) sur ${plan.due.size} prévue(s).
+${if (health.isNotBlank()) "$health\n" else ""}Contexte : il est $hour h${wx?.let { ", météo ${it.first.lowercase()}${it.second?.let { t -> " (${Math.round(t)} °C)" } ?: ""}" } ?: ""}, série de ${st.n} jour(s)${if (st.lit) " déjà allumée aujourd’hui" else " pas encore allumée aujourd’hui"}, $done validation(s) sur ${plan.due.size} prévue(s).
 Objectifs du jour : ${plan.due.joinToString(", ") { it.g.title }.ifEmpty { "aucun" }}.
 Donne UN conseil concret et motivant pour maintenant, en 2 phrases maximum, sans liste ni titre.
 """
