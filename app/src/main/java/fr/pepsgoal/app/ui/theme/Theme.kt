@@ -190,10 +190,10 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     LaunchedEffect(pal) {
         if (anim.pending) { anim.pending = false; prog.snapTo(0f); prog.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
     }
-    val t = if (anim.pending) 0f else prog.value
+    val k = if (anim.pending) 0f else prog.value
     val from = anim.from; val fromScheme = anim.fromScheme
-    val shown = if (t >= 1f || from == null) pal else lerpPal(from, pal, t)
-    val shownScheme = if (t >= 1f || fromScheme == null) scheme else lerpScheme(fromScheme, scheme, t)
+    val shown = if (k >= 1f || from == null) pal else lerpPal(from, pal, k)
+    val shownScheme = if (k >= 1f || fromScheme == null) scheme else lerpScheme(fromScheme, scheme, k)
     anim.last = shown; anim.lastScheme = shownScheme
     CompositionLocalProvider(LocalPal provides shown) { MaterialTheme(colorScheme = shownScheme, typography = typoEm, content = content) }
 }
