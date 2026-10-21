@@ -65,19 +65,29 @@ fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disab
     val pop = remember { Animatable(1f) }
     LaunchedEffect(just) { if (just && !p.motion) { pop.snapTo(.7f); pop.animateTo(1f, spring(dampingRatio = .35f, stiffness = 500f)) } }
     val filled = done || running
+    // Couleurs du type lisibles dans les deux thèmes : foncées sur fond clair, vives sur fond sombre
+    val line = readable(color)
     Box(
-        Modifier.scale(pop.value).size(44.dp).clip(CircleShape).background(if (filled) color else Color.Transparent)
-            .border(2.5.dp, if (disabled) p.ink3.copy(alpha = .45f) else color, CircleShape)
+        Modifier.scale(pop.value).size(44.dp).clip(CircleShape).background(if (filled) color else color.copy(alpha = if (disabled) .06f else .16f))
+            .border(2.5.dp, if (disabled) p.ink3.copy(alpha = .45f) else if (filled) line.copy(alpha = .35f) else line, CircleShape)
             .clickable(enabled = true, onClickLabel = label, onClick = onClick).semantics { contentDescription = label },
         contentAlignment = Alignment.Center
-    ) { Pi(icon, size = 22.dp, tint = if (filled) p.onAccent else if (disabled) p.ink3.copy(alpha = .45f) else color) }
+    ) { Pi(icon, size = 22.dp, tint = if (filled) Color(0xFF10102A) else if (disabled) p.ink3.copy(alpha = .55f) else line) }
+}
+
+/** Couleur d'accent assombrie en thème clair (contraste suffisant sur le verre), inchangée en thème sombre. */
+@Composable
+fun readable(c: Color): Color {
+    val p = LocalPal.current
+    if (p.dark) return c
+    return androidx.compose.ui.graphics.lerp(c, Color(0xFF10102A), if (p.contrast) .7f else .42f)
 }
 
 @Composable
 fun MiniBtn(text: String, color: Color, onClick: () -> Unit) {
     val p = LocalPal.current
-    Box(Modifier.clip(CircleShape).background(color.copy(alpha = .22f)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = p.ink)
+    Box(Modifier.clip(CircleShape).background(color.copy(alpha = .22f)).border(1.5.dp, readable(color).copy(alpha = .55f), CircleShape).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = p.ink, maxLines = 1)
     }
 }
 

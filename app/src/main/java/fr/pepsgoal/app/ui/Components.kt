@@ -127,6 +127,9 @@ val LocalHaze = staticCompositionLocalOf<dev.chrisbanes.haze.HazeState?> { null 
 /** Espace occupé par la barre du haut et la barre de navigation flottantes (le contenu défile dessous). */
 val LocalBars = compositionLocalOf { PaddingValues(0.dp) }
 
+/** Contour des commandes (puces, boutons-icônes, sélecteurs) : visible sur le verre clair comme sombre. */
+fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink.copy(alpha = if (p.dark) .24f else .18f)
+
 /** Fond « verre givré » : arrière-plan flouté et teinté (backdrop-filter de la version web), sinon simple teinte. */
 @Composable
 fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
@@ -181,7 +184,7 @@ fun PButton(
     val bg: Modifier = when (kind) {
         "primary" -> Modifier.background(if (p.contrast) SolidColor(p.ink) else p.accent, shape)
         "ghost", "danger" -> Modifier
-        else -> Modifier.background(p.glassStrong, shape).border(1.dp, p.line, shape)
+        else -> Modifier.background(p.glassStrong, shape).border(1.dp, ctlEdge(p), shape)
     }
     val fg = when (kind) { "primary" -> if (p.contrast) p.bg else p.onAccent; "ghost" -> p.ink2; "danger" -> p.danger; else -> p.ink }
     Row(
@@ -205,7 +208,7 @@ fun IconBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier 
     val p = LocalPal.current
     Box(modifier) {
         Box(
-            Modifier.size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(p.glassStrong).border(1.dp, p.line, CircleShape))
+            Modifier.size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(p.glassStrong).border(1.dp, ctlEdge(p), CircleShape))
                 .clickable(onClickLabel = desc, onClick = onClick), contentAlignment = Alignment.Center
         ) { Pi(icon, size = 20.dp, tint = tint ?: if (plain) p.ink2 else p.ink) }
         if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp))
@@ -226,7 +229,26 @@ fun Chip(text: String, icon: String? = null, color: Color? = null, ink: Color? =
     val c = color ?: p.ink3
     Row(modifier.clip(CircleShape).background(c.copy(alpha = .2f)).padding(horizontal = 9.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (icon != null) Pi(icon, size = 13.dp, tint = ink ?: p.ink2)
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = ink ?: p.ink2, maxLines = 1)
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = ink ?: p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** Tuiles de statistiques (valeur + libellé) en grille régulière : toutes de la même taille, libellés jamais coupés. */
+@Composable
+fun StatGrid(items: List<Pair<String, String>>, columns: Int = 2) {
+    val p = LocalPal.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.chunked(columns).forEach { row ->
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (v, l) ->
+                    Glass(Modifier.weight(1f).fillMaxHeight(), pad = 14.dp, radius = 18.dp) {
+                        FitText(v, size = 24, min = 12, weight = FontWeight.ExtraBold, family = Unbounded)
+                        Text(l, fontSize = 13.sp, color = p.ink2, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
     }
 }
 
@@ -243,7 +265,7 @@ fun FChip(text: String, on: Boolean, onClick: () -> Unit, leading: (@Composable 
     val sc by animateFloatAsState(if (on && !p.motion) 1.04f else 1f, spring(dampingRatio = .45f), label = "chip")
     Row(
         Modifier.scale(sc).clip(CircleShape).background(if (on) (if (p.contrast) SolidColor(p.ink) else p.accent) else SolidColor(if (dashed) Color.Transparent else p.glassStrong))
-            .border(1.dp, if (on) Color.Transparent else p.line, CircleShape).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+            .border(1.dp, if (on) Color.Transparent else ctlEdge(p), CircleShape).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         leading?.invoke()
@@ -341,12 +363,16 @@ fun Note(text: String, icon: String = "bell", modifier: Modifier = Modifier) {
 @Composable
 fun SetRow(title: String, sub: String? = null, modifier: Modifier = Modifier, right: @Composable RowScope.() -> Unit = {}) {
     val p = LocalPal.current
-    Row(modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.ExtraBold, color = p.ink)
-            if (sub != null) Text(sub, fontSize = 13.sp, color = p.ink2)
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val half = maxWidth * .5f
+        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.ExtraBold, color = p.ink)
+                if (sub != null) Text(sub, fontSize = 13.sp, color = p.ink2)
+            }
+            // Les commandes de droite ne prennent jamais plus de la moitié de la ligne : le titre n'est plus coupé en plein mot
+            Row(Modifier.widthIn(max = half), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) { right() }
         }
-        right()
     }
 }
 
@@ -360,10 +386,10 @@ fun PSwitch(on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
 @Composable
 fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, modifier: Modifier = Modifier, icons: List<String>? = null) {
     val p = LocalPal.current
-    FlowRowCompat(modifier.clip(RoundedCornerShape(18.dp)).background(p.ink.copy(alpha = .06f)).padding(4.dp)) {
+    FlowRowCompat(modifier.clip(RoundedCornerShape(18.dp)).background(p.ink.copy(alpha = if (p.dark) .1f else .07f)).padding(4.dp)) {
         options.forEachIndexed { i, (k, l) ->
             val on = k == value
-            Row(Modifier.clip(RoundedCornerShape(14.dp)).background(if (on) p.glassStrong else Color.Transparent).clickable { onChange(k) }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.clip(RoundedCornerShape(14.dp)).background(if (on) p.glassStrong else Color.Transparent).then(if (on) Modifier.border(1.dp, ctlEdge(p), RoundedCornerShape(14.dp)) else Modifier).clickable { onChange(k) }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
                 Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) p.ink else p.ink2)
             }

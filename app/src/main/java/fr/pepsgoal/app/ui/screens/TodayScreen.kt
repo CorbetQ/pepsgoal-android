@@ -140,15 +140,20 @@ fun HeroFlame(n: Int, lit: Boolean) {
 @Composable
 fun Starters(ui: AppState) {
     val p = LocalPal.current
-    FlowRowCompat(gap = 10.dp) {
-        TYPE_GROUPS[0].second.forEach { k ->
-            val tc = p.type(k); val info = typeInfo(k)
-            Column(Modifier.width(150.dp).clip(RoundedCornerShape(18.dp)).background(tc.c.copy(alpha = .18f)).clickable { ui.open(Sheet.GoalForm(preType = k)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Pi(info.icon, tint = tc.ink); Text(info.label, fontWeight = FontWeight.ExtraBold); Muted(info.desc, small = true)
+    // Grille régulière de 2 colonnes : toutes les tuiles d'une ligne ont la même hauteur
+    val tiles = TYPE_GROUPS[0].second.map { k -> Triple(k, typeInfo(k).label, typeInfo(k).desc) } + Triple("more", "9 autres formats", "Limite, durée, mesure, horaire, projet, challenge, paliers, groupe, duel")
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        tiles.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { (k, l, d) ->
+                    val tc = p.type(if (k == "more") "measure" else k)
+                    Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(18.dp)).background(tc.c.copy(alpha = .18f))
+                        .clickable { ui.open(if (k == "more") Sheet.GoalForm() else Sheet.GoalForm(preType = k)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Pi(if (k == "more") "plus" else typeInfo(k).icon, tint = readable(tc.c)); Text(l, fontWeight = FontWeight.ExtraBold); Muted(d, small = true)
+                    }
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
-        }
-        Column(Modifier.width(150.dp).clip(RoundedCornerShape(18.dp)).background(p.type("measure").c.copy(alpha = .18f)).clickable { ui.open(Sheet.GoalForm()) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Pi("plus", tint = p.type("measure").ink); Text("9 autres formats", fontWeight = FontWeight.ExtraBold); Muted("Limite, durée, mesure, horaire, projet, challenge, paliers, groupe, duel", small = true)
         }
     }
 }
@@ -176,13 +181,13 @@ fun RecapCard(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg
     Glass {
         CardHead("Tes récaps") { Muted("Ton parcours en stats", small = true) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("week" to "Semaine", "month" to "Mois", "year" to "Année").forEachIndexed { i, (k, l) ->
                 val r = Recaps.range(k)
                 val name = if (r.past) mapOf("week" to "Semaine passée", "month" to "Mois passé", "year" to "Année passée")[k]!! else l
                 val g = SBG[listOf(0, 4, 1)[i]].map(::hex)
                 val glow = rememberInfiniteTransition(label = "glow").animateFloat(.0f, if (r.past && !p.motion) 1f else 0f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "g")
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(Brush.linearGradient(g))
+                Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(18.dp)).background(Brush.linearGradient(g))
                     .then(if (r.past) Modifier.border((2 + glow.value * 2).dp, Color.White.copy(alpha = .5f + glow.value * .4f), RoundedCornerShape(18.dp)) else Modifier)
                     .clickable { val (sl, st) = Recaps.slides(pg, pg.meId(), k); ui.fs = Fs.Recap(k, sl, st) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     if (r.past) Text("J+1", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF10102A), modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = .7f)).padding(horizontal = 6.dp, vertical = 1.dp))

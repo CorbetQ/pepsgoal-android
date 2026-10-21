@@ -60,7 +60,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
         val list = ks.filter { !(it in SOCIAL_TYPES && !social) }
         if (list.isNotEmpty()) {
             Eyebrow(lab)
-            list.chunked(2).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { k -> TypeTile(k, k == type, Modifier.weight(1f)) { type = k; d.type = k; err = null } }; if (row.size == 1) Spacer(Modifier.weight(1f)) } }
+            list.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { k -> TypeTile(k, k == type, Modifier.weight(1f).fillMaxHeight()) { type = k; d.type = k; err = null } }; if (row.size == 1) Spacer(Modifier.weight(1f)) } }
         }
     }
     Field(title, { title = it }, "Intitulé", placeholder = "Ex. Courir 30 minutes", max = 80)

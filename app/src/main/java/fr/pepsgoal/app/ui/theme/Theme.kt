@@ -84,7 +84,9 @@ class ThemeInput(
     val theme: String, val accent: Int, val accentCustom: List<String>?, val glassBlur: String,
     val materialYou: Boolean, val contrast: Boolean, val cvd: String, val mono: Boolean, val motion: Boolean, val transp: Boolean,
     /** Thème Météo : sombre la nuit et au crépuscule. */
-    val skyDark: Boolean
+    val skyDark: Boolean,
+    /** Opacité du verre givré (réglage de l'appareil) : low, mid, high. */
+    val glassOpacity: String = "mid"
 )
 
 private fun mix(a: Color, b: Color, k: Float) = lerp(a, b, k)
@@ -120,8 +122,10 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         glass = dyn.surfaceContainerLow.copy(alpha = .78f); glassStrong = dyn.surfaceContainerHigh.copy(alpha = .92f)
     }
     if (oled) { bg = Color.Black; glass = Color(255, 255, 255, 14); glassStrong = Color(20, 20, 24, 240) }
-    val alpha = when (input.glassBlur) { "xlow" -> .9f; "low" -> .76f; "high" -> .48f; else -> .62f }
-    glass = glass.copy(alpha = if (oled) glass.alpha else minOf(glass.alpha, alpha) + if (dyn != null) .1f else 0f)
+    // Opacité du verre : réglage séparé du flou (Paramètres › Apparence)
+    val alpha = when (input.glassOpacity) { "low" -> .38f; "high" -> .86f; else -> .62f }
+    glass = glass.copy(alpha = if (oled) glass.alpha else minOf(.95f, alpha + if (dyn != null) .08f else 0f))
+    if (!oled) glassStrong = glassStrong.copy(alpha = when (input.glassOpacity) { "low" -> .7f; "high" -> .96f; else -> glassStrong.alpha })
     if (input.transp || input.contrast) { glass = if (dark) (if (oled) Color(12, 12, 14) else hex("#14163A")) else Color.White; glassStrong = glass }
     if (input.contrast) { ink = if (dark) Color.White else Color.Black; ink2 = ink; ink3 = if (dark) Color(0xFFDDDDDD) else Color(0xFF222222) }
     val line = if (input.contrast) ink.copy(alpha = .7f) else ink.copy(alpha = .13f)

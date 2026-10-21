@@ -65,15 +65,7 @@ fun ProfileScreen(ui: AppState) {
             }
         }
         item("stats") {
-            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(st.n to "Série actuelle", pg.bestStreak(u.id) to "Meilleure série", pg.userCheckins(u.id).count { pg.isWin(it) } to "Validations", done to "Caps atteints").forEach { (v, l) ->
-                    Glass(Modifier.weight(1f).fillMaxHeight(), pad = 10.dp, radius = 18.dp) {
-                        FitText("$v", size = 22, min = 12, weight = FontWeight.ExtraBold, family = Unbounded)
-                        // Libellé sur deux mots au plus : chaque mot sur sa ligne, réduit s'il ne tient pas (jamais coupé en plein mot)
-                        l.split(" ").forEach { w -> FitText(w, size = 11, min = 7, color = p.ink2) }
-                    }
-                }
-            }
+            StatGrid(listOf("${st.n}" to "Série actuelle", "${pg.bestStreak(u.id)}" to "Meilleure série", "${pg.userCheckins(u.id).count { pg.isWin(it) }}" to "Validations", "$done" to "Caps atteints"))
         }
         item("recap") { RecapCard(ui) }
         item("gel") { GelCard(ui, u, false) }
