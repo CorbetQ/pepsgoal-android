@@ -1,7 +1,7 @@
 package fr.pepsgoal.core
 
 /** Valeurs fixes de l'application (identiques à la version web : apps/web-legacy/pepsgoal.html). */
-const val APP_VERSION = "3.0.6"
+const val APP_VERSION = "3.0.7"
 const val FREEZE_EVERY = 10
 const val TUTO_GELS = 5
 const val MONTH_BONUS = 60

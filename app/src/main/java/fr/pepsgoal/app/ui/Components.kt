@@ -185,6 +185,41 @@ fun IconTile(icon: String, c1: Color, c2: Color, size: Dp = 40.dp, radius: Dp = 
     }
 }
 
+/**
+ * Voile givré progressif en haut ou en bas d'un écran (derrière une barre flottante) : flou maximal près du bord,
+ * qui s'estompe en douceur vers le contenu, avec un voile laiteux (clair) ou nuit (sombre) dégradé dans le même sens.
+ * [cover] : hauteur de la barre à couvrir ; [haze] : source du flou (le contenu qui défile dessous).
+ */
+@Composable
+fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.haze.HazeState? = LocalHaze.current) {
+    val p = LocalPal.current; val d = LocalDensity.current
+    val inset = (if (top) WindowInsets.statusBars else WindowInsets.navigationBars).asPaddingValues().let { if (top) it.calculateTopPadding() else it.calculateBottomPadding() }
+    val h = maxOf(cover, inset + 48.dp) + 26.dp
+    // Part du voile entièrement floutée (côté bord), puis fondu progressif jusqu'au contenu
+    val full = ((cover / h) * .5f).coerceIn(.2f, .6f)
+    fun smooth(u: Float) = u.coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
+    val milk = if (p.dark) p.bg else Color.White
+    val k = if (p.dark) .6f else .66f
+    val n = 12
+    val stops = (0..n).map { i ->
+        val t = i / n.toFloat()
+        val fromEdge = if (top) t else 1 - t
+        val a = if (fromEdge <= full) k * (1 - .35f * fromEdge / full) else k * .65f * (1 - smooth((fromEdge - full) / (1 - full)))
+        t to milk.copy(alpha = a)
+    }
+    val veil = Brush.verticalGradient(*stops.toTypedArray())
+    val box = modifier.fillMaxWidth().height(h)
+    if (haze != null && !p.transp && !p.contrast) {
+        val hPx = with(d) { h.toPx() }
+        val ease = if (top) androidx.compose.animation.core.Easing { t -> smooth((t - full) / (1 - full)) }
+            else androidx.compose.animation.core.Easing { t -> smooth(t / (1 - full)) }
+        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 30.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+            inputScale = HazeInputScale.Fixed(.5f)
+            progressive = dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = if (top) 1f else 0f, endY = hPx, endIntensity = if (top) 0f else 1f, easing = ease)
+        }.background(veil))
+    } else Box(box.background(veil))
+}
+
 /** Ressorts communs : réponses vives avec un léger rebond. */
 object Springs {
     val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .42f, stiffness = 520f)

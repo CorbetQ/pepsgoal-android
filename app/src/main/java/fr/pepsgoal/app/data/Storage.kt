@@ -94,6 +94,10 @@ class DevicePrefs(context: Context) {
     var pollLog: List<String> get() = p.getString("pollLog", "")!!.split("\n").filter { it.isNotBlank() }; set(v) = p.edit().putString("pollLog", v.joinToString("\n")).apply()
     /** Test demandé depuis les réglages : la prochaine relève en arrière-plan envoie une notification de confirmation. */
     var pollTest get() = p.getLong("pollTest", 0L); set(v) = p.edit().putLong("pollTest", v).apply()
+    /** Recherche automatique des mises à jour (releases GitHub). */
+    var autoUpdate get() = p.getBoolean("autoUpdate", true); set(v) = p.edit().putBoolean("autoUpdate", v).apply()
+    var updateChecked get() = p.getLong("updateChecked", 0L); set(v) = p.edit().putLong("updateChecked", v).apply()
+    var updateNotified get() = p.getString("updateNotified", "") ?: ""; set(v) = p.edit().putString("updateNotified", v).apply()
     var voiceRate get() = p.getFloat("voiceRate", 1f); set(v) = p.edit().putFloat("voiceRate", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp).count { it }
 }
