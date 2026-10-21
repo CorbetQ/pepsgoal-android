@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thème de l'activité : l'interface est entièrement dessinée par Compose (bord à bord) -->
+    <style name="Theme.PepsGoal" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/pg_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <!-- Écran de démarrage (API SplashScreen) : flamme sur fond nuit -->
+    <style name="Theme.PepsGoal.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/pg_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.PepsGoal</item>
+    </style>
+</resources>
