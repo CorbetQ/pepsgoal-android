@@ -16,6 +16,7 @@ android {
         versionCode = 300
         versionName = "3.0.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
+        resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
     }
 
@@ -41,6 +42,7 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            resValue("string", "pkg", "fr.pepsgoal.app.debug")
             versionNameSuffix = "-debug"
         }
     }

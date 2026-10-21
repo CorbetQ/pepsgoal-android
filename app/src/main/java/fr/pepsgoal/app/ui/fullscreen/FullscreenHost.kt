@@ -1,0 +1,325 @@
+package fr.pepsgoal.app.ui.fullscreen
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import fr.pepsgoal.app.AppState
+import fr.pepsgoal.app.Fs
+import fr.pepsgoal.app.Sheet
+import fr.pepsgoal.app.ui.*
+import fr.pepsgoal.app.ui.screens.BadgeMedal
+import fr.pepsgoal.app.ui.sheets.StoryCard
+import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.Unbounded
+import fr.pepsgoal.app.ui.theme.hex
+import fr.pepsgoal.core.*
+import fr.pepsgoal.core.cloud.deleteStory
+import fr.pepsgoal.core.cloud.likeStory
+import fr.pepsgoal.core.cloud.loadStoryViews
+import fr.pepsgoal.core.cloud.viewStory
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
+
+private val INK = Color(0xFF10102A)
+
+@Composable
+fun FullscreenHost(ui: AppState) {
+    val f = ui.fs ?: return
+    BackHandler { ui.closeFs() }
+    Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { } }) {
+        when (f) {
+            is Fs.Celebrate -> when (val c = f.c) {
+                is Celebration.Perfect -> PerfectFs(ui, c)
+                is Celebration.Badge -> BadgeFs(ui, c)
+            }
+            is Fs.Recap -> RecapFs(ui, f)
+            is Fs.Stories -> StoriesFs(ui, f)
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ confettis */
+private class Bit(val x: Float, val delay: Float, val speed: Float, val drift: Float, val rot: Float, val c: Int, val w: Float)
+
+@Composable
+fun Confetti(modifier: Modifier = Modifier) {
+    val p = LocalPal.current
+    if (p.motion) return
+    val cols = listOf(p.flame, p.flame2, p.pink, p.type("objective").c, p.type("routine").c, p.type("abstinence").c)
+    val bits = remember { List(140) { Bit(Random.nextFloat(), Random.nextFloat() * 1.4f, .25f + Random.nextFloat() * .35f, Random.nextFloat() * 2 - 1, Random.nextFloat() * 6.28f, Random.nextInt(6), 6 + Random.nextFloat() * 6) } }
+    var t by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) { val t0 = withFrameNanos { it }; while (isActive && t < 6f) { withFrameNanos { t = (it - t0) / 1e9f } } }
+    Canvas(modifier.fillMaxSize()) {
+        for (b in bits) {
+            val k = t - b.delay; if (k < 0) continue
+            val y = -20f + k * b.speed * size.height; if (y > size.height + 20) continue
+            val x = b.x * size.width + sin(k * 3 + b.rot) * 30 * b.drift
+            val a = (1f - (t - 4.5f).coerceIn(0f, 1.5f) / 1.5f)
+            rotate(b.rot * 57f + k * 280 * b.drift, Offset(x, y)) { drawRect(cols[b.c].copy(alpha = a), Offset(x - b.w / 2, y - b.w), Size(b.w * density / 2.2f, b.w * density / 1.1f)) }
+        }
+    }
+}
+
+@Composable
+private fun FsFrame(ui: AppState, bg: Brush, confetti: Boolean, content: @Composable ColumnScope.() -> Unit) {
+    Box(Modifier.fillMaxSize().background(bg)) {
+        if (confetti) Confetti()
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically), content = content)
+        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp)) { IconBtn("x", "Fermer", { ui.closeFs() }) }
+    }
+}
+
+/** Apparition échelonnée des éléments d'une diapositive. */
+@Composable
+private fun Pop(i: Int, content: @Composable () -> Unit) {
+    val p = LocalPal.current
+    val a = remember { Animatable(if (p.motion) 1f else 0f) }
+    LaunchedEffect(Unit) { delay(80L * i); a.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) }
+    Box(Modifier.graphicsLayer { alpha = a.value; translationY = (1 - a.value) * 40f }) { content() }
+}
+
+/* ------------------------------------------------------------------ journée parfaite */
+@Composable
+private fun PerfectFs(ui: AppState, c: Celebration.Perfect) {
+    val p = LocalPal.current
+    FsFrame(ui, Brush.verticalGradient(listOf(p.bg, p.flame.copy(alpha = .35f), p.pink.copy(alpha = .35f))), true) {
+        Pop(0) { Eyebrow(c.eyebrow) }
+        Pop(1) { val inf = rememberInfiniteTransition(label = "pf"); val s by inf.animateFloat(1f, if (p.motion) 1f else 1.08f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "s"); Box(Modifier.scale(s)) { Flame(120.dp) } }
+        Pop(2) { Text(c.title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp, textAlign = TextAlign.Center) }
+        Pop(3) { Text(c.text, textAlign = TextAlign.Center, color = p.ink2) }
+        if (c.icons.isNotEmpty()) Pop(4) { Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { c.icons.take(8).forEach { Emoji(it, 34.dp) } } }
+        if (c.stats.isNotEmpty()) Pop(5) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                c.stats.forEach { (v, l, pre) -> Column(Modifier.clip(RoundedCornerShape(18.dp)).background(p.glassStrong).padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    CountUp(v, pre); Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold) } }
+            }
+        }
+        Pop(6) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PButton(if (ui.pg.socialOn()) "Partager ${c.shareLabel}" else "Copier", { ui.closeFs(); ui.open(Sheet.ShareHub(text = c.share)) }, icon = "share", kind = "primary")
+                PButton("Fermer", { ui.closeFs() })
+            }
+        }
+    }
+}
+
+@Composable
+private fun CountUp(v: Int, prefix: String = "", suffix: String = "", size: Int = 26, color: Color = Color.Unspecified) {
+    val p = LocalPal.current
+    val a = remember { Animatable(if (p.motion) v.toFloat() else 0f) }
+    LaunchedEffect(v) { a.animateTo(v.toFloat(), tween(minOf(1600, 500 + kotlin.math.abs(v) * 8), easing = FastOutSlowInEasing)) }
+    Text("$prefix${a.value.toInt()}$suffix", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = size.sp, color = color)
+}
+
+/* ------------------------------------------------------------------ badge débloqué */
+@Composable
+private fun BadgeFs(ui: AppState, c: Celebration.Badge) {
+    val p = LocalPal.current; val (label, color) = BADGE_TIERS[c.tier]; val tc = hex(color); val f = c.family
+    val next = f.t.getOrNull(c.tier + 1)
+    FsFrame(ui, Brush.radialGradient(listOf(tc.copy(alpha = .55f), p.bg)), true) {
+        val inf = rememberInfiniteTransition(label = "bd")
+        val rot by inf.animateFloat(0f, 360f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 14000, easing = LinearEasing)), label = "r")
+        val pop = remember { Animatable(if (p.motion) 1f else .2f) }
+        LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = .45f, stiffness = 180f)) }
+        Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize().rotate(rot)) { for (i in 0 until 16) { val a = i * PI.toFloat() / 8; drawLine(tc.copy(alpha = .35f), center, center + Offset(cos(a), sin(a)) * size.minDimension / 2, 10f) } }
+            Box(Modifier.scale(pop.value)) { BadgeMedal(BadgeState(f, c.tier, 0, null, 1.0), 140) }
+            Text(label, Modifier.align(Alignment.BottomCenter).clip(RoundedCornerShape(10.dp)).background(tc).padding(horizontal = 14.dp, vertical = 4.dp), color = INK, fontWeight = FontWeight.ExtraBold)
+        }
+        Pop(1) { Eyebrow("Badge débloqué · palier ${c.tier + 1} sur ${f.t.size}") }
+        Pop(2) { Text("${f.n} $label", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, textAlign = TextAlign.Center) }
+        Pop(3) { Text(f.d(f.t[c.tier]), textAlign = TextAlign.Center) }
+        Pop(4) { Muted("${if (next != null) "Prochain palier : ${f.d(next)}." else "Tu as atteint le plus haut palier de ce badge !"}${if (c.more > 0) " · ${pl(c.more, "autre badge à découvrir", "autres badges à découvrir")}" else ""}", small = true, center = true) }
+        Pop(5) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PButton(if (ui.pg.socialOn()) "Partager" else "Copier", { ui.closeFs(); ui.open(Sheet.ShareHub(text = "Nouveau badge sur PepsGoal : ${f.e} ${f.n} $label — ${f.d(f.t[c.tier])} !")) }, icon = "share", kind = "primary")
+                PButton("Voir mes badges", { ui.fsQueue.clear(); ui.closeFs(); ui.nav("profile") })
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ récaps */
+@Composable
+private fun RecapFs(ui: AppState, f: Fs.Recap) {
+    val p = LocalPal.current
+    var i by remember(f) { mutableIntStateOf(f.i) }
+    var dir by remember { mutableIntStateOf(1) }
+    val s = f.slides[i]; val last = i == f.slides.lastIndex
+    val step = { d: Int -> val n = (i + d).coerceIn(0, f.slides.lastIndex); if (n != i) { dir = d; i = n; f.i = n } }
+    Box(Modifier.fillMaxSize().background(Brush.linearGradient(s.bg.map(::hex))).pointerInput(f) { detectTapGestures { o -> step(if (o.x < size.width * .3f) -1 else 1) } }) {
+        s.fx?.let { Floaters(it, i) }
+        if (last) Confetti()
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            f.slides.indices.forEach { k -> Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(INK.copy(alpha = if (k <= i) .85f else .2f))) }
+        }
+        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 18.dp, end = 10.dp)) { IconBtn("x", "Fermer le récap", { ui.closeFs() }) }
+        AnimatedContent(i, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(0)) togetherWith fadeOut(tween(0)) else (slideInHorizontally { w -> w / 4 * dir } + fadeIn()) togetherWith fadeOut(tween(150)) }, label = "slide") { k ->
+            val sl = f.slides[k]
+            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 28.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
+                sl.parts.forEachIndexed { j, part -> Pop(j) { PartView(ui, f, part) { i = 0; f.i = 0 } } }
+            }
+        }
+        if (!last) Text("Touche l'écran pour avancer · ${i + 1}/${f.slides.size}", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp), color = INK.copy(alpha = .6f), fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun Floaters(e: String, key: Int) {
+    val p = LocalPal.current
+    if (p.motion) return
+    val w = LocalConfiguration.current.screenWidthDp; val h = LocalConfiguration.current.screenHeightDp
+    val inf = rememberInfiniteTransition(label = "fl$key")
+    for (i in 0 until 9) {
+        val dur = 7000 + (i * 3 % 6) * 1000
+        val y by inf.animateFloat(1.1f, -.15f, infiniteRepeatable(tween(dur, easing = LinearEasing), initialStartOffset = StartOffset((i * 1700) % dur)), label = "y$i")
+        Box(Modifier.offset(((i * 11 + 4) % 96 * w / 100).dp, (y * h).dp).graphicsLayer { alpha = .35f; rotationZ = if (i % 2 == 1) 40f * y else -40f * y }) { Emoji(e, (18 + (i * 7) % 20).dp) }
+    }
+}
+
+@Composable
+private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit) {
+    when (part) {
+        is Part.Eyebrow -> Eyebrow(part.text, INK.copy(alpha = .75f))
+        is Part.Title -> Text(part.text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (part.big) 34.sp else 26.sp, color = INK, textAlign = TextAlign.Center, lineHeight = if (part.big) 40.sp else 31.sp)
+        is Part.Text -> Text(rich(part.text), color = INK, fontSize = 17.sp, textAlign = TextAlign.Center)
+        is Part.Joke -> Text(rich(part.text), Modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .4f)).padding(horizontal = 14.dp, vertical = 10.dp), color = INK, fontSize = 15.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
+        is Part.Big -> if (part.raw != null) Text(part.raw!!, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 72.sp, color = INK) else CountUp(part.value, part.prefix, part.suffix, 72, INK)
+        is Part.Emoji -> { val motion = LocalPal.current.motion; val inf = rememberInfiniteTransition(label = "em"); val k by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "k")
+            Box(Modifier.graphicsLayer { if (!motion) { if (part.anim == "spin") rotationZ = k * 20 - 10 else translationY = -k * 18 } }) { Emoji(part.e, 84.dp) } }
+        is Part.Flame -> Flame((110 * part.scale.coerceIn(.5f, 1.6f)).dp)
+        is Part.Dots -> FlowRowCompat(gap = 4.dp) { part.days.forEach { on -> Box(Modifier.size(12.dp).clip(CircleShape).background(if (on) INK else INK.copy(alpha = .18f))) } }
+        is Part.Week -> {
+            val mx = maxOf(1, part.counts.maxOrNull() ?: 1)
+            Row(Modifier.height(130.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+                part.counts.forEachIndexed { d, v -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.width(26.dp).height((100 * v / mx).coerceAtLeast(4).dp).clip(RoundedCornerShape(6.dp)).background(if (d == part.fav) INK else INK.copy(alpha = .3f)))
+                    Text(WD[d], color = INK, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp) } }
+            }
+        }
+        is Part.Facts -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.forEach { Text(rich(it), Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .4f)).padding(12.dp), color = INK, fontSize = 15.sp) } }
+        is Part.Awards -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.forEach { (e, n, d) ->
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .45f)).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Emoji(e, 34.dp); Column { Text(n, color = INK, fontWeight = FontWeight.ExtraBold); Text(d, color = INK.copy(alpha = .75f), fontSize = 13.sp) } } } }
+        is Part.Cells -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.chunked(2).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { (v, l) ->
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .45f)).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = INK); Text(l, color = INK, fontSize = 12.sp, textAlign = TextAlign.Center) } } } } }
+        is Part.FinalActions -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PButton(if (ui.pg.socialOn()) "Partager mon récap" else "Copier mon récap", { ui.closeFs(); ui.open(Sheet.ShareHub(text = Recaps.shareText(f.st), period = f.p)) }, icon = "share", kind = "primary")
+            PButton("Revoir", restart); PButton("Fermer", { ui.closeFs() })
+        }
+        is Part.CloseAction -> PButton("Fermer", { ui.closeFs() }, kind = "primary")
+    }
+}
+
+
+/* ------------------------------------------------------------------ stories */
+@Composable
+private fun StoriesFs(ui: AppState, f: Fs.Stories) {
+    ui.watch()
+    val p = LocalPal.current; val pg = ui.pg; val me = pg.meId()
+    var gi by remember(f) { mutableIntStateOf(f.ui) }; var si by remember(f) { mutableIntStateOf(f.si) }
+    var seen by remember { mutableStateOf(false) }; var paused by remember { mutableStateOf(false) }
+    val groups = f.groups
+    val g = groups.getOrNull(gi) ?: run { LaunchedEffect(Unit) { ui.closeFs() }; return }
+    val list = g.list.filter { s -> f.archive || pg.db.stories.any { it.id == s.id } }
+    if (list.isEmpty()) { LaunchedEffect(Unit) { ui.closeFs() }; return }
+    val s = list[si.coerceIn(0, list.lastIndex)]; val own = s.userId == me
+    val stepFn = { d: Int ->
+        seen = false
+        var a = gi; var b = si + d
+        if (b >= list.size) { a++; b = 0 } else if (b < 0) { if (a == 0) b = 0 else { a--; b = groups[a].list.size - 1 } }
+        if (a >= groups.size || (f.archive && a != gi)) ui.closeFs() else { gi = a; si = b }
+    }
+    LaunchedEffect(s.id) { if (!own) ui.cloud.viewStory(s); if (own && pg.store.acct) try { ui.cloud.loadStoryViews(s) } catch (e: Exception) {} }
+    val prog = remember(s.id) { Animatable(0f) }
+    LaunchedEffect(s.id, seen, paused) { if (!seen && !paused) { prog.animateTo(1f, tween(((1 - prog.value) * STORY_MS).toInt(), easing = LinearEasing)); stepFn(1) } }
+    val live = nowMs() - s.at < STORY_TTL; val left = maxOf(1, Math.ceil((s.at + STORY_TTL - nowMs()) / 3_600_000.0).toInt())
+    Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(s.id) {
+        detectTapGestures(onPress = { paused = true; tryAwaitRelease(); paused = false }, onTap = { o -> stepFn(if (o.x < size.width * .3f) -1 else 1) })
+    }) {
+        Box(Modifier.fillMaxSize().statusBarsPadding().padding(top = 64.dp, bottom = 90.dp).padding(horizontal = 8.dp).clip(RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+            when (s.kind) {
+                "photo" -> AsyncImage(s.photo, s.text.ifEmpty { "Photo partagée en story" }, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                else -> s.data?.let { StoryCard(s.kind, it, compact = false) }
+            }
+            if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
+        }
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                list.forEachIndexed { k, _ -> Box(Modifier.weight(1f).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = .3f))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(if (k < si) 1f else if (k == si) (if (seen) 1f else prog.value) else 0f).background(Color.White)) } }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Av(g.u, 36.dp)
+                Column(Modifier.weight(1f)) {
+                    Text(if (own) "Ta story" else g.u.name, color = Color.White, fontWeight = FontWeight.ExtraBold)
+                    Text(if (live) "${ago(s.at)} · encore $left h" else "${fmtDate(ymd(s.at))} · archive", color = Color.White.copy(alpha = .75f), fontSize = 12.sp)
+                }
+                IconBtn("x", "Fermer les stories", { ui.closeFs() }, tint = Color.White, plain = true)
+            }
+        }
+        Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (!own && live) {
+                val liked = s.liked
+                Row(Modifier.clip(RoundedCornerShape(50)).background(if (liked) p.flame.copy(alpha = .5f) else Color.White.copy(alpha = .18f)).clickable {
+                    if (!pg.socialBlocked("d'encourager")) ui.run { ui.cloud.likeStory(s, !liked) }
+                }.padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Flame(20.dp, dim = !liked); Text(if (liked) "Encouragé" else "Encourager", color = Color.White, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            if (own) {
+                Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .18f)).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Flame(16.dp); Text(" ${s.likeCount ?: s.likers.size}", color = Color.White, fontWeight = FontWeight.ExtraBold) }
+                PButton("Vu par ${s.views ?: s.seenBy.size}", { seen = !seen }, icon = "users", small = true)
+                PButton("Supprimer", {
+                    ui.run("Story supprimée.", "trash") { ui.cloud.deleteStory(s.id) }
+                    if (list.size <= 1) ui.closeFs() else si = si.coerceAtMost(list.size - 2)
+                }, icon = "trash", small = true)
+            }
+        }
+        if (own && seen) {
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp).clip(RoundedCornerShape(22.dp)).background(p.glassStrong).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Vu par ${pl(s.seenBy.size, "ami", "amis")}", fontWeight = FontWeight.ExtraBold)
+                if (s.seenBy.isEmpty()) Muted("Personne pour l’instant.", small = true)
+                s.seenBy.mapNotNull { pg.userById(it) }.forEach { x -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Av(x, 30.dp); Text(x.name, Modifier.weight(1f)); if (x.id in s.likers) Flame(16.dp) } }
+                PButton("Fermer", { seen = false }, small = true)
+            }
+        }
+    }
+}
