@@ -952,13 +952,21 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
     fun setGoalGroup(u: User, gid: String, grp: String?) { if (grp != null) u.goalGroupOf[gid] = grp else u.goalGroupOf.remove(gid) }
 
     /* ---------------------------------------------------------------- objectifs : création, suppression */
-    fun deleteGoal(id: String) {
+    fun deleteGoal(id: String, toast: Boolean = true) {
         db.goals = db.goals.filter { it.id != id }.toMutableList()
         db.checkins = db.checkins.filter { it.goalId != id }.toMutableList()
         db.posts.forEach { if (it.goalId == id) it.goalId = null }
-        store.commit(); hooks.toast("Objectif supprimé.", "trash")
+        store.commit(); if (toast) hooks.toast("Objectif supprimé.", "trash")
     }
-    fun archive(id: String) { val g = goalById(id) ?: return; g.archived = !g.archived; store.commit(); hooks.toast(if (g.archived) "Objectif archivé." else "Objectif réactivé.", "archive") }
+    /** Annule une suppression : l'objectif, ses validations et le lien de ses publications reviennent. */
+    fun restoreGoal(g: Goal, checks: List<Checkin>, postIds: List<String>) {
+        if (goalById(g.id) == null) db.goals = (db.goals + g).toMutableList()
+        val have = db.checkins.map { it.id }.toHashSet()
+        db.checkins = (db.checkins + checks.filter { it.id !in have }).toMutableList()
+        db.posts.forEach { if (it.id in postIds) it.goalId = g.id }
+        store.commit(); hooks.toast("Objectif restauré.", "check"); hooks.liveChanged()
+    }
+    fun archive(id: String, toast: Boolean = true) { val g = goalById(id) ?: return; g.archived = !g.archived; store.commit(); if (toast) hooks.toast(if (g.archived) "Objectif archivé." else "Objectif réactivé.", "archive") }
     fun reopen(id: String) { val g = goalById(id) ?: return; g.completedAt = null; db.checkins = db.checkins.filter { !(it.goalId == id && it.kind == "done") }.toMutableList(); store.commit() }
 
     /* ---------------------------------------------------------------- partage */

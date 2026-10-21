@@ -39,6 +39,8 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import fr.pepsgoal.app.AppState
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Sheet
@@ -63,6 +65,7 @@ import kotlinx.serialization.json.*
 
 val SET_CATS = listOf(
     listOf("appearance", "Apparence", "Thème, Material You, couleur d’accent, arrière-plan, icône de profil", "palette"),
+    listOf("home", "Accueil", "Cartes affichées sur l’accueil et leur ordre", "sun"),
     listOf("reminders", "Rappels et notifications", "Rappels, notifications, activités en cours (Live Updates)", "bell"),
     listOf("account", "Compte", "Profil, mot de passe, déconnexion", "user"),
     listOf("weather", "Météo", "Ville, carte du jour et thème Météo", "cloud"),
@@ -71,13 +74,13 @@ val SET_CATS = listOf(
     listOf("health", "Santé", "Health Connect : pas, sommeil, sport, eau et validation automatique", "heart"),
     listOf("widgets", "Widgets", "Widgets de l’écran d’accueil : ajout et apparence", "sun"),
     listOf("data", "Données", "Synchronisation, export, réinitialisation", "archive"),
-    listOf("a11y", "Accessibilité", "Contraste élevé, daltonisme, monochrome, animations, transparence", "eye"),
+    listOf("a11y", "Accessibilité et confort", "Lecture facile, taille du texte, densité, mode une main, vibrations et sons, contraste, daltonisme", "eye"),
     listOf("help", "Aide", "Tutoriel, notes de version et à propos", "star")
 )
 
 /** Couleurs des catégories de réglages (reprises des couleurs des types d'objectifs). */
 val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
-    "weather" to ("objective" to "period"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
+    "weather" to ("objective" to "period"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "home" to ("routine" to "objective"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
 
 /** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
 @Composable
@@ -90,23 +93,29 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
     remember(title) { Stagger.reset() }
     Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
         PageBackdrop(c1, c2)
-        Column(Modifier.fillMaxSize().imePadding()) {
-            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Mode une main : le bouton retour et les actions passent en bas de l'écran, sous le pouce
+        val low = p.oneHand
+        val head = @Composable { mod: Modifier ->
+            Row(mod.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PButton(back, onBack, icon = "chevronleft", small = true)
                 Spacer(Modifier.weight(1f)); right()
             }
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state ?: androidx.compose.foundation.lazy.rememberLazyListState(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        }
+        Column(Modifier.fillMaxSize().imePadding()) {
+            if (!low) head(Modifier.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state ?: androidx.compose.foundation.lazy.rememberLazyListState(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item("title") {
-                    Row(Modifier.enter().padding(top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(Modifier.enter().padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
                         Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp)
                     }
                 }
                 content()
-                if (bottom == null) item("nav") { Spacer(Modifier.navigationBarsPadding()) }
+                if (bottom == null && !low) item("nav") { Spacer(Modifier.navigationBarsPadding()) }
             }
             // Zone fixe en bas de page (saisie d'un commentaire…)
-            if (bottom != null) Box(Modifier.fillMaxWidth().navigationBarsPadding()) { bottom() }
+            if (bottom != null) Box(Modifier.fillMaxWidth().then(if (low) Modifier else Modifier.navigationBarsPadding())) { bottom() }
+            if (low) head(Modifier.navigationBarsPadding())
         }
     } }
 }
@@ -148,7 +157,8 @@ fun SettingsScreen(ui: AppState, cat: String?) {
             "widgets" -> item("b") { WidgetsSettings(ui) }
             "ai" -> item("b") { AiSettings(ui) }
             "health" -> item("b") { HealthSettings(ui) }
-            "a11y" -> item("b") { Glass { A11yRows(ui); Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(top = 10.dp), small = true) } }
+            "home" -> item("b") { HomeSettings(ui) }
+            "a11y" -> item("b") { Column(verticalArrangement = Arrangement.spacedBy(14.dp)) { ComfortSettings(ui); Glass { SectionTitle("Couleurs et effets"); A11yRows(ui); Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(top = 10.dp), small = true) } } }
             else -> item("b") { HelpSettings(ui) }
         }
     }

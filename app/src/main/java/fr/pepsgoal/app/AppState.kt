@@ -48,6 +48,8 @@ sealed class Sheet {
     object GroupNew : Sheet()
     class GroupInfo(val gid: String) : Sheet()
     object DeleteAccount : Sheet()
+    /** Actions rapides d'un objectif (balayage vers la gauche). */
+    class Quick(val id: String) : Sheet()
 }
 
 /** Plein écran : célébrations, récaps, stories. */
@@ -77,9 +79,12 @@ sealed class Screen {
     object Journal : Screen()
     /** Statistiques avancées. */
     object Stats : Screen()
+    /** Recherche globale : objectifs, amis, messages, réglages, journal. */
+    class Search(val q: String = "") : Screen()
 }
 
-class Toast(val id: Long, val text: String, val icon: String)
+/** Message éphémère en bas de l'écran, avec une action facultative (« Annuler »). */
+class Toast(val id: Long, val text: String, val icon: String, val action: String? = null, val onAction: (() -> Unit)? = null)
 
 /**
  * État de l'interface (équivalent de l'objet `UI` de la version web) et réactions aux demandes de la logique.
@@ -131,15 +136,24 @@ class AppState(private val app: PepsApp) : Hooks {
     }
 
     /* ---------- Hooks ---------- */
-    override fun toast(text: String, icon: String) {
-        val t = Toast(nowMs() + toasts.size, text, icon)
+    override fun toast(text: String, icon: String) = toast(text, icon, null, null)
+
+    /** Message avec un bouton d'action : il reste 5 secondes à l'écran. */
+    fun toast(text: String, icon: String, action: String?, onAction: (() -> Unit)?) {
+        val t = Toast(nowMs() + toasts.size, text, icon, action, onAction)
         while (toasts.size >= 3) toasts.removeAt(0)
         toasts.add(t)
-        scope.launch { delay(3600); toasts.remove(t) }
+        scope.launch { delay(if (action != null) 5000 else if (prefs.easy) 5000 else 3600); toasts.remove(t) }
+    }
+
+    /** Message « … · Annuler » : l'action d'annulation retire le message et le remplace par sa confirmation. */
+    fun undoable(text: String, icon: String, undo: () -> Unit) {
+        toast(text, icon, "Annuler") { fr.pepsgoal.app.ui.Feedback.undo(); undo(); bump() }
     }
 
     override fun sparks(pts: Int) {
-        if (prefs.motion) { toast("+$pts flammes", "flame"); return }
+        fr.pepsgoal.app.ui.Feedback.success()
+        if (prefs.motion || prefs.easy) { toast("+$pts flammes", "flame"); return }
         sparks = touch to pts
     }
 

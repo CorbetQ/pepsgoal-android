@@ -345,8 +345,8 @@ fun GoalSheet(ui: AppState, id: String) {
         FlowRowCompat(Modifier.weight(1f), gap = 6.dp) {
             PButton("Partager", { ui.open(Sheet.ShareHub(goalId = g.id)) }, icon = "share", small = true)
             if (own) PButton("Modifier", { ui.open(Sheet.GoalForm(editId = g.id)) }, icon = "edit", small = true)
-            if (own) PButton(if (g.archived) "Désarchiver" else "Archiver", { pg.archive(g.id) }, icon = "archive", kind = "ghost", small = true)
-            if (own) PButton("Supprimer", { ui.confirm("Supprimer cet objectif ?", "« ${g.title} » et toutes ses validations seront supprimés définitivement.", "Supprimer", back = Sheet.Goal(g.id)) { pg.deleteGoal(g.id); pg.hooks.liveChanged() } }, icon = "trash", kind = "danger", small = true)
+            if (own) PButton(if (g.archived) "Désarchiver" else "Archiver", { archiveWithUndo(ui, g.id) }, icon = "archive", kind = "ghost", small = true)
+            if (own) PButton("Supprimer", { ui.confirm("Supprimer cet objectif ?", "« ${g.title} » et toutes ses validations seront supprimés définitivement.", "Supprimer", back = Sheet.Goal(g.id)) { deleteWithUndo(ui, g.id) } }, icon = "trash", kind = "danger", small = true)
         }
     }
     if (!own) Muted("Créé par ${pg.userById(g.userId)?.name ?: ""}", small = true)

@@ -46,77 +46,96 @@ fun TodayScreen(ui: AppState) {
     val st = pg.globalStreak(u.id); val plan = pg.todayPlan(u.id); val lv = pg.level(pg.points(u.id))
     val done = plan.due.count { it.done }; val total = plan.due.size
     val hasGoals = pg.myGoals(u.id).any { !it.archived }
-    val msg = if (st.lit) "Ta flamme brûle aujourd'hui. Continue sur ta lancée." else if (st.n > 0) "Valide une action avant minuit pour prolonger ta série de ${pl(st.n, "jour", "jours")}." else "Valide ta première action pour allumer ta flamme."
+    val cards = homeOrder(ui.prefs).filter { it.second }.map { it.first }
     ScreenList {
-        item("hero") {
-            Glass(strong = false, pad = 20.dp) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Eyebrow(cap(weekdayLongDate(todayDate())))
-                        Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
-                        Muted(msg)
-                    }
-                    HeroFlame(st.n, st.lit)
-                }
-                Spacer(Modifier.height(12.dp))
-                WeekStrip(pg, u.id)
-            }
-        }
-        item("aipromo") { AiPromoCard(ui) }
         if (!hasGoals) {
+            item("hero") { Hero(ui) }
+            item("aipromo") { AiPromoCard(ui) }
             item("first") { Glass { CardHead("Crée ton premier objectif"); Muted("Choisis ce que tu veux suivre. Tu pourras le valider ici chaque jour."); Spacer(Modifier.height(12.dp)); Starters(ui) } }
             item("wx") { WeatherCard(ui) }
             return@ScreenList
         }
-        item("day") {
-            Glass {
-                CardHead("Ta journée") { Count("${lv.pts} flammes") }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                    Ring(done, total)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Eyebrow("Niveau ${lv.idx}")
-                        Text(lv.name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        Bar(lv.pct * 100)
-                        Muted(if (lv.next != null) "${lv.next!! - lv.pts} flammes avant « ${lv.nextName} »" else "Niveau maximum atteint", small = true)
-                        if (total > 0 && done == total) PButton("Journée parfaite", { ui.fs = Fs.Celebrate(pg.perfectCelebration()) }, icon = "star", small = true, kind = "primary")
-                    }
-                }
-            }
-        }
-        item("tools") { QuickTools(ui) }
-        item("tip") { AiTipCard(ui) }
-        item("mood") { MoodCard(ui) }
-        item("wx") { WeatherCard(ui) }
-        if (pg.socialOn(u)) item("board") { Board(ui) }
-        item("due") { DueCard(ui, plan, done, total) }
-        val verify = pg.db.checkins.filter { c -> c.pending && pg.goalById(c.goalId)?.buddy == u.id }
-        if (verify.isNotEmpty()) item("verify") {
-            Glass {
-                CardHead("À confirmer pour tes amis") { Count(verify.size) }
-                verify.forEach { c ->
-                    val g = pg.goalById(c.goalId)!!; val o = pg.userById(c.userId)
-                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Av(o, 36.dp)
-                        Column(Modifier.weight(1f)) {
-                            Text("${o?.name ?: ""} · ${g.icon} ${g.title}", fontWeight = FontWeight.Bold)
-                            Muted("${fmtDate(c.date)} · ${when (c.kind) { "done" -> "validé"; "measure" -> "mesure enregistrée"; else -> "+${fmtNum(c.value)} ${g.unit}" }}", small = true)
+        // Cartes dans l'ordre choisi (Paramètres › Accueil)
+        for (k in cards) when (k) {
+            "hero" -> item("hero") { Hero(ui) }
+            "aipromo" -> item("aipromo") { AiPromoCard(ui) }
+            "day" -> item("day") {
+                Glass {
+                    CardHead("Ta journée") { Count("${lv.pts} flammes") }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        Ring(done, total)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Eyebrow("Niveau ${lv.idx}")
+                            Text(lv.name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            Bar(lv.pct * 100)
+                            Muted(if (lv.next != null) "${lv.next!! - lv.pts} flammes avant « ${lv.nextName} »" else "Niveau maximum atteint", small = true)
+                            if (total > 0 && done == total) PButton("Journée parfaite", { ui.fs = Fs.Celebrate(pg.perfectCelebration()) }, icon = "star", small = true, kind = "primary")
                         }
-                        PButton("Confirmer", { ui.cloud.confirmCheck(c.id, true) }, kind = "primary", small = true)
-                        PButton("Refuser", { ui.cloud.confirmCheck(c.id, false) }, small = true)
                     }
                 }
             }
-        }
-        if (plan.ongoing.isNotEmpty() && !u.settings.hideOngoing) item("ongoing") {
-            Glass {
-                CardHead("En cours") {
-                    Count(plan.ongoing.size)
-                    IconBtn("x", "Masquer la carte « En cours » (réactivable dans Paramètres › Apparence)", { u.settings.hideOngoing = true; pg.store.commit(); ui.toast("Carte « En cours » masquée. Réaffiche-la dans Paramètres › Apparence.", "list") }, plain = true, size = 36.dp)
+            "tools" -> item("tools") { QuickTools(ui) }
+            "tip" -> item("tip") { AiTipCard(ui) }
+            "mood" -> item("mood") { MoodCard(ui) }
+            "wx" -> item("wx") { WeatherCard(ui) }
+            "board" -> if (pg.socialOn(u)) item("board") { Board(ui) }
+            "due" -> item("due") { DueCard(ui, plan, done, total) }
+            "verify" -> {
+                val verify = pg.db.checkins.filter { c -> c.pending && pg.goalById(c.goalId)?.buddy == u.id }
+                if (verify.isNotEmpty()) item("verify") {
+                    Glass {
+                        CardHead("À confirmer pour tes amis") { Count(verify.size) }
+                        verify.forEach { c ->
+                            val g = pg.goalById(c.goalId)!!; val o = pg.userById(c.userId)
+                            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Av(o, 36.dp)
+                                Column(Modifier.weight(1f)) {
+                                    Text("${o?.name ?: ""} · ${g.icon} ${g.title}", fontWeight = FontWeight.Bold)
+                                    Muted("${fmtDate(c.date)} · ${when (c.kind) { "done" -> "validé"; "measure" -> "mesure enregistrée"; else -> "+${fmtNum(c.value)} ${g.unit}" }}", small = true)
+                                }
+                                PButton("Confirmer", { ui.cloud.confirmCheck(c.id, true) }, kind = "primary", small = true)
+                                PButton("Refuser", { ui.cloud.confirmCheck(c.id, false) }, small = true)
+                            }
+                        }
+                    }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { plan.ongoing.forEach { key(it.id) { GoalRow(ui, it, false) } } }
+            }
+            "ongoing" -> if (plan.ongoing.isNotEmpty() && !u.settings.hideOngoing) item("ongoing") {
+                Glass {
+                    CardHead("En cours") {
+                        Count(plan.ongoing.size)
+                        IconBtn("x", "Masquer la carte « En cours » (réactivable dans Paramètres › Apparence)", { u.settings.hideOngoing = true; pg.store.commit(); ui.toast("Carte « En cours » masquée. Réaffiche-la dans Paramètres › Apparence.", "list") }, plain = true, size = 36.dp)
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { plan.ongoing.forEach { key(it.id) { GoalRow(ui, it, false) } } }
+                }
+            }
+            "recap" -> item("recap") { RecapCard(ui) }
+        }
+        item("custom") {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                PButton("Personnaliser l’accueil", { ui.push(Screen.Settings("home")) }, icon = "edit", kind = "ghost", small = true)
             }
         }
-        item("recap") { RecapCard(ui) }
+    }
+}
+
+/** En-tête de l'accueil : date, salutation, message et flamme de la série. */
+@Composable
+private fun Hero(ui: AppState) {
+    val pg = ui.pg; val u = pg.me() ?: return; val st = pg.globalStreak(u.id); val p = LocalPal.current
+    val msg = if (p.easy) (if (st.lit) "Bravo, tu as validé aujourd’hui." else "Valide un objectif aujourd’hui pour garder ta série.")
+        else if (st.lit) "Ta flamme brûle aujourd'hui. Continue sur ta lancée." else if (st.n > 0) "Valide une action avant minuit pour prolonger ta série de ${pl(st.n, "jour", "jours")}." else "Valide ta première action pour allumer ta flamme."
+    Glass(strong = false, pad = 20.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Eyebrow(cap(weekdayLongDate(todayDate())))
+                Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
+                Muted(msg)
+            }
+            HeroFlame(st.n, st.lit)
+        }
+        Spacer(Modifier.height(12.dp))
+        WeekStrip(pg, u.id)
     }
 }
 
@@ -257,13 +276,21 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
     if (ai) LaunchedEffect(rk) { if (picks == null) picks = fr.pepsgoal.app.ai.Coach.recommend(ctx) }
     val reasons = picks?.associate { it.goal.id to it.reason } ?: emptyMap()
     val order = picks?.map { it.goal.id } ?: emptyList()
-    val sorted = plan.due.sortedWith(compareBy<DueItem> { it.done }.thenBy { if (it.g.id in order) order.indexOf(it.g.id) else 99 }.thenByDescending { pg.isFav(it.g) })
+    val later = Snooze.ids(ui)
+    val sorted = plan.due.filter { it.g.id !in later || it.done }.sortedWith(compareBy<DueItem> { it.done }.thenBy { if (it.g.id in order) order.indexOf(it.g.id) else 99 }.thenByDescending { pg.isFav(it.g) })
     val pulse = thinkingAlpha()
     Glass(ai = ai) {
         CardHead("À valider aujourd'hui") { Count("$done/$total") }
         if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Pi("sparkle", size = 15.dp, tint = p.flame)
             Muted(if (picks == null) "Le coach trie tes objectifs selon l’heure et la météo…" else "Ordre conseillé par ton coach pour ce moment", if (picks == null) Modifier.alpha(pulse) else Modifier, small = true)
+        }
+        // Astuce affichée une fois : les gestes de balayage
+        if (ui.prefs.swipe && !ui.prefs.swipeHint && sorted.any { !it.done }) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(start = 10.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pi("hand", size = 18.dp, tint = p.flame)
+            Muted("Balaie un objectif vers la droite pour le valider, vers la gauche pour reporter, mettre en favori ou lancer un Focus.", Modifier.weight(1f).padding(vertical = 8.dp), small = true)
+            IconBtn("x", "Masquer l’astuce", { ui.prefs.swipeHint = true; ui.bump() }, plain = true, size = 36.dp)
         }
         if (total == 0) Empty("Rien de prévu aujourd'hui", "Profite de ta journée, ou ajoute une routine.")
         else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -276,6 +303,14 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
                     }
                 }
             } }
+            if (later.isNotEmpty()) {
+                val n = plan.due.count { it.g.id in later && !it.done }
+                if (n > 0) Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Pi("clock", size = 16.dp, tint = p.ink2)
+                    Muted(pl(n, "objectif reporté à demain", "objectifs reportés à demain"), Modifier.weight(1f), small = true)
+                    PButton("Remettre", { ui.prefs.snoozed = ""; ui.bump() }, kind = "ghost", small = true)
+                }
+            }
         }
     }
 }
@@ -285,18 +320,20 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
 private fun QuickTools(ui: AppState) {
     val p = LocalPal.current; val ctx = androidx.compose.ui.platform.LocalContext.current
     val focusOn = fr.pepsgoal.app.sys.Focus.running(ctx)
+    val voice = rememberVoiceCommand(ui)
     val items = listOfNotNull(
         Triple(if (focusOn) "Focus en cours" else "Focus", "timer") { ui.fs = Fs.Focus() },
-        Triple("Statistiques", "trend") { ui.push(fr.pepsgoal.app.Screen.Stats) },
+        Triple("Stats", "trend") { ui.push(fr.pepsgoal.app.Screen.Stats) },
         Triple("Journal", "book") { ui.push(fr.pepsgoal.app.Screen.Journal) },
         if (fr.pepsgoal.app.ai.LocalAi.on(ctx)) Triple("Coach", "sparkle") { ui.push(fr.pepsgoal.app.Screen.CoachChat) } else null,
+        Triple("Voix", "mic") { voice() },
     )
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items.forEach { (l, ic, go) ->
             Glass(Modifier.weight(1f).fillMaxHeight(), pad = 10.dp, fill = false, onClick = go, ai = ic == "sparkle", border = if (ic == "timer" && focusOn) p.flame else null) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Pi(ic, size = 22.dp, tint = if (ic == "sparkle" || (ic == "timer" && focusOn)) p.flame else p.ink)
-                    Text(l, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    FitText(l, size = 12, min = 8, weight = FontWeight.ExtraBold)
                 }
             }
         }
