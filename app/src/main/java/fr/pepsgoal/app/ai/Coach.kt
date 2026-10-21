@@ -112,8 +112,23 @@ Demande : ${request.trim().take(200)}
 
     private val OUTDOOR = Regex("cour|march|vélo|velo|run|jogging|promen|jardin|dehors|footing|randonn|sport")
 
-    /** Jusqu'à 3 objectifs restants du jour, choisis selon l'heure et la météo, avec une courte raison. */
-    suspend fun recommend(ctx: Context): List<Pick> {
+    /** Clé du contexte des recommandations : objectifs restants, tranche de deux heures et météo. */
+    fun recoKey(ctx: Context): String {
+        val pg = ctx.peps.pg; val u = pg.me() ?: return ""
+        return pg.todayPlan(u.id).due.filter { !it.done }.joinToString(",") { it.g.id } + "|" + LocalDate.now() + "|" + LocalTime.now().hour / 2 + "|" + (weather(ctx)?.first ?: "")
+    }
+
+    /** Recommandations déjà calculées pour ce contexte (affichées tout de suite, sans attendre l'IA). */
+    fun cachedPicks(ctx: Context, key: String = recoKey(ctx)): List<Pick>? {
+        val pg = ctx.peps.pg; val lines = ctx.peps.prefs.aiPicks.lines()
+        if (lines.firstOrNull() != key) return null
+        return lines.drop(1).mapNotNull { l -> val i = l.indexOf('|'); if (i < 0) null else pg.goalById(l.substring(0, i))?.let { Pick(it, l.substring(i + 1)) } }
+    }
+
+    /** Jusqu'à 3 objectifs restants du jour, choisis selon l'heure et la météo, avec une courte raison (mémorisés). */
+    suspend fun recommend(ctx: Context, force: Boolean = false): List<Pick> {
+        val key = recoKey(ctx)
+        if (!force) cachedPicks(ctx, key)?.let { return it }
         val pg = ctx.peps.pg; val u = pg.me() ?: return emptyList()
         val left = pg.todayPlan(u.id).due.filter { !it.done }.map { it.g }
         if (left.isEmpty()) return emptyList()
@@ -131,7 +146,9 @@ Choisis les ${minOf(3, left.size)} objectifs les plus adaptés à ce moment (heu
             val g = left.take(9).getOrNull(m.groupValues[1].toInt() - 1) ?: return@mapNotNull null
             Pick(g, m.groupValues[2].trim().trim('"').take(90))
         }?.distinctBy { it.goal.id }?.take(3)
-        return ai?.takeIf { it.isNotEmpty() } ?: rulesRecommend(left, hour, wx)
+        val picks = ai?.takeIf { it.isNotEmpty() } ?: rulesRecommend(left, hour, wx)
+        ctx.peps.prefs.aiPicks = (listOf(key) + picks.map { "${it.goal.id}|${it.reason.replace('\n', ' ')}" }).joinToString("\n")
+        return picks
     }
 
     private fun rulesRecommend(left: List<Goal>, hour: Int, wx: Pair<String, Double?>?): List<Pick> {
@@ -182,5 +199,63 @@ Donne UN conseil concret et motivant pour maintenant, en 2 phrases maximum, sans
         hour < 11 -> "Commence par l’objectif le plus facile : une première victoire le matin lance toute la journée."
         hour in 12..14 -> "Profite de la pause de midi pour avancer sur un objectif rapide."
         else -> "Il te reste ${total - done} objectif${if (total - done > 1) "s" else ""} : choisis-en un et fais juste les 5 premières minutes."
+    }
+}
+
+/* ------------------------------------------------------------------ récaps et suggestions d'amis */
+
+object CoachExtras {
+    private const val ROLE = "Tu es le coach bienveillant de PepsGoal, une application de suivi d’objectifs et d’habitudes. Tu réponds toujours en français, très brièvement."
+    private val recapCache = HashMap<String, String>()
+
+    /** « Le mot du coach » d'un récap : 2 à 3 phrases personnalisées à partir des chiffres de la période. */
+    suspend fun recapWord(ctx: Context, st: RecapStats): String? {
+        val app = ctx.peps
+        if (!LocalAi.on(ctx, app.prefs.aiRecaps)) return null
+        val key = "${st.p}|${st.r.s}|${st.r.e}|${st.n}"
+        recapCache[key]?.let { return it }
+        val per = when (st.p) { "week" -> "la semaine"; "month" -> "le mois"; else -> "l’année" }
+        val prompt = """$ROLE${AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }}
+Bilan de $per : ${st.n} validations (période précédente : ${st.prevN}), ${st.days.size} jours actifs sur ${st.r.days}, meilleure série ${st.best} jours, ${st.perfect} journées parfaites${st.top?.let { ", objectif le plus suivi : « ${it.first.title} » (${it.second} fois)" } ?: ""}, moment préféré : ${st.slot}, profil : ${st.persona.n}.
+Écris un message personnel de 2 à 3 phrases : félicite précisément, puis donne une piste concrète pour la suite. Sans titre ni liste.
+"""
+        val out = LocalAi.generate(ctx, prompt, 120)?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.take(400)?.takeIf { it.length > 20 } ?: return null
+        recapCache[key] = out
+        AiMemory.add(ctx, "tip", "Récap de $per : ${st.n} validations, profil ${st.persona.n}.")
+        return out
+    }
+
+    /** Suggestion d'ami ordonnée par l'IA, avec une raison personnalisée. */
+    class FriendPick(val userId: String, val reason: String)
+
+    fun cachedFriends(ctx: Context, key: String): List<FriendPick>? {
+        val lines = ctx.peps.prefs.aiFriendPicks.lines()
+        if (lines.firstOrNull() != key) return null
+        return lines.drop(1).mapNotNull { l -> val i = l.indexOf('|'); if (i < 0) null else FriendPick(l.substring(0, i), l.substring(i + 1)) }
+    }
+
+    /** [cands] : (id, nom, amis en commun, prénoms en commun, groupes partagés). */
+    suspend fun friends(ctx: Context, key: String, cands: List<Triple<String, String, String>>): List<FriendPick>? {
+        val app = ctx.peps
+        if (!LocalAi.on(ctx, app.prefs.aiFriends) || cands.isEmpty()) return null
+        cachedFriends(ctx, key)?.let { return it }
+        val pg = app.pg; val u = pg.me() ?: return null
+        val mine = pg.myGoals(u.id).filter { !it.archived }.take(8).joinToString(", ") { it.title }
+        val list = cands.take(8).mapIndexed { i, (_, name, info) -> "${i + 1}. $name ($info)" }.joinToString("\n")
+        val prompt = """$ROLE${AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }}
+Objectifs de l’utilisateur : ${mine.ifEmpty { "aucun" }}.
+Personnes suggérées comme amis :
+$list
+Classe-les de la plus pertinente à la moins pertinente pour se motiver ensemble. Réponds uniquement par des lignes NUMERO|RAISON (moins de 12 mots, tutoiement).
+"""
+        val out = LocalAi.generate(ctx, prompt, 160) ?: return null
+        val picks = out.lines().mapNotNull { l ->
+            val m = Regex("^\\D*(\\d+)\\s*[|.:)-]\\s*(.+)$").find(l.trim()) ?: return@mapNotNull null
+            val c = cands.take(8).getOrNull(m.groupValues[1].toInt() - 1) ?: return@mapNotNull null
+            FriendPick(c.first, m.groupValues[2].trim().trim('"').take(80))
+        }.distinctBy { it.userId }
+        if (picks.isEmpty()) return null
+        app.prefs.aiFriendPicks = (listOf(key) + picks.map { "${it.userId}|${it.reason.replace('\n', ' ')}" }).joinToString("\n")
+        return picks
     }
 }

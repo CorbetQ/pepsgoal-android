@@ -189,6 +189,10 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
     var dir by remember { mutableIntStateOf(1) }
     val s = f.slides[i]; val last = i == f.slides.lastIndex
     val step = { d: Int -> val n = (i + d).coerceIn(0, f.slides.lastIndex); if (n != i) { dir = d; i = n; f.i = n } }
+    // « Le mot du coach » (IA locale) : préparé dès l'ouverture du récap, affiché sur la dernière diapositive
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var word by remember(f) { mutableStateOf<String?>(null) }
+    LaunchedEffect(f) { word = fr.pepsgoal.app.ai.CoachExtras.recapWord(ctx, f.st) }
     Box(Modifier.fillMaxSize().background(Brush.linearGradient(s.bg.map(::hex))).pointerInput(f) { detectTapGestures { o -> step(if (o.x < size.width * .3f) -1 else 1) } }) {
         s.fx?.let { Floaters(it, i) }
         if (last) Confetti()
@@ -200,6 +204,12 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
             val sl = f.slides[k]
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 28.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
                 sl.parts.forEachIndexed { j, part -> Pop(j) { PartView(ui, f, part) { i = 0; f.i = 0 } } }
+                if (k == f.slides.lastIndex) word?.let { w -> Pop(sl.parts.size) {
+                    Column(Modifier.fillMaxWidth().aiGlow(18.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .5f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("sparkle", size = 16.dp, tint = INK); Text("Le mot du coach", color = INK, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) }
+                        Text(w, color = INK, fontSize = 15.sp)
+                    }
+                } }
             }
         }
         if (!last) Text("Touche l'écran pour avancer · ${i + 1}/${f.slides.size}", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp), color = INK.copy(alpha = .6f), fontSize = 12.sp)
