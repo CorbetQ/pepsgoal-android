@@ -1,0 +1,49 @@
+name: Release
+
+# Publie une release GitHub avec l'APK : à chaque tag de version (ex. v3.0.0), et à chaque mise à jour de main
+# (version lue dans app/build.gradle.kts ; la release de cette version est créée, ou mise à jour si elle existe)
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then v="$GITHUB_REF_NAME"; else v="v$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)"; fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+      - name: Tests de la logique (module core)
+        run: ./gradlew --no-daemon :core:test
+      - name: Application Android
+        run: ./gradlew --no-daemon :app:assembleDebug
+      - name: Nom de l'APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk "PepsGoal-${VERSION}.apk"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: PepsGoal ${{ env.VERSION }}
+          files: PepsGoal-${{ env.VERSION }}.apk
+          body: |
+            Première version native de PepsGoal pour Android (Kotlin, Jetpack Compose).
+
+            - Interface entièrement native : objectifs (15 types), feed, stories, amis, messagerie chiffrée, profil, récaps, réglages, modération
+            - Couleurs Material You (Paramètres › Apparence)
+            - Activités en cours (Live Updates, Android 16), notifications enrichies avec actions et réponse directe
+            - Rappels à l'heure exacte, synchronisation en arrière-plan, widget « Ta journée », raccourcis
+
+            APK signé avec une clé de débogage (identifiant `fr.pepsgoal.app.debug`) : à installer pour tester, pas pour le Play Store.
