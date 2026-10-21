@@ -37,6 +37,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.SolidColor
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Sheet
@@ -275,12 +279,34 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
     Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(s.id) {
         detectTapGestures(onPress = { paused = true; tryAwaitRelease(); paused = false }, onTap = { o -> stepFn(if (o.x < size.width * .3f) -1 else 1) })
     }) {
-        Box(Modifier.fillMaxSize().statusBarsPadding().padding(top = 64.dp, bottom = 90.dp).padding(horizontal = 8.dp).clip(RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+        // Ambilight : la photo, très floutée et agrandie, éclaire tout l'écran derrière la story
+        val painter = coil3.compose.rememberAsyncImagePainter(if (s.kind == "photo") s.photo else null)
+        val pst by painter.state.collectAsState()
+        val ok = pst is coil3.compose.AsyncImagePainter.State.Success
+        val glow by animateFloatAsState(if (ok || s.kind != "photo") 1f else 0f, tween(500), label = "glow")
+        if (s.kind == "photo" && ok) Image(painter, null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.35f; scaleY = 1.35f; alpha = .85f * glow }
+            .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(90.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded) else Modifier.graphicsLayer { alpha = .35f * glow }), contentScale = ContentScale.Crop)
+        else if (s.kind != "photo") Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(p.flame.copy(alpha = .45f), p.pink.copy(alpha = .2f), Color.Transparent))))
+        // Voile sombre pour garder l'en-tête et les boutons lisibles
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .55f), .25f to Color.Black.copy(alpha = .15f), .75f to Color.Black.copy(alpha = .15f), 1f to Color.Black.copy(alpha = .6f))))
+        Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(top = 70.dp, bottom = 84.dp).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+            val shape = RoundedCornerShape(28.dp)
             when (s.kind) {
-                "photo" -> AsyncImage(s.photo, s.text.ifEmpty { "Photo partagée en story" }, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                else -> s.data?.let { StoryCard(s.kind, it, compact = false) }
+                "photo" -> {
+                    // Photo entière, aux proportions d'origine, aux coins arrondis et en relief
+                    val sz = (pst as? coil3.compose.AsyncImagePainter.State.Success)?.painter?.intrinsicSize
+                    val ratio = sz?.let { if (it.width > 0 && it.height > 0) it.width / it.height else null } ?: (9f / 16f)
+                    Box(Modifier.aspectRatio(ratio).graphicsLayer { scaleX = .94f + .06f * glow; scaleY = .94f + .06f * glow; alpha = glow }
+                        .shadow(30.dp, shape, ambientColor = Color.Black, spotColor = Color.Black).clip(shape).border(1.dp, Color.White.copy(alpha = .18f), shape)) {
+                        Image(painter, s.text.ifEmpty { "Photo partagée en story" }, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
+                    }
+                }
+                else -> Box(Modifier.fillMaxSize().shadow(30.dp, shape).clip(shape), contentAlignment = Alignment.Center) {
+                    s.data?.let { StoryCard(s.kind, it, compact = false) }
+                    if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
+                }
             }
-            if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
         }
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -299,7 +325,7 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
         Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (!own && live) {
                 val liked = s.liked
-                Row(Modifier.clip(RoundedCornerShape(50)).background(if (liked) p.flame.copy(alpha = .5f) else Color.White.copy(alpha = .18f)).clickable {
+                Row(Modifier.clip(RoundedCornerShape(50)).background(if (liked) Brush.linearGradient(listOf(p.flame2, p.pink)) else SolidColor(Color.White.copy(alpha = .2f))).border(1.dp, Color.White.copy(alpha = .3f), RoundedCornerShape(50)).clickable {
                     if (!pg.socialBlocked("d'encourager")) ui.run { ui.cloud.likeStory(s, !liked) }
                 }.padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Flame(20.dp, dim = !liked); Text(if (liked) "Encouragé" else "Encourager", color = Color.White, fontWeight = FontWeight.ExtraBold)

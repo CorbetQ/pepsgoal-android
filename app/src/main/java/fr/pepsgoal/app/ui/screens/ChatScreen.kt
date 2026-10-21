@@ -353,19 +353,13 @@ private fun ChatPoll(ui: AppState, m: Message, b: JsonObject, votes: Map<String,
     val mine = votes[me] ?: emptyList(); val opts = b.arr("o").take(6)
     val voters = votes.values.count { it.isNotEmpty() }
     val counts = HashMap<String, Int>(); votes.values.forEach { v -> v.forEach { counts[it] = (counts[it] ?: 0) + 1 } }
-    Column(Modifier.width(260.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("poll", size = 16.dp); Text(b.str("q", "Sondage"), fontWeight = FontWeight.ExtraBold) }
+    Column(Modifier.width(260.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { IconTile("poll", p.flame2, p.pink, 28.dp, 9.dp); Text(b.str("q", "Sondage"), fontWeight = FontWeight.ExtraBold) }
         opts.forEach { o ->
             val n = counts[o.str("id")] ?: 0; val pct = if (voters > 0) n.toFloat() / voters else 0f; val on = o.str("id") in mine
             val names = votes.filter { o.str("id") in it.value }.keys.joinToString(", ") { if (it == me) "toi" else first(pg.userById(it)?.name ?: "?") }
-            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).border(1.5.dp, if (on) p.flame else p.line, RoundedCornerShape(12.dp)).clickable { onVote(b, o.str("id")) }) {
-                Box(Modifier.matchParentSize().fillMaxWidth(pct).background(p.flame.copy(alpha = .22f)))
-                Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (on) Pi("check", size = 14.dp, tint = p.flame)
-                    Column(Modifier.weight(1f).padding(start = if (on) 6.dp else 0.dp)) { Text(o.str("t"), fontWeight = FontWeight.Bold); if (names.isNotEmpty()) Text(names, fontSize = 11.sp, color = p.ink2) }
-                    Text("$n", fontWeight = FontWeight.ExtraBold)
-                }
-            }
+            val topN = counts.values.maxOrNull() ?: 0
+            PollOption(o.str("t"), pct, voters > 0, on, n == topN && n > 0, true, { onVote(b, o.str("id")) }, sub = names, count = "$n")
         }
         Muted("${pl(voters, "votant", "votants")} · ${if (b.bool("multi")) "plusieurs réponses" else "une réponse"}", small = true)
     }

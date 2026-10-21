@@ -14,6 +14,16 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.shadow
+import androidx.compose.animation.core.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -148,11 +158,58 @@ fun StoryThumb(s: Story, modifier: Modifier) {
 }
 
 @Composable
-fun BadgeMedal(b: BadgeState, size: Int) {
-    val tier = maxOf(0, b.tier); val c = hex(BADGE_TIERS[tier].second)
-    Box(Modifier.size(size.dp).alpha(if (b.tier < 0) .45f else 1f).clip(CircleShape)
-        .background(Brush.radialGradient(listOf(c.copy(alpha = if (b.tier < 0) .2f else .9f), c.copy(alpha = if (b.tier < 0) .08f else .45f))))
-        .border(3.dp, c.copy(alpha = if (b.tier < 0) .3f else 1f), CircleShape), contentAlignment = Alignment.Center) { Emoji(b.f.e, (size * .5f).dp) }
+fun BadgeMedal(b: BadgeState, size: Int) = Medal(b.f.e, maxOf(0, b.tier), b.tier < 0, size, b.f.k)
+
+/** Couleurs d'un métal de palier (clair, base, foncé, très foncé) ; gris acier pour un palier verrouillé. */
+private fun metal(tier: Int, locked: Boolean): List<Color> {
+    val base = if (locked) hex("#8E94A6") else hex(BADGE_TIERS[tier.coerceIn(0, BADGE_TIERS.lastIndex)].second)
+    return listOf(androidx.compose.ui.graphics.lerp(base, Color.White, .62f), base, androidx.compose.ui.graphics.lerp(base, Color.Black, .45f), androidx.compose.ui.graphics.lerp(base, Color.Black, .68f))
+}
+
+/**
+ * Médaille en métal : anneau biseauté (dégradé circulaire), disque bombé, reflet qui balaie la médaille de temps en
+ * temps, et l'emoji gravé dans le métal (monochrome, teinte du métal, liseré clair décalé comme une gravure).
+ */
+@Composable
+fun Medal(e: String, tier: Int, locked: Boolean, size: Int, seed: String = e) {
+    val p = LocalPal.current
+    val (light, base, dark, deep) = metal(tier, locked)
+    val inf = rememberInfiniteTransition(label = "medal")
+    val delay = 1200 + (seed.hashCode() and 0x7FF)
+    val shine by inf.animateFloat(-.6f, 1.6f, infiniteRepeatable(tween(1500, delayMillis = delay, easing = FastOutSlowInEasing), RepeatMode.Restart), label = "shine")
+    // Gravure : luminosité de l'emoji convertie en nuances du métal (du très foncé à la base)
+    val engrave = remember(tier, locked) {
+        fun row(lo: Float, hi: Float, i: Int) = floatArrayOf(.299f * (hi - lo), .587f * (hi - lo), .114f * (hi - lo), 0f, lo * 255f)
+        val lo = deep; val hi = base
+        ColorFilter.colorMatrix(ColorMatrix(row(lo.red, hi.red, 0) + row(lo.green, hi.green, 1) + row(lo.blue, hi.blue, 2) + floatArrayOf(0f, 0f, 0f, 1f, 0f)))
+    }
+    val edge = remember(tier, locked) { ColorFilter.tint(light, BlendMode.SrcIn) }
+    Box(Modifier.size(size.dp).shadow(if (p.transp) 0.dp else (size / 9).dp, CircleShape, ambientColor = dark, spotColor = dark).alpha(if (locked) .7f else 1f), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val r = this.size.minDimension / 2; val c = this.center
+            // Anneau : reflets métalliques tout autour
+            drawCircle(Brush.sweepGradient(listOf(light, base, dark, base, light, base, dark, base, light), c), r)
+            drawCircle(dark.copy(alpha = .55f), r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(r * .03f))
+            // Gorge entre l'anneau et le disque, puis disque bombé éclairé en haut à gauche
+            val ri = r * .78f
+            drawCircle(Brush.linearGradient(listOf(deep, light), Offset(c.x - ri, c.y - ri), Offset(c.x + ri, c.y + ri)), ri + r * .05f, c)
+            drawCircle(Brush.radialGradient(listOf(light, base, dark), Offset(c.x - ri * .35f, c.y - ri * .45f), ri * 1.55f), ri, c)
+            // Reflet qui balaie la médaille
+            if (!locked && !p.motion && shine in -.4f..1.4f) {
+                val x = shine * this.size.width
+                clipPath(Path().apply { addOval(androidx.compose.ui.geometry.Rect(c, r)) }) {
+                    drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = .65f), Color.Transparent), Offset(x - r * .45f, 0f), Offset(x + r * .45f, r * .9f)))
+                }
+            }
+            // Brillance fixe en haut du disque
+            drawOval(Brush.verticalGradient(listOf(Color.White.copy(alpha = .4f), Color.Transparent), c.y - ri, c.y - ri * .1f), Offset(c.x - ri * .7f, c.y - ri * .9f), Size(ri * 1.4f, ri * .8f))
+        }
+        val es = (size * .44f).dp; val off = (size / 70f).coerceAtLeast(1f).dp
+        Box(contentAlignment = Alignment.Center) {
+            Emoji(e, es, Modifier.offset(off, off).alpha(.7f), colorFilter = edge)
+            Emoji(e, es, colorFilter = engrave)
+        }
+    }
 }
 
 @Composable
@@ -163,7 +220,9 @@ fun BadgesCard(ui: AppState, u: User) {
         CardHead("Badges") { Count("${Badges.keys(st).size} / ${Badges.total()}") }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             st.forEach { b ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                Row(Modifier.fillMaxWidth().bounce(inter, .97f).clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     BadgeMedal(b, 52)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -174,6 +233,60 @@ fun BadgesCard(ui: AppState, u: User) {
                         }
                         if (b.next != null) { Bar(b.pct * 100, height = 6.dp); Muted("${fmtNum(b.v)} / ${fmtNum(b.next!!)} · ${b.f.d(b.next!!)}", small = true) }
                         else Muted("Palier maximal atteint : ${b.f.d(b.f.t.last())}", small = true)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Page d'un badge : grande médaille, progression vers le palier suivant et toutes les étapes, de Bronze à Diamant. */
+@Composable
+fun BadgeScreen(ui: AppState, key: String) {
+    ui.watch()
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    val b = remember(ui.rev) { Badges.state(pg, u.id) }.firstOrNull { it.f.k == key }
+    if (b == null) { LaunchedEffect(Unit) { ui.back() }; return }
+    val (light, base) = metal(maxOf(0, b.tier), b.tier < 0)
+    val pop = remember { Animatable(.6f) }
+    LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = .45f, stiffness = 260f)) }
+    ScreenFrame(ui, b.f.n, "Profil", { ui.back() }, color = base, color2 = light) {
+        item("hero") {
+            Glass {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.padding(vertical = 10.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }) { BadgeMedal(b, 168) }
+                    Text(if (b.tier >= 0) "Badge ${BADGE_TIERS[b.tier].first}" else "À débloquer", fontFamily = fr.pepsgoal.app.ui.theme.Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                    Muted(if (b.tier >= 0) b.f.d(b.f.t[b.tier]) else "Premier palier : ${b.f.d(b.f.t.first())}", center = true)
+                    if (b.next != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Bar(b.pct * 100, height = 10.dp)
+                        Row(Modifier.fillMaxWidth()) {
+                            Muted("${fmtNum(b.v)} / ${fmtNum(b.next!!)}", Modifier.weight(1f), small = true)
+                            Muted("Prochain : ${BADGE_TIERS[b.tier + 1].first}", small = true)
+                        }
+                    } else Chip("Palier maximal atteint", "check", p.ok)
+                }
+            }
+        }
+        item("steps") {
+            Glass {
+                CardHead("Étapes") { Count("${b.tier + 1} / ${b.f.t.size}") }
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    b.f.t.forEachIndexed { i, th ->
+                        val got = i <= b.tier; val cur = i == b.tier + 1
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Medal(b.f.e, i, !got, 50, b.f.k + i)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(BADGE_TIERS[i].first, fontWeight = FontWeight.ExtraBold, color = if (got || cur) p.ink else p.ink2)
+                                Muted(b.f.d(th), small = true)
+                                if (cur) Bar(((b.v.toDouble() / th).coerceIn(0.0, 1.0)) * 100, height = 6.dp)
+                            }
+                            when {
+                                got -> Chip("Obtenu", "check", p.ok)
+                                cur -> Text("${fmtNum(b.v)} / ${fmtNum(th)}", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+                                else -> Pi("lock", size = 18.dp, tint = p.ink3)
+                            }
+                        }
                     }
                 }
             }

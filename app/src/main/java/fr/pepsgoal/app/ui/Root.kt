@@ -106,6 +106,7 @@ fun PepsRoot(ui: AppState) {
                         is Screen.Chat -> ChatScreen(ui, sc.with, sc.group)
                         is Screen.Stories -> StoryHistoryScreen(ui)
                         is Screen.Comments -> CommentsScreen(ui, sc.postId)
+                        is Screen.Badge -> BadgeScreen(ui, sc.key)
                         null -> {}
                     }
                 }

@@ -65,6 +65,8 @@ sealed class Screen {
     object Stories : Screen()
     /** Page dédiée aux commentaires d'une publication. */
     class Comments(val postId: String) : Screen()
+    /** Page dédiée à un badge : la médaille, la progression et toutes ses étapes. */
+    class Badge(val key: String) : Screen()
 }
 
 class Toast(val id: Long, val text: String, val icon: String)
