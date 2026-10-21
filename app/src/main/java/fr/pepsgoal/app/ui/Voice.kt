@@ -46,9 +46,12 @@ object Voice {
     private val levels = mutableListOf<Int>()
     var recording by mutableStateOf(false); private set
     var secs by mutableFloatStateOf(0f); private set
+    /** Niveaux récents (0 → 1) pour l'onde animée pendant l'enregistrement. */
+    val live = androidx.compose.runtime.mutableStateListOf<Float>()
     private var startAt = 0L
 
     fun start(ctx: Context): Boolean {
+        live.clear()
         if (recording) return true
         val f = File(ctx.cacheDir, "voice-${System.currentTimeMillis()}.m4a")
         val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(ctx) else @Suppress("DEPRECATION") MediaRecorder()
@@ -64,7 +67,10 @@ object Voice {
     fun tick(): Boolean {
         val r = rec ?: return false
         secs = (System.currentTimeMillis() - startAt) / 1000f
-        try { levels.add(r.maxAmplitude) } catch (e: Exception) {}
+        try {
+            val a = r.maxAmplitude; levels.add(a)
+            live.add(kotlin.math.sqrt((a / 32767f).coerceIn(0f, 1f))); while (live.size > 36) live.removeAt(0)
+        } catch (e: Exception) {}
         return secs < MAX_SECS
     }
 

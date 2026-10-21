@@ -194,28 +194,24 @@ fun IconTile(icon: String, c1: Color, c2: Color, size: Dp = 40.dp, radius: Dp = 
 fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.haze.HazeState? = LocalHaze.current) {
     val p = LocalPal.current; val d = LocalDensity.current
     val inset = (if (top) WindowInsets.statusBars else WindowInsets.navigationBars).asPaddingValues().let { if (top) it.calculateTopPadding() else it.calculateBottomPadding() }
-    val h = maxOf(cover, inset + 48.dp) + 26.dp
+    val h = maxOf(cover, inset + 48.dp) + 18.dp
     // Part du voile entièrement floutée (côté bord), puis fondu progressif jusqu'au contenu
-    val full = ((cover / h) * .5f).coerceIn(.2f, .6f)
+    val full = ((cover / h) * .45f).coerceIn(.18f, .55f)
     fun smooth(u: Float) = u.coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
+    // Courbe d'opacité du bord (1) vers le contenu (0), échantillonnée finement : aucun bord net
+    fun level(fromEdge: Float) = if (fromEdge <= full) 1f else 1f - smooth((fromEdge - full) / (1 - full))
+    val n = 16
+    fun grad(color: (Float) -> Color) = Brush.verticalGradient(*(0..n).map { i -> val t = i / n.toFloat(); t to color(level(if (top) t else 1 - t)) }.toTypedArray())
     val milk = if (p.dark) p.bg else Color.White
-    val k = if (p.dark) .6f else .66f
-    val n = 12
-    val stops = (0..n).map { i ->
-        val t = i / n.toFloat()
-        val fromEdge = if (top) t else 1 - t
-        val a = if (fromEdge <= full) k * (1 - .35f * fromEdge / full) else k * .65f * (1 - smooth((fromEdge - full) / (1 - full)))
-        t to milk.copy(alpha = a)
-    }
-    val veil = Brush.verticalGradient(*stops.toTypedArray())
+    val k = if (p.dark) .55f else .6f
+    val veil = grad { a -> milk.copy(alpha = k * a * (.55f + .45f * a)) }
     val box = modifier.fillMaxWidth().height(h)
     if (haze != null && !p.transp && !p.contrast) {
-        val hPx = with(d) { h.toPx() }
-        val ease = if (top) androidx.compose.animation.core.Easing { t -> smooth((t - full) / (1 - full)) }
-            else androidx.compose.animation.core.Easing { t -> smooth(t / (1 - full)) }
-        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 30.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+        // Flou estompé par un masque (rendu identique sur tous les appareils, contrairement au flou à rayon variable)
+        val mask = grad { a -> Color.Black.copy(alpha = a) }
+        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 28.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
             inputScale = HazeInputScale.Fixed(.5f)
-            progressive = dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = if (top) 1f else 0f, endY = hPx, endIntensity = if (top) 0f else 1f, easing = ease)
+            this.mask = mask
         }.background(veil))
     } else Box(box.background(veil))
 }
