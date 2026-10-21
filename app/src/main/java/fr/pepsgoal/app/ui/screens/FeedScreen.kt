@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -28,6 +30,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Fs
+import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
@@ -145,11 +148,10 @@ fun GoalAttach(ui: AppState, g: Goal?) {
 }
 
 @Composable
-fun PostCard(ui: AppState, post: Post) {
+fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val a = pg.userById(post.userId) ?: return
     val liked = post.likes.contains(u.id); val adm = pg.isAdmin(u); val pend = post.status == "pending"
     var photo by remember { mutableStateOf(false) }
-    var comment by remember { mutableStateOf("") }
     Glass(border = if (pend) p.type("limit").c else null) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.weight(1f).clickable { ui.open(Sheet.User(a.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -182,30 +184,15 @@ fun PostCard(ui: AppState, post: Post) {
                     if (!liked && !p.motion) ui.sparks(1)
                     ui.run { ui.cloud.toggleLike(post) }
                 }
-                Muted(pl(post.comments.size, "commentaire", "commentaires"), small = true)
+                // Ouvre la page dédiée aux commentaires
+                val nc = post.comments.count { !pg.isBlockedPair(it.userId, u.id) }
+                if (!pend && !inPage) PButton(if (nc > 0) "$nc" else "Commenter", { ui.push(Screen.Comments(post.id)) }, icon = "comment", small = true)
             }
-            post.comments.filter { !pg.isBlockedPair(it.userId, u.id) }.forEach { c ->
-                val cu = pg.userById(c.userId)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Av(cu, 28.dp)
-                    Column(Modifier.clip(RoundedCornerShape(14.dp)).background(p.ink.copy(alpha = .06f)).padding(horizontal = 10.dp, vertical = 6.dp)) {
-                        Text(if (cu?.id == u.id) "Toi" else cu?.name ?: "", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
-                        Text("${c.text}  ·  ${ago(c.at)}", fontSize = 14.sp)
-                    }
-                }
-            }
-            when {
-                post.commentsLocked -> Muted("🔒 Les commentaires sont fermés sur cette publication.", small = true)
-                !pg.canComment(u, post) -> Muted("Tu ne peux pas commenter pour le moment.", small = true)
-                pend -> {}
-                else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Field(comment, { comment = it }, "Écrire un encouragement…", Modifier.weight(1f), max = 280)
-                    PButton("Envoyer", {
-                        val t = comment.trim(); if (t.isEmpty() || pg.socialBlocked("de commenter")) return@PButton
-                        comment = ""; ui.run { ui.cloud.comment(post, t) }
-                    }, small = true)
-                }
-            }
+            // Aperçu : les deux derniers commentaires
+            val shown = if (inPage) emptyList() else post.comments.filter { !pg.isBlockedPair(it.userId, u.id) }
+            shown.takeLast(2).forEach { c -> CommentBubble(ui, c.userId, c.text, c.at, compact = true) }
+            if (shown.size > 2) Text("Voir les ${shown.size} commentaires", Modifier.clip(RoundedCornerShape(10.dp)).clickable { ui.push(Screen.Comments(post.id)) }.padding(4.dp), color = p.ink2, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+            if (post.commentsLocked && !inPage) Muted("🔒 Les commentaires sont fermés sur cette publication.", small = true)
         }
     }
 }
@@ -219,9 +206,17 @@ fun modDeletePost(ui: AppState, post: Post) {
 @Composable
 fun CheerButton(on: Boolean, n: Int, onClick: () -> Unit) {
     val p = LocalPal.current
+    // Rebond uniquement quand on encourage (pas à l'affichage d'une publication déjà encouragée)
     val pop = remember { Animatable(1f) }
-    LaunchedEffect(on) { if (on && !p.motion) { pop.snapTo(.8f); pop.animateTo(1f, spring(dampingRatio = .35f)) } }
-    Row(Modifier.scale(pop.value).clip(CircleShape).background(if (on) p.flame.copy(alpha = .22f) else p.ink.copy(alpha = .06f)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 7.dp),
+    var was by remember { mutableStateOf(on) }
+    LaunchedEffect(on) {
+        if (on && !was && !p.motion) { pop.snapTo(.75f); pop.animateTo(1f, spring(dampingRatio = .35f, stiffness = 500f)) } else pop.snapTo(1f)
+        was = on
+    }
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Row(Modifier.bounce(inter, .9f).graphicsLayer { scaleX = pop.value; scaleY = pop.value }.clip(CircleShape)
+        .background(if (on) p.flame.copy(alpha = .22f) else p.ink.copy(alpha = .06f)).border(1.dp, if (on) p.flame.copy(alpha = .45f) else ctlEdge(p), CircleShape)
+        .springClick(inter, label = "Encourager", onClick = onClick).padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Flame(18.dp, dim = !on); Text("$n", fontWeight = FontWeight.ExtraBold); Text("Encourager", fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
@@ -256,5 +251,59 @@ fun PhotoViewer(model: Any, onClose: () -> Unit) {
             AsyncImage(model, "Photo", Modifier.fillMaxWidth(), contentScale = ContentScale.Fit)
             Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp)) { IconBtn("x", "Fermer la photo", onClose) }
         }
+    }
+}
+
+/** Un commentaire : avatar, nom, texte et date, dans une bulle de verre. */
+@Composable
+fun CommentBubble(ui: AppState, userId: String, text: String, at: Long, compact: Boolean = false) {
+    val p = LocalPal.current; val pg = ui.pg; val cu = pg.userById(userId)
+    Row(Modifier.fillMaxWidth().then(if (compact) Modifier else Modifier.enter()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Av(cu, if (compact) 28.dp else 36.dp, modifier = Modifier.clickable { cu?.let { ui.open(Sheet.User(it.id)) } })
+        Column(Modifier.weight(1f, fill = false).clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)).background(if (compact) p.ink.copy(alpha = .06f) else p.glassStrong)
+            .then(if (compact) Modifier else Modifier.border(1.dp, p.glassEdge, RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))).padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(if (cu?.id == pg.meId()) "Toi" else cu?.name ?: "Membre", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Muted(ago(at), small = true, maxLines = 1)
+            }
+            Text(text, fontSize = if (compact) 14.sp else 15.sp)
+        }
+    }
+}
+
+/** Page dédiée aux commentaires d'une publication : la publication, tous les commentaires et la saisie en bas. */
+@Composable
+fun CommentsScreen(ui: AppState, postId: String) {
+    ui.watch()
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    val post = pg.db.posts.firstOrNull { it.id == postId }
+    if (post == null) { LaunchedEffect(Unit) { ui.back() }; return }
+    val list = post.comments.filter { !pg.isBlockedPair(it.userId, u.id) }.sortedBy { it.at }
+    val state = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(list.size) { if (list.isNotEmpty()) state.animateScrollToItem(list.size + 1) }
+    var comment by remember { mutableStateOf("") }
+    val canWrite = !post.commentsLocked && pg.canComment(u, post) && post.status != "pending"
+    ScreenFrame(ui, "Commentaires", "Feed", { ui.back() }, icon = "comment", color = p.type("measure").c, color2 = p.flame2, state = state, bottom = {
+        val shape = RoundedCornerShape(26.dp)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp).shadow(if (p.transp) 0.dp else 14.dp, shape, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
+            .clip(shape).background(p.glassStrong).border(1.dp, p.glassEdge, shape).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            when {
+                post.commentsLocked -> Muted("🔒 Les commentaires sont fermés sur cette publication.", Modifier.padding(8.dp), small = true)
+                !canWrite -> Muted("Tu ne peux pas commenter pour le moment.", Modifier.padding(8.dp), small = true)
+                else -> {
+                    Field(comment, { comment = it }, "Écrire un encouragement…", Modifier.weight(1f), max = 280)
+                    IconBtn("send", "Envoyer le commentaire", {
+                        val t = comment.trim(); if (t.isEmpty() || pg.socialBlocked("de commenter")) return@IconBtn
+                        comment = ""; ui.run { ui.cloud.comment(post, t) }
+                    }, size = 46.dp, tint = p.flame)
+                }
+            }
+        }
+    }) {
+        item("post") { PostCard(ui, post, inPage = true) }
+        item("head") { Row(verticalAlignment = Alignment.CenterVertically) { Eyebrow(pl(list.size, "commentaire", "commentaires")) } }
+        if (list.isEmpty()) item("empty") { Muted("Aucun commentaire pour l’instant. Sois le premier à encourager !", Modifier.fillMaxWidth().padding(vertical = 20.dp), center = true) }
+        list.forEach { c -> item("c:${c.id}") { CommentBubble(ui, c.userId, c.text, c.at) } }
+        item("end") { Spacer(Modifier.height(4.dp)) }
     }
 }

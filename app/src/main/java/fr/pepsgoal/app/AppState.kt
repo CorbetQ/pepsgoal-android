@@ -63,6 +63,8 @@ sealed class Screen {
     class Chat(val with: String? = null, val group: String? = null) : Screen()
     /** Historique complet des stories (page dédiée, ouverte depuis la carte « Mes stories » du profil). */
     object Stories : Screen()
+    /** Page dédiée aux commentaires d'une publication. */
+    class Comments(val postId: String) : Screen()
 }
 
 class Toast(val id: Long, val text: String, val icon: String)
