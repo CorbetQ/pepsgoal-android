@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.layout.onSizeChanged
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
@@ -137,7 +138,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
         Box(Modifier.fillMaxSize().imePadding()) {
             // Messages
             LazyColumn(Modifier.fillMaxSize().then(if (!p.transp) Modifier.hazeSource(chatHaze, zIndex = 1f) else Modifier), state,
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = with(dn) { headH.toDp() } + 8.dp, bottom = with(dn) { footH.toDp() } + 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = with(dn) { headH.toDp() } + 14.dp, bottom = with(dn) { footH.toDp() } + 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 if (list.isEmpty()) item("empty") { Muted(if (g != null) "Aucun message pour l’instant. Dis bonjour au groupe !" else "Aucun message pour l'instant. Lance la conversation !", Modifier.fillMaxWidth().padding(top = 30.dp), small = true, center = true) }
                 var lastDay = ""; var lastFrom = ""
                 list.forEach { m ->
@@ -394,13 +395,9 @@ private fun Composer(ui: AppState, u: User, members: List<String>?, replyTo: Mes
         .clip(RoundedCornerShape(26.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(26.dp)).padding(8.dp)
         .animateContentSize(spring(dampingRatio = .75f, stiffness = 500f)), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (Voice.recording) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.size(12.dp).clip(CircleShape).background(p.danger))
-                Text(fmtDur(Voice.secs.toDouble()), fontWeight = FontWeight.ExtraBold)
-                Muted("Enregistrement · ${fmtDur(Voice.MAX_SECS.toDouble())} max", Modifier.weight(1f), small = true)
-                PButton("Annuler", { Voice.stop(true) }, kind = "ghost", small = true)
-                PButton("Envoyer", { Voice.stop(false)?.let { (d, dur, w) -> sendVoice(send, d, dur, w) } }, icon = "send", kind = "primary", small = true)
-            }
+            VoiceRecorderBar(
+                onCancel = { Voice.stop(true) },
+                onSend = { Voice.stop(false)?.let { (d, dur, w) -> sendVoice(send, d, dur, w) } })
             return@Column
         }
         when (panel) {
@@ -509,5 +506,44 @@ private fun Modifier.msgEnter(mine: Boolean): Modifier {
         alpha = v.coerceIn(0f, 1f); translationX = (1f - v) * (if (mine) 56.dp else (-56).dp).toPx()
         val sc = .82f + .18f * v; scaleX = sc; scaleY = sc
         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(if (mine) 1f else 0f, 1f)
+    }
+}
+
+/** Barre d'enregistrement d'un vocal : point rouge pulsant, chronomètre, onde en direct, temps restant, annuler / envoyer. */
+@Composable
+private fun VoiceRecorderBar(onCancel: () -> Unit, onSend: () -> Unit) {
+    val p = LocalPal.current
+    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "rec")
+    val pulse by inf.animateFloat(1f, if (p.motion) 1f else 1.9f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Restart), label = "pulse")
+    Column(Modifier.fillMaxWidth().padding(4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Point rouge avec halo qui s'étend
+            Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(12.dp).graphicsLayer { scaleX = pulse; scaleY = pulse; alpha = (1.9f - pulse) / .9f }.clip(CircleShape).background(p.danger.copy(alpha = .45f)))
+                Box(Modifier.size(12.dp).clip(CircleShape).background(p.danger))
+            }
+            Text(fmtDur(Voice.secs.toDouble()), fontFamily = fr.pepsgoal.app.ui.theme.Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+            // Onde en direct : barres arrondies, les plus récentes à droite
+            androidx.compose.foundation.Canvas(Modifier.weight(1f).height(34.dp)) {
+                val n = 36; val gap = size.width / n; val bw = (gap * .55f).coerceAtLeast(2f)
+                val lv = Voice.live.toList()
+                for (i in 0 until n) {
+                    val v = lv.getOrNull(lv.size - n + i) ?: 0f
+                    val bh = (size.height * (.12f + .88f * v)).coerceAtLeast(bw)
+                    drawRoundRect(Brush.verticalGradient(listOf(p.flame2, p.pink)), androidx.compose.ui.geometry.Offset(i * gap + (gap - bw) / 2, (size.height - bh) / 2),
+                        androidx.compose.ui.geometry.Size(bw, bh), androidx.compose.ui.geometry.CornerRadius(bw / 2), alpha = if (i < n - lv.size) .25f else 1f)
+                }
+            }
+        }
+        // Temps restant
+        val left = (Voice.MAX_SECS - Voice.secs).coerceAtLeast(0f)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Bar(Voice.secs / Voice.MAX_SECS * 100.0, height = 5.dp, color = if (left < 15) p.danger else null)
+            Muted("Enregistrement en cours · encore ${fmtDur(left.toDouble())}", small = true, maxLines = 1)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            IconBtn("trash", "Annuler l’enregistrement", onCancel, size = 46.dp, tint = p.danger)
+            PButton("Envoyer le vocal", onSend, Modifier.weight(1f), icon = "send", kind = "primary")
+        }
     }
 }

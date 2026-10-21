@@ -34,7 +34,7 @@ import fr.pepsgoal.core.*
 @Composable
 fun ScreenList(content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
     val bars = LocalBars.current
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 8.dp, bottom = bars.calculateBottomPadding() + 86.dp),
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 14.dp, bottom = bars.calculateBottomPadding() + 86.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
 }
 
