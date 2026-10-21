@@ -22,6 +22,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.R
 import fr.pepsgoal.core.ACCENTS
@@ -163,5 +164,14 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         bodySmall = t.bodySmall.merge(body).copy(fontSize = 13.sp), labelLarge = t.labelLarge.merge(body).copy(fontWeight = FontWeight.ExtraBold),
         labelMedium = t.labelMedium.merge(body).copy(fontWeight = FontWeight.Bold), labelSmall = t.labelSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold)
     )
-    CompositionLocalProvider(LocalPal provides pal) { MaterialTheme(colorScheme = scheme, typography = typo, content = content) }
+    // Interlignes proportionnels à la taille du texte : une taille imposée (fontSize = 13.sp…) garde un interligne serré
+    fun TextStyle.lh(k: Float) = copy(lineHeight = k.em)
+    val typoEm = typo.copy(
+        displayLarge = typo.displayLarge.lh(1.12f), displayMedium = typo.displayMedium.lh(1.12f), displaySmall = typo.displaySmall.lh(1.15f),
+        headlineLarge = typo.headlineLarge.lh(1.18f), headlineMedium = typo.headlineMedium.lh(1.18f), headlineSmall = typo.headlineSmall.lh(1.2f),
+        titleLarge = typo.titleLarge.lh(1.22f), titleMedium = typo.titleMedium.lh(1.25f), titleSmall = typo.titleSmall.lh(1.3f),
+        bodyLarge = typo.bodyLarge.lh(1.38f), bodyMedium = typo.bodyMedium.lh(1.38f), bodySmall = typo.bodySmall.lh(1.35f),
+        labelLarge = typo.labelLarge.lh(1.25f), labelMedium = typo.labelMedium.lh(1.25f), labelSmall = typo.labelSmall.lh(1.25f)
+    )
+    CompositionLocalProvider(LocalPal provides pal) { MaterialTheme(colorScheme = scheme, typography = typoEm, content = content) }
 }

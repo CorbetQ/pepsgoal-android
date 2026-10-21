@@ -116,7 +116,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
         } }
     }
 
-    Box(Modifier.fillMaxSize().background(p.bg)) {
+    Box(Modifier.fillMaxSize().background(p.bg)) { CompositionLocalProvider(LocalHaze provides null) {
         Column(Modifier.fillMaxSize().imePadding()) {
             // En-tête
             Row(Modifier.fillMaxWidth().background(p.glassStrong).statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -183,7 +183,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 else Muted(status, small = true)
             } else Composer(ui, u, g?.members, replyTo, { replyTo = null }, send)
         }
-    }
+    } }
     photoView?.let { b -> PhotoViewer(b) { photoView = null } }
 }
 

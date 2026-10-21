@@ -13,8 +13,8 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 300
-        versionName = "3.0.0"
+        versionCode = 301
+        versionName = "3.0.1"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
@@ -86,5 +86,7 @@ dependencies {
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    // Verre givré : flou de l'arrière-plan derrière les cartes et les barres (backdrop-filter de la version web)
+    implementation("dev.chrisbanes.haze:haze:1.6.10")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
 }

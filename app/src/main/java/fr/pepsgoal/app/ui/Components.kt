@@ -18,6 +18,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import androidx.compose.ui.draw.shadow
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.scale
@@ -117,13 +121,28 @@ fun Emoji(e: String, size: Dp, modifier: Modifier = Modifier) {
 }
 
 /* ------------------------------------------------------------------ cartes, boutons, puces */
+/** Source du flou des panneaux en verre (null : pas de flou, ex. dans une fenêtre du bas). */
+val LocalHaze = staticCompositionLocalOf<dev.chrisbanes.haze.HazeState?> { null }
+
+/** Espace occupé par la barre du haut et la barre de navigation flottantes (le contenu défile dessous). */
+val LocalBars = compositionLocalOf { PaddingValues(0.dp) }
+
+/** Fond « verre givré » : arrière-plan flouté et teinté (backdrop-filter de la version web), sinon simple teinte. */
+@Composable
+fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
+    val p = LocalPal.current; val h = LocalHaze.current
+    val tint = if (strong) p.glassStrong else p.glass
+    if (h == null || p.transp || p.contrast || p.oled) return this.clip(shape).background(tint)
+    return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.6f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong)))
+}
+
 @Composable
 fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = 18.dp, border: Color? = null, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     val shape = RoundedCornerShape(radius)
     Column(
-        modifier.shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E)).clip(shape)
-            .background(if (strong) p.glassStrong else p.glass).border(1.dp, border ?: if (p.contrast) p.line else p.glassEdge, shape)
+        modifier.shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E))
+            .glassBg(shape, strong).border(1.dp, border ?: if (p.contrast) p.line else p.glassEdge, shape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(pad),
         content = content
     )
@@ -286,8 +305,9 @@ fun LevelRing(level: Int, size: Dp, content: @Composable () -> Unit) {
     val cols = when (level) { 1 -> listOf(hex("#FFB000"), hex("#FFE45C")); 2 -> listOf(hex("#FF7A3D"), hex("#FFB000")); 3 -> listOf(p.flame, p.flame2); 4 -> listOf(p.pink, p.flame, p.flame2); 5 -> listOf(hex("#8C7DFF"), p.pink, p.flame); else -> listOf(hex("#22D3FF"), hex("#B48CFF"), p.pink, p.flame2) }
     val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "lv")
     val rot by inf.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(tween(if (p.motion) 1_000_000 else 9000, easing = androidx.compose.animation.core.LinearEasing)), label = "rot")
-    Box(Modifier.size(size + 8.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().graphicsLayer { rotationZ = rot }) { drawCircle(Brush.sweepGradient(cols + cols.first()), style = Stroke(3.dp.toPx())) }
+    // `size` : taille de l'avatar ; l'anneau l'entoure à 2 dp (comme .lv-ring de la version web)
+    Box(Modifier.size(size + 10.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize().graphicsLayer { rotationZ = rot }) { val w = 3.dp.toPx(); drawCircle(Brush.sweepGradient(cols + cols.first()), radius = this.size.minDimension / 2 - w / 2, style = Stroke(w)) }
         content()
     }
 }
@@ -353,7 +373,15 @@ fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, mod
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FlowRowCompat(modifier: Modifier = Modifier, gap: Dp = 4.dp, content: @Composable () -> Unit) {
-    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) { content() }
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap), itemVerticalAlignment = Alignment.CenterVertically) { content() }
+}
+
+/** Texte sur une ligne qui rétrécit pour tenir dans sa place (petites tuiles, grands réglages de police). */
+@Composable
+fun FitText(text: String, modifier: Modifier = Modifier, size: Int = 14, min: Int = 8, color: Color = Color.Unspecified, weight: FontWeight = FontWeight.Bold, family: androidx.compose.ui.text.font.FontFamily? = null) {
+    val c = if (color == Color.Unspecified) LocalContentColor.current else color
+    androidx.compose.foundation.text.BasicText(text, modifier, style = LocalTextStyle.current.copy(color = c, fontSize = size.sp, fontWeight = weight, fontFamily = family ?: LocalTextStyle.current.fontFamily),
+        maxLines = 1, softWrap = false, autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(min.sp, size.sp, 0.5.sp))
 }
 
 @Composable

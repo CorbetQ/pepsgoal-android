@@ -33,7 +33,9 @@ import fr.pepsgoal.core.*
 
 @Composable
 fun ScreenList(content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 110.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
+    val bars = LocalBars.current
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 8.dp, bottom = bars.calculateBottomPadding() + 86.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
 }
 
 @Composable
@@ -185,8 +187,10 @@ fun RecapCard(ui: AppState) {
                     .clickable { val (sl, st) = Recaps.slides(pg, pg.meId(), k); ui.fs = Fs.Recap(k, sl, st) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     if (r.past) Text("J+1", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF10102A), modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = .7f)).padding(horizontal = 6.dp, vertical = 1.dp))
                     Pi("star", tint = Color(0xFF10102A))
-                    Text(name, fontWeight = FontWeight.ExtraBold, color = Color(0xFF10102A), fontSize = 14.sp)
-                    Text(pl(Recaps.countIn(pg, pg.meId(), k), "validation", "validations"), fontSize = 12.sp, color = Color(0xFF10102A).copy(alpha = .8f), fontWeight = FontWeight.Bold)
+                    FitText(name, size = 14, min = 9, color = Color(0xFF10102A), weight = FontWeight.ExtraBold)
+                    val n = Recaps.countIn(pg, pg.meId(), k)
+                    Text("$n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF10102A))
+                    FitText(if (n > 1) "validations" else "validation", size = 12, min = 8, color = Color(0xFF10102A).copy(alpha = .8f))
                     if (r.past) Text("bilan complet, aujourd’hui", fontSize = 11.sp, color = Color(0xFF10102A).copy(alpha = .75f))
                 }
             }
