@@ -70,9 +70,12 @@ fun AiSettings(ui: AppState) {
         if (installed) Glass {
             Text("Fonctions", fontWeight = FontWeight.ExtraBold)
             var a by remember { mutableStateOf(pr.aiCreate) }; var b by remember { mutableStateOf(pr.aiRecommend) }; var c by remember { mutableStateOf(pr.aiTips) }
-            SetRow("Créer un objectif en une phrase", "« Courir 3 fois par semaine », « Lire 12 livres cette année »…") { PSwitch(a, { a = it; pr.aiCreate = it }, enabled = pr.aiEnabled) }
-            SetRow("Recommandations du moment", "Les objectifs à faire maintenant selon l’heure et la météo") { PSwitch(b, { b = it; pr.aiRecommend = it }, enabled = pr.aiEnabled) }
-            SetRow("Conseils sur l’accueil", "Un conseil personnalisé, renouvelé au fil de la journée") { PSwitch(c, { c = it; pr.aiTips = it }, enabled = pr.aiEnabled) }
+            var d by remember { mutableStateOf(pr.aiRecaps) }; var e by remember { mutableStateOf(pr.aiFriends) }
+            SetRow("Créer un objectif en une phrase", "Dans l’onglet Objectifs : « Courir 3 fois par semaine », « Lire 12 livres »…") { PSwitch(a, { a = it; pr.aiCreate = it }, enabled = pr.aiEnabled) }
+            SetRow("Recommandations du moment", "« À valider aujourd’hui » trié selon l’heure et la météo, avec la raison du coach") { PSwitch(b, { b = it; pr.aiRecommend = it }, enabled = pr.aiEnabled) }
+            SetRow("Conseils sur l’accueil", "Une carte « Conseil du coach », renouvelée au fil de la journée") { PSwitch(c, { c = it; pr.aiTips = it }, enabled = pr.aiEnabled) }
+            SetRow("Récaps personnalisés", "« Le mot du coach » à la fin de chaque récap de la semaine, du mois et de l’année") { PSwitch(d, { d = it; pr.aiRecaps = it }, enabled = pr.aiEnabled) }
+            SetRow("Suggestions d’amis", "Classées selon tes objectifs, avec une raison personnalisée") { PSwitch(e, { e = it; pr.aiFriends = it }, enabled = pr.aiEnabled) }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PButton("Supprimer le modèle", { ui.confirm("Supprimer le modèle IA ?", "Le fichier du modèle (≈ ${v.approxMb} Mo) est effacé et l’IA désactivée. Tu pourras le réinstaller à tout moment.", "Supprimer") { LocalAi.uninstall(ctx); ui.toast("Modèle IA supprimé.", "trash") } }, icon = "trash", kind = "danger", small = true)
             }

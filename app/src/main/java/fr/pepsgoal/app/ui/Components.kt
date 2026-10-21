@@ -32,6 +32,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -248,6 +251,35 @@ fun PollOption(text: String, pct: Float, show: Boolean, mine: Boolean, top: Bool
     }
 }
 
+/** Couleurs du contour « IA » (arc-en-ciel doux qui tourne). */
+private val AI_COLORS = listOf(Color(0xFFFF4A12), Color(0xFFFFB000), Color(0xFF2EF2B0), Color(0xFF22D3FF), Color(0xFF7C8CFF), Color(0xFFFF4FA3), Color(0xFFFF4A12))
+
+/**
+ * Contour des cartes propulsées par l'IA : un liseré multicolore qui tourne lentement autour de la carte et diffuse
+ * une légère lueur autour d'elle.
+ */
+@Composable
+fun Modifier.aiGlow(radius: Dp): Modifier {
+    val motionOff = LocalPal.current.motion; val dark = LocalPal.current.dark
+    val inf = rememberInfiniteTransition(label = "ai")
+    val angle = inf.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(tween(if (motionOff) 1_000_000 else 5200, easing = androidx.compose.animation.core.LinearEasing)), label = "aiAngle")
+    return this.drawWithContent {
+        val r = radius.toPx(); val c = Offset(size.width / 2, size.height / 2)
+        val m = android.graphics.Matrix().apply { setRotate(angle.value, c.x, c.y) }
+        val shader = SweepGradientShader(c, AI_COLORS).also { it.setLocalMatrix(m) }
+        val brush = ShaderBrush(shader)
+        // Lueur : plusieurs traits de plus en plus larges et transparents, sous la carte
+        for ((w, a) in listOf(16f to .07f, 10f to .11f, 6f to .18f)) {
+            val wp = w.dp.toPx()
+            drawRoundRect(brush, Offset(-wp / 4, -wp / 4), Size(size.width + wp / 2, size.height + wp / 2), CornerRadius(r + wp / 4), style = Stroke(wp), alpha = if (dark) a * 1.4f else a)
+        }
+        drawContent()
+        // Liseré net par-dessus la carte
+        val bw = 2.dp.toPx()
+        drawRoundRect(brush, Offset(bw / 2, bw / 2), Size(size.width - bw, size.height - bw), CornerRadius(r - bw / 2), style = Stroke(bw))
+    }
+}
+
 /** Ressorts communs : réponses vives avec un léger rebond. */
 object Springs {
     val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .42f, stiffness = 520f)
@@ -296,13 +328,14 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
 }
 
 @Composable
-fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = 18.dp, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = 18.dp, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     val shape = RoundedCornerShape(radius)
     val inter = remember { MutableInteractionSource() }
     Column(
         // Toute la largeur disponible par défaut : une carte au contenu court reste alignée sur les autres
         (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).enter().then(if (onClick != null) Modifier.bounce(inter, .97f) else Modifier)
+            .then(if (ai) Modifier.aiGlow(radius) else Modifier)
             .shadow(if (p.oled || p.transp) 0.dp else 18.dp, shape, ambientColor = Color(0x4428186E), spotColor = Color(0x5528186E))
             .glassBg(shape, strong)
             // Profondeur : reflet en haut de la carte et liseré lumineux dégradé (plus vif en haut, discret en bas)

@@ -56,6 +56,7 @@ fun GoalsScreen(ui: AppState) {
                 FChip(if (u.goalGroups.isNotEmpty()) "Gérer" else "Créer des groupes", false, { ui.open(Sheet.GoalGroups) }, leading = { Pi(if (u.goalGroups.isNotEmpty()) "edit" else "plus", size = 15.dp) }, dashed = true)
             }
         }
+        item("aicreate") { AiCreateCard(ui) }
         when {
             list.isEmpty() && all.isNotEmpty() -> item("empty") { Glass { Empty("Rien ici pour l'instant", "Change de filtre ou crée un nouvel objectif.") { PButton("Nouvel objectif", { ui.open(Sheet.GoalForm(preType = ui.goalFilter.takeIf { it in TYPES })) }, icon = "plus", kind = "primary") } } }
             list.isEmpty() -> item("start") { Glass { CardHead("Que veux-tu suivre ?"); Starters(ui) } }

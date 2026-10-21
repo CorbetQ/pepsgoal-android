@@ -111,6 +111,11 @@ class DevicePrefs(context: Context) {
     var aiSpeed get() = p.getString("aiSpeed", "") ?: ""; set(v) = p.edit().putString("aiSpeed", v).apply()
     var aiTip get() = p.getString("aiTip", "") ?: ""; set(v) = p.edit().putString("aiTip", v).apply()
     var aiTipKey get() = p.getString("aiTipKey", "") ?: ""; set(v) = p.edit().putString("aiTipKey", v).apply()
+    var aiRecaps get() = p.getBoolean("aiRecaps", true); set(v) = p.edit().putBoolean("aiRecaps", v).apply()
+    var aiFriends get() = p.getBoolean("aiFriends", true); set(v) = p.edit().putBoolean("aiFriends", v).apply()
+    /** Dernières recommandations du coach (clé de contexte puis lignes « id|raison »), gardées entre deux ouvertures. */
+    var aiPicks get() = p.getString("aiPicks", "") ?: ""; set(v) = p.edit().putString("aiPicks", v).apply()
+    var aiFriendPicks get() = p.getString("aiFriendPicks", "") ?: ""; set(v) = p.edit().putString("aiFriendPicks", v).apply()
     var aiPromoHidden get() = p.getBoolean("aiPromoHidden", false); set(v) = p.edit().putBoolean("aiPromoHidden", v).apply()
     var voiceRate get() = p.getFloat("voiceRate", 1f); set(v) = p.edit().putFloat("voiceRate", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp).count { it }

@@ -147,12 +147,28 @@ private fun SuggestCard(ui: AppState, u: User) {
     val list = ui.cloud.suggestions.mapNotNull { s -> pg.userById(s.obj("user").str("id"))?.let { it to s } }
         .filter { (x, _) -> x.id !in hidden && pg.friendship(u.id, x.id) == null && !pg.isBlockedPair(u.id, x.id) }.take(8)
     if (list.isEmpty()) return
-    Glass {
+    // Coach IA : suggestions classées et raison personnalisée selon tes objectifs (mémorisées tant que la liste ne change pas)
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val ai = fr.pepsgoal.app.ai.LocalAi.on(ctx, ui.prefs.aiFriends)
+    val fk = list.joinToString(",") { it.first.id }
+    var aiPicks by remember(fk) { mutableStateOf(if (ai) fr.pepsgoal.app.ai.CoachExtras.cachedFriends(ctx, fk) else null) }
+    if (ai) LaunchedEffect(fk) {
+        if (aiPicks == null) aiPicks = fr.pepsgoal.app.ai.CoachExtras.friends(ctx, fk, list.map { (x, s) ->
+            Triple(x.id, x.name, buildString { append(pl(s.int("mutual"), "ami en commun", "amis en commun")); if (s.strs("via").isNotEmpty()) append(" dont " + s.strs("via").take(2).joinToString(", ") { first(it) }); if (s.int("groups") > 0) append(", même groupe") })
+        })
+    }
+    val aiWhy = aiPicks?.associate { it.userId to it.reason } ?: emptyMap()
+    val aiOrder = aiPicks?.map { it.userId } ?: emptyList()
+    val shown = list.sortedBy { if (it.first.id in aiOrder) aiOrder.indexOf(it.first.id) else 99 }
+    Glass(ai = ai) {
         CardHead("Suggestions d’amis") { IconBtn("gear", "Réglages des suggestions", { ui.push(Screen.Settings("privacy")) }, plain = true, size = 36.dp) }
+        if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Pi("sparkle", size = 15.dp, tint = p.flame); Muted(if (aiPicks == null) "Le coach cherche les meilleurs partenaires pour toi…" else "Classées par ton coach selon tes objectifs", small = true)
+        }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            list.forEach { (x, s) ->
+            shown.forEach { (x, s) ->
                 val mutual = s.int("mutual"); val via = s.strs("via")
-                val why = if (mutual > 0) pl(mutual, "ami en commun", "amis en commun") + (if (via.isNotEmpty()) " · " + via.take(2).joinToString(", ") { first(it) } else "") else if (s.int("groups") > 0) "Dans un de tes groupes" else "Nouveau sur PepsGoal"
+                val why = aiWhy[x.id] ?: if (mutual > 0) pl(mutual, "ami en commun", "amis en commun") + (if (via.isNotEmpty()) " · " + via.take(2).joinToString(", ") { first(it) } else "") else if (s.int("groups") > 0) "Dans un de tes groupes" else "Nouveau sur PepsGoal"
                 Box(Modifier.width(150.dp).clip(RoundedCornerShape(20.dp)).background(p.glassStrong).padding(12.dp)) {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(Modifier.clickable { ui.open(Sheet.User(x.id)) }) { Av(x, 56.dp) }

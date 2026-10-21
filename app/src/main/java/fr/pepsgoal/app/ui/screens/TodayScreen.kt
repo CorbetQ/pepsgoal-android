@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -61,7 +62,7 @@ fun TodayScreen(ui: AppState) {
                 WeekStrip(pg, u.id)
             }
         }
-        item("coach") { AiCoachCard(ui) }
+        item("aipromo") { AiPromoCard(ui) }
         if (!hasGoals) {
             item("first") { Glass { CardHead("Crée ton premier objectif"); Muted("Choisis ce que tu veux suivre. Tu pourras le valider ici chaque jour."); Spacer(Modifier.height(12.dp)); Starters(ui) } }
             item("wx") { WeatherCard(ui) }
@@ -82,17 +83,10 @@ fun TodayScreen(ui: AppState) {
                 }
             }
         }
+        item("tip") { AiTipCard(ui) }
         item("wx") { WeatherCard(ui) }
         if (pg.socialOn(u)) item("board") { Board(ui) }
-        item("due") {
-            Glass {
-                CardHead("À valider aujourd'hui") { Count("$done/$total") }
-                if (total == 0) Empty("Rien de prévu aujourd'hui", "Profite de ta journée, ou ajoute une routine.")
-                else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    plan.due.sortedWith(compareBy<DueItem> { it.done }.thenByDescending { pg.isFav(it.g) }).forEach { key(it.g.id) { GoalRow(ui, it.g, it.done, it.meta) } }
-                }
-            }
-        }
+        item("due") { DueCard(ui, plan, done, total) }
         val verify = pg.db.checkins.filter { c -> c.pending && pg.goalById(c.goalId)?.buddy == u.id }
         if (verify.isNotEmpty()) item("verify") {
             Glass {
@@ -244,5 +238,42 @@ fun WeatherCard(ui: AppState) {
         }
         val time = { s: String? -> s?.drop(11)?.take(5) ?: "—" }
         Muted("Lever ${time(d0?.sunrise)} · coucher ${time(d0?.sunset)} · mis à jour à ${hm(c.at)} · Open-Meteo", Modifier.padding(top = 8.dp), small = true)
+    }
+}
+
+/**
+ * « À valider aujourd'hui ». Avec le coach IA (recommandations activées), la liste est réordonnée selon l'heure et la
+ * météo : les objectifs conseillés passent en tête avec la raison du coach, et la carte prend le contour IA.
+ */
+@Composable
+private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
+    val pg = ui.pg; val p = LocalPal.current; val ctx = androidx.compose.ui.platform.LocalContext.current
+    val ai = fr.pepsgoal.app.ai.LocalAi.on(ctx, ui.prefs.aiRecommend) && plan.due.any { !it.done }
+    val rk = if (ai) fr.pepsgoal.app.ai.Coach.recoKey(ctx) else ""
+    // Recommandations mémorisées : affichées tout de suite, recalculées seulement quand le contexte change
+    var picks by remember(rk) { mutableStateOf(if (ai) fr.pepsgoal.app.ai.Coach.cachedPicks(ctx, rk) else null) }
+    if (ai) LaunchedEffect(rk) { if (picks == null) picks = fr.pepsgoal.app.ai.Coach.recommend(ctx) }
+    val reasons = picks?.associate { it.goal.id to it.reason } ?: emptyMap()
+    val order = picks?.map { it.goal.id } ?: emptyList()
+    val sorted = plan.due.sortedWith(compareBy<DueItem> { it.done }.thenBy { if (it.g.id in order) order.indexOf(it.g.id) else 99 }.thenByDescending { pg.isFav(it.g) })
+    val pulse = thinkingAlpha()
+    Glass(ai = ai) {
+        CardHead("À valider aujourd'hui") { Count("$done/$total") }
+        if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Pi("sparkle", size = 15.dp, tint = p.flame)
+            Muted(if (picks == null) "Le coach trie tes objectifs selon l’heure et la météo…" else "Ordre conseillé par ton coach pour ce moment", if (picks == null) Modifier.alpha(pulse) else Modifier, small = true)
+        }
+        if (total == 0) Empty("Rien de prévu aujourd'hui", "Profite de ta journée, ou ajoute une routine.")
+        else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            sorted.forEach { d -> key(d.g.id) {
+                Column {
+                    GoalRow(ui, d.g, d.done, d.meta)
+                    val why = reasons[d.g.id]
+                    if (why != null && !d.done) Row(Modifier.padding(start = 64.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Pi("sparkle", size = 13.dp, tint = p.flame); Muted(why, small = true, maxLines = 2)
+                    }
+                }
+            } }
+        }
     }
 }
