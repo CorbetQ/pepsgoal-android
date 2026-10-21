@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 
 /** Fenêtres (feuilles du bas) de l'application. */
 sealed class Sheet {
-    class GoalForm(val editId: String? = null, val preType: String? = null) : Sheet()
+    class GoalForm(val editId: String? = null, val preType: String? = null, val preTitle: String? = null, val preIcon: String? = null, val preFields: Map<String, String>? = null) : Sheet()
     class Goal(val id: String) : Sheet()
     class Progress(val id: String) : Sheet()
     class User(val id: String) : Sheet()

@@ -101,6 +101,17 @@ class DevicePrefs(context: Context) {
     /** Apparence des widgets : "app" (comme l'application), "light", "dark" ou "you" (Material You). */
     var widgetTheme get() = p.getString("widgetTheme", "app") ?: "app"; set(v) = p.edit().putString("widgetTheme", v).apply()
     var widgetHideDone get() = p.getBoolean("widgetHideDone", false); set(v) = p.edit().putBoolean("widgetHideDone", v).apply()
+    /* Assistant IA local */
+    var aiEnabled get() = p.getBoolean("aiEnabled", false); set(v) = p.edit().putBoolean("aiEnabled", v).apply()
+    var aiCreate get() = p.getBoolean("aiCreate", true); set(v) = p.edit().putBoolean("aiCreate", v).apply()
+    var aiRecommend get() = p.getBoolean("aiRecommend", true); set(v) = p.edit().putBoolean("aiRecommend", v).apply()
+    var aiTips get() = p.getBoolean("aiTips", true); set(v) = p.edit().putBoolean("aiTips", v).apply()
+    var aiMemory get() = p.getBoolean("aiMemory", true); set(v) = p.edit().putBoolean("aiMemory", v).apply()
+    var aiModel get() = p.getString("aiModel", "light") ?: "light"; set(v) = p.edit().putString("aiModel", v).apply()
+    var aiSpeed get() = p.getString("aiSpeed", "") ?: ""; set(v) = p.edit().putString("aiSpeed", v).apply()
+    var aiTip get() = p.getString("aiTip", "") ?: ""; set(v) = p.edit().putString("aiTip", v).apply()
+    var aiTipKey get() = p.getString("aiTipKey", "") ?: ""; set(v) = p.edit().putString("aiTipKey", v).apply()
+    var aiPromoHidden get() = p.getBoolean("aiPromoHidden", false); set(v) = p.edit().putBoolean("aiPromoHidden", v).apply()
     var voiceRate get() = p.getFloat("voiceRate", 1f); set(v) = p.edit().putFloat("voiceRate", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp).count { it }
 }

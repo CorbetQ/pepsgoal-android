@@ -13,3 +13,9 @@
 # Code de l'application gardé tel quel (sérialisation, récepteurs, widget) : R8 optimise surtout Compose et les bibliothèques
 -keep class fr.pepsgoal.** { *; }
 -dontwarn javax.annotation.**
+# MediaPipe LLM Inference (code natif appelé par JNI) et protobuf
+-keep class com.google.mediapipe.** { *; }
+-dontwarn com.google.mediapipe.**
+-keep class com.google.protobuf.** { *; }
+-dontwarn com.google.protobuf.**
+-dontwarn com.google.auto.value.**

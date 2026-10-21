@@ -38,9 +38,10 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     val g0 = s.editId?.let { pg.goalById(it) }
     var type by remember { mutableStateOf(g0?.type ?: s.preType ?: "routine") }
     // Brouillon : copie des réglages du type (les champs texte gardent la saisie telle quelle)
-    val d = remember { Goal(g0?.id ?: "draft", u.id, type, g0?.title ?: "", g0?.icon ?: EMOJIS[0], g0?.note ?: "", g0?.visibility ?: u.settings.defaultVis).also { x -> g0?.let { x.data = LinkedHashMap(it.data) } } }
+    val d = remember { Goal(g0?.id ?: "draft", u.id, type, g0?.title ?: s.preTitle ?: "", g0?.icon ?: s.preIcon ?: EMOJIS[0], g0?.note ?: "", g0?.visibility ?: u.settings.defaultVis).also { x -> g0?.let { x.data = LinkedHashMap(it.data) } } }
     var rev by remember { mutableIntStateOf(0) }; rev.hashCode()
-    val t = remember { mutableStateMapOf<String, String>() }
+    // Champs préremplis (objectif proposé par l'assistant IA)
+    val t = remember { mutableStateMapOf<String, String>().apply { s.preFields?.let { putAll(it) } } }
     fun txt(k: String, def: () -> String) = t.getOrPut(k) { def() }
     fun num(v: Double?) = v?.let { fmtNum(it) } ?: ""
     fun upd(f: Goal.() -> Unit) { d.f(); rev++ }

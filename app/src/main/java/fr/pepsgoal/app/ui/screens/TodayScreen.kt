@@ -61,6 +61,7 @@ fun TodayScreen(ui: AppState) {
                 WeekStrip(pg, u.id)
             }
         }
+        item("coach") { AiCoachCard(ui) }
         if (!hasGoals) {
             item("first") { Glass { CardHead("Crée ton premier objectif"); Muted("Choisis ce que tu veux suivre. Tu pourras le valider ici chaque jour."); Spacer(Modifier.height(12.dp)); Starters(ui) } }
             item("wx") { WeatherCard(ui) }
