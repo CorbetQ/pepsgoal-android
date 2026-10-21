@@ -33,7 +33,7 @@ val HOME_CARDS = linkedMapOf(
     "hero" to Triple("Bonjour et série", "Date, message du jour, flamme et semaine", "sun"),
     "aipromo" to Triple("Présentation du coach IA", "Tant que l’assistant n’est pas installé", "sparkle"),
     "day" to Triple("Ta journée", "Anneau du jour, niveau et flammes", "gauge"),
-    "tools" to Triple("Raccourcis", "Focus, Stats, Journal, Coach, Voix", "bolt"),
+    "tools" to Triple("Raccourcis", "Focus, Stats, Journal, Coach", "bolt"),
     "tip" to Triple("Conseil du coach", "Avec l’assistant IA activé", "sparkle"),
     "mood" to Triple("Humeur du jour", "Note ton humeur en un geste", "smile"),
     "wx" to Triple("Météo", "Temps du jour et conseil", "cloud"),
