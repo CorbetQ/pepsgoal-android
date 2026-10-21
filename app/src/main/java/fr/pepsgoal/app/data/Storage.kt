@@ -117,6 +117,9 @@ class DevicePrefs(context: Context) {
     var aiPicks get() = p.getString("aiPicks", "") ?: ""; set(v) = p.edit().putString("aiPicks", v).apply()
     var aiFriendPicks get() = p.getString("aiFriendPicks", "") ?: ""; set(v) = p.edit().putString("aiFriendPicks", v).apply()
     var aiPromoHidden get() = p.getBoolean("aiPromoHidden", false); set(v) = p.edit().putBoolean("aiPromoHidden", v).apply()
+    /** Onglet Objectifs : affichage ("list" compact ou "cards") et regroupement par groupe d'objectifs. */
+    var goalView get() = p.getString("goalView", "list") ?: "list"; set(v) = p.edit().putString("goalView", v).apply()
+    var goalGroupBy get() = p.getBoolean("goalGroupBy", true); set(v) = p.edit().putBoolean("goalGroupBy", v).apply()
     var voiceRate get() = p.getFloat("voiceRate", 1f); set(v) = p.edit().putFloat("voiceRate", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp).count { it }
 }

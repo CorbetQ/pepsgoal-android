@@ -179,7 +179,7 @@ Choisis les ${minOf(3, left.size)} objectifs les plus adaptés à ce moment (heu
         val st = pg.globalStreak(u.id); val plan = pg.todayPlan(u.id); val done = plan.due.count { it.done }
         val hour = LocalTime.now().hour
         val key = "${LocalDate.now()}|${hour / 4}|$done/${plan.due.size}|${st.n}"
-        if (!force && app.prefs.aiTipKey == key && app.prefs.aiTip.isNotBlank()) return app.prefs.aiTip
+        if (!force && app.prefs.aiTipKey == key && app.prefs.aiTip.isNotBlank()) return fixEncoding(app.prefs.aiTip)
         val wx = weather(ctx)
         val prompt = """$ROLE${memory(ctx)}
 Contexte : il est $hour h${wx?.let { ", météo ${it.first.lowercase()}${it.second?.let { t -> " (${Math.round(t)} °C)" } ?: ""}" } ?: ""}, série de ${st.n} jour(s)${if (st.lit) " déjà allumée aujourd’hui" else " pas encore allumée aujourd’hui"}, $done validation(s) sur ${plan.due.size} prévue(s).
