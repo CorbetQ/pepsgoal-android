@@ -67,6 +67,7 @@ val SET_CATS = listOf(
     listOf("account", "Compte", "Profil, mot de passe, déconnexion", "user"),
     listOf("weather", "Météo", "Ville, carte du jour et thème Météo", "cloud"),
     listOf("privacy", "Social et confidentialité", "Fonctions sociales, visibilité, stories", "lock"),
+    listOf("widgets", "Widgets", "Widgets de l’écran d’accueil : ajout et apparence", "sun"),
     listOf("data", "Données", "Synchronisation, export, réinitialisation", "archive"),
     listOf("a11y", "Accessibilité", "Contraste élevé, daltonisme, monochrome, animations, transparence", "eye"),
     listOf("help", "Aide", "Tutoriel, notes de version et à propos", "star")
@@ -74,7 +75,7 @@ val SET_CATS = listOf(
 
 /** Couleurs des catégories de réglages (reprises des couleurs des types d'objectifs). */
 val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
-    "weather" to ("objective" to "period"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
+    "weather" to ("objective" to "period"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
 
 /** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
 @Composable
@@ -142,6 +143,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
             "weather" -> item("b") { WeatherSettings(ui, u) }
             "privacy" -> item("b") { PrivacySettings(ui, u) }
             "data" -> item("b") { DataSettings(ui, u) }
+            "widgets" -> item("b") { WidgetsSettings(ui) }
             "a11y" -> item("b") { Glass { A11yRows(ui); Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(top = 10.dp), small = true) } }
             else -> item("b") { HelpSettings(ui) }
         }
