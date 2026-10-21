@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -68,19 +69,32 @@ val SET_CATS = listOf(
     listOf("help", "Aide", "Tutoriel, notes de version et à propos", "star")
 )
 
-/** Écran plein (au-dessus des onglets) avec un en-tête « retour ». */
+/** Couleurs des catégories de réglages (reprises des couleurs des types d'objectifs). */
+val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
+    "weather" to ("objective" to "period"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
+
+/** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
 @Composable
-fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, right: @Composable RowScope.() -> Unit = {}, content: LazyListScope.() -> Unit) {
+fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, right: @Composable RowScope.() -> Unit = {},
+                icon: String? = null, color: Color? = null, color2: Color? = null, content: LazyListScope.() -> Unit) {
     val p = LocalPal.current
+    val c1 = color ?: p.flame; val c2 = color2 ?: p.pink
     BackHandler { onBack() }
-    Box(Modifier.fillMaxSize().background(p.bg)) { CompositionLocalProvider(LocalHaze provides null) {
+    remember(title) { Stagger.reset() }
+    Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
+        PageBackdrop(c1, c2)
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PButton("‹ $back", onBack, kind = "ghost", small = true)
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                PButton(back, onBack, icon = "chevronleft", small = true)
                 Spacer(Modifier.weight(1f)); right()
             }
             LazyColumn(Modifier.fillMaxSize().imePadding(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                item("title") { Text(title, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 24.sp, modifier = Modifier.padding(bottom = 4.dp)) }
+                item("title") {
+                    Row(Modifier.enter().padding(top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
+                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp)
+                    }
+                }
                 content()
                 item("nav") { Spacer(Modifier.navigationBarsPadding()) }
             }
@@ -95,13 +109,15 @@ fun SettingsScreen(ui: AppState, cat: String?) {
     val c = SET_CATS.firstOrNull { it[0] == cat }
     val p = LocalPal.current
     if (c == null) {
-        ScreenFrame(ui, "Paramètres", "Profil", { ui.back() }) {
+        ScreenFrame(ui, "Paramètres", "Profil", { ui.back() }, icon = "gear") {
             item("cats") {
                 Glass(pad = 8.dp) {
                     SET_CATS.forEach { (k, l, d, i) ->
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { ui.screens[ui.screens.lastIndex] = Screen.Settings(k) }.padding(10.dp),
+                        val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                        Row(Modifier.fillMaxWidth().bounce(inter, .97f).clip(RoundedCornerShape(16.dp)).springClick(inter) { ui.screens[ui.screens.lastIndex] = Screen.Settings(k) }.padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) { Pi(i, size = 20.dp) }
+                            val (k1, k2) = SET_COLORS[k] ?: ("routine" to "duration")
+                            IconTile(i, p.type(k1).c, p.type(k2).c)
                             Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.ExtraBold); Muted(d, small = true) }
                             Text("›", color = p.ink3, fontSize = 22.sp)
                         }
@@ -111,7 +127,8 @@ fun SettingsScreen(ui: AppState, cat: String?) {
         }
         return
     }
-    ScreenFrame(ui, c[1], "Paramètres", { ui.screens[ui.screens.lastIndex] = Screen.Settings() }) {
+    val (k1, k2) = SET_COLORS[c[0]] ?: ("routine" to "duration")
+    ScreenFrame(ui, c[1], "Paramètres", { ui.screens[ui.screens.lastIndex] = Screen.Settings() }, icon = c[3], color = p.type(k1).c, color2 = p.type(k2).c) {
         when (c[0]) {
             "appearance" -> item("b") { Appearance(ui, u) }
             "reminders" -> item("b") { RemindersSettings(ui, u) }
@@ -285,11 +302,22 @@ private fun RemindersSettings(ui: AppState, u: User) {
             if (!Reminders.canExact(ctx)) SetRow("Rappels à l’heure exacte", "Android peut retarder les rappels de quelques minutes. Autorise les alarmes exactes pour qu’ils arrivent pile à l’heure, et pour relever messages et publications chaque minute application fermée.") { PButton("Autoriser", { Reminders.openExactSettings(ctx) }, icon = "clock", small = true) }
             if (ui.pg.store.acct) {
                 var unr by remember { mutableStateOf(Poller.unrestricted(ctx)) }
-                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { unr = Poller.unrestricted(ctx); onPauseOrDispose {} }
-                val last = ui.prefs.lastPoll
-                val lastTxt = if (last > 0) " Dernière relève en arrière-plan : ${ago(last)}." else ""
-                SetRow("Notifications application fermée", (if (unr) "PepsGoal relève messages, publications et notifications chaque minute, même fermée." else "Pour recevoir messages et publications chaque minute application fermée, retire PepsGoal de l’optimisation de batterie.") + lastTxt) {
-                    if (unr) Chip("Actives", "check", LocalPal.current.ok) else PButton("Autoriser", { Poller.askUnrestricted(ctx) }, icon = "bell", kind = "primary", small = true)
+                var instant by remember { mutableStateOf(ui.prefs.instantNotifs) }
+                var tick by remember { mutableIntStateOf(0) }
+                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { unr = Poller.unrestricted(ctx); tick++; onPauseOrDispose {} }
+                SetRow("Notifications instantanées", "PepsGoal reste connecté en arrière-plan (petite notification discrète) pour relever messages, publications et notifications chaque minute, même fermée.") {
+                    PSwitch(instant, { instant = it; ui.prefs.instantNotifs = it; Poller.startLink(ctx); ui.toast(if (it) "Connexion en direct activée." else "Connexion en direct désactivée.", "bell") })
+                }
+                SetRow("Optimisation de batterie", if (unr) "PepsGoal n’est pas limité par Android : les relèves continuent en veille." else "Android peut endormir PepsGoal et retarder les messages. Autorise-le à fonctionner en arrière-plan.") {
+                    if (unr) Chip("Sans limite", "check", LocalPal.current.ok) else PButton("Autoriser", { Poller.askUnrestricted(ctx) }, icon = "bell", kind = "primary", small = true)
+                }
+                SetRow("Tester application fermée", "Ferme PepsGoal (bouton d’accueil) : une notification de confirmation arrive à la prochaine relève, en une à deux minutes.") {
+                    PButton("Tester", { ui.prefs.pollTest = System.currentTimeMillis(); ui.toast("Ferme l’application et attends la notification.", "bell") }, icon = "clock", small = true)
+                }
+                val log = remember(tick) { ui.prefs.pollLog }
+                if (log.isNotEmpty()) Column(Modifier.padding(top = 4.dp)) {
+                    Muted("Dernières relèves en arrière-plan", small = true)
+                    log.forEach { Text(it, fontSize = 12.sp, color = LocalPal.current.ink3, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
                 }
             }
             SetRow("Tester un rappel", "Envoie un rappel maintenant") {

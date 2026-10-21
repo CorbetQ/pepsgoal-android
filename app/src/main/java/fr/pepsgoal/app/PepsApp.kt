@@ -55,7 +55,7 @@ class PepsApp : Application() {
         pg.hooks = ui
         cloud.events = object : CloudEvents {
             override fun onlineChanged(online: Boolean) = ui.onlineChanged(online)
-            override fun sessionChanged() { ui.sessionChanged(); Poller.schedule(this@PepsApp) }
+            override fun sessionChanged() { ui.sessionChanged(); Poller.schedule(this@PepsApp); Poller.startLink(this@PepsApp) }
             override fun serverNotifications(fresh: List<Notif>) { if (!foreground) fresh.forEach { Notifier.server(this@PepsApp, it) } }
             override fun incomingMessages(fresh: List<Message>) { Notifier.messages(this@PepsApp, fresh) }
             override fun newPosts(fresh: List<Post>) { if (!foreground) Notifier.posts(this@PepsApp, fresh) }
@@ -83,6 +83,7 @@ class PepsApp : Application() {
         if (store.acct) { cloud.scheduleSync(300); cloud.scheduleSocial(600) }
         pg.checkReminders()
         Notifier.clearReminders(this)
+        Poller.startLink(this)
     }
 
     private fun onBackground() {

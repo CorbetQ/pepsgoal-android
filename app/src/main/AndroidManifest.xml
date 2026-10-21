@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Service de connexion en direct : messages et notifications relevés application fermée -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
@@ -41,6 +45,9 @@
         </activity>
 
         <receiver android:name=".sys.PollReceiver" android:exported="false" />
+        <service android:name=".sys.LinkService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Réception des messages et notifications PepsGoal (le serveur n'envoie que du Web Push : l'application relève elle-même)" />
+        </service>
         <receiver android:name=".sys.ActionReceiver" android:exported="false" />
         <receiver android:name=".sys.AlarmReceiver" android:exported="false" />
         <receiver android:name=".sys.BootReceiver" android:exported="true">

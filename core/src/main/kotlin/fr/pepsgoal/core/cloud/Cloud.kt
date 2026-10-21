@@ -382,7 +382,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         // Un rechargement est déjà en cours : on attend sa fin (les relèves en arrière-plan doivent finir avant de rendre la main)
         if (refreshing?.isActive == true) { refreshAgain = true; refreshing?.join(); return }
         val job = scope.launch {
-            try { doRefreshSocial() } catch (e: ApiError) { if (e.status != 0) events.error(e.message ?: "") } catch (e: Exception) { }
+            try { doRefreshSocial() } catch (e: ApiError) { pollStatus = "erreur serveur ${e.status}"; if (e.status != 0) events.error(e.message ?: "") }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { pollStatus = "erreur : ${e::class.simpleName} ${e.message ?: ""}".trim() }
         }
         refreshing = job
         job.join()
@@ -390,6 +391,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     }
 
     private var pollSig: Int? = null
+    /** Résultat de la dernière relève (diagnostic affiché dans les réglages). */
+    var pollStatus = ""
 
     /**
      * Relève légère (toutes les minutes, y compris en arrière-plan) : notifications, conversations, groupes et
@@ -397,11 +400,11 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
      * (ce qui déclenche les notifications système des nouveautés). Renvoie true si un rechargement a eu lieu.
      */
     suspend fun poll(): Boolean {
-        if (!store.acct) return false
+        if (!store.acct) { pollStatus = "pas de compte"; return false }
         // Application réveillée après un long sommeil : l'état « hors ligne » peut dater (réseau coupé pendant la veille,
         // nouvel essai de connexion jamais exécuté car le processus était gelé) : on revérifie tout de suite
-        if (!store.online) { if (!navOnline) return false; failures = 0; ping() }
-        if (!store.online) return false
+        if (!store.online) { if (!navOnline) { pollStatus = "pas de réseau"; return false }; failures = 0; ping() }
+        if (!store.online) { pollStatus = "serveur injoignable"; return false }
         val sig = try {
             coroutineScope {
                 val n = async { api.get("/v1/notifications") }; val c = async { api.get("/v1/conversations") }
@@ -414,9 +417,10 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
                     f.await().arr("posts").map { it.str("id") + ":" + it.arr("comments").size },
                 ).hashCode()
             }
-        } catch (e: Exception) { return false }
-        if (sig == pollSig) return false
+        } catch (e: Exception) { pollStatus = "erreur : ${e.message ?: e::class.simpleName}"; return false }
+        if (sig == pollSig) { pollStatus = "à jour"; return false }
         pollSig = sig
+        pollStatus = "nouveautés relevées"
         refreshSocial()
         return true
     }
@@ -494,8 +498,11 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         store.rawSave()
         e2e.decryptAll()
         val freshM = db.messages.filter { it.id !in before && it.from != mine && !it.read && !it.readBy.contains(mine) }
-        if (freshM.isNotEmpty() && before.isNotEmpty()) events.incomingMessages(freshM)
-        if (freshP.isNotEmpty() && oldPosts.isNotEmpty() && pulledBefore) events.newPosts(freshP)
+        // Premier chargement social du compte sur cet appareil : l'historique ne déclenche pas de notifications
+        val seenBefore = db.cloud?.socialPulled == true || before.isNotEmpty()
+        if (freshM.isNotEmpty() && seenBefore) events.incomingMessages(freshM)
+        if (freshP.isNotEmpty() && (oldPosts.isNotEmpty() || db.cloud?.socialPulled == true) && pulledBefore) events.newPosts(freshP)
+        db.cloud?.let { if (!it.socialPulled) { it.socialPulled = true; store.rawSave() } }
         store.changed()
         pg.queueBadgeCheck()
     }

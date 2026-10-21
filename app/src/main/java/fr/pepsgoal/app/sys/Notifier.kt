@@ -42,6 +42,7 @@ import fr.pepsgoal.core.model.User
 object Notifier {
     const val CH_REMIND = "reminders"; const val CH_GOALS = "goals"; const val CH_SOCIAL = "social"; const val CH_MSG = "messages"; const val CH_LIVE = "live"; const val CH_OFFICIAL = "official"
     const val KEY_REPLY = "reply"
+    const val CH_LINK = "link"; const val LINK_ID = 11
     private const val GROUP_MSG = "pg.messages"
 
     fun channels(ctx: Context) {
@@ -54,13 +55,22 @@ object Notifier {
             Triple(CH_GOALS, "Progrès et badges", NotificationManager.IMPORTANCE_DEFAULT) to ("goals" to "Paliers, badges, gels de série, binôme"),
             Triple(CH_MSG, "Messages", NotificationManager.IMPORTANCE_HIGH) to ("social" to "Messages privés et groupes (chiffrés de bout en bout)"),
             Triple(CH_SOCIAL, "Amis et feed", NotificationManager.IMPORTANCE_DEFAULT) to ("social" to "Demandes d’amis, encouragements, commentaires, stories"),
-            Triple(CH_OFFICIAL, "PepsGoal Officiel", NotificationManager.IMPORTANCE_DEFAULT) to ("social" to "Nouveautés et messages de la modération")
+            Triple(CH_OFFICIAL, "PepsGoal Officiel", NotificationManager.IMPORTANCE_DEFAULT) to ("social" to "Nouveautés et messages de la modération"),
+            Triple(CH_LINK, "Connexion en arrière-plan", NotificationManager.IMPORTANCE_MIN) to ("social" to "Notification discrète du service qui relève tes messages application fermée (tu peux la masquer ici)")
         ).forEach { (c, gd) ->
             val ch = NotificationChannel(c.first, c.second, c.third).apply { group = gd.first; description = gd.second }
-            if (c.first == CH_LIVE) { ch.setSound(null, null); ch.enableVibration(false) }
+            if (c.first == CH_LIVE || c.first == CH_LINK) { ch.setSound(null, null); ch.enableVibration(false) }
+            if (c.first == CH_LINK) ch.setShowBadge(false)
             nm.createNotificationChannel(ch)
         }
     }
+
+    /** Notification permanente et discrète du service de connexion en direct. */
+    fun link(ctx: Context): android.app.Notification = NotificationCompat.Builder(ctx, CH_LINK).setSmallIcon(R.drawable.ic_notif).setColor(0xFFFF4A12.toInt())
+        .setContentTitle("PepsGoal reste connecté").setContentText("Messages et notifications reçus même application fermée")
+        .setOngoing(true).setSilent(true).setShowWhen(false).setPriority(NotificationCompat.PRIORITY_MIN).setCategory(NotificationCompat.CATEGORY_SERVICE)
+        .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFERRED)
+        .setContentIntent(open(ctx, LINK_ID) { putExtra(MainActivity.EXTRA_TAB, "friends") }).build()
 
     fun allowed(ctx: Context) = NotificationManagerCompat.from(ctx).areNotificationsEnabled()
 

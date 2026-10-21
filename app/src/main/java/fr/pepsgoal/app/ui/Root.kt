@@ -24,6 +24,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
@@ -134,6 +136,7 @@ private fun Shell(ui: AppState) {
         // Contenu des onglets : il défile sous les barres en verre (niveau 1 du flou)
         CompositionLocalProvider(LocalBars provides PaddingValues(top = with(d) { topH.toDp() }, bottom = with(d) { botH.toDp() })) {
             Box(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier)) {
+                remember(ui.tab) { Stagger.reset() }
                 AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(140)) + scaleIn(spring(dampingRatio = .68f, stiffness = 420f), initialScale = .93f) + slideInVertically(spring(dampingRatio = .72f, stiffness = 420f)) { it / 18 }) togetherWith (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 1.02f)) }, label = "tab") { tab ->
                     when (tab) {
                         "goals" -> GoalsScreen(ui)
@@ -147,8 +150,8 @@ private fun Shell(ui: AppState) {
             }
         }
         // Bandeaux givrés sous la barre d'état et la barre de gestes : le contenu qui défile dessous reste lisible
-        EdgeFrost(Modifier.align(Alignment.TopCenter), top = true)
-        EdgeFrost(Modifier.align(Alignment.BottomCenter), top = false)
+        EdgeFrost(Modifier.align(Alignment.TopCenter), top = true, cover = with(d) { topH.toDp() })
+        EdgeFrost(Modifier.align(Alignment.BottomCenter), top = false, cover = with(d) { botH.toDp() })
         Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topH = it.height }) { TopBar(ui) }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) { BottomNav(ui, nav, badges) }
         val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = with(d) { botH.toDp() } + 14.dp)
@@ -158,26 +161,28 @@ private fun Shell(ui: AppState) {
 }
 
 @Composable
-private fun EdgeFrost(modifier: Modifier, top: Boolean) {
+private fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp) {
     val p = LocalPal.current; val haze = LocalHaze.current; val d = LocalDensity.current
     val inset = (if (top) WindowInsets.statusBars else WindowInsets.navigationBars).asPaddingValues().let { if (top) it.calculateTopPadding() else it.calculateBottomPadding() }
-    // Flou progressif : maximal sous la barre système, il s'estompe en douceur vers le contenu (plus haut en bas,
-    // où il passe derrière la barre de navigation flottante)
-    val h = inset + if (top) 46.dp else 88.dp
-    val solid = inset / h
-    val ease = listOf(0f to 1f, .25f to .82f, .5f to .52f, .75f to .2f, 1f to 0f)
-    fun stops(a: Float) = if (top) (listOf(0f to a) + ease.map { (x, k) -> (solid + x * (1 - solid)) to a * k })
-        else (ease.reversed().map { (x, k) -> ((1 - x) * (1 - solid)) to a * k } + listOf(1f to a))
-    fun grad(a: Float) = Brush.verticalGradient(*stops(a).map { (x, k) -> x to p.bg.copy(alpha = k) }.toTypedArray())
+    // Grand voile givré façon iOS : flou maximal sur toute la hauteur de la barre, qui s'estompe ensuite en douceur
+    // vers le contenu, avec un voile laiteux (clair) ou nuit (sombre) dégradé dans le même sens
+    val h = maxOf(cover, inset + 56.dp) + if (top) 30.dp else 22.dp
+    val full = if (top) .5f else .42f
+    val milk = if (p.dark) p.bg else Color.White
+    val k = if (p.dark) .78f else .84f
+    val ramp = listOf(0f to 1f, .2f to .9f, .45f to .62f, .7f to .3f, .88f to .1f, 1f to 0f)
+    val stops = if (top) listOf(0f to k, full * .6f to k * .9f) + ramp.drop(1).map { (x, a) -> (full + x * (1 - full)) to k * .78f * a }
+        else ramp.reversed().dropLast(1).map { (x, a) -> ((1 - x) * (1 - full)) to k * .78f * a } + listOf((1 - full * .6f) to k * .9f, 1f to k)
+    val veil = Brush.verticalGradient(*stops.sortedBy { it.first }.map { (x, a) -> x to milk.copy(alpha = a) }.toTypedArray())
     val box = modifier.fillMaxWidth().height(h)
     if (haze != null && !p.transp && !p.contrast) {
-        val hPx = with(d) { h.toPx() }; val iPx = with(d) { inset.toPx() }
-        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.glassStrong.copy(alpha = .3f))), blurRadius = 26.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+        val hPx = with(d) { h.toPx() }
+        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 34.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
             inputScale = dev.chrisbanes.haze.HazeInputScale.Fixed(.5f)
-            progressive = if (top) dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = iPx, startIntensity = 1f, endY = hPx, endIntensity = 0f, easing = androidx.compose.animation.core.LinearEasing)
-                else dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = 0f, endY = hPx - iPx, endIntensity = 1f, easing = androidx.compose.animation.core.LinearEasing)
-        }.background(grad(if (p.dark) .5f else .62f)))
-    } else Box(box.background(grad(.94f)))
+            progressive = if (top) dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = hPx * full, startIntensity = 1f, endY = hPx, endIntensity = 0f, easing = androidx.compose.animation.core.EaseIn)
+                else dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = 0f, endY = hPx * (1 - full), endIntensity = 1f, easing = androidx.compose.animation.core.EaseOut)
+        }.background(veil))
+    } else Box(box.background(veil))
 }
 
 /** Barre de navigation PepsGoal : pilule en verre flottante, onglet actif repéré par une pastille qui glisse. */
@@ -227,24 +232,46 @@ private fun Fab(desc: String, modifier: Modifier, onClick: () -> Unit) {
 @Composable
 private fun TopBar(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val st = pg.globalStreak(u.id)
-    val shape = RoundedCornerShape(20.dp)
-    Column(Modifier.statusBarsPadding().padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(Modifier.fillMaxWidth().shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E))
-            .glassBg(shape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, shape).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.weight(1f)) { Logo(pg.eggWord(), 19) }
-            if (!ui.pg.store.online) Pi("cloudoff", size = 20.dp, tint = p.ink2)
+    // Barre du haut posée sur le flou progressif : titre de la page, puis pastilles et boutons ronds en verre
+    Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f)) {
+                AnimatedContent(ui.tab, transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(160)) + slideInVertically(spring(dampingRatio = .6f, stiffness = 500f)) { it / 2 }) togetherWith (fadeOut(tween(90)) + slideOutVertically(tween(120)) { -it / 2 }) }, label = "title") { t ->
+                    Text(NAV_TITLES[t] ?: "PepsGoal", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (!ui.pg.store.online) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { Pi("cloudoff", size = 14.dp, tint = p.ink2); Muted("Hors ligne", small = true) }
+            }
             val bump = remember { Animatable(1f) }
             LaunchedEffect(st.n) { if (!p.motion) { bump.snapTo(1.35f); bump.animateTo(1f, spring(dampingRatio = .4f)) } }
-            Row(Modifier.graphicsLayer { scaleX = bump.value; scaleY = bump.value }, verticalAlignment = Alignment.CenterVertically) { Flame(22.dp); Text("${st.n}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp) }
-            Row(Modifier.clip(RoundedCornerShape(10.dp)).clickable { ui.nav("profile") }.padding(2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { Pi("snow", size = 18.dp, tint = p.type("objective").ink); Text("${u.freezes}", fontWeight = FontWeight.ExtraBold) }
-            IconBtn("bell", "Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread())
+            val inter = remember { MutableInteractionSource() }
+            val pill = RoundedCornerShape(50)
+            Row(Modifier.bounce(inter, .9f).height(46.dp).shadow(if (p.transp || p.oled) 0.dp else 10.dp, pill, ambientColor = Color(0x4428186E), spotColor = Color(0x3328186E))
+                .glassBg(pill, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, pill).springClick(inter, label = "Série") { ui.nav("profile") }.padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.graphicsLayer { scaleX = bump.value; scaleY = bump.value }, verticalAlignment = Alignment.CenterVertically) { Flame(22.dp); Text("${st.n}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp) }
+                if (u.freezes > 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { Pi("snow", size = 16.dp, tint = p.type("objective").ink); Text("${u.freezes}", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp) }
+            }
+            RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 21.dp, tint = p.ink) }
+            RoundGlass("Profil", { ui.nav("profile") }) { Av(u, 38.dp) }
         }
         if (!ui.pg.store.online) Note(if (ui.cloud.forceOffline && pg.store.acct) "**Mode hors ligne activé.** Tes objectifs restent disponibles ; tes modifications partiront quand tu repasseras en ligne." else "**Hors ligne.** Tes objectifs restent disponibles sur cet appareil ; les fonctions sociales reviennent avec la connexion.", "cloudoff")
         if (pg.db.sandbox) Note("**Mode démonstration.** Données d’exemple : rien n’est enregistré. Déconnecte-toi pour revenir à ton profil.", "star")
         val now = pg.maintNow(); val next = pg.maintNext()
         if (now != null) Note("**Maintenance en cours**${now.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[now.mode]}${if (now.message.isNotEmpty()) ". ${now.message}" else ""}${if (pg.isAdmin(u)) " (en tant qu’admin, tu n’es pas bloqué)" else ""}", "gauge")
         else if (next != null && next.start - nowMs() < 7 * DAY_MS) Note("Maintenance prévue le ${fmtDT(next.start)}${next.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[next.mode]}.", "clock")
+    }
+}
+
+/** Bouton rond en verre clair avec ombre portée (barre du haut). */
+@Composable
+private fun RoundGlass(desc: String, onClick: () -> Unit, badge: Int = 0, content: @Composable BoxScope.() -> Unit) {
+    val p = LocalPal.current
+    val inter = remember { MutableInteractionSource() }
+    Box {
+        Box(Modifier.bounce(inter, .86f).size(46.dp).shadow(if (p.transp || p.oled) 0.dp else 12.dp, CircleShape, ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
+            .glassBg(CircleShape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, CircleShape).springClick(inter, label = desc, onClick = onClick),
+            contentAlignment = Alignment.Center, content = content)
+        if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-2).dp))
     }
 }
 

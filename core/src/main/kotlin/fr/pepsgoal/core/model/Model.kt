@@ -41,6 +41,8 @@ class Db(
 class CloudState(
     var cursor: Long = 0,
     var pulled: Boolean = false,
+    /** Le social a déjà été chargé une fois : les nouveautés suivantes donnent lieu à des notifications. */
+    var socialPulled: Boolean = false,
     var snapGoals: MutableMap<String, String> = mutableMapOf(),
     var snapCheckins: MutableMap<String, String> = mutableMapOf(),
     var snapSettings: String = ""

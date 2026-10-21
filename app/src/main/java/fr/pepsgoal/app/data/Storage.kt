@@ -88,6 +88,12 @@ class DevicePrefs(context: Context) {
     var notifiedIds: Set<String> get() = p.getStringSet("notified", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("notified", v.toList().takeLast(400).toSet()).apply()
     /** Dernière relève réussie des notifications du serveur en arrière-plan (ms). */
     var lastPoll get() = p.getLong("lastPoll", 0L); set(v) = p.edit().putLong("lastPoll", v).apply()
+    /** Service de connexion en direct (notifications instantanées application fermée). */
+    var instantNotifs get() = p.getBoolean("instantNotifs", true); set(v) = p.edit().putBoolean("instantNotifs", v).apply()
+    /** Journal des dernières relèves en arrière-plan (diagnostic). */
+    var pollLog: List<String> get() = p.getString("pollLog", "")!!.split("\n").filter { it.isNotBlank() }; set(v) = p.edit().putString("pollLog", v.joinToString("\n")).apply()
+    /** Test demandé depuis les réglages : la prochaine relève en arrière-plan envoie une notification de confirmation. */
+    var pollTest get() = p.getLong("pollTest", 0L); set(v) = p.edit().putLong("pollTest", v).apply()
     var voiceRate get() = p.getFloat("voiceRate", 1f); set(v) = p.edit().putFloat("voiceRate", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp).count { it }
 }
