@@ -126,8 +126,8 @@ private fun PerfectFs(ui: AppState, c: Celebration.Perfect) {
         Pop(3) { Text(c.text, textAlign = TextAlign.Center, color = p.ink2) }
         if (c.icons.isNotEmpty()) Pop(4) { Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { c.icons.take(8).forEach { Emoji(it, 34.dp) } } }
         if (c.stats.isNotEmpty()) Pop(5) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                c.stats.forEach { (v, l, pre) -> Column(Modifier.clip(RoundedCornerShape(18.dp)).background(p.glassStrong).padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                c.stats.forEach { (v, l, pre) -> Column(Modifier.fillMaxHeight().clip(RoundedCornerShape(18.dp)).background(p.glassStrong).padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     CountUp(v, pre); Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold) } }
             }
         }
@@ -238,8 +238,8 @@ private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit)
         is Part.Awards -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.forEach { (e, n, d) ->
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .45f)).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Emoji(e, 34.dp); Column { Text(n, color = INK, fontWeight = FontWeight.ExtraBold); Text(d, color = INK.copy(alpha = .75f), fontSize = 13.sp) } } } }
-        is Part.Cells -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.chunked(2).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { (v, l) ->
-            Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .45f)).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        is Part.Cells -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { (v, l) ->
+            Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .45f)).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = INK); Text(l, color = INK, fontSize = 12.sp, textAlign = TextAlign.Center) } } } } }
         is Part.FinalActions -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PButton(if (ui.pg.socialOn()) "Partager mon récap" else "Copier mon récap", { ui.closeFs(); ui.open(Sheet.ShareHub(text = Recaps.shareText(f.st), period = f.p)) }, icon = "share", kind = "primary")

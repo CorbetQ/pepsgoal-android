@@ -185,15 +185,15 @@ fun ShareHubSheet(ui: AppState, m: Sheet.ShareHub) {
         }
     }
     val off = "Fonctions sociales désactivées"
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Opt("feed", "Feed", if (social) "Une publication pour tes amis ou tout le monde" else off, social, Modifier.weight(1f)) { ui.sheet = Sheet.ShareFeed(g?.id, if (g != null) "${pg.statBig(g).v} ${pg.statBig(g).l} pour « ${g.title} »." else text) }
-        Opt("image", "Story", if (canStory) (if (g != null) "Ta progression, 24 h pour tes amis" else "Ton récap, 24 h pour tes amis") else if (social) "Pas de story pour ce partage" else off, canStory, Modifier.weight(1f)) {
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Opt("feed", "Feed", if (social) "Une publication pour tes amis ou tout le monde" else off, social, Modifier.weight(1f).fillMaxHeight()) { ui.sheet = Sheet.ShareFeed(g?.id, if (g != null) "${pg.statBig(g).v} ${pg.statBig(g).l} pour « ${g.title} »." else text) }
+        Opt("image", "Story", if (canStory) (if (g != null) "Ta progression, 24 h pour tes amis" else "Ton récap, 24 h pour tes amis") else if (social) "Pas de story pour ce partage" else off, canStory, Modifier.weight(1f).fillMaxHeight()) {
             if (!pg.socialBlocked("de publier une story")) ui.sheet = Sheet.StoryNew(if (g != null) "progress" else "recap", m.period ?: "week", g?.id)
         }
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Opt("comment", "Message", if (social) "À un ami ou à un groupe, chiffré" else off, social, Modifier.weight(1f)) { ui.sheet = Sheet.ShareHub(m.goalId, m.text, m.period, "msg") }
-        Opt("ext", "Externe", "Autres applications de ton téléphone", true, Modifier.weight(1f)) { shareExternal(ctx, text) }
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Opt("comment", "Message", if (social) "À un ami ou à un groupe, chiffré" else off, social, Modifier.weight(1f).fillMaxHeight()) { ui.sheet = Sheet.ShareHub(m.goalId, m.text, m.period, "msg") }
+        Opt("ext", "Externe", "Autres applications de ton téléphone", true, Modifier.weight(1f).fillMaxHeight()) { shareExternal(ctx, text) }
     }
 }
 

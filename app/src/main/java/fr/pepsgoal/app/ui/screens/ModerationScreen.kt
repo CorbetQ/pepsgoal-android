@@ -68,12 +68,17 @@ fun StatusChips(ui: AppState, x: User) {
 @Composable
 private fun Tiles(items: List<Triple<String, String, String?>>) {
     val p = LocalPal.current
-    FlowRowCompat(gap = 8.dp) {
-        items.forEach { (v, l, sub) ->
-            Glass(Modifier.widthIn(min = 100.dp), pad = 12.dp, radius = 18.dp, fill = false) {
-                Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
-                Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold)
-                sub?.let { Text(it, fontSize = 11.sp, color = p.ink3) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (v, l, sub) ->
+                    Glass(Modifier.weight(1f).fillMaxHeight(), pad = 12.dp, radius = 18.dp) {
+                        FitText(v, size = 20, min = 11, weight = FontWeight.ExtraBold, family = Unbounded)
+                        Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold)
+                        sub?.let { Text(it, fontSize = 11.sp, color = p.ink3) }
+                    }
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }

@@ -152,9 +152,18 @@ private fun Appearance(ui: AppState, u: User) {
                 PSwitch(!s.hideOngoing, { s.hideOngoing = !it; save(ui); ui.toast(if (it) "Carte « En cours » affichée sur l’accueil." else "Carte « En cours » masquée.", "list") })
             }
             SectionTitle("Flou du verre givré")
-            Muted(if (ui.prefs.transp || ui.prefs.contrast) "Sans effet : la transparence est désactivée dans Accessibilité." else "Transparence et flou des panneaux : « Très faible » les rend presque opaques", small = true)
+            Muted(if (ui.prefs.transp || ui.prefs.contrast) "Sans effet : la transparence est désactivée dans Accessibilité." else "Intensité du flou de l’arrière-plan derrière les panneaux", small = true)
             Spacer(Modifier.height(8.dp))
-            FlowRowCompat(gap = 6.dp) { BLURS.forEach { (k, l) -> FChip(l, s.glassBlur == k, { s.glassBlur = k; save(ui); ui.toast("Verre givré : ${l.lowercase()}.", "palette") }) } }
+            FlowRowCompat(gap = 6.dp) { BLURS.forEach { (k, l) -> FChip(l, s.glassBlur == k, { s.glassBlur = k; save(ui); ui.toast("Flou du verre : ${l.lowercase()}.", "palette") }) } }
+            Spacer(Modifier.height(14.dp))
+            SectionTitle("Opacité du verre givré")
+            Muted(if (ui.prefs.transp || ui.prefs.contrast) "Sans effet : la transparence est désactivée dans Accessibilité." else "« Faible » laisse voir l’arrière-plan, « Fort » rend les panneaux presque opaques. Réglage propre à cet appareil.", small = true)
+            Spacer(Modifier.height(8.dp))
+            FlowRowCompat(gap = 6.dp) {
+                listOf("low" to "Faible", "mid" to "Moyen", "high" to "Fort").forEach { (k, l) ->
+                    FChip(l, ui.prefs.glassOpacity == k, { ui.prefs.glassOpacity = k; ui.themeTick++; ui.toast("Opacité du verre : ${l.lowercase()}.", "palette") })
+                }
+            }
         }
         Glass(Modifier.alpha(if (ui.prefs.materialYou && dynOk) .55f else 1f)) {
             SectionTitle("Couleur d'accent")
@@ -540,11 +549,7 @@ private fun DataSettings(ui: AppState, u: User) {
             }
         }
         val mine = remember(ui.rev) { listOf(pg.db.goals.count { it.userId == u.id }, pg.db.checkins.count { it.userId == u.id }, pg.db.posts.count { it.userId == u.id }, pg.db.messages.count { it.from == u.id || it.to == u.id }) }
-        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Objectifs", "Validations", "Publications", "Messages").forEachIndexed { i, l ->
-                Glass(Modifier.weight(1f).fillMaxHeight(), pad = 10.dp, radius = 18.dp) { FitText("${mine[i]}", size = 20, min = 12, weight = FontWeight.ExtraBold, family = Unbounded); FitText(l, size = 11, min = 7, color = p.ink2) }
-            }
-        }
+        StatGrid(listOf("Objectifs", "Validations", "Publications", "Messages").mapIndexed { i, l -> "${mine[i]}" to l })
         Glass {
             SetRow("Exporter mes données", "Objectifs, validations, publications, stories et messages (déchiffrés sur cet appareil), en JSON, à partager ou garder.") {
                 PButton("Exporter", {

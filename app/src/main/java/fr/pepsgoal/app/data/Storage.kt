@@ -75,6 +75,8 @@ class DevicePrefs(context: Context) {
     var transp get() = p.getBoolean("transp", false); set(v) = p.edit().putBoolean("transp", v).apply()
     /** Couleurs Material You (palette du fond d'écran) sur toute l'interface. */
     var materialYou get() = p.getBoolean("materialYou", false); set(v) = p.edit().putBoolean("materialYou", v).apply()
+    /** Opacité des panneaux en verre givré : « low », « mid » ou « high ». */
+    var glassOpacity get() = p.getString("glassOpacity", "mid") ?: "mid"; set(v) = p.edit().putString("glassOpacity", v).apply()
     /** Activités en cours (Live Updates) : minuteur, période en cours, fin de journée. */
     var liveUpdates get() = p.getBoolean("liveUpdates", true); set(v) = p.edit().putBoolean("liveUpdates", v).apply()
     /** Activité en cours masquée par l'utilisateur pour la journée (« type|date »). */

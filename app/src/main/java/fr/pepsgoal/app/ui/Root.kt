@@ -70,7 +70,7 @@ fun PepsRoot(ui: AppState) {
     val pg = ui.pg; val u = pg.me(); val s = u?.settings
     val wx = Wx.cached(ctx, s?.weather)
     val input = ThemeInput(s?.theme ?: "system", s?.accent ?: 0, s?.accentCustom, s?.glassBlur ?: "mid", ui.prefs.materialYou,
-        ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion, ui.prefs.transp, Weather.skyDark(wx?.data))
+        ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion, ui.prefs.transp, Weather.skyDark(wx?.data), ui.prefs.glassOpacity)
     LaunchedEffect(s?.weather?.lat, s?.weather?.lon) { if (s?.weather != null) Wx.ensure(ctx, ui, false) }
     PepsTheme(input) {
         val p = LocalPal.current
