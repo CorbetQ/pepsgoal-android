@@ -1,0 +1,88 @@
+plugins {
+    id("com.android.application")
+    kotlin("android")
+    kotlin("plugin.compose")
+    kotlin("plugin.serialization")
+}
+
+android {
+    namespace = "fr.pepsgoal.app"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "fr.pepsgoal.app"
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 300
+        versionName = "3.0.0"
+        // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
+        buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
+    }
+
+    signingConfigs {
+        // Signature de publication : fournie par la CI ou Android Studio (variables d'environnement), sinon clé de débogage
+        create("release") {
+            val ks = System.getenv("PEPSGOAL_KEYSTORE")
+            if (ks != null && file(ks).exists()) {
+                storeFile = file(ks)
+                storePassword = System.getenv("PEPSGOAL_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("PEPSGOAL_KEY_ALIAS")
+                keyPassword = System.getenv("PEPSGOAL_KEY_PASSWORD")
+            } else initWith(getByName("debug"))
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+}
+
+kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
+
+dependencies {
+    implementation(project(":core"))
+
+    val composeBom = platform("androidx.compose:compose-bom:2025.06.01")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.animation:animation")
+    implementation("androidx.compose.material3:material3")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
+    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
+    implementation("androidx.lifecycle:lifecycle-process:2.9.1")
+    implementation("androidx.work:work-runtime-ktx:2.10.2")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.exifinterface:exifinterface:1.4.1")
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-material3:1.1.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
+}
