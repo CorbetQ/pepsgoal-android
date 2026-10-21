@@ -104,9 +104,9 @@ fun UserSheet(ui: AppState, id: String) {
         }, icon = "ban", kind = "ghost", small = true)
         if (pg.isAdmin(u)) PButton("Modérer", { ui.open(Sheet.ModUser(x.id)) }, icon = "shield", kind = "danger", small = true)
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("${st.n}" to "Série", "${lv.pts}" to "Flammes", "${pg.friendsOf(x.id).size}" to "Amis").forEach { (v, l) ->
-            Glass(Modifier.weight(1f), pad = 10.dp, radius = 16.dp) { Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp); Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold) }
+            Glass(Modifier.weight(1f).fillMaxHeight(), pad = 10.dp, radius = 16.dp) { Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp); Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold) }
         }
     }
     SectionTitle("Objectifs visibles")

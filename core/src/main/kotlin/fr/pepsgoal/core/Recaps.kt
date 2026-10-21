@@ -231,7 +231,7 @@ object Recaps {
         add(listOf(Part.Eyebrow("Ton profil ${PERIOD_WORD[p]}"), Part.Emoji(st.persona.e, "spin"), Part.Title(st.persona.n, big = true), Part.Text(st.persona.d)), st.persona.e)
         add(listOf(Part.Eyebrow("En résumé"), Part.Title(tt), Part.Cells(listOf("${st.n}" to "validations", "${st.pts}" to "flammes", "${st.best}" to "meilleure série", "${st.reg}%" to "régularité")),
             Part.Text("Profil : **${st.persona.n} ${st.persona.e}**"),
-            Part.Joke(pick(listOf("Rendez-vous ${if (r.past) "pour la prochaine" else "à la fin de la"} $noun pour la suite ✌️", "Même heure, même endroit, encore plus de flammes ?", "Garde ce récap au chaud, tu l’as mérité."))), Part.FinalActions), "🎉", "final")
+            Part.Joke(pick(listOf("Rendez-vous ${if (r.past) mapOf("week" to "la semaine prochaine", "month" to "le mois prochain", "year" to "l’année prochaine")[p] else mapOf("week" to "à la fin de la semaine", "month" to "à la fin du mois", "year" to "à la fin de l’année")[p]} pour la suite ✌️", "Même heure, même endroit, encore plus de flammes ?", "Garde ce récap au chaud, tu l’as mérité."))), Part.FinalActions), "🎉", "final")
         return out to st
     }
 }

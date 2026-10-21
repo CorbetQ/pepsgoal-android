@@ -47,6 +47,9 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.shadow
 import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -132,12 +135,28 @@ private fun Shell(ui: AppState) {
                 }
             }
         }
+        // Bandeaux givrés sous la barre d'état et la barre de gestes : le contenu qui défile dessous reste lisible
+        EdgeFrost(Modifier.align(Alignment.TopCenter), top = true)
+        EdgeFrost(Modifier.align(Alignment.BottomCenter), top = false)
         Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topH = it.height }) { TopBar(ui) }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) { BottomNav(ui, nav, badges) }
         val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = with(d) { botH.toDp() } + 14.dp)
         if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabMod) { ui.open(Sheet.GoalForm()) }
         else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabMod) { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }
     }
+}
+
+@Composable
+private fun EdgeFrost(modifier: Modifier, top: Boolean) {
+    val p = LocalPal.current; val haze = LocalHaze.current
+    val inset = (if (top) WindowInsets.statusBars else WindowInsets.navigationBars).asPaddingValues().let { if (top) it.calculateTopPadding() else it.calculateBottomPadding() }
+    if (inset == 0.dp) return
+    val h = inset + 22.dp
+    val solid = inset / h
+    val fade = if (top) Brush.verticalGradient(0f to Color.Black, solid to Color.Black, 1f to Color.Transparent) else Brush.verticalGradient(0f to Color.Transparent, 1f - solid to Color.Black, 1f to Color.Black)
+    val box = modifier.fillMaxWidth().height(h)
+    if (haze != null && !p.transp && !p.contrast) Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.glassStrong.copy(alpha = .55f))), blurRadius = 22.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) { mask = fade })
+    else Box(box.background(if (top) Brush.verticalGradient(0f to p.bg, solid to p.bg.copy(alpha = .9f), 1f to Color.Transparent) else Brush.verticalGradient(0f to Color.Transparent, 1f - solid to p.bg.copy(alpha = .9f), 1f to p.bg)))
 }
 
 /** Barre de navigation PepsGoal : pilule en verre flottante, onglet actif repéré par une pastille qui glisse. */

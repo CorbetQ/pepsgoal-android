@@ -137,11 +137,12 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
 }
 
 @Composable
-fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = 18.dp, border: Color? = null, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = 18.dp, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     val shape = RoundedCornerShape(radius)
     Column(
-        modifier.shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E))
+        // Toute la largeur disponible par défaut : une carte au contenu court reste alignée sur les autres
+        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E))
             .glassBg(shape, strong).border(1.dp, border ?: if (p.contrast) p.line else p.glassEdge, shape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(pad),
         content = content

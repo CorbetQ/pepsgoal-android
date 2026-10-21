@@ -540,9 +540,9 @@ private fun DataSettings(ui: AppState, u: User) {
             }
         }
         val mine = remember(ui.rev) { listOf(pg.db.goals.count { it.userId == u.id }, pg.db.checkins.count { it.userId == u.id }, pg.db.posts.count { it.userId == u.id }, pg.db.messages.count { it.from == u.id || it.to == u.id }) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Objectifs", "Validations", "Publications", "Messages").forEachIndexed { i, l ->
-                Glass(Modifier.weight(1f), pad = 10.dp, radius = 18.dp) { FitText("${mine[i]}", size = 20, min = 12, weight = FontWeight.ExtraBold, family = Unbounded); FitText(l, size = 11, min = 7, color = p.ink2) }
+                Glass(Modifier.weight(1f).fillMaxHeight(), pad = 10.dp, radius = 18.dp) { FitText("${mine[i]}", size = 20, min = 12, weight = FontWeight.ExtraBold, family = Unbounded); FitText(l, size = 11, min = 7, color = p.ink2) }
             }
         }
         Glass {
