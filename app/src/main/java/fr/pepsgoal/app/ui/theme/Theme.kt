@@ -61,7 +61,7 @@ data class Pal(
 
 val LocalPal = staticCompositionLocalOf<Pal> { error("Pal") }
 
-private val TYPE_LIGHT = mapOf(
+internal val TYPE_LIGHT = mapOf(
     "objective" to ("#22D3FF" to "#00627E"), "deadline" to ("#FF4FA3" to "#B0005A"), "routine" to ("#B6FF2E" to "#3A7300"),
     "abstinence" to ("#A98BFF" to "#5530CF"), "monthly" to ("#FFD23F" to "#7A4E00"), "limit" to ("#FF8A3D" to "#A33D00"),
     "duration" to ("#2EF2B0" to "#00704F"), "project" to ("#4D9BFF" to "#0B4FC2"), "measure" to ("#FF7AD9" to "#A3007A"),

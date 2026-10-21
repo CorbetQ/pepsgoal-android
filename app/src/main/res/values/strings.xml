@@ -3,6 +3,12 @@
     <string name="app_name">PepsGoal</string>
     <string name="widget_name">Ta journée</string>
     <string name="widget_desc">Ta série et tes validations du jour, à valider d’un geste</string>
+    <string name="widget_streak_name">Ta série</string>
+    <string name="widget_streak_desc">Ta flamme, le nombre de jours de série et ta semaine</string>
+    <string name="widget_progress_name">Ta progression</string>
+    <string name="widget_progress_desc">Validations du jour et progression vers le niveau suivant</string>
+    <string name="widget_quick_name">Accès rapide</string>
+    <string name="widget_quick_desc">Nouvel objectif, journée, messages et feed en un geste</string>
     <string name="sc_new">Nouvel objectif</string>
     <string name="sc_new_long">Créer un nouvel objectif</string>
     <string name="sc_today">Aujourd’hui</string>

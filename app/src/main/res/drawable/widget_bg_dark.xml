@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fond des widgets (thème sombre) : nuit bleutée de l'application -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="28dp" />
+    <gradient android:angle="300" android:startColor="#FF22245A" android:centerColor="#FF15173C" android:endColor="#FF0B0C24" />
+    <stroke android:width="1dp" android:color="#33FFFFFF" />
+</shape>

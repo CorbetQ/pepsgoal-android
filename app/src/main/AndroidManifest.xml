@@ -68,6 +68,24 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today" />
         </receiver>
+        <receiver android:name=".sys.StreakWidgetReceiver" android:exported="true" android:label="@string/widget_streak_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_streak" />
+        </receiver>
+        <receiver android:name=".sys.ProgressWidgetReceiver" android:exported="true" android:label="@string/widget_progress_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_progress" />
+        </receiver>
+        <receiver android:name=".sys.QuickWidgetReceiver" android:exported="true" android:label="@string/widget_quick_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick" />
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"
