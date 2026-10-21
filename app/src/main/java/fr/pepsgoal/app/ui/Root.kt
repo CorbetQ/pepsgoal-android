@@ -160,31 +160,6 @@ private fun Shell(ui: AppState) {
     }
 }
 
-@Composable
-private fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp) {
-    val p = LocalPal.current; val haze = LocalHaze.current; val d = LocalDensity.current
-    val inset = (if (top) WindowInsets.statusBars else WindowInsets.navigationBars).asPaddingValues().let { if (top) it.calculateTopPadding() else it.calculateBottomPadding() }
-    // Grand voile givré façon iOS : flou maximal sur toute la hauteur de la barre, qui s'estompe ensuite en douceur
-    // vers le contenu, avec un voile laiteux (clair) ou nuit (sombre) dégradé dans le même sens
-    val h = maxOf(cover, inset + 56.dp) + if (top) 30.dp else 22.dp
-    val full = if (top) .5f else .42f
-    val milk = if (p.dark) p.bg else Color.White
-    val k = if (p.dark) .78f else .84f
-    val ramp = listOf(0f to 1f, .2f to .9f, .45f to .62f, .7f to .3f, .88f to .1f, 1f to 0f)
-    val stops = if (top) listOf(0f to k, full * .6f to k * .9f) + ramp.drop(1).map { (x, a) -> (full + x * (1 - full)) to k * .78f * a }
-        else ramp.reversed().dropLast(1).map { (x, a) -> ((1 - x) * (1 - full)) to k * .78f * a } + listOf((1 - full * .6f) to k * .9f, 1f to k)
-    val veil = Brush.verticalGradient(*stops.sortedBy { it.first }.map { (x, a) -> x to milk.copy(alpha = a) }.toTypedArray())
-    val box = modifier.fillMaxWidth().height(h)
-    if (haze != null && !p.transp && !p.contrast) {
-        val hPx = with(d) { h.toPx() }
-        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 34.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
-            inputScale = dev.chrisbanes.haze.HazeInputScale.Fixed(.5f)
-            progressive = if (top) dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = hPx * full, startIntensity = 1f, endY = hPx, endIntensity = 0f, easing = androidx.compose.animation.core.EaseIn)
-                else dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = 0f, endY = hPx * (1 - full), endIntensity = 1f, easing = androidx.compose.animation.core.EaseOut)
-        }.background(veil))
-    } else Box(box.background(veil))
-}
-
 /** Barre de navigation PepsGoal : pilule en verre flottante, onglet actif repéré par une pastille qui glisse. */
 @Composable
 private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>, badges: Map<String, Int>) {

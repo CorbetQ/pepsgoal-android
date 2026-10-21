@@ -57,6 +57,13 @@ import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.layout.onSizeChanged
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
@@ -120,37 +127,18 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
 
     // Fond aux couleurs de l'interlocuteur (couleur de son avatar) ou de PepsGoal pour un groupe
     val cc = x?.let { hex((fr.pepsgoal.core.ACCENTS.getOrNull(it.avatar.color) ?: fr.pepsgoal.core.ACCENTS[0]).c[1]) } ?: p.flame
+    // Les messages défilent sous un en-tête et une zone de saisie flottants, sur un voile givré progressif
+    val chatHaze = dev.chrisbanes.haze.rememberHazeState()
+    val dn = androidx.compose.ui.platform.LocalDensity.current
+    var headH by remember { mutableIntStateOf(0) }; var footH by remember { mutableIntStateOf(0) }
+    remember(key) { Stagger.reset() }
     Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
-        PageBackdrop(cc, p.pink)
-        Column(Modifier.fillMaxSize().imePadding()) {
-            // En-tête
-            Row(Modifier.fillMaxWidth().shadow(if (p.transp) 0.dp else 12.dp, androidx.compose.ui.graphics.RectangleShape, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E)).background(p.glassStrong).statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconBtn("chevronleft", "Retour", { ui.back() }, plain = true)
-                Row(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable { if (g != null) ui.open(Sheet.GroupInfo(g.id)) else ui.open(Sheet.User(x!!.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (g != null) GroupAv(g.emoji, 40) else Av(x, 40.dp)
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(g?.name ?: x!!.name, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (x != null && pg.isOfficial(x)) Verified()
-                            if (x?.demo == true) Chip("démo")
-                        }
-                        Muted(if (g != null) "${pl(g.members.size, "membre", "membres")} · infos et membres" else if (pg.isOfficial(x)) "Compte officiel" else "@${x!!.username}", small = true, maxLines = 1)
-                    }
-                }
-                if (g != null || !pg.isOfficial(x)) IconBtn("lock", "Chiffrement de bout en bout : en savoir plus", { e2eOpen = !e2eOpen }, plain = true, tint = if (e2eOpen) p.flame else null)
-            }
-            AnimatedVisibility(e2eOpen) {
-                Note((if (g != null) "Groupe chiffré de bout en bout : une clé propre au groupe, présente uniquement sur les appareils de ses membres." else "Chiffrée de bout en bout : une clé propre à votre paire, présente uniquement sur vos appareils.") +
-                    " Personne d’autre, pas même PepsGoal, ne peut lire vos messages.${safety?.let { " Code de sécurité : **$it** (comparez-le de vive voix)." } ?: ""}", "lock", Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
-            }
-            if (pg.store.acct && !ui.cloud.e2e.hasVault() && (g != null || !pg.isOfficial(x))) Glass(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), pad = 12.dp) {
-                Text(rich("**Retrouve tes messages sur tous tes appareils**"), fontSize = 14.sp)
-                Muted("Confirme ton mot de passe une seule fois : tes clés de conversation seront synchronisées, chiffrées, entre tes appareils.", Modifier.padding(bottom = 8.dp), small = true)
-                VaultForm(ui)
-            }
+        Box(Modifier.fillMaxSize().then(if (!p.transp) Modifier.hazeSource(chatHaze, zIndex = 0f) else Modifier)) { PageBackdrop(cc, p.pink) }
+        Box(Modifier.fillMaxSize().imePadding()) {
             // Messages
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (list.isEmpty()) item("empty") { Muted(if (g != null) "Aucun message pour l’instant. Dis bonjour au groupe !" else "Aucun message pour l'instant. Lance la conversation !", Modifier.fillMaxWidth().padding(top = 30.dp), small = true, center = true) }
+            LazyColumn(Modifier.fillMaxSize().then(if (!p.transp) Modifier.hazeSource(chatHaze, zIndex = 1f) else Modifier), state,
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = with(dn) { headH.toDp() } + 8.dp, bottom = with(dn) { footH.toDp() } + 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (list.isEmpty()) item("empty") { Muted(if (g != null) "Aucun message pour l’instant. Dis bonjour au groupe !" else "Aucun message pour l'instant. Lance la conversation !", Modifier.fillMaxWidth().padding(top = 30.dp), small = true, center = true) }
                 var lastDay = ""; var lastFrom = ""
                 list.forEach { m ->
                     val d = ymd(m.at)
@@ -172,7 +160,41 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 }
                 item("end") { Spacer(Modifier.height(4.dp)) }
             }
+            EdgeFrost(Modifier.align(Alignment.TopCenter), top = true, cover = with(dn) { headH.toDp() }, haze = if (p.transp) null else chatHaze)
+            EdgeFrost(Modifier.align(Alignment.BottomCenter), top = false, cover = with(dn) { footH.toDp() }, haze = if (p.transp) null else chatHaze)
+            Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { headH = it.height }) {
+            // En-tête
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconBtn("chevronleft", "Retour", { ui.back() }, size = 44.dp)
+                val headInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val pill = RoundedCornerShape(26.dp)
+                Row(Modifier.weight(1f).bounce(headInter, .97f).shadow(if (p.transp) 0.dp else 12.dp, pill, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
+                    .clip(pill).background(p.glassStrong).border(1.dp, p.glassEdge, pill)
+                    .springClick(headInter) { if (g != null) ui.open(Sheet.GroupInfo(g.id)) else ui.open(Sheet.User(x!!.id)) }.padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (g != null) GroupAv(g.emoji, 40) else Av(x, 40.dp)
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(g?.name ?: x!!.name, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (x != null && pg.isOfficial(x)) Verified()
+                            if (x?.demo == true) Chip("démo")
+                        }
+                        Muted(if (g != null) "${pl(g.members.size, "membre", "membres")} · infos et membres" else if (pg.isOfficial(x)) "Compte officiel" else "@${x!!.username}", small = true, maxLines = 1)
+                    }
+                }
+                if (g != null || !pg.isOfficial(x)) IconBtn("lock", "Chiffrement de bout en bout : en savoir plus", { e2eOpen = !e2eOpen }, size = 44.dp, tint = if (e2eOpen) p.flame else null)
+            }
+            AnimatedVisibility(e2eOpen) {
+                Note((if (g != null) "Groupe chiffré de bout en bout : une clé propre au groupe, présente uniquement sur les appareils de ses membres." else "Chiffrée de bout en bout : une clé propre à votre paire, présente uniquement sur vos appareils.") +
+                    " Personne d’autre, pas même PepsGoal, ne peut lire vos messages.${safety?.let { " Code de sécurité : **$it** (comparez-le de vive voix)." } ?: ""}", "lock", Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+            }
+            if (pg.store.acct && !ui.cloud.e2e.hasVault() && (g != null || !pg.isOfficial(x))) Glass(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), pad = 12.dp) {
+                Text(rich("**Retrouve tes messages sur tous tes appareils**"), fontSize = 14.sp)
+                Muted("Confirme ton mot de passe une seule fois : tes clés de conversation seront synchronisées, chiffrées, entre tes appareils.", Modifier.padding(bottom = 8.dp), small = true)
+                VaultForm(ui)
+            }
+            }
             // Bas : saisie ou statut
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { footH = it.height }) {
             val banned = pg.isBanned(u)
             val status = when {
                 x != null && pg.isOfficial(x) -> "Compte officiel : il ne reçoit pas de réponses. Pour contester une décision de modération, utilise la demande de débannissement dans le Feed."
@@ -183,10 +205,12 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 !pg.store.online -> "Hors ligne : la messagerie revient avec la connexion."
                 else -> null
             }
-            if (status != null) Row(Modifier.fillMaxWidth().background(p.glassStrong).navigationBarsPadding().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (status != null) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp).shadow(if (p.transp) 0.dp else 14.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
+                .clip(RoundedCornerShape(22.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(22.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (status == "blocked") { Muted("Tu as bloqué ce compte.", Modifier.weight(1f), small = true); PButton("Débloquer", { ui.run("${x!!.name} est débloqué.") { ui.cloud.unblock(x.id) } }, kind = "ghost", small = true) }
                 else Muted(status, small = true)
             } else Composer(ui, u, g?.members, replyTo, { replyTo = null }, send)
+            }
         }
     } }
     photoView?.let { b -> PhotoViewer(b) { photoView = null } }
@@ -207,8 +231,15 @@ private fun MessageRow(
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
         who?.let { Text(it, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 10.dp, top = 6.dp)) }
         val shape = RoundedCornerShape(20.dp, 20.dp, if (mine) 6.dp else 20.dp, if (mine) 20.dp else 6.dp)
-        val bg = when { m.official -> p.type("objective").c.copy(alpha = .22f); mine -> p.flame.copy(alpha = if (p.materialYou) .45f else .32f); else -> p.glassStrong }
-        Column(Modifier.widthIn(max = 300.dp).clip(shape).background(bg).then(if (mentioned) Modifier.border(2.dp, p.flame2, shape) else Modifier)
+        // Bulles en relief : ombre douce, dégradé (les miennes aux couleurs de PepsGoal), reflet en haut ; arrivée à ressort
+        val bg: Brush = when {
+            m.official -> Brush.linearGradient(listOf(p.type("objective").c.copy(alpha = .3f), p.type("period").c.copy(alpha = .2f)))
+            mine -> Brush.linearGradient(listOf(p.flame2.copy(alpha = if (p.materialYou) .5f else .38f), p.pink.copy(alpha = if (p.materialYou) .45f else .32f)))
+            else -> SolidColor(p.glassStrong)
+        }
+        Column(Modifier.widthIn(max = 300.dp).msgEnter(mine).shadow(if (p.transp) 0.dp else 6.dp, shape, ambientColor = Color(0x3328186E), spotColor = if (mine) p.flame.copy(alpha = .5f) else Color(0x4428186E))
+            .clip(shape).background(if (p.contrast) SolidColor(p.glassStrong) else bg)
+            .then(if (p.contrast || p.transp) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .06f else .22f), .5f to Color.Transparent))).then(if (mentioned) Modifier.border(2.dp, p.flame2, shape) else Modifier)
             .combinedClickable(enabled = canAct, onClick = {}, onLongClick = onMenu, onLongClickLabel = "Réagir ou répondre").padding(if (kind == "photo") 4.dp else 12.dp, if (kind == "photo") 4.dp else 9.dp)) {
             if (m.official) OFFICIAL_TAGS[m.tag]?.let { (l, ic) -> Chip(l, ic, p.type("objective").c, modifier = Modifier.padding(bottom = 6.dp)) }
             when {
@@ -357,7 +388,11 @@ private fun Composer(ui: AppState, u: User, members: List<String>?, replyTo: Mes
     LaunchedEffect(Voice.recording) { while (Voice.recording) { if (!Voice.tick()) { Voice.stop(false)?.let { (d, dur, w) -> sendVoice(send, d, dur, w) } }; delay(100) } }
     DisposableEffect(Unit) { onDispose { Voice.stop(true) } }
 
-    Column(Modifier.fillMaxWidth().background(p.glassStrong).navigationBarsPadding().padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Zone de saisie : carte de verre flottante au-dessus des messages
+    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)
+        .shadow(if (p.transp) 0.dp else 16.dp, RoundedCornerShape(26.dp), ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
+        .clip(RoundedCornerShape(26.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(26.dp)).padding(8.dp)
+        .animateContentSize(spring(dampingRatio = .75f, stiffness = 500f)), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (Voice.recording) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(12.dp).clip(CircleShape).background(p.danger))
@@ -460,5 +495,19 @@ private fun ChatPollForm(cancel: () -> Unit, submit: (String, List<String>, Bool
                 if (err == null) submit(q.trim(), list, multi)
             }, icon = "send", kind = "primary", small = true)
         }
+    }
+}
+
+/** Arrivée d'une bulle : elle glisse depuis son côté et grandit avec un rebond. */
+@Composable
+private fun Modifier.msgEnter(mine: Boolean): Modifier {
+    val motionOff = LocalPal.current.motion
+    val a = remember { androidx.compose.animation.core.Animatable(if (motionOff) 1f else 0f) }
+    LaunchedEffect(Unit) { if (a.value < 1f) { delay(Stagger.next() / 2); a.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .55f, stiffness = 320f)) } }
+    return this.graphicsLayer {
+        val v = a.value
+        alpha = v.coerceIn(0f, 1f); translationX = (1f - v) * (if (mine) 56.dp else (-56).dp).toPx()
+        val sc = .82f + .18f * v; scaleX = sc; scaleY = sc
+        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(if (mine) 1f else 0f, 1f)
     }
 }

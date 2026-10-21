@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,7 @@ import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.sys.LiveUpdates
 import fr.pepsgoal.app.sys.Notifier
 import fr.pepsgoal.app.sys.Poller
+import fr.pepsgoal.app.sys.Updater
 import fr.pepsgoal.app.sys.Reminders
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
@@ -661,6 +663,7 @@ private fun HelpSettings(ui: AppState) {
     val ctx = LocalContext.current
     val open = { url: String -> try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { ui.toast("Aucune application pour ouvrir ce lien.", "x") } }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        UpdateCard(ui)
         Glass {
             SetRow("Tutoriel", "Revoir les bases de PepsGoal") { PButton("Revoir", { ui.open(Sheet.Tuto(0)) }, small = true, leading = { Flame(18.dp) }) }
             SetRow("Notes de version", "Les nouveautés de chaque version de PepsGoal") { PButton("Voir", { ui.open(Sheet.Notes) }, icon = "list", small = true) }
@@ -675,6 +678,69 @@ private fun HelpSettings(ui: AppState) {
             SetRow("Mentions légales", "Éditeur, hébergement, propriété intellectuelle, crédits") { PButton("Lire", { ui.open(Sheet.Legal("mentions")) }, icon = "book", small = true) }
             SetRow("Charte de confidentialité", "Données utilisées, stockage, partage et tes droits") { PButton("Lire", { ui.open(Sheet.Legal("privacy")) }, icon = "lock", small = true) }
             SetRow("Licence MIT", "Licence du logiciel PepsGoal et des composants qu’il utilise") { PButton("Lire", { ui.open(Sheet.Legal("license")) }, icon = "book", small = true) }
+        }
+    }
+}
+
+/** Mises à jour intégrées : recherche, téléchargement et installation de la dernière version publiée. */
+@Composable
+private fun UpdateCard(ui: AppState) {
+    val ctx = LocalContext.current; val p = LocalPal.current
+    var rel by remember { mutableStateOf<Updater.Release?>(null) }
+    var state by remember { mutableStateOf("idle") } // idle, checking, none, available, downloading, ready, error
+    var prog by remember { mutableFloatStateOf(0f) }
+    var file by remember { mutableStateOf<java.io.File?>(null) }
+    var auto by remember { mutableStateOf(ui.prefs.autoUpdate) }
+    val check: () -> Unit = {
+        state = "checking"
+        ui.scope.launch {
+            val r = Updater.latest()
+            rel = r; ui.prefs.updateChecked = System.currentTimeMillis()
+            state = when { r == null -> "error"; Updater.compare(r.version, Updater.current) > 0 -> "available"; else -> "none" }
+        }
+    }
+    LaunchedEffect(Unit) { check() }
+    val install: () -> Unit = {
+        val r = rel
+        if (r != null) {
+            if (!Updater.canInstall(ctx)) { Updater.openInstallPermission(ctx); ui.toast("Autorise PepsGoal à installer des applications, puis touche à nouveau « Installer ».", "lock") }
+            else if (file != null) Updater.install(ctx, file!!)
+            else {
+                state = "downloading"; prog = 0f
+                ui.scope.launch {
+                    try { val f = Updater.download(ctx, r) { prog = it }; file = f; state = "ready"; Updater.install(ctx, f) }
+                    catch (e: Exception) { state = "error"; ui.toast(e.message ?: "Téléchargement impossible, réessaie.", "x") }
+                }
+            }
+        }
+    }
+    Glass {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+            IconTile("cloud", p.type("project").c, p.type("objective").c, 44.dp, 14.dp)
+            Column(Modifier.weight(1f)) {
+                Text("Mises à jour", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+                Muted("Version installée : ${Updater.current}", small = true)
+            }
+        }
+        val r = rel
+        when (state) {
+            "checking" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = p.flame); Muted("Recherche d’une nouvelle version…", small = true) }
+            "none" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Chip("À jour", "check", p.ok); Muted("Tu as la dernière version.", small = true) }
+            "error" -> Muted("Impossible de joindre GitHub pour le moment. Vérifie ta connexion et réessaie.", small = true)
+            "available", "downloading", "ready" -> if (r != null) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip("Nouveau", "star", p.flame); Text("PepsGoal ${r.version}", fontWeight = FontWeight.ExtraBold)
+                    if (r.size > 0) Muted("· ${"%.1f".format(r.size / 1_048_576f)} Mo", small = true)
+                }
+                if (r.notes.isNotBlank()) Text(r.notes.lines().filter { it.startsWith("- ") }.take(6).joinToString("\n") { "• " + it.removePrefix("- ") }.ifEmpty { r.notes.take(400) }, fontSize = 13.sp, color = p.ink2)
+                if (state == "downloading") { Bar(prog * 100.0); Muted("Téléchargement… ${(prog * 100).toInt()} %", small = true) }
+                else PButton(if (state == "ready") "Installer" else "Télécharger et installer", install, icon = "down", kind = "primary", modifier = Modifier.fillMaxWidth())
+            }
+            else -> {}
+        }
+        if (state !in setOf("checking", "downloading")) PButton("Rechercher une mise à jour", check, icon = "clock", kind = "ghost", small = true, modifier = Modifier.padding(top = 6.dp))
+        SetRow("Rechercher automatiquement", "Une notification t’avertit quand une nouvelle version est publiée.") {
+            PSwitch(auto, { auto = it; ui.prefs.autoUpdate = it })
         }
     }
 }

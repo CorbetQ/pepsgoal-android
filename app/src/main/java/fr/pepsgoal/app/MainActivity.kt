@@ -19,7 +19,7 @@ import fr.pepsgoal.app.ui.watch
 /** Activité unique : toute l'interface est en Jetpack Compose (aucune page web). */
 class MainActivity : ComponentActivity() {
     companion object {
-        const val EXTRA_TAB = "tab"; const val EXTRA_GOAL = "goal"; const val EXTRA_PROGRESS = "progress"; const val EXTRA_NOTIF = "notif"; const val EXTRA_CHAT = "chat"
+        const val EXTRA_TAB = "tab"; const val EXTRA_GOAL = "goal"; const val EXTRA_PROGRESS = "progress"; const val EXTRA_NOTIF = "notif"; const val EXTRA_CHAT = "chat"; const val EXTRA_SETTINGS = "settings"
         const val ACTION_NEW_GOAL = "fr.pepsgoal.app.NEW_GOAL"; const val ACTION_TODAY = "fr.pepsgoal.app.TODAY"; const val ACTION_MESSAGES = "fr.pepsgoal.app.MESSAGES"
     }
 
@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
             ACTION_TODAY -> { ui.nav("today"); return }
             ACTION_MESSAGES -> { if (pg.socialOn()) ui.nav("friends"); return }
         }
+        i.getStringExtra(EXTRA_SETTINGS)?.let { cat -> i.removeExtra(EXTRA_SETTINGS); ui.push(Screen.Settings(cat)); return }
         i.getStringExtra(EXTRA_CHAT)?.let { key ->
             if (!pg.socialOn()) return@let
             ui.nav("friends"); Notifier.clearChat(this, key)

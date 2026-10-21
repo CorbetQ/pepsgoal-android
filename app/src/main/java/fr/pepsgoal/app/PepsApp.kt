@@ -84,6 +84,7 @@ class PepsApp : Application() {
         pg.checkReminders()
         Notifier.clearReminders(this)
         Poller.startLink(this)
+        scope.launch { fr.pepsgoal.app.sys.Updater.autoCheck(this@PepsApp) }
     }
 
     private fun onBackground() {
