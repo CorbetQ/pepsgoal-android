@@ -67,10 +67,11 @@ fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disab
     val filled = done || running
     // Couleurs du type lisibles dans les deux thèmes : foncées sur fond clair, vives sur fond sombre
     val line = readable(color)
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Box(
-        Modifier.scale(pop.value).size(44.dp).clip(CircleShape).background(if (filled) color else color.copy(alpha = if (disabled) .06f else .16f))
+        Modifier.bounce(inter, .8f).scale(pop.value).size(44.dp).clip(CircleShape).background(if (filled) color else color.copy(alpha = if (disabled) .06f else .16f))
             .border(2.5.dp, if (disabled) p.ink3.copy(alpha = .45f) else if (filled) line.copy(alpha = .35f) else line, CircleShape)
-            .clickable(enabled = true, onClickLabel = label, onClick = onClick).semantics { contentDescription = label },
+            .springClick(inter, label = label, onClick = onClick).semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) { Pi(icon, size = 22.dp, tint = if (filled) Color(0xFF10102A) else if (disabled) p.ink3.copy(alpha = .55f) else line) }
 }
@@ -86,7 +87,8 @@ fun readable(c: Color): Color {
 @Composable
 fun MiniBtn(text: String, color: Color, onClick: () -> Unit) {
     val p = LocalPal.current
-    Box(Modifier.clip(CircleShape).background(color.copy(alpha = .22f)).border(1.5.dp, readable(color).copy(alpha = .55f), CircleShape).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp)) {
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(Modifier.bounce(inter, .88f).clip(CircleShape).background(color.copy(alpha = .22f)).border(1.5.dp, readable(color).copy(alpha = .55f), CircleShape).springClick(inter, onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp)) {
         Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = p.ink, maxLines = 1)
     }
 }
@@ -135,8 +137,9 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
         else -> { val s = pg.statBig(g); meta = "${metaOverride ?: pg.metaLine(g)} · ${s.v} ${s.l}" }
     }
     val pend = pg.db.checkins.any { it.goalId == g.id && it.pending && it.userId == pg.meId() }
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if (done) tc.c.copy(alpha = .14f) else Color.Transparent).clickable { ui.open(Sheet.Goal(g.id)) }.padding(8.dp),
+        Modifier.bounce(inter, .97f).fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if (done) tc.c.copy(alpha = .14f) else Color.Transparent).springClick(inter) { ui.open(Sheet.Goal(g.id)) }.padding(8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         GoalIcon(g)

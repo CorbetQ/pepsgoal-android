@@ -37,6 +37,7 @@
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
+        <receiver android:name=".sys.PollReceiver" android:exported="false" />
         <receiver android:name=".sys.ActionReceiver" android:exported="false" />
         <receiver android:name=".sys.AlarmReceiver" android:exported="false" />
         <receiver android:name=".sys.BootReceiver" android:exported="true">

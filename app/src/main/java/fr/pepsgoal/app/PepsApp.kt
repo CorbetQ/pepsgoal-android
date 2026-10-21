@@ -13,6 +13,7 @@ import fr.pepsgoal.app.data.FileDb
 import fr.pepsgoal.app.data.KeystoreSecrets
 import fr.pepsgoal.app.sys.LiveUpdates
 import fr.pepsgoal.app.sys.Notifier
+import fr.pepsgoal.app.sys.Poller
 import fr.pepsgoal.app.sys.Reminders
 import fr.pepsgoal.app.sys.SyncWorker
 import fr.pepsgoal.app.sys.WidgetUpdater
@@ -23,6 +24,7 @@ import fr.pepsgoal.core.cloud.Cloud
 import fr.pepsgoal.core.cloud.CloudEvents
 import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.Notif
+import fr.pepsgoal.core.model.Post
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -53,9 +55,10 @@ class PepsApp : Application() {
         pg.hooks = ui
         cloud.events = object : CloudEvents {
             override fun onlineChanged(online: Boolean) = ui.onlineChanged(online)
-            override fun sessionChanged() = ui.sessionChanged()
+            override fun sessionChanged() { ui.sessionChanged(); Poller.schedule(this@PepsApp) }
             override fun serverNotifications(fresh: List<Notif>) { if (!foreground) fresh.forEach { Notifier.server(this@PepsApp, it) } }
             override fun incomingMessages(fresh: List<Message>) { Notifier.messages(this@PepsApp, fresh) }
+            override fun newPosts(fresh: List<Post>) { if (!foreground) Notifier.posts(this@PepsApp, fresh) }
         }
         store.onChange = { ui.bump() }
         store.onSaved = { cloud.scheduleSync() }
@@ -67,6 +70,9 @@ class PepsApp : Application() {
             override fun onStop(owner: LifecycleOwner) { foreground = false; onBackground() }
         })
         SyncWorker.schedule(this)
+        Poller.schedule(this)
+        // Notifications du serveur (messages, publications, amis…) relevées toutes les minutes à l'écran
+        scope.launch { while (true) { delay(Poller.EVERY_MS); if (foreground) cloud.poll() } }
         // Rappels, évaluations et minuteur : vérifiés régulièrement pendant que l'application tourne
         scope.launch { while (true) { delay(1000); pg.timerTick(); if (pg.badgeCheckPending) pg.checkBadges() } }
         scope.launch { delay(1200); pg.checkReminders(); while (true) { delay(30_000); pg.checkReminders(); LiveUpdates.refresh(this@PepsApp) } }
@@ -83,6 +89,7 @@ class PepsApp : Application() {
         Reminders.reschedule(this)
         LiveUpdates.refresh(this)
         WidgetUpdater.update(this)
+        Poller.schedule(this)
     }
 
     private fun watchNetwork() {

@@ -13,15 +13,16 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 303
-        versionName = "3.0.3"
+        versionCode = 304
+        versionName = "3.0.4"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
     }
 
     signingConfigs {
-        // Signature de publication : fournie par la CI ou Android Studio (variables d'environnement), sinon clé de débogage
+        // Signature de publication : fournie par la CI ou Android Studio (variables d'environnement), sinon clé de test
+        // du dépôt (stable d'une version à l'autre : les APK des releases GitHub s'installent par-dessus les précédents)
         create("release") {
             val ks = System.getenv("PEPSGOAL_KEYSTORE")
             if (ks != null && file(ks).exists()) {
@@ -29,7 +30,9 @@ android {
                 storePassword = System.getenv("PEPSGOAL_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("PEPSGOAL_KEY_ALIAS")
                 keyPassword = System.getenv("PEPSGOAL_KEY_PASSWORD")
-            } else initWith(getByName("debug"))
+            } else {
+                storeFile = file("pepsgoal-test.jks"); storePassword = "pepsgoal-test"; keyAlias = "pepsgoal"; keyPassword = "pepsgoal-test"
+            }
         }
     }
 

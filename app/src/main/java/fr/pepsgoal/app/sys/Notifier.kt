@@ -32,6 +32,7 @@ import fr.pepsgoal.core.cloud.str
 import fr.pepsgoal.core.first
 import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.Notif
+import fr.pepsgoal.core.model.Post
 import fr.pepsgoal.core.model.User
 
 /**
@@ -97,6 +98,24 @@ object Notifier {
         show(app, n)
     }
 
+    /** Nouvelles publications d'amis (le serveur n'envoie pas de notification pour elles) : une notification groupée. */
+    fun posts(app: PepsApp, fresh: List<Post>) {
+        val seen = app.prefs.notifiedIds
+        val list = fresh.filter { "post:${it.id}" !in seen }.sortedBy { it.at }
+        if (list.isEmpty()) return
+        app.prefs.notifiedIds = seen + list.map { "post:${it.id}" }
+        for (p in list.takeLast(4)) {
+            val who = app.pg.userById(p.userId)?.name ?: "Un ami"
+            val text = p.text.ifBlank { if (p.photo != null) "📷 Photo" else "Nouvelle publication" }
+            val id = "post:${p.id}".hashCode()
+            post(app, id, base(app, CH_SOCIAL).setContentTitle("$who a publié").setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setLargeIcon(avatarBitmap(app.pg.userById(p.userId)))
+                .setWhen(p.at).setShowWhen(true).setCategory(NotificationCompat.CATEGORY_SOCIAL).setGroup("pg.posts")
+                .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_TAB, "feed") }).build())
+        }
+        if (list.size > 1) post(app, 8, base(app, CH_SOCIAL).setGroup("pg.posts").setGroupSummary(true).setContentTitle("Nouvelles publications").setStyle(NotificationCompat.InboxStyle()).build())
+    }
+
     private fun show(app: PepsApp, n: Notif) {
         val pg = app.pg
         val ch = when (n.type) { "reminder", "period", "deadline" -> CH_REMIND; "official", "mod" -> CH_OFFICIAL; "friend", "like", "comment", "story", "mention", "group" -> CH_SOCIAL; else -> CH_GOALS }
@@ -132,14 +151,16 @@ object Notifier {
     /* ------------------------------------------------------------------ conversations */
     private fun convKey(me: String, m: Message) = if (m.chat != null) "g:${m.chat}" else "u:${if (m.from == me) m.to else m.from}"
 
-    private fun avatarIcon(u: User?): IconCompat {
+    private fun avatarIcon(u: User?): IconCompat = IconCompat.createWithBitmap(avatarBitmap(u))
+
+    private fun avatarBitmap(u: User?): Bitmap {
         val s = 96; val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888); val c = Canvas(bmp)
         val col = (ACCENTS.getOrNull(u?.avatar?.color ?: 0) ?: ACCENTS[0]).c[1]
         c.drawCircle(s / 2f, s / 2f, s / 2f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor(col) })
         val ini = (u?.name ?: "?").trim().split(Regex("\\s+")).mapNotNull { it.firstOrNull()?.toString() }.take(2).joinToString("").uppercase()
         val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF10102A.toInt(); textSize = 40f; textAlign = Paint.Align.CENTER; isFakeBoldText = true }
         c.drawText(ini, s / 2f, s / 2f - (p.descent() + p.ascent()) / 2, p)
-        return IconCompat.createWithBitmap(bmp)
+        return bmp
     }
 
     private fun person(app: PepsApp, id: String): Person {

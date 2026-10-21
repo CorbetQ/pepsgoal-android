@@ -22,6 +22,10 @@ import androidx.compose.ui.graphics.Shape
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeInputScale
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.interaction.PressInteraction
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.draw.shadow
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.scale
@@ -130,24 +134,63 @@ val LocalBars = compositionLocalOf { PaddingValues(0.dp) }
 /** Contour des commandes (puces, boutons-icônes, sélecteurs) : visible sur le verre clair comme sombre. */
 fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink.copy(alpha = if (p.dark) .24f else .18f)
 
+/** Ressorts communs : réponses vives avec un léger rebond. */
+object Springs {
+    val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .42f, stiffness = 520f)
+    val bar = androidx.compose.animation.core.spring<Float>(dampingRatio = .62f, stiffness = 140f)
+}
+
+/**
+ * Effet « ressort » à l'appui : l'élément s'enfonce dès le toucher puis rebondit en le relâchant
+ * (même pour un appui très bref). À placer en tête de la chaîne de modificateurs, avec le même
+ * [inter] passé au `clickable`.
+ */
+@Composable
+fun Modifier.bounce(inter: MutableInteractionSource, pressed: Float = .94f): Modifier {
+    val motionOff = LocalPal.current.motion
+    val sc = remember { Animatable(1f) }
+    LaunchedEffect(inter, motionOff) {
+        if (motionOff) return@LaunchedEffect
+        inter.interactions.collectLatest { i ->
+            when (i) {
+                is PressInteraction.Press -> sc.animateTo(pressed, spring(dampingRatio = .8f, stiffness = 1600f))
+                is PressInteraction.Release, is PressInteraction.Cancel -> {
+                    if (sc.value > pressed + .015f) sc.animateTo(pressed, tween(60))
+                    sc.animateTo(1f, spring(dampingRatio = .32f, stiffness = 420f))
+                }
+            }
+        }
+    }
+    return this.graphicsLayer { scaleX = sc.value; scaleY = sc.value }
+}
+
+/** Zone cliquable avec effet ressort et ondulation (à placer après le clip/fond de l'élément). */
+@Composable
+fun Modifier.springClick(inter: MutableInteractionSource, enabled: Boolean = true, label: String? = null, role: Role? = null, onClick: () -> Unit): Modifier =
+    this.clickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role, onClick = onClick)
+
 /** Fond « verre givré » : arrière-plan flouté et teinté (backdrop-filter de la version web), sinon simple teinte. */
 @Composable
 fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
     val p = LocalPal.current; val h = LocalHaze.current
     val tint = if (strong) p.glassStrong else p.glass
     if (h == null || p.transp || p.contrast || p.oled) return this.clip(shape).background(tint)
-    return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.6f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong)))
+    return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.6f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+        // Flou calculé sur une image réduite de moitié : même rendu, bien moins de travail pour le GPU
+        inputScale = HazeInputScale.Fixed(.5f)
+    }
 }
 
 @Composable
 fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = 18.dp, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     val shape = RoundedCornerShape(radius)
+    val inter = remember { MutableInteractionSource() }
     Column(
         // Toute la largeur disponible par défaut : une carte au contenu court reste alignée sur les autres
-        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E))
+        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).then(if (onClick != null) Modifier.bounce(inter, .97f) else Modifier).shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E))
             .glassBg(shape, strong).border(1.dp, border ?: if (p.contrast) p.line else p.glassEdge, shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(pad),
+            .then(if (onClick != null) Modifier.springClick(inter, onClick = onClick) else Modifier).padding(pad),
         content = content
     )
 }
@@ -178,8 +221,6 @@ fun PButton(
 ) {
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
-    val pressed by inter.collectIsPressedAsState()
-    val sc by animateFloatAsState(if (pressed && !p.motion) .96f else 1f, spring(stiffness = 800f), label = "press")
     val shape = CircleShape
     val bg: Modifier = when (kind) {
         "primary" -> Modifier.background(if (p.contrast) SolidColor(p.ink) else p.accent, shape)
@@ -188,7 +229,7 @@ fun PButton(
     }
     val fg = when (kind) { "primary" -> if (p.contrast) p.bg else p.onAccent; "ghost" -> p.ink2; "danger" -> p.danger; else -> p.ink }
     Row(
-        modifier.scale(sc).alpha(if (enabled) 1f else .45f).clip(shape).then(bg)
+        modifier.bounce(inter, .92f).alpha(if (enabled) 1f else .45f).clip(shape).then(bg)
             .then(if (kind == "danger") Modifier.border(1.dp, p.danger.copy(alpha = .4f), shape) else Modifier)
             .clickable(enabled = enabled, interactionSource = inter, indication = LocalIndication.current, role = Role.Button, onClick = onClick)
             .padding(horizontal = if (small) 14.dp else 18.dp, vertical = if (small) 8.dp else 11.dp),
@@ -206,10 +247,11 @@ private fun Modifier.alpha(a: Float) = this.graphicsLayer { alpha = a }
 @Composable
 fun IconBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier, plain: Boolean = false, badge: Int = 0, tint: Color? = null, size: Dp = 42.dp) {
     val p = LocalPal.current
+    val inter = remember { MutableInteractionSource() }
     Box(modifier) {
         Box(
-            Modifier.size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(p.glassStrong).border(1.dp, ctlEdge(p), CircleShape))
-                .clickable(onClickLabel = desc, onClick = onClick), contentAlignment = Alignment.Center
+            Modifier.bounce(inter, .86f).size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(p.glassStrong).border(1.dp, ctlEdge(p), CircleShape))
+                .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center
         ) { Pi(icon, size = 20.dp, tint = tint ?: if (plain) p.ink2 else p.ink) }
         if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp))
     }
@@ -262,10 +304,11 @@ fun TypeChip(type: String) {
 @Composable
 fun FChip(text: String, on: Boolean, onClick: () -> Unit, leading: (@Composable () -> Unit)? = null, dashed: Boolean = false) {
     val p = LocalPal.current
-    val sc by animateFloatAsState(if (on && !p.motion) 1.04f else 1f, spring(dampingRatio = .45f), label = "chip")
+    val sc by animateFloatAsState(if (on && !p.motion) 1.05f else 1f, spring(dampingRatio = .35f, stiffness = 520f), label = "chip")
+    val inter = remember { MutableInteractionSource() }
     Row(
-        Modifier.scale(sc).clip(CircleShape).background(if (on) (if (p.contrast) SolidColor(p.ink) else p.accent) else SolidColor(if (dashed) Color.Transparent else p.glassStrong))
-            .border(1.dp, if (on) Color.Transparent else ctlEdge(p), CircleShape).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+        Modifier.bounce(inter, .9f).scale(sc).clip(CircleShape).background(if (on) (if (p.contrast) SolidColor(p.ink) else p.accent) else SolidColor(if (dashed) Color.Transparent else p.glassStrong))
+            .border(1.dp, if (on) Color.Transparent else ctlEdge(p), CircleShape).springClick(inter, onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         leading?.invoke()
@@ -278,7 +321,7 @@ fun FChip(text: String, on: Boolean, onClick: () -> Unit, leading: (@Composable 
 fun Bar(pct: Double, modifier: Modifier = Modifier, color: Color? = null, height: Dp = 8.dp) {
     val p = LocalPal.current
     val target = (pct / 100.0).coerceIn(0.0, 1.0).toFloat()
-    val v by animateFloatAsState(target, if (p.motion) tween(0) else tween(700), label = "bar")
+    val v by animateFloatAsState(target, if (p.motion) tween(0) else Springs.bar, label = "bar")
     Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(p.ink.copy(alpha = .09f))) {
         Box(Modifier.fillMaxWidth(v).fillMaxHeight().clip(CircleShape).background(if (color != null) SolidColor(color) else p.accent))
     }
@@ -289,7 +332,7 @@ fun Bar(pct: Double, modifier: Modifier = Modifier, color: Color? = null, height
 fun Ring(done: Int, total: Int, size: Dp = 108.dp) {
     val p = LocalPal.current
     val pct = if (total > 0) done.toFloat() / total else 0f
-    val v by animateFloatAsState(pct, if (p.motion) tween(0) else tween(900), label = "ring")
+    val v by animateFloatAsState(pct, if (p.motion) tween(0) else Springs.bar, label = "ring")
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val sw = this.size.minDimension * .11f
@@ -389,7 +432,8 @@ fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, mod
     FlowRowCompat(modifier.clip(RoundedCornerShape(18.dp)).background(p.ink.copy(alpha = if (p.dark) .1f else .07f)).padding(4.dp)) {
         options.forEachIndexed { i, (k, l) ->
             val on = k == value
-            Row(Modifier.clip(RoundedCornerShape(14.dp)).background(if (on) p.glassStrong else Color.Transparent).then(if (on) Modifier.border(1.dp, ctlEdge(p), RoundedCornerShape(14.dp)) else Modifier).clickable { onChange(k) }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val inter = remember { MutableInteractionSource() }
+            Row(Modifier.bounce(inter, .9f).clip(RoundedCornerShape(14.dp)).background(if (on) p.glassStrong else Color.Transparent).then(if (on) Modifier.border(1.dp, ctlEdge(p), RoundedCornerShape(14.dp)) else Modifier).springClick(inter) { onChange(k) }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
                 Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) p.ink else p.ink2)
             }
