@@ -21,13 +21,6 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Vérification des modèles IA (Hugging Face)
-        continue-on-error: true
-        run: |
-          for r in litert-community/Qwen2.5-0.5B-Instruct litert-community/Qwen2.5-1.5B-Instruct; do
-            echo "== $r"
-            curl -s "https://huggingface.co/api/models/$r?blobs=true" | python3 -c "import json,sys; d=json.load(sys.stdin); print('gated', d.get('gated'), d.get('error')); [print(s['rfilename'], s.get('size')) for s in d.get('siblings',[]) if s['rfilename'].endswith('.task')]"
-          done
       - name: Tests de la logique (module core)
         run: ./gradlew --no-daemon :core:test
       - name: Application Android (debug + release)
