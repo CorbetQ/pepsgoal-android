@@ -43,9 +43,11 @@ fun ProfileScreen(ui: AppState) {
         item("head") {
             Glass {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) {
-                        LevelRing(lv.idx, 90.dp) { Av(u, 76.dp) }
-                        Box(Modifier.align(Alignment.BottomEnd).size(26.dp).clip(CircleShape).background(p.ink), contentAlignment = Alignment.Center) { Pi("edit", size = 14.dp, tint = p.bg) }
+                    // Pas de découpe sur le conteneur : le badge « modifier » déborde légèrement de l'anneau, comme sur le web
+                    Box {
+                        Box(Modifier.clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) { LevelRing(lv.idx, 76.dp) { Av(u, 76.dp) } }
+                        Box(Modifier.align(Alignment.BottomEnd).offset(x = 2.dp, y = 2.dp).size(28.dp).clip(CircleShape).background(p.ink).border(2.dp, p.bg, CircleShape)
+                            .clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }, contentAlignment = Alignment.Center) { Pi("edit", size = 14.dp, tint = p.bg) }
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -66,8 +68,9 @@ fun ProfileScreen(ui: AppState) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(st.n to "Série actuelle", pg.bestStreak(u.id) to "Meilleure série", pg.userCheckins(u.id).count { pg.isWin(it) } to "Validations", done to "Caps atteints").forEach { (v, l) ->
                     Glass(Modifier.weight(1f), pad = 10.dp, radius = 18.dp) {
-                        Text("$v", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
-                        Text(l, fontSize = 11.sp, color = p.ink2, fontWeight = FontWeight.Bold, lineHeight = 13.sp)
+                        FitText("$v", size = 22, min = 12, weight = FontWeight.ExtraBold, family = Unbounded)
+                        // Libellé sur deux mots au plus : chaque mot sur sa ligne, réduit s'il ne tient pas (jamais coupé en plein mot)
+                        l.split(" ").forEach { w -> FitText(w, size = 11, min = 7, color = p.ink2) }
                     }
                 }
             }

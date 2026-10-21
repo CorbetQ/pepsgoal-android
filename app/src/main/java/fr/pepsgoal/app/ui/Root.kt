@@ -37,6 +37,17 @@ import fr.pepsgoal.app.ui.theme.PepsTheme
 import fr.pepsgoal.app.ui.theme.ThemeInput
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.draw.shadow
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -60,10 +71,14 @@ fun PepsRoot(ui: AppState) {
     LaunchedEffect(s?.weather?.lat, s?.weather?.lon) { if (s?.weather != null) Wx.ensure(ctx, ui, false) }
     PepsTheme(input) {
         val p = LocalPal.current
+        val haze = rememberHazeState()
         Box(Modifier.fillMaxSize().then(if (p.mono) Modifier.grayscale() else Modifier)
             .pointerInput(Unit) { awaitPointerEventScope { while (true) { val e = awaitPointerEvent(PointerEventPass.Initial); e.changes.firstOrNull()?.let { ui.touch = it.position } } } }) {
-            Backdrop(if (s?.theme == "weather") "sky" else s?.bg ?: "blob", if (s?.theme == "weather") Weather.sky(wx?.data) else null, pg.eggWord() == "Cold", ui.prefs.bgStamp)
-            CompositionLocalProvider(LocalContentColor provides p.ink) {
+            // Arrière-plan : source du flou des panneaux en verre (niveau 0)
+            Box(Modifier.fillMaxSize().hazeSource(haze, zIndex = 0f)) {
+                Backdrop(if (s?.theme == "weather") "sky" else s?.bg ?: "blob", if (s?.theme == "weather") Weather.sky(wx?.data) else null, pg.eggWord() == "Cold", ui.prefs.bgStamp)
+            }
+            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze) {
                 when {
                     u == null -> AuthScreen(ui)
                     pg.maintNow()?.mode == "full" && !pg.isAdmin(u) -> MaintenanceScreen(ui)
@@ -94,66 +109,99 @@ private fun Modifier.grayscale() = this.drawWithContent {
 
 @Composable
 private fun Shell(ui: AppState) {
-    val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val d = LocalDensity.current
     val social = pg.socialOn(u)
     val nav = (if (social) NAV else NAV.filter { it.first != "feed" && it.first != "friends" }) + if (pg.isAdmin(u)) listOf(Triple("mod", "Modo", "shield")) else emptyList()
     if (nav.none { it.first == ui.tab }) ui.tab = "today"
     val badges = mapOf("friends" to pg.db.friendships.count { it.to == u.id && it.status == "pending" } + Social.unreadMsgs(ui), "mod" to if (pg.isAdmin(u)) Mod.count(ui) else 0)
-    Scaffold(
-        containerColor = Color.Transparent,
-        topBar = { TopBar(ui) },
-        bottomBar = {
-            NavigationBar(containerColor = p.glassStrong, tonalElevation = 0.dp) {
-                nav.forEach { (k, l, ic) ->
-                    NavigationBarItem(selected = ui.tab == k, onClick = { ui.nav(k) }, icon = {
-                        BadgedBox(badge = { badges[k]?.takeIf { it > 0 }?.let { Badge { Text("$it") } } }) { Pi(ic, size = 22.dp) }
-                    }, label = { Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp) },
-                        colors = NavigationBarItemDefaults.colors(indicatorColor = p.flame.copy(alpha = if (p.materialYou) .35f else .28f), selectedIconColor = p.ink, selectedTextColor = p.ink, unselectedIconColor = p.ink2, unselectedTextColor = p.ink2))
+    var topH by remember { mutableIntStateOf(0) }; var botH by remember { mutableIntStateOf(0) }
+    val haze = LocalHaze.current
+    Box(Modifier.fillMaxSize()) {
+        // Contenu des onglets : il défile sous les barres en verre (niveau 1 du flou)
+        CompositionLocalProvider(LocalBars provides PaddingValues(top = with(d) { topH.toDp() }, bottom = with(d) { botH.toDp() })) {
+            Box(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier)) {
+                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(220)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120)) }, label = "tab") { tab ->
+                    when (tab) {
+                        "goals" -> GoalsScreen(ui)
+                        "feed" -> FeedScreen(ui)
+                        "friends" -> FriendsScreen(ui)
+                        "profile" -> ProfileScreen(ui)
+                        "mod" -> ModerationScreen(ui)
+                        else -> TodayScreen(ui)
+                    }
                 }
             }
-        },
-        floatingActionButton = {
-            if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif") { ui.open(Sheet.GoalForm()) }
-            else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication") { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }
         }
-    ) { pad ->
-        AnimatedContent(ui.tab, Modifier.padding(pad), transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(220)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120)) }, label = "tab") { tab ->
-            when (tab) {
-                "goals" -> GoalsScreen(ui)
-                "feed" -> FeedScreen(ui)
-                "friends" -> FriendsScreen(ui)
-                "profile" -> ProfileScreen(ui)
-                "mod" -> ModerationScreen(ui)
-                else -> TodayScreen(ui)
+        Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topH = it.height }) { TopBar(ui) }
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) { BottomNav(ui, nav, badges) }
+        val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = with(d) { botH.toDp() } + 14.dp)
+        if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabMod) { ui.open(Sheet.GoalForm()) }
+        else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabMod) { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }
+    }
+}
+
+/** Barre de navigation PepsGoal : pilule en verre flottante, onglet actif repéré par une pastille qui glisse. */
+@Composable
+private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>, badges: Map<String, Int>) {
+    val p = LocalPal.current
+    val idx = items.indexOfFirst { it.first == ui.tab }.coerceAtLeast(0)
+    val shape = RoundedCornerShape(24.dp)
+    Box(Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 10.dp).fillMaxWidth()
+        .shadow(if (p.oled || p.transp) 0.dp else 14.dp, shape, ambientColor = Color(0x6628186E), spotColor = Color(0x4428186E))
+        .glassBg(shape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, shape).padding(6.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val w = maxWidth / items.size
+            val x by animateDpAsState(w * idx, if (p.motion) snap() else spring(dampingRatio = .78f, stiffness = 420f), label = "nav")
+            Box(Modifier.offset(x = x).width(w).height(56.dp).shadow(if (p.transp) 0.dp else 6.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
+            Row(Modifier.fillMaxWidth()) {
+                items.forEachIndexed { i, (k, l, ic) ->
+                    val sel = i == idx
+                    val col by animateColorAsState(if (sel) p.bg else p.ink2, tween(if (p.motion) 0 else 300), label = "navc")
+                    val n = badges[k] ?: 0
+                    Column(Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = l) { ui.nav(k) }
+                        .semantics { selected = sel; role = Role.Tab; contentDescription = if (n > 0) "$l, $n" else l },
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Box {
+                            Pi(ic, size = 22.dp, tint = col)
+                            if (n > 0) Badge(n, Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-6).dp))
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        FitText(l, size = 11, min = 8, color = col, weight = FontWeight.ExtraBold)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun Fab(desc: String, onClick: () -> Unit) {
+private fun Fab(desc: String, modifier: Modifier, onClick: () -> Unit) {
     val p = LocalPal.current
-    Box(Modifier.size(60.dp).clip(RoundedCornerShape(20.dp)).background(p.accent).clickable(onClickLabel = desc, onClick = onClick), contentAlignment = Alignment.Center) { Pi("plus", size = 28.dp, tint = p.onAccent) }
+    Box(modifier.size(58.dp).shadow(if (p.transp) 0.dp else 16.dp, CircleShape, ambientColor = p.flame, spotColor = p.flame).clip(CircleShape).background(p.accent)
+        .clickable(onClickLabel = desc, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) { Pi("plus", size = 28.dp, tint = p.onAccent) }
 }
 
 @Composable
 private fun TopBar(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val st = pg.globalStreak(u.id)
-    Column(Modifier.statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(Modifier.statusBarsPadding().padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().shadow(if (p.oled || p.transp) 0.dp else 10.dp, shape, ambientColor = Color(0x5528186E), spotColor = Color(0x3328186E))
+            .glassBg(shape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, shape).padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.weight(1f)) { Logo(pg.eggWord(), 19) }
             if (!ui.pg.store.online) Pi("cloudoff", size = 20.dp, tint = p.ink2)
             val bump = remember { Animatable(1f) }
             LaunchedEffect(st.n) { if (!p.motion) { bump.snapTo(1.35f); bump.animateTo(1f, spring(dampingRatio = .4f)) } }
             Row(Modifier.graphicsLayer { scaleX = bump.value; scaleY = bump.value }, verticalAlignment = Alignment.CenterVertically) { Flame(22.dp); Text("${st.n}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp) }
-            Row(Modifier.clickable { ui.nav("profile") }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { Pi("snow", size = 18.dp, tint = p.type("objective").ink); Text("${u.freezes}", fontWeight = FontWeight.ExtraBold) }
+            Row(Modifier.clip(RoundedCornerShape(10.dp)).clickable { ui.nav("profile") }.padding(2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { Pi("snow", size = 18.dp, tint = p.type("objective").ink); Text("${u.freezes}", fontWeight = FontWeight.ExtraBold) }
             IconBtn("bell", "Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread())
         }
-        if (!ui.pg.store.online) Note(if (ui.cloud.forceOffline && pg.store.acct) "**Mode hors ligne activé.** Tes objectifs restent disponibles ; tes modifications partiront quand tu repasseras en ligne." else "**Hors ligne.** Tes objectifs restent disponibles sur cet appareil ; les fonctions sociales reviennent avec la connexion.", "cloudoff", Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        if (pg.db.sandbox) Note("**Mode démonstration.** Données d’exemple : rien n’est enregistré. Déconnecte-toi pour revenir à ton profil.", "star", Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        if (!ui.pg.store.online) Note(if (ui.cloud.forceOffline && pg.store.acct) "**Mode hors ligne activé.** Tes objectifs restent disponibles ; tes modifications partiront quand tu repasseras en ligne." else "**Hors ligne.** Tes objectifs restent disponibles sur cet appareil ; les fonctions sociales reviennent avec la connexion.", "cloudoff")
+        if (pg.db.sandbox) Note("**Mode démonstration.** Données d’exemple : rien n’est enregistré. Déconnecte-toi pour revenir à ton profil.", "star")
         val now = pg.maintNow(); val next = pg.maintNext()
-        if (now != null) Note("**Maintenance en cours**${now.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[now.mode]}${if (now.message.isNotEmpty()) ". ${now.message}" else ""}${if (pg.isAdmin(u)) " (en tant qu’admin, tu n’es pas bloqué)" else ""}", "gauge", Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        else if (next != null && next.start - nowMs() < 7 * DAY_MS) Note("Maintenance prévue le ${fmtDT(next.start)}${next.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[next.mode]}.", "clock", Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        if (now != null) Note("**Maintenance en cours**${now.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[now.mode]}${if (now.message.isNotEmpty()) ". ${now.message}" else ""}${if (pg.isAdmin(u)) " (en tant qu’admin, tu n’es pas bloqué)" else ""}", "gauge")
+        else if (next != null && next.start - nowMs() < 7 * DAY_MS) Note("Maintenance prévue le ${fmtDT(next.start)}${next.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[next.mode]}.", "clock")
     }
 }
 

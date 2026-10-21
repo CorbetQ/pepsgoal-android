@@ -33,14 +33,15 @@ fun SheetHost(ui: AppState) {
     val s = ui.sheet ?: return
     val p = LocalPal.current
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = { ui.back() }, sheetState = state, containerColor = if (p.transp || p.contrast) p.bg else p.glassStrong.copy(alpha = 1f), contentColor = p.ink,
+    // La fenêtre s'arrête sous la barre d'état ; ses cartes n'ont pas de flou (autre fenêtre que l'arrière-plan)
+    ModalBottomSheet(onDismissRequest = { ui.back() }, modifier = Modifier.statusBarsPadding(), sheetState = state, containerColor = if (p.transp || p.contrast) p.bg else p.glassStrong.copy(alpha = 1f), contentColor = p.ink,
         scrimColor = p.scrim, dragHandle = null) {
-        key(s) {
+        key(s) { CompositionLocalProvider(LocalHaze provides null) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SheetBody(ui, s)
             }
-        }
+        } }
     }
 }
 

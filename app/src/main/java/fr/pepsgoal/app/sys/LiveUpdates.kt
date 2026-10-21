@@ -60,14 +60,17 @@ object LiveUpdates {
 
     private fun build(ctx: Context, out: MutableList<Live>) {
         val pg = ctx.peps.pg; val u = pg.me()!!; val now = nowMs()
-        // 1. Minuteur d'un objectif de durée
+        // 1. Minuteur d'un objectif de durée : compte à rebours jusqu'au temps du jour (ou chrono si dépassé)
         pg.runningTimer()?.let { t ->
             val g = pg.goalById(t.goalId) ?: return@let
-            val m = pg.durationLiveMins(g); val target = g.minutes
+            val m = pg.durationLiveMins(g); val target = g.minutes; val leftMin = target - m
             val c = TYPE_COLORS.getValue("duration")
-            out += Live(ID_TIMER, "timer", "${t.start}", "${g.icon} ${g.title}", "${fmtNum(Math.round(m).toDouble())} / ${fmtNum(target)} min aujourd’hui · minuteur en marche",
-                "${m.toInt()} min", (m / target * 1000).toInt().coerceIn(0, 1000), listOf(1000 to c), now - (m * 60_000).toLong(), false,
-                listOf("Pause" to Notifier.action(ctx, ID_TIMER, ActionReceiver.TIMER) { putExtra("goal", g.id) }),
+            val done = Math.floor(m).toInt()
+            out += Live(ID_TIMER, "timer", "${t.start}", g.title,
+                if (leftMin > 0) "$done min sur ${fmtNum(target)} aujourd’hui · minuteur en marche" else "${fmtNum(target)} min atteintes · minuteur en marche",
+                if (leftMin > 0) "${Math.ceil(leftMin).toInt()} min" else "$done min", (m / target * 1000).toInt().coerceIn(0, 1000), listOf(1000 to c),
+                if (leftMin > 0) now + (leftMin * 60_000).toLong() else now - (m * 60_000).toLong(), leftMin > 0,
+                listOf("Mettre en pause" to Notifier.action(ctx, ID_TIMER, ActionReceiver.TIMER) { putExtra("goal", g.id) }),
                 Notifier.open(ctx, ID_TIMER) { putExtra(MainActivity.EXTRA_GOAL, g.id) }, c)
         }
         // 2. Période en cours (créneau à tenir)
@@ -75,7 +78,7 @@ object LiveUpdates {
         plan.due.firstOrNull { it.g.type == "period" && !it.done && pg.periodWindow(it.g).live }?.let { x ->
             val g = x.g; val s = startOfDayMs(todayDate()) + hmMinutes(g.start) * 60_000L; val e = startOfDayMs(todayDate()) + hmMinutes(g.end) * 60_000L
             val c = TYPE_COLORS.getValue("period")
-            out += Live(ID_PERIOD, "period", g.id + today(), "${g.icon} ${g.title}", "En cours jusqu’à ${g.end} · valide quand c’est fait", g.end,
+            out += Live(ID_PERIOD, "period", g.id + today(), g.title, "${g.start}–${g.end} · valide dès que c’est fait", "→ ${g.end}",
                 ((now - s).toDouble() / maxOf(1L, e - s) * 1000).toInt().coerceIn(0, 1000), listOf(1000 to c), e, true,
                 listOf("Valider" to Notifier.action(ctx, ID_PERIOD, ActionReceiver.VALIDATE) { putExtra("goal", g.id); putExtra("keep", true) }),
                 Notifier.open(ctx, ID_PERIOD) { putExtra(MainActivity.EXTRA_GOAL, g.id) }, c)

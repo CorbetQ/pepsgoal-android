@@ -72,7 +72,7 @@ val SET_CATS = listOf(
 fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, right: @Composable RowScope.() -> Unit = {}, content: LazyListScope.() -> Unit) {
     val p = LocalPal.current
     BackHandler { onBack() }
-    Box(Modifier.fillMaxSize().background(p.bg)) {
+    Box(Modifier.fillMaxSize().background(p.bg)) { CompositionLocalProvider(LocalHaze provides null) {
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PButton("‹ $back", onBack, kind = "ghost", small = true)
@@ -84,7 +84,7 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
                 item("nav") { Spacer(Modifier.navigationBarsPadding()) }
             }
         }
-    }
+    } }
 }
 
 @Composable
@@ -542,7 +542,7 @@ private fun DataSettings(ui: AppState, u: User) {
         val mine = remember(ui.rev) { listOf(pg.db.goals.count { it.userId == u.id }, pg.db.checkins.count { it.userId == u.id }, pg.db.posts.count { it.userId == u.id }, pg.db.messages.count { it.from == u.id || it.to == u.id }) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Objectifs", "Validations", "Publications", "Messages").forEachIndexed { i, l ->
-                Glass(Modifier.weight(1f), pad = 10.dp, radius = 18.dp) { Text("${mine[i]}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp); Text(l, fontSize = 11.sp, color = p.ink2, fontWeight = FontWeight.Bold) }
+                Glass(Modifier.weight(1f), pad = 10.dp, radius = 18.dp) { FitText("${mine[i]}", size = 20, min = 12, weight = FontWeight.ExtraBold, family = Unbounded); FitText(l, size = 11, min = 7, color = p.ink2) }
             }
         }
         Glass {
