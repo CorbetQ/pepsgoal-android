@@ -320,13 +320,11 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
 private fun QuickTools(ui: AppState) {
     val p = LocalPal.current; val ctx = androidx.compose.ui.platform.LocalContext.current
     val focusOn = fr.pepsgoal.app.sys.Focus.running(ctx)
-    val voice = rememberVoiceCommand(ui)
     val items = listOfNotNull(
         Triple(if (focusOn) "Focus en cours" else "Focus", "timer") { ui.fs = Fs.Focus() },
         Triple("Stats", "trend") { ui.push(fr.pepsgoal.app.Screen.Stats) },
         Triple("Journal", "book") { ui.push(fr.pepsgoal.app.Screen.Journal) },
         if (fr.pepsgoal.app.ai.LocalAi.on(ctx)) Triple("Coach", "sparkle") { ui.push(fr.pepsgoal.app.Screen.CoachChat) } else null,
-        Triple("Voix", "mic") { voice() },
     )
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items.forEach { (l, ic, go) ->
