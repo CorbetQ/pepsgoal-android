@@ -202,18 +202,20 @@ fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.
     fun level(fromEdge: Float) = if (fromEdge <= full) 1f else 1f - smooth((fromEdge - full) / (1 - full))
     val n = 16
     fun grad(color: (Float) -> Color) = Brush.verticalGradient(*(0..n).map { i -> val t = i / n.toFloat(); t to color(level(if (top) t else 1 - t)) }.toTypedArray())
+    // Voile très léger : c'est le flou qui fait disparaître le contenu, le voile ne fait que l'adoucir
     val milk = if (p.dark) p.bg else Color.White
-    val k = if (p.dark) .55f else .6f
-    val veil = grad { a -> milk.copy(alpha = k * a * (.55f + .45f * a)) }
+    val k = if (p.dark) .4f else .32f
+    val veil = grad { a -> milk.copy(alpha = k * a * a) }
     val box = modifier.fillMaxWidth().height(h)
     if (haze != null && !p.transp && !p.contrast) {
-        // Flou estompé par un masque (rendu identique sur tous les appareils, contrairement au flou à rayon variable)
-        val mask = grad { a -> Color.Black.copy(alpha = a) }
-        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 28.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+        // Flou progressif (rayon variable) : maximal au bord, nul côté contenu. Le dégradé s'étend sur toute la
+        // hauteur de la zone (fin « infinie » = bas de la zone, quelle que soit la réduction de l'image floutée)
+        val ease = androidx.compose.animation.core.Easing { t -> level(if (top) t else 1 - t) }
+        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 32.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
             inputScale = HazeInputScale.Fixed(.5f)
-            this.mask = mask
+            progressive = dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = 0f, endY = Float.POSITIVE_INFINITY, endIntensity = 1f, easing = ease)
         }.background(veil))
-    } else Box(box.background(veil))
+    } else Box(box.background(grad { a -> milk.copy(alpha = .9f * a) }))
 }
 
 /** Ressorts communs : réponses vives avec un léger rebond. */

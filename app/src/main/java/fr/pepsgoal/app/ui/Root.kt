@@ -212,7 +212,8 @@ private fun TopBar(ui: AppState) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.weight(1f)) {
                 AnimatedContent(ui.tab, transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(160)) + slideInVertically(spring(dampingRatio = .6f, stiffness = 500f)) { it / 2 }) togetherWith (fadeOut(tween(90)) + slideOutVertically(tween(120)) { -it / 2 }) }, label = "title") { t ->
-                    Text(NAV_TITLES[t] ?: "PepsGoal", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // Titre entier : sa taille s'adapte à la place laissée par les boutons
+                    FitText(NAV_TITLES[t] ?: "PepsGoal", size = 24, min = 14, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
                 }
                 if (!ui.pg.store.online) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { Pi("cloudoff", size = 14.dp, tint = p.ink2); Muted("Hors ligne", small = true) }
             }
