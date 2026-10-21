@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import fr.pepsgoal.app.ui.Text
@@ -202,7 +204,10 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
         Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 18.dp, end = 10.dp)) { IconBtn("x", "Fermer le récap", { ui.closeFs() }) }
         AnimatedContent(i, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(0)) togetherWith fadeOut(tween(0)) else (slideInHorizontally { w -> w / 4 * dir } + fadeIn()) togetherWith fadeOut(tween(150)) }, label = "slide") { k ->
             val sl = f.slides[k]
-            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 28.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
+            // Diapositive centrée, qui défile si son contenu (ex. « Le mot du coach ») dépasse l'écran
+            BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+            val minH = maxHeight
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = minH).padding(horizontal = 28.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
                 sl.parts.forEachIndexed { j, part -> Pop(j) { PartView(ui, f, part) { i = 0; f.i = 0 } } }
                 if (k == f.slides.lastIndex) word?.let { w -> Pop(sl.parts.size) {
                     Column(Modifier.fillMaxWidth().aiGlow(18.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .5f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -210,6 +215,7 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
                         Text(w, color = INK, fontSize = 15.sp)
                     }
                 } }
+            }
             }
         }
         if (!last) Text("Touche l'écran pour avancer · ${i + 1}/${f.slides.size}", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp), color = INK.copy(alpha = .6f), fontSize = 12.sp)
