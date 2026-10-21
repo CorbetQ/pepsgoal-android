@@ -70,7 +70,7 @@ private fun Tiles(items: List<Triple<String, String, String?>>) {
     val p = LocalPal.current
     FlowRowCompat(gap = 8.dp) {
         items.forEach { (v, l, sub) ->
-            Glass(Modifier.widthIn(min = 100.dp), pad = 12.dp, radius = 18.dp) {
+            Glass(Modifier.widthIn(min = 100.dp), pad = 12.dp, radius = 18.dp, fill = false) {
                 Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
                 Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold)
                 sub?.let { Text(it, fontSize = 11.sp, color = p.ink3) }

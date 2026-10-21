@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -240,7 +241,7 @@ private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit)
         is Part.Cells -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.chunked(2).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { (v, l) ->
             Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .45f)).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = INK); Text(l, color = INK, fontSize = 12.sp, textAlign = TextAlign.Center) } } } } }
-        is Part.FinalActions -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        is Part.FinalActions -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PButton(if (ui.pg.socialOn()) "Partager mon récap" else "Copier mon récap", { ui.closeFs(); ui.open(Sheet.ShareHub(text = Recaps.shareText(f.st), period = f.p)) }, icon = "share", kind = "primary")
             PButton("Revoir", restart); PButton("Fermer", { ui.closeFs() })
         }

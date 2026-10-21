@@ -67,7 +67,7 @@ object LiveUpdates {
             val c = TYPE_COLORS.getValue("duration")
             val done = Math.floor(m).toInt()
             out += Live(ID_TIMER, "timer", "${t.start}", g.title,
-                if (leftMin > 0) "$done min sur ${fmtNum(target)} aujourd’hui · minuteur en marche" else "${fmtNum(target)} min atteintes · minuteur en marche",
+                if (leftMin > 0) "Objectif du jour : ${fmtNum(target)} min · temps restant en direct" else "${fmtNum(target)} min atteintes · minuteur en marche",
                 if (leftMin > 0) "${Math.ceil(leftMin).toInt()} min" else "$done min", (m / target * 1000).toInt().coerceIn(0, 1000), listOf(1000 to c),
                 if (leftMin > 0) now + (leftMin * 60_000).toLong() else now - (m * 60_000).toLong(), leftMin > 0,
                 listOf("Mettre en pause" to Notifier.action(ctx, ID_TIMER, ActionReceiver.TIMER) { putExtra("goal", g.id) }),
@@ -110,7 +110,8 @@ object LiveUpdates {
             .setProgress(l.progress)
             .setProgressTrackerIcon(Icon.createWithResource(ctx, R.drawable.ic_notif))
         val b = Notification.Builder(ctx, Notifier.CH_LIVE)
-            .setSmallIcon(R.drawable.ic_notif).setContentTitle(l.title).setContentText(l.text).setStyle(style)
+            // One UI colle le chronomètre au titre : un séparateur final les distingue (« Titre · 04:34 »)
+            .setSmallIcon(R.drawable.ic_notif).setContentTitle(if (l.chrono != null) "${l.title} ·" else l.title).setContentText(l.text).setStyle(style)
             .setOngoing(true).setOnlyAlertOnce(true).setCategory(if (l.which == "timer") Notification.CATEGORY_STOPWATCH else Notification.CATEGORY_PROGRESS)
             .setContentIntent(l.tap).setColor(l.color).setShortCriticalText(l.short)
             .setDeleteIntent(Notifier.action(ctx, l.id + 50, ActionReceiver.DISMISS_LIVE) { putExtra("which", l.which); putExtra("token", l.token) })
