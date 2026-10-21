@@ -47,6 +47,7 @@ class PepsApp : Application() {
         super.onCreate()
         instance = this
         prefs = DevicePrefs(this)
+        fr.pepsgoal.app.ui.FluentEmoji.load(this)
         val secrets = KeystoreSecrets(this)
         store = Store(FileDb(this))
         pg = Pg(store)
