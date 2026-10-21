@@ -29,6 +29,8 @@ interface CloudEvents {
     fun serverNotifications(fresh: List<Notif>) {}
     /** Nouveaux messages reçus (déchiffrés si possible) pour les notifications de conversation. */
     fun incomingMessages(fresh: List<Message>) {}
+    /** Nouvelles publications d'amis apparues dans le feed depuis la dernière relève. */
+    fun newPosts(fresh: List<Post>) {}
     fun error(message: String) {}
 }
 
@@ -386,6 +388,34 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         if (refreshAgain) { refreshAgain = false; scheduleSocial(150) }
     }
 
+    private var pollSig: Int? = null
+
+    /**
+     * Relève légère (toutes les minutes, y compris en arrière-plan) : notifications, conversations, groupes et
+     * publications des amis. Si quelque chose a changé depuis la dernière relève, tout le social est rechargé
+     * (ce qui déclenche les notifications système des nouveautés). Renvoie true si un rechargement a eu lieu.
+     */
+    suspend fun poll(): Boolean {
+        if (!store.acct || !store.online) return false
+        val sig = try {
+            coroutineScope {
+                val n = async { api.get("/v1/notifications") }; val c = async { api.get("/v1/conversations") }
+                val g = async { try { api.get("/v1/groups") } catch (e: ApiError) { JsonArray(emptyList()) } }
+                val f = async { api.get("/v1/feed?tab=friends") }
+                listOf(
+                    n.await().list().map { it.str("id") + it.str("read") },
+                    c.await().list().map { it.obj("peer").str("id") + ":" + it.int("unread") + ":" + (it["last"]?.toString() ?: "") },
+                    g.await().list().map { it.str("id") + ":" + it.int("unread") + ":" + (it["last"]?.toString() ?: "") },
+                    f.await().arr("posts").map { it.str("id") + ":" + it.arr("comments").size },
+                ).hashCode()
+            }
+        } catch (e: Exception) { return false }
+        if (sig == pollSig) return false
+        pollSig = sig
+        refreshSocial()
+        return true
+    }
+
     private suspend fun doRefreshSocial() = coroutineScope {
         val meR = async { api.get("/v1/me") }; val fr = async { api.get("/v1/friends") }
         val feedF = async { api.get("/v1/feed?tab=friends") }; val feedP = async { api.get("/v1/feed?tab=public") }
@@ -412,7 +442,10 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         db.friendships = fs
         // Feed
         val posts = LinkedHashMap<String, Post>()
-        for (p in feedF.await().arr("posts") + feedP.await().arr("posts")) posts[p.str("id")] = postFromServer(p)
+        val oldPosts = db.posts.map { it.id }.toSet()
+        val friendPosts = feedF.await().arr("posts")
+        for (p in friendPosts + feedP.await().arr("posts")) posts[p.str("id")] = postFromServer(p)
+        val freshP = friendPosts.mapNotNull { posts[it.str("id")] }.filter { it.id !in oldPosts && it.userId != mine && it.userId.isNotEmpty() && it.at > nowMs() - 86_400_000L }
         if (pg.isAdmin(u)) for (p in db.posts) if (p.mod && !posts.containsKey(p.id)) posts[p.id] = p
         db.posts = posts.values.toMutableList()
         // Stories (en ligne) et archive personnelle
@@ -457,6 +490,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         e2e.decryptAll()
         val freshM = db.messages.filter { it.id !in before && it.from != mine && !it.read && !it.readBy.contains(mine) }
         if (freshM.isNotEmpty() && before.isNotEmpty()) events.incomingMessages(freshM)
+        if (freshP.isNotEmpty() && oldPosts.isNotEmpty() && pulledBefore) events.newPosts(freshP)
         store.changed()
         pg.queueBadgeCheck()
     }

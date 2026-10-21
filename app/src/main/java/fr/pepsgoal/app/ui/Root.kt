@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -123,7 +124,7 @@ private fun Shell(ui: AppState) {
         // Contenu des onglets : il défile sous les barres en verre (niveau 1 du flou)
         CompositionLocalProvider(LocalBars provides PaddingValues(top = with(d) { topH.toDp() }, bottom = with(d) { botH.toDp() })) {
             Box(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier)) {
-                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(220)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120)) }, label = "tab") { tab ->
+                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(140)) + scaleIn(spring(dampingRatio = .68f, stiffness = 420f), initialScale = .93f) + slideInVertically(spring(dampingRatio = .72f, stiffness = 420f)) { it / 18 }) togetherWith (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 1.02f)) }, label = "tab") { tab ->
                     when (tab) {
                         "goals" -> GoalsScreen(ui)
                         "feed" -> FeedScreen(ui)
@@ -155,7 +156,7 @@ private fun EdgeFrost(modifier: Modifier, top: Boolean) {
     val solid = inset / h
     val fade = if (top) Brush.verticalGradient(0f to Color.Black, solid to Color.Black, 1f to Color.Transparent) else Brush.verticalGradient(0f to Color.Transparent, 1f - solid to Color.Black, 1f to Color.Black)
     val box = modifier.fillMaxWidth().height(h)
-    if (haze != null && !p.transp && !p.contrast) Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.glassStrong.copy(alpha = .55f))), blurRadius = 22.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) { mask = fade })
+    if (haze != null && !p.transp && !p.contrast) Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.glassStrong.copy(alpha = .55f))), blurRadius = 22.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) { mask = fade; inputScale = dev.chrisbanes.haze.HazeInputScale.Fixed(.5f) })
     else Box(box.background(if (top) Brush.verticalGradient(0f to p.bg, solid to p.bg.copy(alpha = .9f), 1f to Color.Transparent) else Brush.verticalGradient(0f to Color.Transparent, 1f - solid to p.bg.copy(alpha = .9f), 1f to p.bg)))
 }
 
@@ -170,17 +171,19 @@ private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>,
         .glassBg(shape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, shape).padding(6.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val w = maxWidth / items.size
-            val x by animateDpAsState(w * idx, if (p.motion) snap() else spring(dampingRatio = .78f, stiffness = 420f), label = "nav")
+            val x by animateDpAsState(w * idx, if (p.motion) snap() else spring(dampingRatio = .58f, stiffness = 480f), label = "nav")
             Box(Modifier.offset(x = x).width(w).height(56.dp).shadow(if (p.transp) 0.dp else 6.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
             Row(Modifier.fillMaxWidth()) {
                 items.forEachIndexed { i, (k, l, ic) ->
                     val sel = i == idx
-                    val col by animateColorAsState(if (sel) p.bg else p.ink2, tween(if (p.motion) 0 else 300), label = "navc")
+                    val col by animateColorAsState(if (sel) p.bg else p.ink2, tween(if (p.motion) 0 else 200), label = "navc")
+                    val pop by animateFloatAsState(if (sel && !p.motion) 1.14f else 1f, spring(dampingRatio = .35f, stiffness = 520f), label = "navi")
                     val n = badges[k] ?: 0
-                    Column(Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = l) { ui.nav(k) }
+                    val inter = remember { MutableInteractionSource() }
+                    Column(Modifier.weight(1f).bounce(inter, .86f).height(56.dp).clip(RoundedCornerShape(18.dp)).springClick(inter, label = l) { ui.nav(k) }
                         .semantics { selected = sel; role = Role.Tab; contentDescription = if (n > 0) "$l, $n" else l },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Box {
+                        Box(Modifier.graphicsLayer { scaleX = pop; scaleY = pop }) {
                             Pi(ic, size = 22.dp, tint = col)
                             if (n > 0) Badge(n, Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-6).dp))
                         }
@@ -196,8 +199,9 @@ private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>,
 @Composable
 private fun Fab(desc: String, modifier: Modifier, onClick: () -> Unit) {
     val p = LocalPal.current
-    Box(modifier.size(58.dp).shadow(if (p.transp) 0.dp else 16.dp, CircleShape, ambientColor = p.flame, spotColor = p.flame).clip(CircleShape).background(p.accent)
-        .clickable(onClickLabel = desc, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) { Pi("plus", size = 28.dp, tint = p.onAccent) }
+    val inter = remember { MutableInteractionSource() }
+    Box(modifier.bounce(inter, .84f).size(58.dp).shadow(if (p.transp) 0.dp else 16.dp, CircleShape, ambientColor = p.flame, spotColor = p.flame).clip(CircleShape).background(p.accent)
+        .springClick(inter, label = desc, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) { Pi("plus", size = 28.dp, tint = p.onAccent) }
 }
 
 @Composable
@@ -232,7 +236,7 @@ private fun Toasts(ui: AppState) {
             for (t in ui.toasts) key(t.id) {
                 var shown by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { shown = true }
-                AnimatedVisibility(shown, enter = fadeIn() + slideInVertically { it / 2 }) {
+                AnimatedVisibility(shown, enter = fadeIn(tween(120)) + scaleIn(spring(dampingRatio = .45f, stiffness = 500f), initialScale = .8f) + slideInVertically(spring(dampingRatio = .55f, stiffness = 500f)) { it / 2 }) {
                     Row(Modifier.clip(RoundedCornerShape(18.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (t.icon == "flame") Flame(22.dp) else Pi(t.icon, size = 20.dp, tint = p.ink)

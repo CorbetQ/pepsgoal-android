@@ -281,7 +281,7 @@ private fun RemindersSettings(ui: AppState, u: User) {
                 }, icon = "bell", kind = "primary", small = true)
             }
             if (granted) SetRow("Catégories de notifications", "Choisis le son, la vibration et l’importance de chaque catégorie dans Android.") { PButton("Gérer", { Notifier.openSettings(ctx) }, icon = "gear", small = true) }
-            if (!Reminders.canExact(ctx)) SetRow("Rappels à l’heure exacte", "Android peut retarder les rappels de quelques minutes. Autorise les alarmes exactes pour qu’ils arrivent pile à l’heure.") { PButton("Autoriser", { Reminders.openExactSettings(ctx) }, icon = "clock", small = true) }
+            if (!Reminders.canExact(ctx)) SetRow("Rappels à l’heure exacte", "Android peut retarder les rappels de quelques minutes. Autorise les alarmes exactes pour qu’ils arrivent pile à l’heure, et pour relever messages et publications chaque minute application fermée.") { PButton("Autoriser", { Reminders.openExactSettings(ctx) }, icon = "clock", small = true) }
             SetRow("Tester un rappel", "Envoie un rappel maintenant") {
                 PButton("Tester", {
                     val pending = ui.pg.todayPlan(u.id).due.count { !it.done }

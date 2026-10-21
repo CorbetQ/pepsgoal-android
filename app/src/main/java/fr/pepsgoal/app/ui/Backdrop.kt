@@ -54,12 +54,19 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long) {
     }
 }
 
+/**
+ * Horloge des fonds animés (0 → 1 sur [dur] ms). Les fonds bougent lentement : quelques images par seconde
+ * suffisent, et le verre givré des cartes n'a pas à être recalculé à chaque image (fluidité du défilement).
+ */
 @Composable
-private fun anim(dur: Int): Float {
+private fun anim(dur: Int, fps: Int = 12): Float {
     val p = LocalPal.current
     if (p.motion) return 0f
-    val t = rememberInfiniteTransition(label = "bg")
-    val v by t.animateFloat(0f, 1f, infiniteRepeatable(tween(dur, easing = LinearEasing), RepeatMode.Restart), label = "bg")
+    var v by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(dur, fps) {
+        val step = 1_000_000_000L / fps; var last = 0L; var t0 = -1L
+        while (isActive) withFrameNanos { n -> if (t0 < 0) t0 = n; if (n - last >= step) { last = n; v = ((n - t0) / 1_000_000L % dur) / dur.toFloat() } }
+    }
     return v
 }
 
@@ -162,7 +169,7 @@ private fun CustomBg(stamp: Long) {
 @Composable
 private fun SnowFx() {
     val flakes = remember { List(46) { floatArrayOf(Random.nextFloat(), Random.nextFloat(), 2 + Random.nextFloat() * 5, .45f + Random.nextFloat() * .5f, 9 + Random.nextFloat() * 14) } }
-    val t = anim(20000)
+    val t = anim(20000, fps = 24)
     Canvas(Modifier.fillMaxSize()) {
         for (f in flakes) {
             val y = ((f[1] + t * 20f / f[4]) % 1f) * size.height
@@ -188,7 +195,7 @@ fun SkyCanvas(s: Weather.Sky) {
     LaunchedEffect(s.phase, s.cond, p.motion) {
         if (p.motion) return@LaunchedEffect
         var last = 0L
-        while (isActive) withFrameNanos { n -> if (n - last > 33_000_000) { last = n; frame = n } }
+        while (isActive) withFrameNanos { n -> if (n - last > 40_000_000) { last = n; frame = n } }
     }
     val seed = remember(s.phase, s.cond, s.code) { Random(s.code * 31 + s.phase.hashCode()) }
     val stars = remember(seed) { List(180) { floatArrayOf(seed.nextFloat(), seed.nextFloat() * .78f, .35f + seed.nextFloat() * 1.1f, seed.nextFloat() * 6.28f, .5f + seed.nextFloat() * 1.2f) } }

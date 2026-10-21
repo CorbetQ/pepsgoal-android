@@ -10,3 +10,6 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+# Code de l'application gardé tel quel (sérialisation, récepteurs, widget) : R8 optimise surtout Compose et les bibliothèques
+-keep class fr.pepsgoal.** { *; }
+-dontwarn javax.annotation.**

@@ -29,9 +29,9 @@ jobs:
       - name: Tests de la logique (module core)
         run: ./gradlew --no-daemon :core:test
       - name: Application Android
-        run: ./gradlew --no-daemon :app:assembleDebug
+        run: ./gradlew --no-daemon :app:assembleRelease
       - name: Nom de l'APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk "PepsGoal-${VERSION}.apk"
+        run: cp app/build/outputs/apk/release/app-release.apk "PepsGoal-${VERSION}.apk"
       - name: Notes de version
         run: |
           python3 - <<'PY'
@@ -40,7 +40,7 @@ jobs:
           notes = json.load(open("app/src/main/assets/docs/notes.json"))
           items = next((n[2] for n in notes if n[0] == v), [])
           body = "PepsGoal pour Android, application native (Kotlin, Jetpack Compose).\n\n" + "\n".join("- " + i for i in items)
-          body += "\n\nAPK signé avec une clé de débogage (identifiant `fr.pepsgoal.app.debug`) : à installer pour tester, pas pour le Play Store."
+          body += "\n\nAPK optimisé (version release, identifiant `fr.pepsgoal.app`), signé avec la clé de test du dépôt : les prochaines versions s'installeront par-dessus. Pas destiné au Play Store."
           open("release-notes.md", "w").write(body)
           PY
       - uses: softprops/action-gh-release@v2
