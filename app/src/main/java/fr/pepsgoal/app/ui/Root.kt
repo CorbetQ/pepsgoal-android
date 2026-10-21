@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import fr.pepsgoal.app.ui.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,7 +92,17 @@ fun PepsRoot(ui: AppState) {
             .pointerInput(Unit) { awaitPointerEventScope { while (true) { val e = awaitPointerEvent(PointerEventPass.Initial); e.changes.firstOrNull()?.let { ui.touch = it.position } } } }) {
             // Arrière-plan : source du flou des panneaux en verre (niveau 0)
             Box(Modifier.fillMaxSize().hazeSource(haze, zIndex = 0f)) {
-                Backdrop(if (s?.theme == "weather") "sky" else s?.bg ?: "blob", if (s?.theme == "weather") Weather.sky(wx?.data) else null, pg.eggWord() == "Cold", ui.prefs.bgStamp)
+                // Changement d'arrière-plan ou de ciel (jour → crépuscule → nuit, pluie…) : fondu enchaîné
+                val kind = if (s?.theme == "weather") "sky" else s?.bg ?: "blob"
+                val sky = if (s?.theme == "weather") Weather.sky(wx?.data) else null
+                val snow = pg.eggWord() == "Cold"; val stamp = ui.prefs.bgStamp
+                val key = listOf(kind, sky?.phase, sky?.cond, sky?.code, snow, stamp, p.dark)
+                val skies = remember { mutableMapOf<List<Any?>, Weather.Sky?>() }
+                skies[key] = sky
+                Crossfade(key, animationSpec = tween(if (p.motion) 0 else 900), label = "backdrop") { k ->
+                    Backdrop(k[0] as String, skies[k], k[4] as Boolean, k[5] as Long)
+                }
+                LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
             }
             CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze) {
                 when {

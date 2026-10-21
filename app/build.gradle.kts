@@ -13,8 +13,8 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 313
-        versionName = "3.0.13"
+        versionCode = 314
+        versionName = "3.0.14"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")

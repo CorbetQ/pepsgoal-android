@@ -10,6 +10,11 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -177,5 +182,42 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         bodyLarge = typo.bodyLarge.lh(1.38f), bodyMedium = typo.bodyMedium.lh(1.38f), bodySmall = typo.bodySmall.lh(1.35f),
         labelLarge = typo.labelLarge.lh(1.25f), labelMedium = typo.labelMedium.lh(1.25f), labelSmall = typo.labelSmall.lh(1.25f)
     )
-    CompositionLocalProvider(LocalPal provides pal) { MaterialTheme(colorScheme = scheme, typography = typoEm, content = content) }
+    // Changement de thème (clair ↔ sombre, ciel de la Météo, accent…) : fondu doux des couleurs au lieu d'une bascule
+    val anim = remember { ThemeAnim() }
+    val prog = remember { Animatable(1f) }
+    if (anim.to != null && anim.to != pal && !pal.motion) { anim.from = anim.last; anim.fromScheme = anim.lastScheme; anim.pending = true }
+    anim.to = pal; anim.toScheme = scheme
+    LaunchedEffect(pal) {
+        if (anim.pending) { anim.pending = false; prog.snapTo(0f); prog.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
+    }
+    val k = if (anim.pending) 0f else prog.value
+    val from = anim.from; val fromScheme = anim.fromScheme
+    val shown = if (k >= 1f || from == null) pal else lerpPal(from, pal, k)
+    val shownScheme = if (k >= 1f || fromScheme == null) scheme else lerpScheme(fromScheme, scheme, k)
+    anim.last = shown; anim.lastScheme = shownScheme
+    CompositionLocalProvider(LocalPal provides shown) { MaterialTheme(colorScheme = shownScheme, typography = typoEm, content = content) }
 }
+
+private class ThemeAnim { var from: Pal? = null; var fromScheme: ColorScheme? = null; var to: Pal? = null; var toScheme: ColorScheme? = null; var last: Pal? = null; var lastScheme: ColorScheme? = null; var pending = false }
+
+private fun lc(a: Color, b: Color, t: Float) = androidx.compose.ui.graphics.lerp(a, b, t)
+
+/** Palette intermédiaire entre deux thèmes (couleurs mélangées ; réglages pris du thème d'arrivée, « sombre » à mi-chemin). */
+private fun lerpPal(a: Pal, b: Pal, t: Float) = b.copy(
+    dark = if (t < .5f) a.dark else b.dark,
+    bg = lc(a.bg, b.bg, t), ink = lc(a.ink, b.ink, t), ink2 = lc(a.ink2, b.ink2, t), ink3 = lc(a.ink3, b.ink3, t),
+    glass = lc(a.glass, b.glass, t), glassStrong = lc(a.glassStrong, b.glassStrong, t), glassEdge = lc(a.glassEdge, b.glassEdge, t), line = lc(a.line, b.line, t), scrim = lc(a.scrim, b.scrim, t),
+    flame2 = lc(a.flame2, b.flame2, t), flame = lc(a.flame, b.flame, t), pink = lc(a.pink, b.pink, t), onAccent = lc(a.onAccent, b.onAccent, t),
+    ok = lc(a.ok, b.ok, t), danger = lc(a.danger, b.danger, t), focus = lc(a.focus, b.focus, t),
+    blobs = b.blobs.mapIndexed { i, c -> lc(a.blobs.getOrElse(i) { c }, c, t) }, blobAlpha = a.blobAlpha + (b.blobAlpha - a.blobAlpha) * t,
+    types = b.types.mapValues { (k, v) -> a.types[k]?.let { o -> TypeColor(lc(o.c, v.c, t), lc(o.ink, v.ink, t)) } ?: v }
+)
+
+private fun lerpScheme(a: ColorScheme, b: ColorScheme, t: Float) = b.copy(
+    primary = lc(a.primary, b.primary, t), onPrimary = lc(a.onPrimary, b.onPrimary, t), primaryContainer = lc(a.primaryContainer, b.primaryContainer, t),
+    secondary = lc(a.secondary, b.secondary, t), tertiary = lc(a.tertiary, b.tertiary, t), background = lc(a.background, b.background, t), onBackground = lc(a.onBackground, b.onBackground, t),
+    surface = lc(a.surface, b.surface, t), onSurface = lc(a.onSurface, b.onSurface, t), surfaceVariant = lc(a.surfaceVariant, b.surfaceVariant, t), onSurfaceVariant = lc(a.onSurfaceVariant, b.onSurfaceVariant, t),
+    outline = lc(a.outline, b.outline, t), outlineVariant = lc(a.outlineVariant, b.outlineVariant, t), error = lc(a.error, b.error, t),
+    surfaceContainerLow = lc(a.surfaceContainerLow, b.surfaceContainerLow, t), surfaceContainer = lc(a.surfaceContainer, b.surfaceContainer, t),
+    surfaceContainerHigh = lc(a.surfaceContainerHigh, b.surfaceContainerHigh, t), surfaceContainerHighest = lc(a.surfaceContainerHighest, b.surfaceContainerHighest, t)
+)
