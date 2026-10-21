@@ -51,6 +51,7 @@ fun GoalsScreen(ui: AppState) {
     var grouped by remember { mutableStateOf(ui.prefs.goalGroupBy) }
     var collapsed by remember { mutableStateOf(ui.prefs.collapsed) }
     var aiOpen by remember { mutableStateOf(false) }
+    val aiOn = fr.pepsgoal.app.ai.LocalAi.on(androidx.compose.ui.platform.LocalContext.current, ui.prefs.aiCreate)
 
     val base = when (ui.goalFilter) {
         "today" -> open.filter { it.id in dueIds }
@@ -100,7 +101,7 @@ fun GoalsScreen(ui: AppState) {
             }
         }
         // Créer avec le coach : pastille compacte qui s'ouvre à la demande
-        if (fr.pepsgoal.app.ai.LocalAi.on(androidx.compose.ui.platform.LocalContext.current, ui.prefs.aiCreate)) item("aicreate") {
+        if (aiOn) item("aicreate") {
             if (aiOpen) AiCreateCard(ui)
             else Glass(pad = 12.dp, onClick = { aiOpen = true }, ai = true) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
