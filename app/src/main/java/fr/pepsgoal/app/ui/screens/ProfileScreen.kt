@@ -79,21 +79,56 @@ private fun StoryArchiveCard(ui: AppState, u: User) {
     val pg = ui.pg; val p = LocalPal.current
     if (pg.isGuest(u) || !pg.socialOn(u)) return
     val list = pg.myStoryArchive(u.id)
-    var all by remember { mutableStateOf(false) }
-    val shown = if (all) list else list.take(12)
-    Glass {
+    Glass(onClick = if (list.size > 3) ({ ui.push(Screen.Stories) }) else null) {
         CardHead("Mes stories") { Count(list.size) }
         if (list.isEmpty()) Muted("Après leurs 24 heures en ligne, tes stories restent ici : toi seul peux les revoir.", small = true)
-        FlowRowCompat(gap = 8.dp) {
-            shown.forEachIndexed { i, s ->
-                val live = nowMs() - s.at < STORY_TTL
-                Column(Modifier.width(96.dp).clickable { ui.fs = Fs.Stories(listOf(Pg.StoryGroup(u, list, false, list.firstOrNull()?.at ?: 0L)), 0, i, archive = true) }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box { StoryThumb(s, Modifier.fillMaxWidth().height(150.dp)); if (live) Chip("En ligne", color = p.flame, ink = p.ink, modifier = Modifier.padding(6.dp)) }
-                    Muted((if (live) ago(s.at) else fmtDate(ymd(s.at))) + (s.likeCount?.takeIf { it > 0 }?.let { " · $it 🔥" } ?: ""), small = true, maxLines = 1)
+        else StoryRow(ui, u, list, 0, list.take(3))
+        if (list.size > 3) PButton("Voir tout l’historique (${list.size})", { ui.push(Screen.Stories) }, icon = "clock", small = true, modifier = Modifier.padding(top = 12.dp).fillMaxWidth())
+    }
+}
+
+/** Une rangée de trois miniatures de même taille (les places vides gardent la grille alignée). */
+@Composable
+private fun StoryRow(ui: AppState, u: User, all: List<Story>, from: Int, row: List<Story>) {
+    val p = LocalPal.current
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (k in 0 until 3) {
+            val s = row.getOrNull(k)
+            if (s == null) { Spacer(Modifier.weight(1f)); continue }
+            val live = nowMs() - s.at < STORY_TTL
+            val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            Column(Modifier.weight(1f).bounce(inter, .94f).clip(RoundedCornerShape(14.dp))
+                .springClick(inter) { ui.fs = Fs.Stories(listOf(Pg.StoryGroup(u, all, false, all.firstOrNull()?.at ?: 0L)), 0, from + k, archive = true) },
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box { StoryThumb(s, Modifier.fillMaxWidth().aspectRatio(.62f)); if (live) Chip("En ligne", color = p.flame, ink = p.ink, modifier = Modifier.padding(6.dp)) }
+                Muted((if (live) ago(s.at) else fmtDate(ymd(s.at))) + (s.likeCount?.takeIf { it > 0 }?.let { " · $it 🔥" } ?: ""), small = true, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** Page « Historique des stories » : toutes tes stories, regroupées par mois, en grille de trois. */
+@Composable
+fun StoryHistoryScreen(ui: AppState) {
+    ui.watch()
+    val pg = ui.pg; val u = pg.me() ?: return
+    val list = pg.myStoryArchive(u.id)
+    val fmt = remember { java.time.format.DateTimeFormatter.ofPattern("LLLL yyyy", java.util.Locale.FRENCH) }
+    val months = list.withIndex().groupBy { java.time.Instant.ofEpochMilli(it.value.at).atZone(java.time.ZoneId.systemDefault()).format(fmt).replaceFirstChar { c -> c.titlecase() } }
+    val likes = list.sumOf { it.likeCount ?: 0 }
+    fr.pepsgoal.app.ui.screens.ScreenFrame(ui, "Mes stories", "Profil", { ui.back() }) {
+        item("sum") {
+            StatGrid(listOf("${list.size}" to "stories", "$likes" to "flammes reçues", "${months.size}" to "mois"), columns = 3)
+        }
+        if (list.isEmpty()) item("empty") { Glass { Muted("Après leurs 24 heures en ligne, tes stories restent ici : toi seul peux les revoir.") } }
+        for ((m, items) in months) item("m-$m") {
+            Glass(pad = 14.dp) {
+                CardHead(m) { Count(items.size) }
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items.chunked(3).forEach { row -> StoryRow(ui, u, list, row.first().index, row.map { it.value }) }
                 }
             }
         }
-        if (list.size > shown.size) PButton("Voir les ${list.size} stories", { all = true }, kind = "ghost", small = true)
     }
 }
 

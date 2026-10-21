@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import fr.pepsgoal.app.sys.Notifier
 import fr.pepsgoal.app.ui.PepsRoot
+import fr.pepsgoal.app.ui.watch
 
 /** Activité unique : toute l'interface est en Jetpack Compose (aucune page web). */
 class MainActivity : ComponentActivity() {
@@ -32,9 +33,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             BackHandler(enabled = ui.fs != null || ui.sheet != null || ui.screens.isNotEmpty() || ui.tab != "today") { ui.back() }
             PepsRoot(ui)
+            val meId = ui.watch().let { peps.pg.me()?.id }
+            androidx.compose.runtime.LaunchedEffect(meId) { if (meId != null) askNotifications() }
         }
         if (savedInstanceState == null) handle(intent)
-        // Notifications : demandées une seule fois, au premier lancement avec un profil
+    }
+
+    override fun onResume() {
+        super.onResume()
+        askNotifications()
+    }
+
+    private fun askNotifications() {
+        // Notifications : demandées une seule fois, dès qu'un profil existe (y compris juste après la connexion)
         val prefs = getSharedPreferences("pepsgoal.device", MODE_PRIVATE)
         if (Build.VERSION.SDK_INT >= 33 && !prefs.getBoolean("askedNotif", false) && peps.pg.me() != null &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

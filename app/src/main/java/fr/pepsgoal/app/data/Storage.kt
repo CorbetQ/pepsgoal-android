@@ -86,6 +86,8 @@ class DevicePrefs(context: Context) {
     var collapsed: Set<String> get() = p.getStringSet("collapsed", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("collapsed", v).apply()
     var seenVersion get() = p.getString("seenVersion", "") ?: ""; set(v) = p.edit().putString("seenVersion", v).apply()
     var notifiedIds: Set<String> get() = p.getStringSet("notified", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("notified", v.toList().takeLast(400).toSet()).apply()
+    /** Dernière relève réussie des notifications du serveur en arrière-plan (ms). */
+    var lastPoll get() = p.getLong("lastPoll", 0L); set(v) = p.edit().putLong("lastPoll", v).apply()
     var voiceRate get() = p.getFloat("voiceRate", 1f); set(v) = p.edit().putFloat("voiceRate", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp).count { it }
 }

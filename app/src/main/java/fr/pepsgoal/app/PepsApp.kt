@@ -92,9 +92,15 @@ class PepsApp : Application() {
         Poller.schedule(this)
     }
 
+    /** Connexion réseau réelle de l'appareil (relue à chaque réveil : l'état gardé en mémoire peut dater). */
+    fun networkUp(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return cm.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } == true
+    }
+
     private fun watchNetwork() {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val online = { cm.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } == true }
+        val online = { networkUp() }
         cloud.navOnline = online()
         cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) { scope.launch { cloud.navOnline = true; cloud.pingSoon() } }

@@ -379,7 +379,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
 
     suspend fun refreshSocial() {
         if (!store.acct || !store.online) return
-        if (refreshing?.isActive == true) { refreshAgain = true; return }
+        // Un rechargement est déjà en cours : on attend sa fin (les relèves en arrière-plan doivent finir avant de rendre la main)
+        if (refreshing?.isActive == true) { refreshAgain = true; refreshing?.join(); return }
         val job = scope.launch {
             try { doRefreshSocial() } catch (e: ApiError) { if (e.status != 0) events.error(e.message ?: "") } catch (e: Exception) { }
         }
@@ -396,7 +397,11 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
      * (ce qui déclenche les notifications système des nouveautés). Renvoie true si un rechargement a eu lieu.
      */
     suspend fun poll(): Boolean {
-        if (!store.acct || !store.online) return false
+        if (!store.acct) return false
+        // Application réveillée après un long sommeil : l'état « hors ligne » peut dater (réseau coupé pendant la veille,
+        // nouvel essai de connexion jamais exécuté car le processus était gelé) : on revérifie tout de suite
+        if (!store.online) { if (!navOnline) return false; failures = 0; ping() }
+        if (!store.online) return false
         val sig = try {
             coroutineScope {
                 val n = async { api.get("/v1/notifications") }; val c = async { api.get("/v1/conversations") }

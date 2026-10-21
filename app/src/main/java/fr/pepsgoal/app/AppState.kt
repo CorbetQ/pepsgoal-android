@@ -61,6 +61,8 @@ sealed class Fs {
 sealed class Screen {
     class Settings(val cat: String? = null) : Screen()
     class Chat(val with: String? = null, val group: String? = null) : Screen()
+    /** Historique complet des stories (page dédiée, ouverte depuis la carte « Mes stories » du profil). */
+    object Stories : Screen()
 }
 
 class Toast(val id: Long, val text: String, val icon: String)

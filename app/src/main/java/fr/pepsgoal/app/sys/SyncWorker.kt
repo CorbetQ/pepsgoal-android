@@ -17,7 +17,8 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
         val app = applicationContext.peps
         try {
             withContext(Dispatchers.Main) {
-                if (app.store.acct && app.store.online) { app.cloud.syncNow(); app.cloud.refreshSocial() }
+                if (app.store.acct) { app.cloud.poll(); if (app.store.online) { app.cloud.syncNow(); app.cloud.refreshSocial() } }
+                Poller.schedule(app)
                 app.pg.timerTick(); app.pg.checkReminders()
                 LiveUpdates.refresh(app); WidgetUpdater.update(app); Reminders.reschedule(app)
             }

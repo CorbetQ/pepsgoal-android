@@ -41,6 +41,7 @@ import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.sys.LiveUpdates
 import fr.pepsgoal.app.sys.Notifier
+import fr.pepsgoal.app.sys.Poller
 import fr.pepsgoal.app.sys.Reminders
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
@@ -282,6 +283,15 @@ private fun RemindersSettings(ui: AppState, u: User) {
             }
             if (granted) SetRow("Catégories de notifications", "Choisis le son, la vibration et l’importance de chaque catégorie dans Android.") { PButton("Gérer", { Notifier.openSettings(ctx) }, icon = "gear", small = true) }
             if (!Reminders.canExact(ctx)) SetRow("Rappels à l’heure exacte", "Android peut retarder les rappels de quelques minutes. Autorise les alarmes exactes pour qu’ils arrivent pile à l’heure, et pour relever messages et publications chaque minute application fermée.") { PButton("Autoriser", { Reminders.openExactSettings(ctx) }, icon = "clock", small = true) }
+            if (ui.pg.store.acct) {
+                var unr by remember { mutableStateOf(Poller.unrestricted(ctx)) }
+                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { unr = Poller.unrestricted(ctx); onPauseOrDispose {} }
+                val last = ui.prefs.lastPoll
+                val lastTxt = if (last > 0) " Dernière relève en arrière-plan : ${ago(last)}." else ""
+                SetRow("Notifications application fermée", (if (unr) "PepsGoal relève messages, publications et notifications chaque minute, même fermée." else "Pour recevoir messages et publications chaque minute application fermée, retire PepsGoal de l’optimisation de batterie.") + lastTxt) {
+                    if (unr) Chip("Actives", "check", LocalPal.current.ok) else PButton("Autoriser", { Poller.askUnrestricted(ctx) }, icon = "bell", kind = "primary", small = true)
+                }
+            }
             SetRow("Tester un rappel", "Envoie un rappel maintenant") {
                 PButton("Tester", {
                     val pending = ui.pg.todayPlan(u.id).due.count { !it.done }

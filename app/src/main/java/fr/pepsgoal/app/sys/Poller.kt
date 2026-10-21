@@ -32,6 +32,14 @@ object Poller {
     }
 
     fun cancel(ctx: Context) = ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
+
+    /** L'application est-elle exemptée de l'optimisation de batterie (réveils plus réguliers en veille) ? */
+    fun unrestricted(ctx: Context) = ctx.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)
+
+    fun askUnrestricted(ctx: Context) {
+        val i = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try { ctx.startActivity(i) } catch (e: Exception) { ctx.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
 }
 
 class PollReceiver : BroadcastReceiver() {
@@ -42,7 +50,11 @@ class PollReceiver : BroadcastReceiver() {
         val done = goAsync()
         app.scope.launch {
             try {
-                withTimeoutOrNull(25_000) { if (app.cloud.poll()) { WidgetUpdater.update(ctx) } }
+                withTimeoutOrNull(25_000) {
+                    app.cloud.navOnline = app.networkUp()
+                    if (app.cloud.poll()) WidgetUpdater.update(ctx)
+                    if (app.store.online) app.prefs.lastPoll = System.currentTimeMillis()
+                }
             } catch (e: Exception) {
             } finally { Poller.schedule(ctx); done.finish() }
         }

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
+import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.peps
@@ -76,6 +77,14 @@ fun PepsRoot(ui: AppState) {
     PepsTheme(input) {
         val p = LocalPal.current
         val haze = rememberHazeState()
+        // Icônes de la barre d'état et de la barre système : foncées sur les thèmes clairs (et le ciel de jour),
+        // claires sur les thèmes sombres et par-dessus les stories plein écran
+        val view = androidx.compose.ui.platform.LocalView.current
+        val lightBars = !p.dark && ui.fs !is Fs.Stories
+        SideEffect {
+            val w = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            androidx.core.view.WindowCompat.getInsetsController(w, view).apply { isAppearanceLightStatusBars = lightBars; isAppearanceLightNavigationBars = lightBars }
+        }
         Box(Modifier.fillMaxSize().then(if (p.mono) Modifier.grayscale() else Modifier)
             .pointerInput(Unit) { awaitPointerEventScope { while (true) { val e = awaitPointerEvent(PointerEventPass.Initial); e.changes.firstOrNull()?.let { ui.touch = it.position } } } }) {
             // Arrière-plan : source du flou des panneaux en verre (niveau 0)
@@ -93,6 +102,7 @@ fun PepsRoot(ui: AppState) {
                     when (sc) {
                         is Screen.Settings -> SettingsScreen(ui, sc.cat)
                         is Screen.Chat -> ChatScreen(ui, sc.with, sc.group)
+                        is Screen.Stories -> StoryHistoryScreen(ui)
                         null -> {}
                     }
                 }
@@ -149,15 +159,25 @@ private fun Shell(ui: AppState) {
 
 @Composable
 private fun EdgeFrost(modifier: Modifier, top: Boolean) {
-    val p = LocalPal.current; val haze = LocalHaze.current
+    val p = LocalPal.current; val haze = LocalHaze.current; val d = LocalDensity.current
     val inset = (if (top) WindowInsets.statusBars else WindowInsets.navigationBars).asPaddingValues().let { if (top) it.calculateTopPadding() else it.calculateBottomPadding() }
-    if (inset == 0.dp) return
-    val h = inset + 22.dp
+    // Flou progressif : maximal sous la barre système, il s'estompe en douceur vers le contenu (plus haut en bas,
+    // où il passe derrière la barre de navigation flottante)
+    val h = inset + if (top) 46.dp else 88.dp
     val solid = inset / h
-    val fade = if (top) Brush.verticalGradient(0f to Color.Black, solid to Color.Black, 1f to Color.Transparent) else Brush.verticalGradient(0f to Color.Transparent, 1f - solid to Color.Black, 1f to Color.Black)
+    val ease = listOf(0f to 1f, .25f to .82f, .5f to .52f, .75f to .2f, 1f to 0f)
+    fun stops(a: Float) = if (top) (listOf(0f to a) + ease.map { (x, k) -> (solid + x * (1 - solid)) to a * k })
+        else (ease.reversed().map { (x, k) -> ((1 - x) * (1 - solid)) to a * k } + listOf(1f to a))
+    fun grad(a: Float) = Brush.verticalGradient(*stops(a).map { (x, k) -> x to p.bg.copy(alpha = k) }.toTypedArray())
     val box = modifier.fillMaxWidth().height(h)
-    if (haze != null && !p.transp && !p.contrast) Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.glassStrong.copy(alpha = .55f))), blurRadius = 22.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) { mask = fade; inputScale = dev.chrisbanes.haze.HazeInputScale.Fixed(.5f) })
-    else Box(box.background(if (top) Brush.verticalGradient(0f to p.bg, solid to p.bg.copy(alpha = .9f), 1f to Color.Transparent) else Brush.verticalGradient(0f to Color.Transparent, 1f - solid to p.bg.copy(alpha = .9f), 1f to p.bg)))
+    if (haze != null && !p.transp && !p.contrast) {
+        val hPx = with(d) { h.toPx() }; val iPx = with(d) { inset.toPx() }
+        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.glassStrong.copy(alpha = .3f))), blurRadius = 26.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+            inputScale = dev.chrisbanes.haze.HazeInputScale.Fixed(.5f)
+            progressive = if (top) dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = iPx, startIntensity = 1f, endY = hPx, endIntensity = 0f, easing = androidx.compose.animation.core.LinearEasing)
+                else dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = 0f, endY = hPx - iPx, endIntensity = 1f, easing = androidx.compose.animation.core.LinearEasing)
+        }.background(grad(if (p.dark) .5f else .62f)))
+    } else Box(box.background(grad(.94f)))
 }
 
 /** Barre de navigation PepsGoal : pilule en verre flottante, onglet actif repéré par une pastille qui glisse. */
