@@ -116,11 +116,11 @@ fun emojiKey(e: String): String? {
 
 /** Emoji affiché avec le dessin Fluent de Microsoft (comme la version web), ou celui du système s'il n'existe pas. */
 @Composable
-fun Emoji(e: String, size: Dp, modifier: Modifier = Modifier) {
+fun Emoji(e: String, size: Dp, modifier: Modifier = Modifier, colorFilter: ColorFilter? = null) {
     val key = remember(e) { emojiKey(e) }
     val sp = with(LocalDensity.current) { (size * .82f).toSp() }
     if (key == null) { Text(e, fontSize = sp, modifier = modifier); return }
-    SubcomposeAsyncImage(model = "file:///android_asset/emoji/$key.webp", contentDescription = e, modifier = modifier.size(size), contentScale = ContentScale.Fit,
+    SubcomposeAsyncImage(model = "file:///android_asset/emoji/$key.webp", contentDescription = e, modifier = modifier.size(size), contentScale = ContentScale.Fit, colorFilter = colorFilter,
         error = { Box(Modifier.size(size), contentAlignment = Alignment.Center) { Text(e, fontSize = sp, textAlign = TextAlign.Center) } })
 }
 
@@ -216,6 +216,35 @@ fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.
             progressive = dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = 0f, endY = Float.POSITIVE_INFINITY, endIntensity = 1f, easing = ease)
         }.background(veil))
     } else Box(box.background(grad { a -> milk.copy(alpha = .9f * a) }))
+}
+
+/**
+ * Option de sondage (feed et messagerie) : barre de résultat qui progresse avec les votes, case cochée pour ton choix,
+ * même style de verre et de contours que le reste de l'interface.
+ */
+@Composable
+fun PollOption(text: String, pct: Float, show: Boolean, mine: Boolean, top: Boolean, enabled: Boolean, onClick: () -> Unit, sub: String? = null, count: String? = null) {
+    val p = LocalPal.current
+    val v by animateFloatAsState(if (show) pct.coerceIn(0f, 1f) else 0f, if (p.motion) tween(0) else Springs.bar, label = "poll")
+    val shape = RoundedCornerShape(16.dp)
+    val inter = remember { MutableInteractionSource() }
+    Box(Modifier.fillMaxWidth().bounce(inter, .97f).clip(shape).background(p.ink.copy(alpha = if (p.dark) .08f else .045f))
+        .border(1.5.dp, if (mine) p.flame else ctlEdge(p), shape).springClick(inter, enabled = enabled, onClick = onClick)) {
+        Box(Modifier.matchParentSize()) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(v.coerceIn(0f, 1f)).background(
+                if (top || mine) Brush.horizontalGradient(listOf(p.flame2.copy(alpha = .42f), p.pink.copy(alpha = .34f))) else SolidColor(p.ink.copy(alpha = if (p.dark) .14f else .09f))))
+        }
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(22.dp).clip(CircleShape).background(if (mine) p.flame else Color.Transparent).border(2.dp, if (mine) p.flame else p.ink3.copy(alpha = .7f), CircleShape), contentAlignment = Alignment.Center) {
+                if (mine) Pi("check", size = 14.dp, tint = p.onAccent)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (!sub.isNullOrEmpty()) Text(sub, fontSize = 11.sp, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (show) Text(count ?: "${Math.round(pct * 100)} %", fontWeight = FontWeight.ExtraBold, color = if (top) p.ink else p.ink2)
+        }
+    }
 }
 
 /** Ressorts communs : réponses vives avec un léger rebond. */

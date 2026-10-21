@@ -227,20 +227,12 @@ fun PollView(ui: AppState, post: Post) {
     val p = LocalPal.current; val pg = ui.pg; val poll = post.poll ?: return
     val closed = nowMs() >= poll.endsAt; val voted = poll.options.any { it.mine }; val showRes = closed || voted || post.userId == pg.meId()
     val top = poll.options.maxOfOrNull { it.n } ?: 0
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         poll.options.forEach { o ->
-            val pct = if (poll.voters > 0) Math.round(o.n * 100.0 / poll.voters).toInt() else 0
-            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).border(1.5.dp, if (o.mine) p.flame else p.line, RoundedCornerShape(14.dp))
-                .clickable(enabled = !closed) { if (!pg.socialBlocked("de voter")) ui.run { ui.cloud.vote(post, o.id) } }) {
-                if (showRes) Box(Modifier.matchParentSize().fillMaxWidth(pct / 100f).background(if (o.n == top && o.n > 0) p.flame.copy(alpha = .28f) else p.ink.copy(alpha = .08f)))
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (o.mine) Pi("check", size = 16.dp, tint = p.flame)
-                    Text(o.t, Modifier.weight(1f).padding(start = if (o.mine) 6.dp else 0.dp), fontWeight = FontWeight.Bold)
-                    if (showRes) Text("$pct %", fontWeight = FontWeight.ExtraBold)
-                }
-            }
+            PollOption(o.t, if (poll.voters > 0) o.n.toFloat() / poll.voters else 0f, showRes, o.mine, o.n == top && o.n > 0, !closed,
+                { if (!pg.socialBlocked("de voter")) ui.run { ui.cloud.vote(post, o.id) } })
         }
-        Muted("${pl(poll.voters, "votant", "votants")} · ${if (poll.multi) "plusieurs réponses" else "une réponse"} · ${if (closed) "sondage terminé" else "se termine ${fmtLeft(poll.endsAt - nowMs())}"}${if (!closed && !voted && post.userId != pg.meId()) " · vote pour voir les résultats" else ""}", small = true)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("poll", size = 14.dp, tint = p.ink2); Muted("${pl(poll.voters, "votant", "votants")} · ${if (poll.multi) "plusieurs réponses" else "une réponse"} · ${if (closed) "sondage terminé" else "se termine ${fmtLeft(poll.endsAt - nowMs())}"}${if (!closed && !voted && post.userId != pg.meId()) " · vote pour voir les résultats" else ""}", small = true) }
     }
 }
 
