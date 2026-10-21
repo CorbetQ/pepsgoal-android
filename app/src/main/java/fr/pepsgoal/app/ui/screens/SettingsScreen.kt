@@ -78,19 +78,20 @@ val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" 
 /** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
 @Composable
 fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, right: @Composable RowScope.() -> Unit = {},
-                icon: String? = null, color: Color? = null, color2: Color? = null, content: LazyListScope.() -> Unit) {
+                icon: String? = null, color: Color? = null, color2: Color? = null, bottom: (@Composable () -> Unit)? = null,
+                state: androidx.compose.foundation.lazy.LazyListState? = null, content: LazyListScope.() -> Unit) {
     val p = LocalPal.current
     val c1 = color ?: p.flame; val c2 = color2 ?: p.pink
     BackHandler { onBack() }
     remember(title) { Stagger.reset() }
     Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
         PageBackdrop(c1, c2)
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().imePadding()) {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PButton(back, onBack, icon = "chevronleft", small = true)
                 Spacer(Modifier.weight(1f)); right()
             }
-            LazyColumn(Modifier.fillMaxSize().imePadding(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state ?: androidx.compose.foundation.lazy.rememberLazyListState(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item("title") {
                     Row(Modifier.enter().padding(top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
@@ -98,8 +99,10 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
                     }
                 }
                 content()
-                item("nav") { Spacer(Modifier.navigationBarsPadding()) }
+                if (bottom == null) item("nav") { Spacer(Modifier.navigationBarsPadding()) }
             }
+            // Zone fixe en bas de page (saisie d'un commentaire…)
+            if (bottom != null) Box(Modifier.fillMaxWidth().navigationBarsPadding()) { bottom() }
         }
     } }
 }
