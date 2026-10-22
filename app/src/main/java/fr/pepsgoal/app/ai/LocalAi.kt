@@ -189,3 +189,33 @@ object LocalAi {
 
 /** Répare le texte UTF-8 mal décodé par certaines versions du moteur (voir [fr.pepsgoal.core.fixMojibake]). */
 internal fun fixEncoding(s: String): String = fr.pepsgoal.core.fixMojibake(s)
+
+/** Une entrée de la mémoire de l'IA (ce que l'assistant retient de toi), lisible et effaçable dans les réglages. */
+@Serializable
+class MemoryItem(val at: Long, val kind: String, val text: String)
+
+/** Mémoire de l'IA : fichier local (jamais synchronisé), 120 entrées au maximum. */
+object AiMemory {
+    private fun file(ctx: Context) = File(ctx.filesDir, "ai/memory.json")
+    private val json = Json { ignoreUnknownKeys = true }
+    var rev by mutableStateOf(0)
+
+    fun all(ctx: Context): List<MemoryItem> = try { json.decodeFromString(ListSerializer(MemoryItem.serializer()), file(ctx).readText()) } catch (e: Exception) { emptyList() }
+
+    fun add(ctx: Context, kind: String, text: String) {
+        if (!ctx.peps.prefs.aiMemory) return
+        val list = (all(ctx) + MemoryItem(System.currentTimeMillis(), kind, text.take(300))).takeLast(120)
+        save(ctx, list)
+    }
+
+    fun remove(ctx: Context, at: Long) = save(ctx, all(ctx).filter { it.at != at })
+    fun clear(ctx: Context) { file(ctx).delete(); rev++ }
+
+    private fun save(ctx: Context, list: List<MemoryItem>) {
+        file(ctx).parentFile?.mkdirs(); file(ctx).writeText(json.encodeToString(ListSerializer(MemoryItem.serializer()), list)); rev++
+    }
+
+    /** Contexte donné à l'IA : les souvenirs utiles les plus récents. */
+    fun context(ctx: Context, n: Int = 10): String =
+        all(ctx).filter { it.kind != "system" }.takeLast(n).joinToString("\n") { "- ${it.text}" }
+}
