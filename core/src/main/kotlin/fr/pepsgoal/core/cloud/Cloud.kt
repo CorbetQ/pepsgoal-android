@@ -515,7 +515,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         return Post(p.str("id"), a?.id ?: "", p.str("text"), if (p.str("visibility") == "public") "public" else "friends", goalId, p.str("kind", "manual"), msOf(p.strN("createdAt")) ?: 0,
             p.arr("likers").map { it.str("id") }.toMutableList(),
             p.arr("comments").map { c -> Comment(c.str("id"), c.obj("author").str("id"), c.str("text"), msOf(c.strN("createdAt")) ?: 0) }.toMutableList(),
-            p.strN("photoUrl"), p.obj("poll")?.let { Mapping.pollFromServer(it) }, if (p.str("status") == "pending") "pending" else null, p.bool("commentsLocked"))
+            p.strN("photoUrl"), p.obj("poll")?.let { Mapping.pollFromServer(it) }, if (p.str("status") == "pending") "pending" else null, p.bool("commentsLocked"),
+            reactions = p.arr("likers").associate { it.str("id") to it.str("reaction", "fire") }.toMutableMap())
     }
 
     suspend fun loadConversation(peerId: String, quiet: Boolean) {

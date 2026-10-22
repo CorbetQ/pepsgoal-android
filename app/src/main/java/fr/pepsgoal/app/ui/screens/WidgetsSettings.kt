@@ -59,6 +59,7 @@ fun WidgetsSettings(ui: AppState) {
                         "progress" -> PreviewProgress(dark)
                         "cap" -> PreviewCap(dark)
                         "week" -> PreviewWeek(dark)
+                        "flame" -> PreviewFlame(dark)
                         else -> PreviewQuick(dark)
                     }
                 }
@@ -129,6 +130,14 @@ private fun PreviewStreak(dark: Boolean) = Frame(dark, 160.dp) { c ->
     Spacer(Modifier.height(8.dp))
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card).padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
         WD.forEachIndexed { k, d -> Column(horizontalAlignment = Alignment.CenterHorizontally) { Image(painterResource(if (k == 3) R.drawable.ic_snow else R.drawable.ic_flame), null, Modifier.size(12.dp)); Text(d, color = c.ink2, fontSize = 8.sp) } }
+    }
+}
+
+@Composable
+private fun PreviewFlame(dark: Boolean) = Frame(dark, 76.dp) { c ->
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(painterResource(R.drawable.ic_flame), null, Modifier.size(26.dp))
+        Text("23", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = c.ink)
     }
 }
 

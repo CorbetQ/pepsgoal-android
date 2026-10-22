@@ -45,7 +45,7 @@ object WidgetUpdater {
     fun update(ctx: Context) {
         scope.launch {
             val c = ctx.applicationContext
-            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget())) try { w.updateAll(c) } catch (e: Exception) {}
+            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget(), FlameWidget())) try { w.updateAll(c) } catch (e: Exception) {}
             WearSync.push(c)
         }
     }
@@ -58,6 +58,7 @@ object WidgetUpdater {
         listOf(QuickWidgetReceiver::class.java, "Accès rapide", "Nouvel objectif, journée, messages et feed", "4 × 1", "quick"),
         listOf(CapWidgetReceiver::class.java, "Cap du jour", "Jauge de ton cap quotidien (10 000 pas…) et bouton « + »", "2 × 2", "cap"),
         listOf(WeekWidgetReceiver::class.java, "Ma semaine", "Les 7 jours de la semaine et ce que tu as validé chaque jour", "4 × 1", "week"),
+        listOf(FlameWidgetReceiver::class.java, "Flamme", "Ta série en tout petit ; un appui valide ton prochain objectif du jour", "1 × 1", "flame"),
     )
 
     /** Demande au lanceur d'ajouter le widget sur l'écran d'accueil (false si le lanceur ne le permet pas). */
@@ -398,6 +399,29 @@ class WeekWidget : GlanceAppWidget() {
             }
             Image(ImageProvider(weekBitmap(rates, fr.pepsgoal.core.wdIdx(fr.pepsgoal.core.todayDate()), s.dark)), fr.pepsgoal.app.ui.I18n.tr("Ma semaine"), GlanceModifier.fillMaxWidth().padding(vertical = 6.dp))
             Text(fr.pepsgoal.app.ui.I18n.tr(if (perfect > 0) "Journées parfaites" else "Valide un objectif aujourd’hui pour garder ta série.") + if (perfect > 0) " : $perfect" else "", style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ Flamme (1 × 1) */
+
+class FlameWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = FlameWidget() }
+
+/** Widget « Flamme » : la série dans une case ; un appui valide le prochain objectif simple du jour (sinon ouvre l'accueil). */
+class FlameWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Exact
+    override suspend fun provideGlance(context: Context, id: GlanceId) { provideContent { GlanceTheme { Content(context) } } }
+
+    @Composable
+    private fun Content(ctx: Context) {
+        val app = ctx.peps; val pg = app.pg; val u = pg.me(); val s = style(ctx)
+        val next = u?.let { pg.todayPlan(it.id).due.firstOrNull { x -> !x.done && x.g.type in setOf("routine", "abstinence", "timed", "challenge", "period") } }
+        val click = if (next != null) actionRunCallback<ValidateAction>(actionParametersOf(GoalKey to next.g.id)) else open(ctx) { putExtra(MainActivity.EXTRA_TAB, "today") }
+        Column(GlanceModifier.fillMaxSize().wBg(s).padding(6.dp).clickable(click), horizontalAlignment = Alignment.CenterHorizontally, verticalAlignment = Alignment.CenterVertically) {
+            val st = u?.let { pg.globalStreak(it.id) }
+            Image(ImageProvider(if (st?.lit == true) R.drawable.ic_flame else R.drawable.ic_flame_dim), "Flamme", GlanceModifier.size(28.dp))
+            Text("${st?.n ?: 0}", style = TextStyle(color = s.ink, fontWeight = FontWeight.Bold, fontSize = 20.sp))
+            if (next != null) Text("✓ ${next.g.icon}", style = TextStyle(color = s.ink2, fontSize = 10.sp))
         }
     }
 }

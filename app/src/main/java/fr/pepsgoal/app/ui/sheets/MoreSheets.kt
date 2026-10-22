@@ -33,10 +33,16 @@ import kotlinx.serialization.json.jsonPrimitive
 @Composable
 fun RemindRow(ui: AppState, g: Goal, divider: Boolean = true) {
     val p = LocalPal.current; val pg = ui.pg
-    if (g.type in setOf("objective", "monthly", "measure", "project", "program", "group", "duel", "deadline")) return
+    if (g.type in setOf("project", "program", "group", "duel", "deadline")) return
     var open by remember { mutableStateOf(false) }
     var time by remember { mutableStateOf(g.remindAt ?: if (g.type == "timed") g.str("time", "08:00") else "08:00") }
-    OptionRow("bell", p.type("period").c, p.type("project").c, "Rappel", g.remindAt?.let { "Chaque jour prévu à $it, s’il reste à faire" } ?: "À l’heure de ton choix, avec « Valider »", open, { open = !open }, divider) {
+    val usual = remember(ui.rev, g.id) { pg.usualTime(g) }
+    val eff = pg.effectiveRemind(g)
+    OptionRow("bell", p.type("period").c, p.type("project").c, "Rappel", eff?.let { if (g.smartRemind && usual != null) "Intelligent : vers $it, avant ton heure habituelle" else "Chaque jour prévu à $it, s’il reste à faire" } ?: "À l’heure de ton choix, avec « Valider »", open, { open = !open }, divider) {
+        // Rappel intelligent : 15 minutes avant l'heure à laquelle tu valides d'habitude
+        SetRow("Rappel intelligent", usual?.let { "Tu valides d’habitude vers $it : rappel 15 minutes avant" } ?: "S’ajuste à ton heure habituelle après 5 validations") {
+            PSwitch(g.smartRemind, { v -> g.smartRemind = v; if (v && g.remindAt == null) g.remindAt = time; pg.store.commit(); fr.pepsgoal.app.sys.Reminders.reschedule(ui.app) })
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Heure", Modifier.weight(1f), fontWeight = FontWeight.Bold); TimeButton(time, { time = it }, "Heure du rappel")
         }

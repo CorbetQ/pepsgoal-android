@@ -58,6 +58,9 @@ fun Pg.stepMove(gid: String, sid: String, to: Int) {
 
 /** Objectif après lequel celui-ci s'enchaîne (« Après mon café → méditation »). */
 var Goal.after: String? get() = strOrNull("after")?.ifEmpty { null }; set(v) = set("after", v ?: "")
+/** Délai du rappel de l'objectif enchaîné, en minutes (0 : tout de suite). */
+var Goal.afterDelay: Int get() = num("afterDelay", 15.0).toInt(); set(v) = set("afterDelay", v)
+val CHAIN_DELAYS = listOf(0, 5, 15, 30, 60)
 
 /** Objectifs enchaînés après [g] encore à faire aujourd'hui. */
 fun Pg.chainNext(g: Goal): List<Goal> {

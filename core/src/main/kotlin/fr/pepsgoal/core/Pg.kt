@@ -428,6 +428,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         hooks.liveChanged()
         queueBadgeCheck()
         chainNext(g).firstOrNull()?.let { hooks.chained(g, it) }
+        checkTrial(g)
     }
 
     fun autoPost(u: User, g: Goal, text: String) {
@@ -941,7 +942,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
             notify(u.id, "Rappel du jour : ${pl(plan.due.size, "validation prévue", "validations prévues")}. ${if (st.n > 0) "Ta série de ${pl(st.n, "jour", "jours")} t'attend." else "Allume ta flamme !"}", "reminder", view = "morning")
         }
         if (!rest && s.evening.on && h >= s.evening.time && pending > 0) once("evening") {
-            notify(u.id, "Il te reste ${pl(pending, "validation", "validations")} avant minuit${if (st.n > 0 && !st.lit) " pour garder ta série de ${pl(st.n, "jour", "jours")}" else ""}.", "reminder", view = "today")
+            notify(u.id, "Il te reste ${pl(pending, "validation", "validations")} avant minuit${if (st.n > 0 && !st.lit) " pour garder ta série de ${pl(st.n, "jour", "jours")}" else ""}.", "reminder", view = "evening")
         }
         for ((k, lbl) in listOf("week" to "de la semaine passée", "month" to "du mois dernier", "year" to "de l’année dernière")) {
             val r = Recaps.range(k)
@@ -952,7 +953,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
             notify(u.id, "C’est l’heure : « ${x.g.title} » (${x.g.start}–${x.g.end}).", "period", x.g.id, "today")
         }
         // Rappel propre à chaque objectif, à son heure (s'il reste à faire)
-        if (!rest) for (x in plan.due) { val at = x.g.remindAt ?: continue
+        if (!rest) for (x in plan.due) { val at = effectiveRemind(x.g) ?: continue
             if (!x.done && h >= at && h <= addHM(at, 90)) once("gr" + x.g.id) { notify(u.id, "C’est l’heure : ${x.g.icon} « ${x.g.title} ».", "reminder", x.g.id, "today") }
         }
         for (g in plan.ongoing) if (g.type == "deadline") {

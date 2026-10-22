@@ -28,4 +28,6 @@
     <string name="sc_today_long">Ma journée et mes validations</string>
     <string name="sc_msgs">Messages</string>
     <string name="sc_msgs_long">Mes conversations</string>
+    <string name="widget_flame_name">Flamme</string>
+    <string name="widget_flame_desc">Ta série en tout petit ; un appui valide ton prochain objectif</string>
 </resources>

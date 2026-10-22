@@ -8,10 +8,10 @@ import java.util.concurrent.TimeUnit
 
 /** Enchaînement d'habitudes : si l'objectif suivant n'est toujours pas fait un quart d'heure après, un rappel arrive. */
 object Chain {
-    private const val DELAY_MIN = 15L
-
     fun schedule(ctx: Context, prev: String, next: String) {
-        val req = OneTimeWorkRequestBuilder<ChainWorker>().setInitialDelay(DELAY_MIN, TimeUnit.MINUTES)
+        // Délai choisi dans l'objectif enchaîné (15 min par défaut ; 0 : rappel immédiat, utile application fermée)
+        val delay = (ctx.peps.pg.goalById(next)?.afterDelay ?: 15).toLong()
+        val req = OneTimeWorkRequestBuilder<ChainWorker>().setInitialDelay(delay, TimeUnit.MINUTES)
             .setInputData(workDataOf("prev" to prev, "next" to next)).build()
         WorkManager.getInstance(ctx).enqueueUniqueWork("chain:$next", ExistingWorkPolicy.REPLACE, req)
     }

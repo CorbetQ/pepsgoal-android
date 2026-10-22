@@ -537,9 +537,11 @@ fun GoalSheet(ui: AppState, id: String) {
     if (own) SavingsCard(ui, g)
     GoalStatsBlock(ui, g)
     ProofsBlock(ui, g, own)
+    FriendsRankCard(ui, g)
     if (own && !g.archived && !pg.isClosedGoal(g)) OptionsCard("Options") {
         RemindRow(ui, g, divider = false)
         MiniRow(ui, g)
+        TrialRow(ui, g)
         ChainRow(ui, g)
         AutoPlaceRow(ui, g)
         NfcRow(ui, g)

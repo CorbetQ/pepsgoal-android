@@ -80,6 +80,7 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.Miss -> MissSheet(ui, s.id, s.date)
         is Sheet.Reward -> RewardSheet(ui, s.id)
         is Sheet.GoalQr -> GoalQrSheet(ui, s.id)
+        is Sheet.Likers -> LikersSheet(ui, s.postId)
         is Sheet.ImportGoal -> ImportGoalSheet(ui, s.link)
         is Sheet.Goal -> GoalSheet(ui, s.id)
         is Sheet.Progress -> ProgressSheet(ui, s.id)

@@ -52,6 +52,7 @@ fun StatsScreen(ui: AppState) {
         item("health") { HealthStatsCard(ui) }
         item("insights") { InsightsCard(ui) }
         item("pixels") { YearPixels(ui) }
+        item("hours") { fr.pepsgoal.app.ui.sheets.HourHeatCard(ui) }
         // Raisons notées les jours manqués (« Je n'ai pas pu »)
         val why = pg.missStats()
         if (why.isNotEmpty()) item("why") {
@@ -273,6 +274,11 @@ private fun YearPixels(ui: AppState) {
     val withToday = remember(rates) { val t = todayDate(); val due = pg.todayPlan().due; if (due.isEmpty()) rates else rates + (ymd(t) to due.count { it.done }.toDouble() / due.size) }
     Glass {
         CardHead("Année en pixels") {
+            // Livre de l'année : PDF complet (chiffres, mois, objectifs phares, journal, photos)
+            PButton("Livre", { ui.run {
+                val f = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { fr.pepsgoal.app.sys.Exports.yearBook(ctx, year) }
+                if (f != null) fr.pepsgoal.app.sys.Exports.share(ctx, listOf(f), "application/pdf")
+            } }, icon = "book", small = true, kind = "ghost")
             PButton("Partager", {
                 val bmp = yearBitmap(year, withToday, p)
                 fr.pepsgoal.app.sys.Exports.shareImage(ctx, bmp, "pepsgoal-annee-$year")

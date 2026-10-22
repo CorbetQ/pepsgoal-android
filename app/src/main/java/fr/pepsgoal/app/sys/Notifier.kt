@@ -36,6 +36,7 @@ import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.Notif
 import fr.pepsgoal.core.model.Post
 import fr.pepsgoal.core.model.User
+import fr.pepsgoal.core.model.unit
 
 /**
  * Notifications natives : canaux par catégorie, actions directes (valider, confirmer, répondre, marquer comme lu),
@@ -44,6 +45,7 @@ import fr.pepsgoal.core.model.User
 object Notifier {
     const val CH_REMIND = "reminders"; const val CH_GOALS = "goals"; const val CH_SOCIAL = "social"; const val CH_MSG = "messages"; const val CH_LIVE = "live"; const val CH_OFFICIAL = "official"
     const val KEY_REPLY = "reply"
+    const val KEY_VALUE = "value"
     const val CH_LINK = "link"; const val LINK_ID = 11
     private const val GROUP_MSG = "pg.messages"
 
@@ -128,6 +130,31 @@ object Notifier {
         show(app, n)
     }
 
+    /** Encouragements reçus, regroupés par publication (y compris ceux pas encore lus d'avant). */
+    fun likes(app: PepsApp, fresh: List<Notif>) {
+        val pg = app.pg
+        for ((pid, l) in fresh.groupBy { it.postId }) {
+            val seen = app.prefs.notifiedIds
+            if (l.all { it.id in seen }) continue
+            app.prefs.notifiedIds = seen + l.map { it.id }
+            val all = (pg.db.notifs.filter { it.type == "like" && it.postId == pid && !it.read } + l).distinctBy { it.id }
+            if (all.size < 2) { show(app, l.first()); continue }
+            val names = all.sortedByDescending { it.at }.mapNotNull { n -> n.from?.let { pg.userById(it)?.name?.let(::first) } }.distinct()
+            val en = fr.pepsgoal.core.Lang.en; val k = names.size - 1
+            val text = when {
+                en && names.isEmpty() -> "Your friends are cheering on your post 🔥"
+                en -> "${names[0]}${if (k > 0) " and $k other${if (k > 1) "s" else ""}" else ""} cheered on your post 🔥"
+                names.isEmpty() -> "Tes amis t’encouragent sur ta publication 🔥"
+                else -> "${names[0]}${if (k > 0) " et ${pl(k, "autre", "autres")}" else ""} ${if (k > 0) "t’encouragent" else "t’encourage"} sur ta publication 🔥"
+            }
+            val id = "likes:$pid".hashCode()
+            post(app, id, base(app, CH_SOCIAL).setContentTitle(fr.pepsgoal.app.ui.I18n.tr("Encouragements")).setContentText(text).setNumber(all.size)
+                .setStyle(NotificationCompat.InboxStyle().also { st -> all.take(6).forEach { st.addLine(fr.pepsgoal.app.ui.I18n.tr(it.text)) } }.setSummaryText(text))
+                .setWhen(all.maxOf { it.at }).setShowWhen(true).setOnlyAlertOnce(true).setCategory(NotificationCompat.CATEGORY_SOCIAL)
+                .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_TAB, "feed") }).build())
+        }
+    }
+
     /** Nouvelles publications d'amis (le serveur n'envoie pas de notification pour elles) : une notification groupée. */
     fun posts(app: PepsApp, fresh: List<Post>) {
         val seen = app.prefs.notifiedIds
@@ -194,12 +221,21 @@ object Notifier {
         val tt = fr.pepsgoal.app.ui.I18n.tr(title); val body = fr.pepsgoal.app.ui.I18n.tr(n.text)
         val b = base(app, ch).setContentTitle(tt).setContentText(body).setStyle(NotificationCompat.BigTextStyle().bigText(body)).setWhen(n.at).setShowWhen(true)
             .setCategory(when (ch) { CH_REMIND -> NotificationCompat.CATEGORY_REMINDER; CH_SOCIAL -> NotificationCompat.CATEGORY_SOCIAL; else -> NotificationCompat.CATEGORY_STATUS })
-            .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_NOTIF, n.id); n.goalId?.let { putExtra(MainActivity.EXTRA_GOAL, it) }; putExtra(MainActivity.EXTRA_TAB, n.view ?: if (ch == CH_SOCIAL) "feed" else "today") })
+            .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_NOTIF, n.id); n.goalId?.let { putExtra(MainActivity.EXTRA_GOAL, it) }; putExtra(MainActivity.EXTRA_TAB, n.view?.takeIf { it != "evening" } ?: if (ch == CH_SOCIAL) "feed" else "today"); if (n.view == "evening") putExtra("evening", true) })
         if (ch == CH_REMIND) b.setGroup("pg.reminders")
         // Actions directes
         val g = n.goalId?.let { pg.goalById(it) }
         if (g != null && n.type in setOf("period", "reminder", "deadline") && !pg.isClosedGoal(g) && g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit", "deadline"))
             b.addAction(R.drawable.ic_notif, if (g.type == "deadline") "Terminé" else "Valider", action(app, id, ActionReceiver.VALIDATE) { putExtra("goal", g.id); putExtra("nid", id) })
+        // Objectif à valeur (distance, pages, verres…) : saisie directe dans la notification
+        if (g != null && n.type in setOf("period", "reminder", "deadline") && !pg.isClosedGoal(g) && g.type !in setOf("routine", "abstinence", "timed", "period", "challenge", "limit", "deadline", "project")) {
+            val unit = g.unit.ifBlank { "valeur" }
+            val input = RemoteInput.Builder(KEY_VALUE).setLabel(fr.pepsgoal.app.ui.I18n.tr("Combien ? ($unit)")).build()
+            b.addAction(NotificationCompat.Action.Builder(R.drawable.ic_notif, fr.pepsgoal.app.ui.I18n.tr("Saisir"), action(app, id + 3, ActionReceiver.PROGRESS, mutable = true) { putExtra("goal", g.id); putExtra("nid", id) })
+                .addRemoteInput(input).setShowsUserInterface(false).build())
+        }
+        // Bilan du soir : lu à voix haute par le coach
+        if (n.view == "evening") b.addAction(R.drawable.ic_notif, fr.pepsgoal.app.ui.I18n.tr("Écouter le bilan"), open(app, id + 4) { putExtra("evening", true); putExtra("speak", true) })
         if (n.type == "reminder" && g == null) {
             val due = pg.todayPlan().due.filter { !it.done && it.g.type in setOf("routine", "abstinence", "challenge", "period", "timed") }
             due.take(2).forEachIndexed { i, x -> b.addAction(R.drawable.ic_notif, "✓ ${x.g.title.take(18)}", action(app, id * 10 + i, ActionReceiver.VALIDATE) { putExtra("goal", x.g.id); putExtra("nid", id); putExtra("keep", true) }) }

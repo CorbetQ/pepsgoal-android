@@ -63,6 +63,8 @@ sealed class Sheet {
     class Reward(val id: String? = null) : Sheet()
     /** Code QR et lien d'un objectif à partager. */
     class GoalQr(val id: String) : Sheet()
+    /** Qui a réagi à une publication. */
+    class Likers(val postId: String) : Sheet()
     /** Objectif reçu par lien ou code QR, à ajouter. */
     class ImportGoal(val link: String) : Sheet()
 }
