@@ -106,7 +106,7 @@ private fun PlaceEditor(ui: AppState, edit: SavedPlace?, done: () -> Unit) {
                 setTileSource(TileSourceFactory.MAPNIK); setMultiTouchControls(true)
                 zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
                 controller.setZoom(if (edit != null) 17.0 else 14.0); controller.setCenter(start)
-                if (dark) overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERTED_COLORS)
+                if (dark) overlayManager.tilesOverlay.setColorFilter(android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix(floatArrayOf(-1f, 0f, 0f, 0f, 255f, 0f, -1f, 0f, 0f, 255f, 0f, 0f, -1f, 0f, 255f, 0f, 0f, 0f, 1f, 0f))))
                 // La carte garde ses gestes (déplacement, zoom) au lieu de faire défiler la page
                 setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
                 overlays.add(MapEventsOverlay(object : MapEventsReceiver {

@@ -22,6 +22,7 @@ import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.Goal
 import fr.pepsgoal.core.model.due
+import fr.pepsgoal.core.model.mode
 
 /** Ligne compacte d'un objectif avec sa case (bilan du soir, journée difficile). */
 @Composable
