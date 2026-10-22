@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -115,17 +116,33 @@ fun GoalIcon(g: Goal, size: Dp = 44.dp) {
 fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disabled: Boolean = false, icon: String = "check", running: Boolean = false, onClick: () -> Unit) {
     val p = LocalPal.current
     val pop = remember { Animatable(1f) }
-    LaunchedEffect(just) { if (just && !p.motion) { pop.snapTo(.7f); pop.animateTo(1f, spring(dampingRatio = .35f, stiffness = 500f)) } }
+    // Coche dessinée au trait et onde de choc qui s'élargit autour du bouton au moment de la validation
+    val draw = remember { Animatable(if (done) 1f else 0f) }
+    val wave = remember { Animatable(1f) }
+    LaunchedEffect(just, done) {
+        if (just && done && !p.motion) {
+            draw.snapTo(0f); wave.snapTo(0f)
+            launch { pop.snapTo(.72f); pop.animateTo(1f, spring(dampingRatio = .38f, stiffness = 520f)) }
+            launch { wave.animateTo(1f, tween(520, easing = Motion.Emphasized)) }
+            kotlinx.coroutines.delay(70); draw.animateTo(1f, tween(300, easing = Motion.Emphasized))
+        } else { draw.snapTo(if (done) 1f else 0f); wave.snapTo(1f) }
+    }
     val filled = done || running
     // Couleurs du type lisibles dans les deux thèmes : foncées sur fond clair, vives sur fond sombre
     val line = readable(color)
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Box(
-        Modifier.bounce(inter, .8f).scale(pop.value).size(44.dp).clip(CircleShape).background(if (filled) color else color.copy(alpha = if (disabled) .06f else .16f))
+        Modifier.drawBehind {
+            val w = wave.value
+            if (w < 1f) drawCircle(color.copy(alpha = (1f - w) * .55f), size.minDimension / 2f * (1f + w * .75f), style = androidx.compose.ui.graphics.drawscope.Stroke((1f - w) * 4.dp.toPx() + 1f))
+        }.bounce(inter, .8f).scale(pop.value).size(44.dp).clip(CircleShape).background(if (filled) color else color.copy(alpha = if (disabled) .06f else .16f))
             .border(2.5.dp, if (disabled) p.ink3.copy(alpha = .45f) else if (filled) line.copy(alpha = .35f) else line, CircleShape)
             .springClick(inter, label = label, onClick = onClick).semantics { contentDescription = label },
         contentAlignment = Alignment.Center
-    ) { Pi(icon, size = 22.dp, tint = if (filled) Color(0xFF10102A) else if (disabled) p.ink3.copy(alpha = .55f) else line) }
+    ) {
+        if (done && !running && icon == "check") DrawnCheck(draw.value, Color(0xFF10102A), 26.dp, 3.dp)
+        else Pi(icon, size = 22.dp, tint = if (filled) Color(0xFF10102A) else if (disabled) p.ink3.copy(alpha = .55f) else line)
+    }
 }
 
 /** Couleur d'accent assombrie en thème clair (contraste suffisant sur le verre), inchangée en thème sombre. */

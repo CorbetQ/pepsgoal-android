@@ -184,8 +184,18 @@ private fun BadgeFs(ui: AppState, c: Celebration.Badge) {
         Pop(1) { Eyebrow("Badge débloqué · palier ${c.tier + 1} sur ${f.t.size}") }
         Pop(2) { Text("${f.n} $label", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, textAlign = TextAlign.Center) }
         Pop(3) { Text(f.d(f.t[c.tier]), textAlign = TextAlign.Center) }
-        Pop(4) { Muted("${if (next != null) "Prochain palier : ${f.d(next)}." else "Tu as atteint le plus haut palier de ce badge !"}${if (c.more > 0) " · ${pl(c.more, "autre badge à découvrir", "autres badges à découvrir")}" else ""}", small = true, center = true) }
-        Pop(5) {
+        // Flammes offertes avec le badge : à dépenser dans la boutique
+        if (c.flames > 0) Pop(4) {
+            Row(Modifier.clip(CircleShape).background(Brush.horizontalGradient(listOf(p.flame.copy(alpha = .28f), p.pink.copy(alpha = .22f))))
+                .border(1.dp, p.flame.copy(alpha = .5f), CircleShape).padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Flame(22.dp)
+                CountUp(c.flames, "+", "", 20)
+                Text("à dépenser dans la boutique", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = p.ink2)
+            }
+        }
+        Pop(5) { Muted("${if (next != null) "Prochain palier : ${f.d(next)}." else "Tu as atteint le plus haut palier de ce badge !"}${if (c.more > 0) " · ${pl(c.more, "autre badge à découvrir", "autres badges à découvrir")}" else ""}", small = true, center = true) }
+        Pop(6) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PButton(if (ui.pg.socialOn()) "Partager" else "Copier", { ui.closeFs(); ui.open(Sheet.ShareHub(text = "Nouveau badge sur PepsGoal : ${f.e} ${f.n} $label — ${f.d(f.t[c.tier])} !")) }, icon = "share", kind = "primary")
                 PButton("Voir mes badges", { ui.fsQueue.clear(); ui.closeFs(); ui.nav("profile") })
@@ -219,12 +229,16 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
         s.fx?.let { Floaters(it, i) }
         if (last) Confetti()
         // Progression : segments fins et arrondis, le segment courant se remplit
-        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 64.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 62.dp, top = 22.dp).height(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             f.slides.indices.forEach { k ->
-                val fill = remember(i) { Animatable(if (k < i || p.motion) 1f else 0f) }
-                LaunchedEffect(i) { if (k == i && !p.motion) fill.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
-                Box(Modifier.weight(1f).height(3.dp).clip(RoundedCornerShape(50)).background(ink.copy(alpha = .22f))) {
-                    if (k <= i) Box(Modifier.fillMaxHeight().fillMaxWidth(if (k < i) 1f else fill.value).clip(RoundedCornerShape(50)).background(ink.copy(alpha = .9f)))
+                val fill = remember(i, k) { Animatable(if (k < i || p.motion) 1f else 0f) }
+                LaunchedEffect(i, k) { if (k == i && !p.motion) fill.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
+                // Segment : piste et remplissage dessinés ensemble (largeur et épaisseur identiques pour tous)
+                Canvas(Modifier.weight(1f).fillMaxHeight()) {
+                    val r = androidx.compose.ui.geometry.CornerRadius(size.height / 2, size.height / 2)
+                    drawRoundRect(ink.copy(alpha = .22f), cornerRadius = r)
+                    val fr = when { k < i -> 1f; k == i -> fill.value; else -> 0f }
+                    if (fr > 0f) drawRoundRect(ink.copy(alpha = .92f), size = androidx.compose.ui.geometry.Size(size.width * fr, size.height), cornerRadius = r)
                 }
             }
         }
@@ -256,7 +270,7 @@ private fun RecapDecor(cols: List<Color>, key: Int) {
     val inf = rememberInfiniteTransition(label = "decor$key")
     val t by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 9000, easing = LinearEasing), RepeatMode.Reverse), label = "t")
     val rot by inf.animateFloat(0f, 360f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 60000, easing = LinearEasing)), label = "rot")
-    val a = cols.first(); val b = cols.last()
+    val b = cols.last()
     // Variante selon la diapositive : position des halos et présence des rayons
     val v = key % 3
     Canvas(Modifier.fillMaxSize()) {
@@ -271,9 +285,31 @@ private fun RecapDecor(cols: List<Color>, key: Int) {
                 drawLine(Color.White.copy(alpha = .07f), Offset(w / 2, h * .42f), Offset(w / 2, h * .42f) + Offset(cos(ang), sin(ang)) * (h * .8f), w * .09f)
             }
         }
-        drawCircle(a.copy(alpha = .18f), w * .08f, Offset(w * .9f, h * .1f + 18f * t))
-        drawCircle(Color.White.copy(alpha = .12f), w * .05f, Offset(w * .08f, h * .62f - 14f * t))
     }
+}
+
+/**
+ * Chiffre héros d'une diapositive : très grand, mais toujours sur une seule ligne. La taille dépend de la place
+ * disponible et du nombre de caractères (Unbounded ExtraBold : environ 0,8 em par caractère, « % » compris).
+ */
+private fun heroSize(widthDp: Float, text: String): Float = minOf(84f, widthDp / (maxOf(1, text.length) * .8f)).coerceAtLeast(24f)
+
+@Composable
+private fun HeroText(text: String, ink: Color, sizeFor: String = text) {
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val fs = heroSize(maxWidth.value, sizeFor)
+        Text(text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = fs.sp, lineHeight = (fs * 1.1f).sp, color = ink,
+            maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun HeroCount(v: Int, prefix: String, suffix: String, ink: Color) {
+    val p = LocalPal.current
+    val a = remember { Animatable(if (p.motion) v.toFloat() else 0f) }
+    LaunchedEffect(v) { a.animateTo(v.toFloat(), tween(minOf(1600, 500 + kotlin.math.abs(v) * 8), easing = FastOutSlowInEasing)) }
+    // Taille calculée sur la valeur finale : le chiffre ne change pas de taille pendant le décompte
+    HeroText("$prefix${a.value.toInt()}$suffix", ink, sizeFor = "$prefix$v$suffix")
 }
 
 /** « Le mot du coach » : carte en verre sobre, petite pastille sparkle. */
@@ -301,10 +337,12 @@ private fun Floaters(e: String, key: Int) {
     if (p.motion) return
     val w = LocalConfiguration.current.screenWidthDp; val h = LocalConfiguration.current.screenHeightDp
     val inf = rememberInfiniteTransition(label = "fl$key")
-    for (i in 0 until 9) {
-        val dur = 7000 + (i * 3 % 6) * 1000
+    // Sur les bords de l'écran seulement (le texte reste au centre, lisible), petits et très discrets
+    for (i in 0 until 6) {
+        val dur = 8000 + (i * 3 % 6) * 1000
         val y by inf.animateFloat(1.1f, -.15f, infiniteRepeatable(tween(dur, easing = LinearEasing), initialStartOffset = StartOffset((i * 1700) % dur)), label = "y$i")
-        Box(Modifier.offset(((i * 11 + 4) % 96 * w / 100).dp, (y * h).dp).graphicsLayer { alpha = .3f; rotationZ = if (i % 2 == 1) 40f * y else -40f * y }) { Emoji(e, (18 + (i * 7) % 20).dp) }
+        val xPct = if (i % 2 == 0) 1 + (i * 5) % 9 else 86 + (i * 3) % 8
+        Box(Modifier.offset((xPct * w / 100).dp, (y * h).dp).graphicsLayer { alpha = .16f; rotationZ = if (i % 2 == 1) 30f * y else -30f * y }) { Emoji(e, (16 + (i * 5) % 10).dp) }
     }
 }
 
@@ -318,10 +356,10 @@ private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit)
         is Part.Text -> Text(rich(part.text), color = ink.copy(alpha = .92f), fontSize = 17.sp, textAlign = TextAlign.Center, lineHeight = 24.sp)
         is Part.Joke -> Text(rich(part.text), Modifier.recapGlass(ink).padding(horizontal = 16.dp, vertical = 12.dp), color = ink, fontSize = 15.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
         // Chiffre héros : très grand, avec un léger halo
-        is Part.Big -> Box(contentAlignment = Alignment.Center) {
+        is Part.Big -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Box(Modifier.size(170.dp).background(Brush.radialGradient(listOf(Color.White.copy(alpha = if (ink == INK) .5f else .18f), Color.Transparent)), CircleShape))
-            if (part.raw != null) Text(part.raw!!, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 84.sp, color = ink, lineHeight = 88.sp)
-            else CountUp(part.value, part.prefix, part.suffix, 84, ink)
+            if (part.raw != null) HeroText(part.raw!!, ink)
+            else HeroCount(part.value, part.prefix, part.suffix, ink)
         }
         is Part.Emoji -> { val motion = LocalPal.current.motion; val inf = rememberInfiniteTransition(label = "em"); val k by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "k")
             Box(Modifier.size(132.dp).recapGlass(ink).graphicsLayer { if (!motion) { if (part.anim == "spin") rotationZ = k * 16 - 8 else translationY = -k * 10 } }, contentAlignment = Alignment.Center) { Emoji(part.e, 84.dp) } }

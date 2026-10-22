@@ -167,18 +167,22 @@ fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink
 object Stagger {
     private var t0 = 0L; private var n = 0
     fun reset() { t0 = android.os.SystemClock.uptimeMillis(); n = 0 }
-    fun next(): Long = if (android.os.SystemClock.uptimeMillis() - t0 < 700) (n++ * 55L).coerceAtMost(385L) else 0L
+    /** Fenêtre d'ouverture d'une page : seules les cartes visibles à l'ouverture s'animent. */
+    fun active(): Boolean = android.os.SystemClock.uptimeMillis() - t0 < 700
+    fun next(): Long = if (active()) (n++ * 45L).coerceAtMost(315L) else 0L
 }
 
 @Composable
 fun Modifier.enter(): Modifier {
     val motionOff = LocalPal.current.motion
-    val a = remember { Animatable(if (motionOff) 1f else 0f) }
-    LaunchedEffect(Unit) { if (a.value < 1f) { kotlinx.coroutines.delay(Stagger.next()); a.animateTo(1f, spring(dampingRatio = .62f, stiffness = 230f)) } }
+    // Hors de la fenêtre d'ouverture (carte qui revient en faisant défiler la liste) : affichée directement,
+    // l'animation ne se rejoue pas à chaque défilement
+    val a = remember { Animatable(if (motionOff || !Stagger.active()) 1f else 0f) }
+    LaunchedEffect(Unit) { if (a.value < 1f) { kotlinx.coroutines.delay(Stagger.next()); a.animateTo(1f, spring(dampingRatio = .82f, stiffness = 240f)) } }
     return this.graphicsLayer {
         val v = a.value
-        alpha = v.coerceIn(0f, 1f); translationY = (1f - v) * 34.dp.toPx()
-        val s = .93f + .07f * v; scaleX = s; scaleY = s
+        alpha = (v * 1.4f).coerceIn(0f, 1f); translationY = (1f - v) * 22.dp.toPx()
+        val s = .965f + .035f * v; scaleX = s; scaleY = s
     }
 }
 
@@ -322,11 +326,13 @@ fun Modifier.bounce(inter: MutableInteractionSource, pressed: Float = .94f): Mod
         if (motionOff) return@LaunchedEffect
         inter.interactions.collectLatest { i ->
             when (i) {
-                is PressInteraction.Press -> sc.animateTo(pressed, spring(dampingRatio = .8f, stiffness = 1600f))
-                is PressInteraction.Release, is PressInteraction.Cancel -> {
-                    if (sc.value > pressed + .015f) sc.animateTo(pressed, tween(60))
-                    sc.animateTo(1f, spring(dampingRatio = .32f, stiffness = 420f))
+                is PressInteraction.Press -> sc.animateTo(pressed, spring(dampingRatio = .9f, stiffness = 1800f))
+                is PressInteraction.Release -> {
+                    // Appui très bref : on laisse le temps de voir l'enfoncement avant le rebond
+                    if (sc.value > pressed + .015f) sc.animateTo(pressed, tween(55, easing = Motion.Emphasized))
+                    sc.animateTo(1f, spring(dampingRatio = .42f, stiffness = 480f))
                 }
+                is PressInteraction.Cancel -> sc.animateTo(1f, Motion.standard())
             }
         }
     }
@@ -483,7 +489,7 @@ fun TypeChip(type: String) {
 @Composable
 fun FChip(text: String, on: Boolean, onClick: () -> Unit, leading: (@Composable () -> Unit)? = null, dashed: Boolean = false) {
     val p = LocalPal.current
-    val sc by animateFloatAsState(if (on && !p.motion) 1.05f else 1f, spring(dampingRatio = .35f, stiffness = 520f), label = "chip")
+    val sc by animateFloatAsState(if (on && !p.motion) 1.05f else 1f, Motion.emphasis(), label = "chip")
     val inter = remember { MutableInteractionSource() }
     Row(
         Modifier.bounce(inter, .9f).scale(sc).clip(CircleShape).background(if (on) (if (p.contrast) SolidColor(p.ink) else p.accent) else SolidColor(if (dashed) Color.Transparent else p.glassStrong))
