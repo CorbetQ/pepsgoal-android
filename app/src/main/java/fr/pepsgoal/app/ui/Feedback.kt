@@ -50,6 +50,12 @@ object Feedback {
     private fun sound() = try { app.prefs.sounds } catch (e: Exception) { false }
 
     /** Courtes notes sinusoïdales enchaînées, avec attaque douce et extinction (pas de fichier son à embarquer). */
+    /** Bip du minuteur d'intervalles : toujours audible (minuteur lancé exprès), aigu au début de l'effort. */
+    fun beep(high: Boolean) {
+        tone(if (high) listOf(1318.5, 1568.0) else listOf(880.0), if (high) 120 else 140, .35f)
+        if (level != "off") buzz(if (Build.VERSION.SDK_INT >= 29) VibrationEffect.EFFECT_HEAVY_CLICK else -1, if (high) 40 else 20, 200)
+    }
+
     private fun tone(freqs: List<Double>, ms: Int, vol: Float) {
         Thread {
             try {

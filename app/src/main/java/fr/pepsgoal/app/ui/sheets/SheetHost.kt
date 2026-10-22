@@ -75,6 +75,8 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.Rest -> RestSheet(ui)
         is Sheet.Evening -> EveningSheet(ui)
         is Sheet.Hard -> HardDaySheet(ui)
+        is Sheet.Miss -> MissSheet(ui, s.id, s.date)
+        is Sheet.Reward -> RewardSheet(ui, s.id)
         is Sheet.Goal -> GoalSheet(ui, s.id)
         is Sheet.Progress -> ProgressSheet(ui, s.id)
         is Sheet.User -> UserSheet(ui, s.id)

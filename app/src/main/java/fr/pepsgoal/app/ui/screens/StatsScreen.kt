@@ -50,6 +50,24 @@ fun StatsScreen(ui: AppState) {
         }
         item("health") { HealthStatsCard(ui) }
         item("insights") { InsightsCard(ui) }
+        // Raisons notées les jours manqués (« Je n'ai pas pu »)
+        val why = pg.missStats()
+        if (why.isNotEmpty()) item("why") {
+            Glass {
+                CardHead("Pourquoi ça coince")
+                val tot = why.sumOf { it.second }
+                why.take(5).forEach { (k, n) ->
+                    ProgLine(MISS_REASONS.firstOrNull { it.first == k }?.second ?: k, n * 100.0 / tot, "$n", p.type("deadline").c)
+                }
+                Muted(when (why.first().first) {
+                    "fatigue" -> "La fatigue revient souvent : un objectif plus tôt dans la journée, ou une version plus légère, peut aider."
+                    "temps" -> "Le manque de temps domine : bloque un créneau dans ton agenda depuis la fiche de l’objectif."
+                    "oubli" -> "Surtout des oublis : un rappel à heure fixe ou un enchaînement après une habitude existante peut aider."
+                    "motivation" -> "La motivation flanche parfois : une récompense personnelle ou un duo avec un ami peut relancer."
+                    else -> "Noter la raison d’un oubli aide à repérer ce qui coince, sans culpabiliser."
+                }, Modifier.padding(top = 8.dp), small = true)
+            }
+        }
         item("export") { Glass { ExportRow(ui) } }
         // Carte de chaleur des 53 dernières semaines
         item("heat") {

@@ -358,4 +358,7 @@ fun GoalStatsBlock(ui: AppState, g: Goal) {
         (st.bestWd?.let { cap(WD_LONG[it]) } ?: "—") to "meilleur jour", (st.hour?.let { "${it} h" } ?: "—") to "heure habituelle",
         "${st.longest} j" to "plus longue série", "${st.total}" to "jours validés"
     ))
+    // Raisons notées les jours manqués
+    val why = pg.missStats(listOf(g))
+    if (why.isNotEmpty()) Muted("Jours manqués : " + why.take(4).joinToString(" · ") { (k, n) -> "${MISS_REASONS.firstOrNull { it.first == k }?.second ?: k} ×$n" }, small = true)
 }

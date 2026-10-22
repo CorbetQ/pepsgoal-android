@@ -293,6 +293,16 @@ private fun BackgroundSettings(ui: AppState, u: User) {
             PButton(if (has) "Changer" else "Choisir", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image", small = true)
             if (has) PButton("Retirer", { file.delete(); ui.prefs.bgPalette = emptyList(); ui.prefs.bgStamp = nowMs(); if (s.bg == "custom") s.bg = "blob"; save(ui); ui.toast("Image d’arrière-plan retirée.", "image") }, kind = "ghost", small = true)
         }
+        // Réglages de l'image : flou et assombrissement (pour garder les cartes lisibles)
+        if (has && cur == "custom") {
+            var blur by remember { mutableIntStateOf(ui.prefs.raw.getInt("bgBlur", 0)) }
+            var dim by remember { mutableFloatStateOf(ui.prefs.raw.getFloat("bgDim", -1f)) }
+            Text("Flou de l’image", Modifier.padding(top = 10.dp), fontWeight = FontWeight.Bold)
+            Seg(listOf(0 to "Aucun", 8 to "Léger", 18 to "Moyen", 32 to "Fort"), blur, { blur = it; ui.prefs.raw.edit().putInt("bgBlur", it).apply(); ui.prefs.bgStamp = nowMs() })
+            if (android.os.Build.VERSION.SDK_INT < 31) Muted("Le flou demande Android 12 ou plus récent.", small = true)
+            Text("Assombrissement", Modifier.padding(top = 10.dp), fontWeight = FontWeight.Bold)
+            Seg(listOf(-1f to "Auto", 0f to "Aucun", .3f to "Léger", .5f to "Moyen", .7f to "Fort"), dim, { dim = it; ui.prefs.raw.edit().putFloat("bgDim", it).apply(); ui.prefs.bgStamp = nowMs() })
+        }
         val pal = ui.prefs.bgPalette
         if (has && pal.isNotEmpty()) {
             SetRow("Couleurs de ton arrière-plan", "Extraites de ton image : touche-en une pour en faire ta couleur d’accent.")

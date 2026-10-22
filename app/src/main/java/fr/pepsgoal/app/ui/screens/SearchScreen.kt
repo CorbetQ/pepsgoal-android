@@ -47,7 +47,8 @@ internal val SET_WORDS = mapOf(
 private val PAGES = listOf(
     Triple("Statistiques", "trend", "stats statistiques records heatmap") , Triple("Journal", "book", "journal humeur note"),
     Triple("Mode Focus", "timer", "focus concentration minuteur pomodoro"), Triple("Coach IA", "sparkle", "coach ia chat assistant"),
-    Triple("Historique des stories", "image", "stories histoire archive"), Triple("Défis de la communauté", "trophy", "defi defis communaute challenge classement")
+    Triple("Historique des stories", "image", "stories histoire archive"), Triple("Défis de la communauté", "trophy", "defi defis communaute challenge classement"),
+    Triple("Ma semaine", "cal", "semaine planning agenda prevu programme"), Triple("Ligue", "medal", "ligue classement semaine amis bronze argent or diamant")
 )
 
 /** Recherche globale : objectifs, amis, messages, réglages, journal et pages, avec dictée vocale. */
@@ -131,7 +132,7 @@ fun SearchScreen(ui: AppState, initial: String) {
                 Box(Modifier.padding(6.dp)) { CardHead("Réglages et pages") }
                 tools.forEach { (l, ic, _) ->
                     Result(title = l, sub = "Ouvrir", lead = { IconTile(ic, p.flame2, p.pink, 40.dp, 13.dp) }) {
-                        when (ic) { "trend" -> ui.push(Screen.Stats); "book" -> ui.push(Screen.Journal); "timer" -> ui.fs = Fs.Focus(); "sparkle" -> ui.push(Screen.CoachChat); "trophy" -> ui.push(Screen.Challenges); else -> ui.push(Screen.Stories) }
+                        when (ic) { "trend" -> ui.push(Screen.Stats); "book" -> ui.push(Screen.Journal); "timer" -> ui.fs = Fs.Focus(); "sparkle" -> ui.push(Screen.CoachChat); "trophy" -> ui.push(Screen.Challenges); "cal" -> ui.push(Screen.Week); "medal" -> ui.push(Screen.League); else -> ui.push(Screen.Stories) }
                     }
                 }
                 sets.forEach { c ->

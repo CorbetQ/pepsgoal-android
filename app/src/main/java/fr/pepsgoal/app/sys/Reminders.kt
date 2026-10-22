@@ -8,6 +8,7 @@ import android.os.Build
 import android.provider.Settings
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.core.*
+import fr.pepsgoal.core.remindAt
 import fr.pepsgoal.core.model.minutes
 import fr.pepsgoal.core.model.start
 import fr.pepsgoal.core.model.end
@@ -40,6 +41,8 @@ object Reminders {
         // Débuts et fins des périodes (aujourd'hui et demain)
         for (g in pg.myGoals(u.id).filter { it.type == "period" && !pg.isClosedGoal(it) }) for (d in listOf(todayDate(), todayDate().plusDays(1)))
             if (pg.periodOn(g, d)) { c += at(g.start, startOfDayMs(d)); c += at(g.end, startOfDayMs(d)) }
+        // Rappels propres à chaque objectif (aujourd'hui et demain)
+        for (g in pg.myGoals(u.id).filter { !pg.isClosedGoal(it) }) { val hm = g.remindAt ?: continue; c += at(hm, day0); c += at(hm, day1) }
         // Fin du minuteur : la journée se valide toute seule
         pg.runningTimer()?.let { t -> pg.goalById(t.goalId)?.let { g -> val left = (g.minutes - pg.durationLiveMins(g)) * 60_000; if (left > 0) c += now + left.toLong() } }
         c += day1 + 60_000

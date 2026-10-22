@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -67,11 +68,18 @@ fun MoodCard(ui: AppState) {
 @Composable
 fun JournalScreen(ui: AppState) {
     val ctx = LocalContext.current; val p = LocalPal.current; Journal.rev
-    val list = remember(Journal.rev) { Journal.all(ctx).sortedByDescending { it.date } }
+    val all = remember(Journal.rev) { Journal.all(ctx).sortedByDescending { it.date } }
+    var q by remember { mutableStateOf("") }
+    val n = VoiceCmd.norm(q.trim())
+    // Recherche dans les notes et les étiquettes
+    val list = if (n.length < 2) all else all.filter { e -> VoiceCmd.norm(e.text + " " + e.tags.joinToString(" ")).contains(n) }
     val insight = remember(Journal.rev) { Journal.insight(ctx) }
     ScreenFrame(ui, "Journal", "Retour", { ui.back() }, icon = "book", color = p.type("measure").c, color2 = p.type("period").c) {
         item("today") { MoodCard(ui) }
-        if (list.size >= 3) item("chart") {
+        if (all.size >= 2) item("cal") { MoodCalendar(all) }
+        if (all.size >= 3) item("search") { Field(q, { q = it }, "", placeholder = "Rechercher dans le journal…", max = 40, icon = "search") }
+        if (n.length >= 2 && list.isEmpty()) item("none") { Glass { Empty("Rien trouvé", "Aucune note ne contient « ${q.trim()} ».", icon = "search") } }
+        if (list.size >= 3 && n.length < 2) item("chart") {
             Glass {
                 CardHead("Humeur des 30 derniers jours")
                 val last = list.take(30).reversed()
@@ -81,7 +89,7 @@ fun JournalScreen(ui: AppState) {
                 insight?.let { Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("sparkle", size = 15.dp, tint = p.flame); Muted(it, small = true) } }
             }
         }
-        if (list.isEmpty()) item("empty") { Glass { Empty("Ton journal est vide", "Note ton humeur chaque jour : tu verras ce qui t’aide à avancer.", icon = "book") } }
+        if (all.isEmpty()) item("empty") { Glass { Empty("Ton journal est vide", "Note ton humeur chaque jour : tu verras ce qui t’aide à avancer.", icon = "book") } }
         list.forEach { e -> item("e-${e.date}") {
             Glass(pad = 14.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -97,5 +105,45 @@ fun JournalScreen(ui: AppState) {
                 if (e.text.isNotBlank()) Text(e.text, Modifier.padding(top = 8.dp), fontSize = 14.sp)
             }
         } }
+    }
+}
+
+/** Calendrier d'humeur : un mois, chaque jour coloré selon l'humeur notée. */
+@Composable
+private fun MoodCalendar(all: List<fr.pepsgoal.app.data.JournalEntry>) {
+    val p = LocalPal.current
+    var off by remember { mutableIntStateOf(0) }
+    val m0 = todayDate().withDayOfMonth(1).plusMonths(off.toLong())
+    val byDay = remember(all) { all.associateBy { it.date } }
+    val lead = wdIdx(m0); val days = m0.lengthOfMonth()
+    Glass {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBtn("chevronleft", "Mois précédent", { off-- }, plain = true, size = 36.dp)
+            Text(cap(monthName("${m0.year}-${pad(m0.monthValue)}")) + " ${m0.year}", Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Box(Modifier.rotate(180f)) { IconBtn("chevronleft", "Mois suivant", { if (off < 0) off++ }, plain = true, size = 36.dp) }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row { WD.forEach { Text(it, Modifier.weight(1f), fontSize = 11.sp, color = p.ink3, fontWeight = FontWeight.ExtraBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center) } }
+        val cells = lead + days; val rows = (cells + 6) / 7
+        for (r in 0 until rows) Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (c in 0 until 7) {
+                val i = r * 7 + c - lead + 1
+                Box(Modifier.weight(1f).aspectRatio(1f), contentAlignment = Alignment.Center) {
+                    if (i in 1..days) {
+                        val k = ymd(m0.withDayOfMonth(i)); val e = byDay[k]
+                        val col = e?.let { androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, (it.mood - 1) / 4f) }
+                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)).background(col ?: p.ink.copy(alpha = .04f))
+                            .then(if (k == today()) Modifier.border(2.dp, p.ink, RoundedCornerShape(10.dp)) else Modifier), contentAlignment = Alignment.Center) {
+                            if (e != null) Text(Journal.MOODS.getOrNull(e.mood - 1)?.second ?: "", fontSize = 14.sp)
+                            else Text("$i", fontSize = 11.sp, color = p.ink3)
+                        }
+                    }
+                }
+            }
+        }
+        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Journal.MOODS.forEachIndexed { i, (l, _) -> Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, i / 4f))) }
+            Muted("de « Difficile » à « Super »", small = true)
+        }
     }
 }

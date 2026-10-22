@@ -178,8 +178,11 @@ private fun CustomBg(stamp: Long) {
     val ctx = LocalContext.current; val p = LocalPal.current
     val bmp = remember(stamp) { bgFile(ctx).takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
     if (bmp == null) { Blobs(); return }
-    Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-    Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = if (p.dark) .45f else .3f)))
+    // Flou et assombrissement réglables (Paramètres › Apparence) ; par défaut, un léger voile aux couleurs du thème
+    val raw = ctx.getSharedPreferences("pepsgoal.device", android.content.Context.MODE_PRIVATE)
+    val blur = remember(stamp) { raw.getInt("bgBlur", 0) }; val dim = remember(stamp) { raw.getFloat("bgDim", -1f) }
+    Image(bmp, null, Modifier.fillMaxSize().then(if (blur > 0 && Build.VERSION.SDK_INT >= 31) Modifier.blur(blur.dp) else Modifier), contentScale = ContentScale.Crop)
+    Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = if (dim >= 0f) dim else if (p.dark) .45f else .3f)))
 }
 
 @Composable

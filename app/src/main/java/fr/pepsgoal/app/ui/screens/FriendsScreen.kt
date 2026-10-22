@@ -45,6 +45,7 @@ fun FriendsScreen(ui: AppState) {
                 } } }
             }
         }
+        item("league") { LeagueCard(ui) }
         item("friends") {
             Glass {
                 CardHead("Mes amis") { Count(friends.size) }
