@@ -228,8 +228,22 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
         RecapDecor(cols, i)
         s.fx?.let { Floaters(it, i) }
         if (last) Confetti()
-        // Progression : segments fins et arrondis, le segment courant se remplit
-        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 62.dp, top = 22.dp).height(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        CompositionLocalProvider(LocalRecapInk provides ink) {
+            AnimatedContent(i, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(0)) togetherWith fadeOut(tween(0)) else (slideInHorizontally(tween(380, easing = FastOutSlowInEasing)) { w -> w / 3 * dir } + fadeIn(tween(300))) togetherWith (fadeOut(tween(160)) + slideOutHorizontally(tween(220)) { w -> -w / 6 * dir }) }, label = "slide") { k ->
+                val sl = f.slides[k]
+                // Diapositive centrée, qui défile si son contenu (ex. « Le mot du coach ») dépasse l'écran
+                BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+                    val minH = maxHeight
+                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = minH).padding(horizontal = 24.dp, vertical = 56.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
+                        sl.parts.forEachIndexed { j, part -> Pop(j) { PartView(ui, f, part) { i = 0; f.i = 0 } } }
+                        if (k == f.slides.lastIndex) word?.let { w -> Pop(sl.parts.size) { CoachWord(w) } }
+                    }
+                }
+            }
+        }
+        // Progression et bouton Fermer par-dessus la diapositive : sinon le contenu (plein écran) intercepte le toucher
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 62.dp, top = 22.dp).height(3.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             f.slides.indices.forEach { k ->
                 val fill = remember(i, k) { Animatable(if (k < i || p.motion) 1f else 0f) }
                 LaunchedEffect(i, k) { if (k == i && !p.motion) fill.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
@@ -245,20 +259,6 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
         // Fermer : discret, en verre
         Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 4.dp, end = 10.dp).size(40.dp).clip(CircleShape)
             .background(ink.copy(alpha = .12f)).clickable { ui.closeFs() }, contentAlignment = Alignment.Center) { Pi("x", size = 18.dp, tint = ink) }
-        CompositionLocalProvider(LocalRecapInk provides ink) {
-            AnimatedContent(i, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(0)) togetherWith fadeOut(tween(0)) else (slideInHorizontally(tween(380, easing = FastOutSlowInEasing)) { w -> w / 3 * dir } + fadeIn(tween(300))) togetherWith (fadeOut(tween(160)) + slideOutHorizontally(tween(220)) { w -> -w / 6 * dir }) }, label = "slide") { k ->
-                val sl = f.slides[k]
-                // Diapositive centrée, qui défile si son contenu (ex. « Le mot du coach ») dépasse l'écran
-                BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-                    val minH = maxHeight
-                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = minH).padding(horizontal = 24.dp, vertical = 56.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
-                        sl.parts.forEachIndexed { j, part -> Pop(j) { PartView(ui, f, part) { i = 0; f.i = 0 } } }
-                        if (k == f.slides.lastIndex) word?.let { w -> Pop(sl.parts.size) { CoachWord(w) } }
-                    }
-                }
-            }
-        }
         if (!last) Text("Touche l'écran pour avancer", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(14.dp), color = ink.copy(alpha = .55f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -292,12 +292,22 @@ private fun RecapDecor(cols: List<Color>, key: Int) {
  * Chiffre héros d'une diapositive : très grand, mais toujours sur une seule ligne. La taille dépend de la place
  * disponible et du nombre de caractères (Unbounded ExtraBold : environ 0,8 em par caractère, « % » compris).
  */
-private fun heroSize(widthDp: Float, text: String): Float = minOf(84f, widthDp / (maxOf(1, text.length) * .8f)).coerceAtLeast(24f)
-
 @Composable
 private fun HeroText(text: String, ink: Color, sizeFor: String = text) {
+    // Taille mesurée sur le texte final avec la vraie police : la plus grande qui tient sur une ligne (84 sp au plus)
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val dens = androidx.compose.ui.platform.LocalDensity.current
     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        val fs = heroSize(maxWidth.value, sizeFor)
+        val maxPx = with(dens) { maxWidth.toPx() } * .96f
+        val fs = remember(sizeFor, maxPx) {
+            var size = 84f
+            while (size > 22f) {
+                val w = measurer.measure(sizeFor, androidx.compose.ui.text.TextStyle(fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = size.sp), maxLines = 1, softWrap = false).size.width
+                if (w <= maxPx) break
+                size -= 2f
+            }
+            size
+        }
         Text(text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = fs.sp, lineHeight = (fs * 1.1f).sp, color = ink,
             maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
     }

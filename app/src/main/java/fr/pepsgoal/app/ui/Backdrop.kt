@@ -46,16 +46,12 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: 
         when (kind) {
             "custom" -> CustomBg(bgStamp)
             "plain" -> {}
-            "grid" -> GridBg()
-            "stars" -> StarsBg()
-            "waves" -> WavesBg()
-            "aurora" -> AuroraBg()
-            "mesh" -> MeshBg()
+            "grid", "stars", "waves", "aurora", "mesh" -> FreeBg(kind)
             else -> if (kind.startsWith("s:")) {
                 // Scène illustrée de la boutique, sous un léger voile aux couleurs du thème (lisibilité des cartes)
                 SceneBg(kind.removePrefix("s:"))
                 Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = if (p.dark) .28f else .18f)))
-            } else Blobs()
+            } else FreeBg("blob")
         }
         if (snow || fx == "snow") SnowFx() else if (fx.isNotEmpty() && !p.motion) ThemeFx(fx)
     }
@@ -92,173 +88,28 @@ fun slowPhaseState(dur: Int, fps: Int = 12, offset: Int = 0): State<Float> {
     return v
 }
 
-private fun blurMod() = if (Build.VERSION.SDK_INT >= 31) Modifier.blur(60.dp) else Modifier
-
-/** Grain très léger (une seule commande de dessin) : donne de la matière aux fonds unis et dégradés. */
-private val GRAIN = Random(3).let { r -> List(2600) { Offset(r.nextFloat(), r.nextFloat()) } }
-private fun DrawScope.grain(ink: Color) {
-    val pts = GRAIN.map { Offset(it.x * size.width, it.y * size.height) }
-    drawPoints(pts, androidx.compose.ui.graphics.PointMode.Points, ink.copy(alpha = .035f), 1.5f)
-}
-private fun DrawScope.halo(c: Color, x: Float, y: Float, r: Float) { if (r > 0f) drawCircle(Brush.radialGradient(listOf(c, c.copy(alpha = 0f)), Offset(x, y), r), r, Offset(x, y)) }
-/** Courbe somme de sinus (amplitude, fréquence, phase…) ; [closed] : remplie jusqu'en bas. */
-private fun DrawScope.wavePath(base: Float, w: FloatArray, closed: Boolean): Path {
-    val W = size.width; val p = Path(); var x = 0f; var first = true
-    while (x <= W + 3) {
-        var y = base; var i = 0; while (i < w.size) { y += w[i] * sin(x / W * w[i + 1] * 2 * PI.toFloat() + w[i + 2]); i += 3 }
-        if (first) { if (closed) { p.moveTo(0f, size.height); p.lineTo(x, y) } else p.moveTo(x, y); first = false } else p.lineTo(x, y)
-        x += 3f
-    }
-    if (closed) { p.lineTo(W, size.height); p.close() }
-    return p
-}
-
 /** Intensité des couleurs : renforcée en clair (sinon le fond paraît terne derrière le verre des cartes). */
 private fun Pal.al(): Float = if (dark) blobAlpha else min(1f, blobAlpha * 1.55f)
-private fun Color.withA(v: Float) = copy(alpha = v.coerceIn(0f, 1f))
+/** Durée d'un cycle des fonds gratuits (ms). */
+private val FREE_DUR = mapOf("blob" to 26000, "aurora" to 18000, "waves" to 14000, "stars" to 12000, "mesh" to 30000, "grid" to 16000)
 
-/** Lumière d'ensemble : en clair, lavis coloré et reflet nacré en diagonale ; en sombre, lueur haute et coins assombris. */
-private fun DrawScope.sheen(p: Pal) {
-    val W = size.width; val H = size.height
-    if (!p.dark) {
-        drawRect(Brush.verticalGradient(0f to p.blobs[2].withA(.07f), .5f to p.blobs[1].withA(.03f), 1f to p.blobs[0].withA(.07f)))
-        drawRect(Brush.linearGradient(listOf(Color.White.copy(alpha = .42f), Color.White.copy(alpha = 0f)), start = Offset.Zero, end = Offset(W * .7f, H * .5f)))
-    } else {
-        halo(p.blobs[3].withA(.07f), W * .5f, -H * .1f, maxOf(W, H) * .6f)
-        drawRect(Brush.radialGradient(0f to Color.Transparent, .6f to Color.Transparent, 1f to Color.Black.copy(alpha = .35f), center = Offset(W * .5f, H * .45f), radius = maxOf(W, H) * .8f))
-    }
-}
-
+/**
+ * Fonds gratuits (Blob, Aurore, Vagues, Constellation, Dégradé, Grille) : dégradés « mesh » aux couleurs du thème,
+ * dessinés dans Scenes.kt. L'horloge est lue dans la phase de dessin : pas de recomposition à chaque image.
+ */
 @Composable
-private fun Blobs() {
-    val p = LocalPal.current; val t = anim(26000)
-    Canvas(Modifier.fillMaxSize()) {
-        val m = maxOf(size.width, size.height); val a = (t * 2 * PI).toFloat(); val W = size.width; val H = size.height; val al = p.al()
-        // Grandes nappes de couleur qui dérivent, petites nappes plus denses devant (profondeur), reflet clair
-        halo(p.blobs[0].withA(al), -.02f * m + sin(a) * 30, .06f * m + cos(a) * 40, .62f * m)
-        halo(p.blobs[1].withA(al), W + .02f * m + cos(a) * 30, .12f * H + .27f * m + sin(a) * 50, .56f * m)
-        halo(p.blobs[2].withA(al), .1f * W + .26f * m + sin(a + 1) * 40, H + .02f * m, .55f * m)
-        halo(p.blobs[3].withA(al * .6f), .4f * W + .15f * m + cos(a + 2) * 50, .02f * H + .15f * m, .32f * m)
-        halo(p.blobs[1].withA(al * .35f), .5f * W + sin(a * 2) * W * .1f, .55f * H, .3f * m)
-        halo(p.blobs[3].withA(al * .7f), .72f * W + cos(a * 1.5f) * W * .08f, .38f * H + sin(a) * H * .04f, .16f * m)
-        halo(p.blobs[2].withA(al * .6f), .22f * W + sin(a * 1.3f) * W * .06f, .7f * H, .14f * m)
-        halo(Color.White.withA(al * if (p.dark) .12f else .3f), .3f * W, .25f * H, .25f * m)
-        sheen(p); grain(p.ink)
-    }
-}
-
-@Composable
-private fun AuroraBg() {
-    val p = LocalPal.current; val t = anim(18000)
-    val dust = remember { val r = Random(21); List(90) { floatArrayOf(r.nextFloat(), r.nextFloat() * .7f, .4f + r.nextFloat() * 1.2f, .15f + r.nextFloat() * .35f) } }
-    Canvas(Modifier.fillMaxSize()) {
-        val W = size.width; val H = size.height; val a = (t * 2 * PI).toFloat(); val al = p.al()
-        drawRect(Brush.verticalGradient(0f to p.blobs[2].withA(al * .3f), .6f to Color.Transparent))
-        if (p.dark) for (d in dust) drawCircle(p.ink.withA(d[3]), d[2] * density / 2.6f, Offset(d[0] * W, d[1] * H))
-        // Voiles fins : bandes verticales lumineuses en haut, qui s'estompent vers le bas
-        for (i in 0 until 4) {
-            val yc = H * (.14f + i * .13f); val col = p.blobs[i % 4]; var x = 0f
-            while (x < W) {
-                val y = yc + sin(x / W * 3 + i * 1.7f + a) * H * .04f + sin(x / W * 8 + i) * H * .012f
-                val h = H * (.14f + .06f * sin(x / W * 5 + i + a))
-                drawRect(Brush.verticalGradient(0f to col.withA(0f), .18f to col.withA(al * .7f), .3f to col.withA(al * .3f), 1f to col.withA(0f), startY = y, endY = y + h),
-                    Offset(x, y), androidx.compose.ui.geometry.Size(4f, h))
-                x += 3f
-            }
-        }
-        halo(p.blobs[2].withA(al * .25f), W * .5f, H * .95f, maxOf(W, H) * .5f)
-        sheen(p); grain(p.ink)
-    }
-}
-
-@Composable
-private fun WavesBg() {
-    val p = LocalPal.current; val t = anim(14000)
-    val glints = remember { val r = Random(8); List(40) { floatArrayOf(r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat()) } }
-    Canvas(Modifier.fillMaxSize()) {
-        val W = size.width; val H = size.height; val S = minOf(W, H); val al = p.al()
-        halo(p.blobs[3].withA(al * .45f), W * .8f, H * .2f, S * .8f); halo(p.blobs[2].withA(al * .35f), W * .1f, H * .35f, S * .7f)
-        drawCircle(p.blobs[3].withA(al * .8f), S * .07f, Offset(W * .8f, H * .2f))
-        for (i in 0 until 4) {
-            // Houle à trois fréquences, crête soulignée d'un reflet clair
-            val base = H * (.58f + i * .1f); val ph = (t * 2 * PI).toFloat() * (1 + i * .3f); val col = p.blobs[i % 4]
-            val w = floatArrayOf(H * (.03f - i * .004f), 1.1f, ph + i, H * .012f, 2.6f, ph * 1.3f + i * 2, H * .004f, 5.3f, -ph)
-            drawPath(wavePath(base, w, true), Brush.verticalGradient(0f to col.withA(al * (.6f + i * .1f)), 1f to col.withA(al * .14f), startY = base - H * .04f, endY = H))
-            drawPath(wavePath(base, w, false), Color.White.copy(alpha = if (p.dark) .22f else .5f), style = Stroke(1.5f))
-        }
-        // Éclats du soleil sur la houle
-        glints.forEachIndexed { i, g ->
-            val y = H * (.6f + g[0] * .38f); val x = W * .8f + (g[1] - .5f) * S * .3f * (y / H); val w = S * (.01f + g[2] * .03f)
-            drawLine(Color.White.withA((.15f + g[3] * .3f) * (.5f + .5f * sin((t * 2 * PI).toFloat() * 3 + i))), Offset(x, y), Offset(x + w, y), 1.5f)
-        }
-        sheen(p); grain(p.ink)
-    }
-}
-
-@Composable
-private fun StarsBg() {
-    val p = LocalPal.current; val t = anim(12000)
-    val stars = remember { val r = Random(13); List(180) { floatArrayOf(r.nextFloat(), r.nextFloat(), r.nextFloat().let { it * it * kotlin.math.sqrt(it) }) } }
-    // Voie lactée : poussière d'étoiles le long d'une bande diagonale
-    val milky = remember { val r = Random(19); List(260) { val u = r.nextFloat(); val v = (r.nextFloat() + r.nextFloat() + r.nextFloat() - 1.5f) * .12f; floatArrayOf(u * 1.2f - .1f, .85f - u * .7f + v, .35f + r.nextFloat() * .7f, .12f + r.nextFloat() * .25f) } }
-    val tints = listOf(Color(0xFFFFE7B0), Color(0xFFB9CCFF))
-    Canvas(Modifier.fillMaxSize()) {
-        val W = size.width; val H = size.height; val S = minOf(W, H); val a = (t * 2 * PI).toFloat(); val al = p.al()
-        halo(p.blobs[2].withA(al * .5f), W * .7f, H * .3f, S * .9f); halo(p.blobs[1].withA(al * .4f), W * .2f, H * .7f, S * .8f)
-        halo(p.blobs[3].withA(al * .18f), W * .5f, H * .5f, S * .4f)
-        for (m in milky) drawCircle(p.ink.withA(m[3]), m[2] * density / 2.6f, Offset(m[0] * W, m[1] * H))
-        halo(p.ink.withA(.04f), W * .5f, H * .5f, S * .5f)
-        stars.forEachIndexed { i, (x, y, s) ->
-            val tw = .5f + .5f * sin(a * (1 + i % 3) + i)
-            val col = if (p.dark && i % 3 > 0) tints[i % 3 - 1] else p.ink
-            drawCircle(col.withA((.2f + .7f * s) * (.55f + .45f * tw)), .6f + 2.4f * s * density / 2.6f, Offset(x * W, y * H))
-            if (s > .6f) halo(col.withA(.15f * tw), x * W, y * H, (6 + 10 * s) * density / 2.6f)
-        }
-        val k = (t * 2) % 1f
-        if (k < .15f && !p.motion) { val q = k / .15f; val x = W * (.85f - q * .5f); val y = H * (.1f + q * .2f); drawLine(p.ink.withA((1 - q) * .8f), Offset(x, y), Offset(x + S * .12f, y - S * .06f), 1.5f, StrokeCap.Round) }
-        sheen(p); grain(p.ink)
-    }
-}
-
-@Composable
-private fun MeshBg() {
-    val p = LocalPal.current; val t = anim(30000)
-    Canvas(Modifier.fillMaxSize()) {
-        val W = size.width; val H = size.height; val m = maxOf(W, H); val a = (t * 2 * PI).toFloat(); val al = p.al()
-        // Dégradé « mesh » : quatre foyers de couleur qui dérivent et se mélangent, et un foyer central plus doux
-        listOf(Triple(0, .2f to .2f, 0f), Triple(1, .85f to .25f, 1.6f), Triple(2, .25f to .8f, 3.1f), Triple(3, .8f to .75f, 4.7f), Triple(1, .5f to .5f, 2.4f)).forEachIndexed { i, (ci, pos, ph) ->
-            halo(p.blobs[ci].withA(al * if (i == 4) .5f else 1f), W * (pos.first + .12f * cos(a + ph)), H * (pos.second + .08f * sin(a + ph)), m * if (i == 4) .45f else .75f)
-        }
-        sheen(p); grain(p.ink)
-    }
-}
-
-@Composable
-private fun GridBg() {
-    val p = LocalPal.current; val t = anim(16000)
-    Canvas(Modifier.fillMaxSize()) {
-        val W = size.width; val H = size.height; val S = minOf(W, H); val hz = H * .42f; val al = p.al()
-        // Grille en perspective jusqu'à l'horizon, soleil couchant rayé et ligne d'horizon lumineuse
-        drawRect(Brush.verticalGradient(0f to p.bg, .42f to p.blobs[1].withA(al * .4f), .43f to p.blobs[2].withA(al * .25f), 1f to p.bg))
-        halo(p.blobs[0].withA(al * .65f), W * .5f, hz, S * .5f)
-        val sr = S * .14f; val sy = hz - S * .02f
-        drawCircle(Brush.verticalGradient(listOf(p.blobs[3].withA(al * 1.2f), p.blobs[1].withA(al * 1.1f)), startY = sy - sr, endY = sy + sr), sr, Offset(W * .5f, sy))
-        for (b in 0 until 5) {
-            val y = sy + sr * (.1f + b * .18f); val hh = sr * .035f * (b + 1); val half = kotlin.math.sqrt(maxOf(0f, sr * sr - (y - sy) * (y - sy)))
-            drawRect(p.bg, Offset(W * .5f - half, y), androidx.compose.ui.geometry.Size(half * 2, hh))
-        }
-        for (i in -14..14) drawLine(p.ink.withA(if (p.dark) .1f else .12f), Offset(W * .5f + i * S * .02f, hz), Offset(W * .5f + i * S * .3f, H), 1f)
-        for (k in 0 until 14) { val q = ((k + t) % 14f) / 14f; val y = hz + (H - hz) * q * q; drawLine(p.ink.withA(.03f + .1f * q), Offset(0f, y), Offset(W, y), 1f) }
-        drawLine(p.blobs[3].withA(al), Offset(0f, hz), Offset(W, hz), 2f); halo(p.blobs[1].withA(al * .12f), W * .5f, hz, S * .9f)
-        sheen(p); grain(p.ink)
-    }
+private fun FreeBg(kind: String) {
+    val p = LocalPal.current
+    val t = slowPhaseState(FREE_DUR[kind] ?: 26000)
+    val fp = remember(p.dark, p.bg, p.ink, p.blobs, p.blobAlpha) { FreePal(p.dark, p.bg, p.ink, p.blobs, p.al()) }
+    Canvas(Modifier.fillMaxSize()) { freeBg(kind, fp, t.value) }
 }
 
 @Composable
 private fun CustomBg(stamp: Long) {
     val ctx = LocalContext.current; val p = LocalPal.current
     val bmp = remember(stamp) { bgFile(ctx).takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-    if (bmp == null) { Blobs(); return }
+    if (bmp == null) { FreeBg("blob"); return }
     // Flou et assombrissement réglables (Paramètres › Apparence) ; par défaut, un léger voile aux couleurs du thème
     val raw = ctx.getSharedPreferences("pepsgoal.device", android.content.Context.MODE_PRIVATE)
     val blur = remember(stamp) { raw.getInt("bgBlur", 0) }; val dim = remember(stamp) { raw.getFloat("bgDim", -1f) }
