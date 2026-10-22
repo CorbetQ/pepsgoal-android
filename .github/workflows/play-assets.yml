@@ -38,6 +38,7 @@ jobs:
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
       - name: Captures (fr, light)
         continue-on-error: true
+        timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -49,21 +50,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
           script: bash .github/scripts/play-shots.sh fr light
-      - name: Captures (fr, dark)
-        continue-on-error: true
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          target: google_apis
-          profile: pixel_6
-          ram-size: 4096M
-          heap-size: 1024M
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          disable-animations: true
-          script: bash .github/scripts/play-shots.sh fr dark
       - name: Captures (en, light)
         continue-on-error: true
+        timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -75,8 +64,23 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
           script: bash .github/scripts/play-shots.sh en light
+      - name: Captures (fr, dark)
+        continue-on-error: true
+        timeout-minutes: 12
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          ram-size: 4096M
+          heap-size: 1024M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          disable-animations: true
+          script: bash .github/scripts/play-shots.sh fr dark
       - name: Captures (en, dark)
         continue-on-error: true
+        timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -103,8 +107,12 @@ jobs:
         run: |
           for l in fr:fr-FR en:en-US; do
             d="metadata/android/${l#*:}/images/phoneScreenshots"
+            # Remplacées seulement si la série est complète (8 captures valides)
+            n=$(find shots/${l%%:*}/light -name '*.png' -size +50k 2>/dev/null | wc -l)
+            echo "${l#*:} : $n captures valides"
+            [ "$n" -ge 8 ] || continue
             rm -rf "$d"; mkdir -p "$d"
-            find shots/${l%%:*}/light -name '*.png' -size +10k -exec cp {} "$d/" \;
+            find shots/${l%%:*}/light -name '*.png' -size +50k -exec cp {} "$d/" \;
           done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
