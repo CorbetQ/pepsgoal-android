@@ -118,7 +118,7 @@ private fun PlaceEditor(ui: AppState, edit: SavedPlace?, done: () -> Unit) {
                 Text(if (point == null) "👆" else icon, fontSize = 13.sp)
                 Text(if (point == null) "Touche pour placer" else name.ifBlank { "Point placé" }, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             }
-            Text("© OpenStreetMap · © CARTO", Modifier.align(Alignment.BottomStart).padding(8.dp).clip(RoundedCornerShape(6.dp)).background(p.glassStrong.copy(alpha = .8f)).padding(horizontal = 6.dp, vertical = 2.dp),
+            Text("© contributeurs OpenStreetMap", Modifier.align(Alignment.BottomStart).padding(8.dp).clip(RoundedCornerShape(6.dp)).background(p.glassStrong.copy(alpha = .8f)).padding(horizontal = 6.dp, vertical = 2.dp),
                 fontSize = 9.sp, color = p.ink2)
         }
         Text("Rayon", Modifier.padding(top = 12.dp), fontWeight = FontWeight.Bold)
@@ -150,7 +150,7 @@ private fun MapBtn(icon: String, desc: String, modifier: Modifier = Modifier, ac
 }
 
 /**
- * Fond de carte épuré (CARTO Positron le jour, Dark Matter la nuit) teinté aux couleurs de PepsGoal, cercle du rayon
+ * Carte OpenStreetMap recolorée en deux tons aux couleurs de PepsGoal, cercle du rayon
  * en pointillés et marqueur dessiné : pastille dégradée avec l'icône de l'emplacement.
  */
 @Composable
@@ -158,17 +158,17 @@ fun StyledMap(start: GeoPoint, zoom: Double, point: GeoPoint?, radius: Int, icon
     val p = LocalPal.current; val ctx = LocalContext.current
     val dark = p.dark
     val accent = p.flame.toArgb(); val accent2 = p.pink.toArgb(); val accent3 = p.flame2.toArgb()
-    val bg = p.bg
+    val bg = p.bg; val ink = p.ink
     val pin = remember(icon, accent, accent2, dark) { pinDrawable(ctx, icon, accent3, accent, accent2) }
     AndroidView(factory = { c ->
         mapConfig(c)
         MapView(c).apply {
-            setTileSource(if (dark) CARTO_DARK else CARTO_LIGHT)
+            setTileSource(TileSourceFactory.MAPNIK)
             isTilesScaledToDpi = true; setMultiTouchControls(interactive)
             zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
             controller.setZoom(zoom); controller.setCenter(point ?: start)
             // Teinte du fond de carte vers la palette de l'application (lavande le jour, indigo la nuit)
-            overlayManager.tilesOverlay.setColorFilter(tint(bg, dark))
+            overlayManager.tilesOverlay.setColorFilter(tint(bg, ink, dark))
             overlayManager.tilesOverlay.loadingBackgroundColor = bg.toArgb(); overlayManager.tilesOverlay.loadingLineColor = bg.toArgb()
             setBackgroundColor(bg.toArgb())
             if (interactive) {
@@ -198,25 +198,22 @@ fun StyledMap(start: GeoPoint, zoom: Double, point: GeoPoint?, radius: Int, icon
     }, onRelease = { it.onDetach(); onReady(null) }, modifier = Modifier.fillMaxSize())
 }
 
-private val CARTO_LIGHT = org.osmdroid.tileprovider.tilesource.XYTileSource("CartoPositron", 0, 20, 256, "@2x.png",
-    arrayOf("https://a.basemaps.cartocdn.com/light_all/", "https://b.basemaps.cartocdn.com/light_all/", "https://c.basemaps.cartocdn.com/light_all/"), "© OpenStreetMap contributors © CARTO")
-private val CARTO_DARK = org.osmdroid.tileprovider.tilesource.XYTileSource("CartoDarkMatter", 0, 20, 256, "@2x.png",
-    arrayOf("https://a.basemaps.cartocdn.com/dark_all/", "https://b.basemaps.cartocdn.com/dark_all/", "https://c.basemaps.cartocdn.com/dark_all/"), "© OpenStreetMap contributors © CARTO")
-
-/** Matrice de couleurs : les gris du fond de carte prennent la teinte du fond de l'application. */
-private fun tint(bg: androidx.compose.ui.graphics.Color, dark: Boolean): android.graphics.ColorMatrixColorFilter {
-    val r = bg.red; val g = bg.green; val b = bg.blue
-    // Le blanc (jour) ou le noir (nuit) de la carte devient la couleur de fond ; les nuances suivent
-    val m = if (!dark) floatArrayOf(
-        r, 0f, 0f, 0f, 0f,
-        0f, g, 0f, 0f, 0f,
-        0f, 0f, b, 0f, 0f,
-        0f, 0f, 0f, 1f, 0f)
-    else floatArrayOf(
-        .9f, 0f, 0f, 0f, r * 255f,
-        0f, .92f, 0f, 0f, g * 255f,
-        0f, 0f, 1.1f, 0f, b * 255f + 6f,
-        0f, 0f, 0f, 1f, 0f)
+/**
+ * Carte en deux tons aux couleurs de PepsGoal : les tuiles OpenStreetMap sont ramenées à leur luminosité, puis
+ * recolorées du fond de l'application (terrain, routes) vers l'encre (textes, contours). La nuit, l'échelle s'inverse.
+ */
+private fun tint(bg: androidx.compose.ui.graphics.Color, ink: androidx.compose.ui.graphics.Color, dark: Boolean): android.graphics.ColorMatrixColorFilter {
+    // Clair : terrain = fond légèrement éclairci, textes = encre adoucie ; sombre : terrain = fond légèrement relevé, textes = encre
+    val land = if (dark) androidx.compose.ui.graphics.lerp(bg, androidx.compose.ui.graphics.Color.White, .07f) else androidx.compose.ui.graphics.lerp(bg, androidx.compose.ui.graphics.Color.White, .45f)
+    val text = if (dark) androidx.compose.ui.graphics.lerp(ink, bg, .25f) else androidx.compose.ui.graphics.lerp(ink, bg, .12f)
+    // Jour : L = 255 → terrain, L = 0 → texte ; nuit : on inverse la luminosité (L = 255 → terrain sombre)
+    val lo = if (dark) land else text; val hi = if (dark) text else land
+    fun row(l: Float, h: Float, i: Int): FloatArray {
+        val k = (h - l) // sortie = l·255 + k·L, avec L = .299 R + .587 G + .114 B
+        return if (!dark) floatArrayOf(k * .299f, k * .587f, k * .114f, 0f, l * 255f)
+        else floatArrayOf(-k * .299f, -k * .587f, -k * .114f, 0f, h * 255f)
+    }
+    val m = row(lo.red, hi.red, 0) + row(lo.green, hi.green, 1) + row(lo.blue, hi.blue, 2) + floatArrayOf(0f, 0f, 0f, 1f, 0f)
     return android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix(m))
 }
 
