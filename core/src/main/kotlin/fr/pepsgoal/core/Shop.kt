@@ -55,7 +55,7 @@ val SHOP_BGS = listOf(
     ShopBg("deepsea", "Fonds marins", "Rayons de lumière, bulles et poissons", 500, listOf("#0C5C8A", "#063A5C", "#021829"), dark = true),
     ShopBg("mountains", "Montagnes", "Sommets en couches au lever du jour", 400, listOf("#FFD7A8", "#F59E8B", "#6C5B9E")),
     ShopBg("citynight", "Ville la nuit", "Gratte-ciel, fenêtres allumées et lune", 500, listOf("#0A0F2C", "#1E2A5A", "#3D2B6B"), dark = true),
-    ShopBg("tram", "Ville et tramway", "Un tramway glisse devant les façades", 500, listOf("#BFE3FF", "#E9F2FF", "#F6E8D8")),
+    ShopBg("tram", "Ville et tramway", "Le tram arc-en-ciel d’Angers au crépuscule", 500, listOf("#4D4A86", "#EE9C86", "#FFDDA8")),
     ShopBg("mistforest", "Forêt brumeuse", "Sapins en couches dans la brume", 400, listOf("#DDE8E0", "#9DB8A7", "#36574A")),
     ShopBg("dunes", "Dunes", "Désert doré au soleil couchant", 400, listOf("#FFB07A", "#F28C5B", "#C9663F")),
     ShopBg("sakura", "Cerisiers", "Branches en fleurs et pétales", 500, listOf("#FFE6EF", "#FFC9DD", "#F6A6C1")),
