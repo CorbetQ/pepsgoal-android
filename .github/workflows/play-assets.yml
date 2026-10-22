@@ -36,16 +36,60 @@ jobs:
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-      - name: Captures
+      - name: Captures (fr, light)
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           arch: x86_64
           target: google_apis
           profile: pixel_6
+          ram-size: 4096M
+          heap-size: 1024M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
-          script: bash .github/scripts/play-shots.sh
+          script: bash .github/scripts/play-shots.sh fr light
+      - name: Captures (fr, dark)
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          ram-size: 4096M
+          heap-size: 1024M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          disable-animations: true
+          script: bash .github/scripts/play-shots.sh fr dark
+      - name: Captures (en, light)
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          ram-size: 4096M
+          heap-size: 1024M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          disable-animations: true
+          script: bash .github/scripts/play-shots.sh en light
+      - name: Captures (en, dark)
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          ram-size: 4096M
+          heap-size: 1024M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          disable-animations: true
+          script: bash .github/scripts/play-shots.sh en dark
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: play-store-assets
           path: |
@@ -55,11 +99,12 @@ jobs:
           if-no-files-found: error
       # Fiche Play : 8 captures par langue (thème clair, puis sombre en artefact uniquement)
       - name: Ajout des captures au dépôt
+        if: always()
         run: |
           for l in fr:fr-FR en:en-US; do
             d="metadata/android/${l#*:}/images/phoneScreenshots"
             rm -rf "$d"; mkdir -p "$d"
-            cp shots/${l%%:*}/light/*.png "$d/"
+            find shots/${l%%:*}/light -name '*.png' -size +10k -exec cp {} "$d/" \;
           done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
