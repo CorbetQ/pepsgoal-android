@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Kawaii » : premier plan (sujet dans la zone sûre centrale de l'icône adaptative) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M36.00,86.00a18.00,3.00 0 1,0 36.00,0a18.00,3.00 0 1,0 -36.00,0Z" android:fillColor="#22000000" />
+    <group android:translateX="22.56" android:translateY="22.56" android:scaleX="2.62" android:scaleY="2.62">
+        <path android:pathData="M12 22.5c-4.4 0-7.6-3.1-7.6-7.3 0-3.6 2.4-5.8 4-7.8.4 1.9 1.3 3.2 2.6 3.7-.4-3.2.7-6.4 3.6-8.6-.3 3.5 1.6 5.5 3.2 7.7 1.2 1.6 1.8 3.3 1.8 5.2 0 4.2-3.2 7.1-7.6 7.1z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="12" android:startY="22.5" android:endX="12" android:endY="1.5">
+                <item android:offset="0" android:color="#FFFF5A7A" />
+                <item android:offset="0.45" android:color="#FFFF8A5A" />
+                <item android:offset="1" android:color="#FFFFD27A" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M12 21.6c-2 0-3.4-1.4-3.4-3.3 0-1.6 1-2.7 2-3.7.2 1 .7 1.6 1.3 1.8.1-1.7.8-3 2.1-3.9 0 1.7.6 2.7 1.1 3.6.3.6.5 1.2.5 2.1 0 1.9-1.6 3.4-3.6 3.4z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="12" android:startY="21.6" android:endX="12" android:endY="12">
+                <item android:offset="0" android:color="#FFFFD27A" />
+                <item android:offset="1" android:color="#FFFFF6E0" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M7.1 15.6c-.1-2 .8-3.6 2-5 .1.8.3 1.3.6 1.7-1 1-1.7 2-1.9 3.4-.1.5-.7.4-.7-.1z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.55" />
+        <path android:pathData="M8.65,15.20a0.95,1.15 0 1,0 1.90,0a0.95,1.15 0 1,0 -1.90,0Z" android:fillColor="#FF3A1420" />
+        <path android:pathData="M13.45,15.20a0.95,1.15 0 1,0 1.90,0a0.95,1.15 0 1,0 -1.90,0Z" android:fillColor="#FF3A1420" />
+        <path android:pathData="M9.55,14.80a0.35,0.35 0 1,0 0.70,0a0.35,0.35 0 1,0 -0.70,0Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M14.35,14.80a0.35,0.35 0 1,0 0.70,0a0.35,0.35 0 1,0 -0.70,0Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M11,17Q12,18.1 13,17" android:strokeColor="#FF3A1420" android:strokeWidth="0.45" android:strokeLineJoin="round" android:strokeLineCap="round" />
+        <path android:pathData="M7.30,17.00a1.00,0.60 0 1,0 2.00,0a1.00,0.60 0 1,0 -2.00,0Z" android:fillColor="#FFFF6F9E" android:fillAlpha="0.75" />
+        <path android:pathData="M14.70,17.00a1.00,0.60 0 1,0 2.00,0a1.00,0.60 0 1,0 -2.00,0Z" android:fillColor="#FFFF6F9E" android:fillAlpha="0.75" />
+    </group>
+</vector>

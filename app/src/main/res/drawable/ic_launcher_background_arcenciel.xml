@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Arc-en-ciel » : arrière-plan -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="54" android:gradientRadius="80">
+            <item android:offset="0" android:color="#FF2A2050" />
+            <item android:offset="1" android:color="#FF0B0820" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M10,96A44,44 0 0 1 98,96" android:strokeColor="#FFFF3D6E" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeAlpha="0.22" />
+    <path android:pathData="M14,96A40,40 0 0 1 94,96" android:strokeColor="#FFFF8A2E" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeAlpha="0.22" />
+    <path android:pathData="M18,96A36,36 0 0 1 90,96" android:strokeColor="#FFFFE45C" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeAlpha="0.22" />
+    <path android:pathData="M22,96A32,32 0 0 1 86,96" android:strokeColor="#FF2EE6A8" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeAlpha="0.22" />
+    <path android:pathData="M26,96A28,28 0 0 1 82,96" android:strokeColor="#FF3D8BFF" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeAlpha="0.22" />
+    <path android:pathData="M30,96A24,24 0 0 1 78,96" android:strokeColor="#FF7B3DFF" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeAlpha="0.22" />
+</vector>

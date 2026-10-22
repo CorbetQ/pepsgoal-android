@@ -110,7 +110,7 @@ object Mapping {
 
     /* ---------- réglages du compte ---------- */
     private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "hardDays", "essentials", "flameSkin", "shop", "places", "rewards", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams")
-    private val SETTING_KEYS = listOf("browser", "defaultVis", "bg", "accentCustom", "noSuggest", "weather", "wxCard", "glassBlur", "hideOngoing")
+    private val SETTING_KEYS = listOf("browser", "defaultVis", "bg", "accentCustom", "noSuggest", "weather", "wxCard", "glassBlur", "hideOngoing", "fx")
 
     private fun strArr(l: List<String>) = JsonArray(l.map(::JsonPrimitive))
 
@@ -135,7 +135,7 @@ object Mapping {
         extra["browser"] = JsonPrimitive(s.browser); extra["defaultVis"] = JsonPrimitive(s.defaultVis); extra["bg"] = JsonPrimitive(s.bg)
         extra["accentCustom"] = s.accentCustom?.let(::strArr) ?: JsonNull
         extra["noSuggest"] = JsonPrimitive(s.noSuggest); extra["weather"] = s.weather?.let { JSON.encodeToJsonElement(it) } ?: JsonNull
-        extra["wxCard"] = JsonPrimitive(s.wxCard); extra["glassBlur"] = JsonPrimitive(s.glassBlur); extra["hideOngoing"] = JsonPrimitive(s.hideOngoing)
+        extra["wxCard"] = JsonPrimitive(s.wxCard); extra["glassBlur"] = JsonPrimitive(s.glassBlur); extra["fx"] = JsonPrimitive(s.fx); extra["hideOngoing"] = JsonPrimitive(s.hideOngoing)
         return buildJsonObject {
             put("theme", if (s.theme in setOf("system", "light", "dark", "oled", "weather")) s.theme else "system"); put("accent", s.accent.coerceIn(0, 31)); put("social", s.social)
             put("defaultVisibility", if (s.defaultVis in setOf("private", "friends", "public")) s.defaultVis else "friends")
@@ -162,6 +162,7 @@ object Mapping {
         if (x.containsKey("weather")) s.weather = try { (x["weather"] as? JsonObject)?.let { JSON.decodeFromJsonElement(Place.serializer(), it) } } catch (e: Exception) { null }
         bool("wxCard")?.let { s.wxCard = it }
         x["glassBlur"]?.let { s.glassBlur = it.strOr("mid") }
+        x["fx"]?.let { s.fx = it.strOr("") }
         bool("hideOngoing")?.let { s.hideOngoing = it }
         bool("tutorialDone")?.let { u.tutorialDone = it }
         (x["goalGroups"] as? JsonArray)?.let { u.goalGroups = try { JSON.decodeFromJsonElement<List<GoalGroup>>(it).toMutableList() } catch (e: Exception) { u.goalGroups } }

@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -36,7 +37,7 @@ fun bgFile(ctx: android.content.Context) = File(ctx.filesDir, "bg.jpg")
 
 /** Arrière-plan derrière toute l'application (calque `.backdrop` de la version web). */
 @Composable
-fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long) {
+fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: String = "") {
     val p = LocalPal.current
     Box(Modifier.fillMaxSize().background(p.bg)) {
         if (p.transp || p.contrast) return@Box
@@ -51,7 +52,7 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long) {
             "mesh" -> MeshBg()
             else -> Blobs()
         }
-        if (snow) SnowFx()
+        if (snow || fx == "snow") SnowFx() else if (fx.isNotEmpty() && !p.motion) ThemeFx(fx)
     }
 }
 
@@ -183,6 +184,58 @@ private fun CustomBg(stamp: Long) {
     val blur = remember(stamp) { raw.getInt("bgBlur", 0) }; val dim = remember(stamp) { raw.getFloat("bgDim", -1f) }
     Image(bmp, null, Modifier.fillMaxSize().then(if (blur > 0 && Build.VERSION.SDK_INT >= 31) Modifier.blur(blur.dp) else Modifier), contentScale = ContentScale.Crop)
     Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = if (dim >= 0f) dim else if (p.dark) .45f else .3f)))
+}
+
+/** Effets des thèmes de la boutique : pétales, feuilles, cœurs et confettis tombent ; braises et bulles montent ; étoiles scintillent. */
+@Composable
+private fun ThemeFx(kind: String) {
+    val rnd = remember(kind) { Random(kind.hashCode()) }
+    val parts = remember(kind) { List(if (kind == "stars") 60 else 34) { floatArrayOf(rnd.nextFloat(), rnd.nextFloat(), .6f + rnd.nextFloat() * .9f, .35f + rnd.nextFloat() * .5f, 10 + rnd.nextFloat() * 16, rnd.nextFloat() * 6.28f, rnd.nextInt(4).toFloat()) } }
+    val t = anim(30000, fps = 24)
+    val cols = when (kind) {
+        "petals" -> listOf(0xFFFFB7D5, 0xFFFF8FC7, 0xFFFFD6E8, 0xFFFFFFFF)
+        "leaves" -> listOf(0xFFE2711D, 0xFFFFB347, 0xFFB5451B, 0xFFD9A441)
+        "hearts" -> listOf(0xFFFF4F8B, 0xFFFF9AC1, 0xFFE85BFF, 0xFFFF6B8B)
+        "embers" -> listOf(0xFFFFB000, 0xFFFF6A00, 0xFFFF3D00, 0xFFFFD27F)
+        "bubbles" -> listOf(0xFFFFFFFF, 0xFFBFE3FF, 0xFF9AE6FF, 0xFFFFFFFF)
+        "confetti" -> listOf(0xFFFFC300, 0xFFFF4F8B, 0xFF22D3FF, 0xFF2EF2B0)
+        else -> listOf(0xFFFFFFFF, 0xFFFFF3C4, 0xFFC6D4FF, 0xFFFFFFFF)
+    }.map { Color(it) }
+    Canvas(Modifier.fillMaxSize()) {
+        for (f in parts) {
+            val c = cols[f[6].toInt()]; val r = 6f * f[2] * density / 2.6f
+            if (kind == "stars") {
+                // Scintillement sur place
+                val a = f[3] * (.35f + .65f * ((sin(t * 6.28f * 6 / f[4] * 10 + f[5]) + 1) / 2))
+                drawCircle(c.copy(alpha = a), r * .5f, Offset(f[0] * size.width, f[1] * size.height))
+                continue
+            }
+            val up = kind == "embers" || kind == "bubbles"
+            val k = (f[1] + t * 30f / f[4]) % 1f
+            val y = (if (up) 1f - k else k) * (size.height + 40f) - 20f
+            val x = f[0] * size.width + sin(k * 12f + f[5]) * 26f * density / 2.6f
+            val a = f[3] * (if (up) (1f - k).coerceIn(0f, 1f) * 1.2f else 1f).coerceAtMost(1f)
+            val rot = (k * 720f + f[5] * 57f)
+            when (kind) {
+                "bubbles" -> drawCircle(c.copy(alpha = a * .7f), r * 1.4f, Offset(x, y), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5f * density / 2.6f))
+                "embers" -> drawCircle(c.copy(alpha = a), r * .55f, Offset(x, y))
+                "hearts" -> run {
+                    val s = r * 1.6f
+                    val path = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(x, y + s * .9f)
+                        cubicTo(x - s * 1.4f, y, x - s * .6f, y - s * 1.1f, x, y - s * .35f)
+                        cubicTo(x + s * .6f, y - s * 1.1f, x + s * 1.4f, y, x, y + s * .9f)
+                    }
+                    drawPath(path, c.copy(alpha = a))
+                }
+                else -> rotate(rot, Offset(x, y)) {
+                    // Pétales et feuilles : ovales ; confettis : petits rectangles
+                    if (kind == "confetti") drawRect(c.copy(alpha = a), Offset(x - r * .5f, y - r), androidx.compose.ui.geometry.Size(r, r * 2f))
+                    else drawOval(c.copy(alpha = a), Offset(x - r, y - r * .6f), androidx.compose.ui.geometry.Size(r * 2f, r * 1.2f))
+                }
+            }
+        }
+    }
 }
 
 @Composable
