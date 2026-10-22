@@ -104,6 +104,8 @@ sealed class Screen {
     class Search(val q: String = "") : Screen()
     /** Planning de la semaine. */
     object Week : Screen()
+    /** Boutique d'icônes et de thèmes (flammes). */
+    object Shop : Screen()
     /** Ligue de la semaine entre amis. */
     object League : Screen()
 }

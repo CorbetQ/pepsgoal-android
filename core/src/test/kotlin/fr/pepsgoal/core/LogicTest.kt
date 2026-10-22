@@ -245,4 +245,14 @@ class LogicTest {
         assertEquals(null, pg.usualTime(g))
         assertEquals(1, pg.hourHeat().sumOf { it.sum() })
     }
+
+    @Test fun shopSpendsFlamesNotLevel() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        for (i in 0..40) pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        val pts = pg.points(pg.meId()); assertEquals(pts, pg.wallet())
+        assertTrue(pg.buy("theme:forest", pts + 1) != null)
+        assertEquals(null, pg.buy("theme:forest", 300))
+        assertEquals(pts - 300, pg.wallet()); assertEquals(pts, pg.points(pg.meId()))
+        assertTrue(pg.owns("theme:forest", 300)); assertEquals(null, pg.buy("theme:forest", 300)); assertEquals(pts - 300, pg.wallet())
+    }
 }

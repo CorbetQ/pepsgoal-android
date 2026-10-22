@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient android:angle="315" android:startColor="#FF0B4D26" android:endColor="#FF03180B" />
-</shape>
+<!-- Icône « Noël » : arrière-plan -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="108" android:endY="108">
+            <item android:offset="0" android:color="#FF145C32" />
+            <item android:offset="1" android:color="#FF04170C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M19.10,26.00a0.90,0.90 0 1,0 1.80,0a0.90,0.90 0 1,0 -1.80,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M87.20,22.00a0.80,0.80 0 1,0 1.60,0a0.80,0.80 0 1,0 -1.60,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M15.30,60.00a0.70,0.70 0 1,0 1.40,0a0.70,0.70 0 1,0 -1.40,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M91.20,50.00a0.80,0.80 0 1,0 1.60,0a0.80,0.80 0 1,0 -1.60,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M29.30,92.00a0.70,0.70 0 1,0 1.40,0a0.70,0.70 0 1,0 -1.40,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M83.10,90.00a0.90,0.90 0 1,0 1.80,0a0.90,0.90 0 1,0 -1.80,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M59.40,16.00a0.60,0.60 0 1,0 1.20,0a0.60,0.60 0 1,0 -1.20,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+</vector>

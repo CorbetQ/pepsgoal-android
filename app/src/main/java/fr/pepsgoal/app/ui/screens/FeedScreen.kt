@@ -157,29 +157,49 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
     val liked = post.likes.contains(u.id); val adm = pg.isAdmin(u); val pend = post.status == "pending"
     var photo by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf(false) }
-    Glass(border = if (pend) p.type("limit").c else null) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.weight(1f).clickable { ui.open(Sheet.User(a.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Av(a, 42.dp)
-                Column {
-                    Text(if (a.id == u.id) "Toi" else a.name, fontWeight = FontWeight.ExtraBold)
-                    Muted("@${a.username} · ${ago(post.at)} · ${VIS[post.visibility]?.first ?: ""}", small = true, maxLines = 1)
+    // Saveur de la publication : palier, badge, sondage… (bandeau coloré en tête de carte)
+    val flavor = when {
+        pend -> null
+        post.kind == "milestone" -> Triple("medal", "Palier atteint", p.flame)
+        post.text.startsWith("Nouveau badge") -> Triple("trophy", "Badge débloqué", androidx.compose.ui.graphics.Color(0xFFFFB000))
+        post.poll != null -> Triple("poll", "Sondage", p.type("objective").c)
+        else -> null
+    }
+    Glass(border = if (pend) p.type("limit").c else null, pad = 0.dp) {
+        // Bandeau de saveur : dégradé discret sur toute la largeur
+        if (flavor != null) Row(Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(flavor.third.copy(alpha = .28f), flavor.third.copy(alpha = .04f))))
+            .padding(horizontal = 18.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pi(flavor.first, size = 15.dp, tint = flavor.third)
+            Text(flavor.second.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, color = p.ink2)
+        }
+        Column(Modifier.padding(start = 18.dp, end = 10.dp, top = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable { ui.open(Sheet.User(a.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                    Av(a, 44.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text(if (a.id == u.id) "Toi" else a.name, fontWeight = FontWeight.ExtraBold, fontSize = 15.5.sp, maxLines = 1)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Muted("@${a.username} · ${ago(post.at)}", small = true, maxLines = 1)
+                            VIS[post.visibility]?.let { (_, ic) -> Pi(ic, size = 12.dp, tint = p.ink3) }
+                        }
+                    }
+                }
+                if (adm) IconBtn(if (post.commentsLocked) "comment" else "lock", if (post.commentsLocked) "Rouvrir les commentaires" else "Fermer les commentaires", { ui.run(if (post.commentsLocked) "Commentaires rouverts." else "Commentaires fermés sur cette publication.", "lock") { ui.cloud.modPost(post.id, if (post.commentsLocked) "unlock" else "lock") } }, plain = true, size = 36.dp)
+                when {
+                    post.userId == u.id -> IconBtn("trash", "Supprimer la publication", { ui.confirm("Supprimer la publication ?", "Elle disparaîtra du feed de tes amis.", "Supprimer") { ui.run { ui.cloud.deletePost(post.id) } } }, plain = true, size = 36.dp)
+                    adm -> IconBtn("trash", "Supprimer la publication (modération)", { modDeletePost(ui, post) }, plain = true, size = 36.dp)
+                    else -> IconBtn("flag", "Signaler la publication", { ui.open(Sheet.Report(post.id)) }, plain = true, size = 36.dp)
                 }
             }
-            if (adm) IconBtn(if (post.commentsLocked) "comment" else "lock", if (post.commentsLocked) "Rouvrir les commentaires" else "Fermer les commentaires", { ui.run(if (post.commentsLocked) "Commentaires rouverts." else "Commentaires fermés sur cette publication.", "lock") { ui.cloud.modPost(post.id, if (post.commentsLocked) "unlock" else "lock") } }, plain = true, size = 38.dp)
-            when {
-                post.userId == u.id -> IconBtn("trash", "Supprimer la publication", { ui.confirm("Supprimer la publication ?", "Elle disparaîtra du feed de tes amis.", "Supprimer") { ui.run { ui.cloud.deletePost(post.id) } } }, plain = true, size = 38.dp)
-                adm -> IconBtn("trash", "Supprimer la publication (modération)", { modDeletePost(ui, post) }, plain = true, size = 38.dp)
-                else -> IconBtn("flag", "Signaler la publication", { ui.open(Sheet.Report(post.id)) }, plain = true, size = 38.dp)
-            }
         }
-        Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (pend) Chip("En attente de validation par la modération", "clock", p.type("limit").c, p.type("limit").ink)
-            if (post.kind == "milestone") Chip("Palier atteint", "medal", p.flame, p.ink)
-            if (post.text.isNotEmpty()) Text(post.text, fontSize = 15.5.sp)
+            // Texte court sans pièce jointe : mis en valeur, comme une citation
+            val short = post.text.length <= 90 && post.photo == null && post.poll == null
+            if (post.text.isNotEmpty()) Text(post.text, fontSize = if (short) 18.sp else 15.5.sp, lineHeight = if (short) 25.sp else 22.sp, fontWeight = if (short) FontWeight.Bold else FontWeight.Medium)
             post.poll?.let { PollView(ui, post) }
             post.photo?.let { url ->
-                AsyncImage(url, "Photo partagée par ${a.name}", Modifier.fillMaxWidth().heightIn(max = 420.dp).clip(RoundedCornerShape(18.dp)).clickable { photo = true }, contentScale = ContentScale.Crop)
+                AsyncImage(url, "Photo partagée par ${a.name}", Modifier.fillMaxWidth().heightIn(max = 440.dp).clip(RoundedCornerShape(20.dp)).clickable { photo = true }, contentScale = ContentScale.Crop)
                 if (photo) PhotoViewer(url) { photo = false }
             }
             post.goalId?.let { GoalAttach(ui, pg.goalById(it)) }
@@ -191,25 +211,36 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
                     ui.run { ui.cloud.react(post, k) }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CheerButton(liked, post.likes.size, reactionEmoji(mine).takeIf { mine != null && mine != "fire" }) { react(mine ?: "fire") }
-                // Autres réactions : 💪 👏 🎉
-                IconBtn("smile", "Choisir une réaction", { picker = !picker }, plain = true, size = 38.dp)
-                // Qui a réagi : résumé des réactions, ouvre la liste
-                val sum = reactionSummary(post)
-                if (sum.isNotEmpty()) Row(Modifier.clip(CircleShape).clickable { ui.open(Sheet.Likers(post.id)) }.padding(horizontal = 6.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    sum.take(3).forEach { (e, _) -> Text(e, fontSize = 15.sp) }
+            // Qui a réagi : pile d'emojis et total, ouvre la liste
+            val sum = reactionSummary(post)
+            val nc = post.comments.count { !pg.isBlockedPair(it.userId, u.id) }
+            if (sum.isNotEmpty() || nc > 0) Row(verticalAlignment = Alignment.CenterVertically) {
+                if (sum.isNotEmpty()) Row(Modifier.clip(CircleShape).clickable { ui.open(Sheet.Likers(post.id)) }.padding(end = 6.dp, top = 2.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    sum.take(3).forEachIndexed { i, (e, _) ->
+                        Box(Modifier.offset(x = (-6 * i).dp).size(24.dp).clip(CircleShape).background(p.glassStrong).border(1.5.dp, p.bg, CircleShape), contentAlignment = Alignment.Center) { Text(e, fontSize = 12.sp) }
+                    }
+                    Text(pl(post.likes.size, "réaction", "réactions"), Modifier.offset(x = (-6 * (sum.size.coerceAtMost(3) - 1)).dp).padding(start = 6.dp), fontSize = 13.sp, color = p.ink2, fontWeight = FontWeight.Bold)
                 }
-                // Ouvre la page dédiée aux commentaires
-                val nc = post.comments.count { !pg.isBlockedPair(it.userId, u.id) }
-                if (!pend && !inPage) PButton(if (nc > 0) "$nc" else "Commenter", { ui.push(Screen.Comments(post.id)) }, icon = "comment", small = true)
+                Spacer(Modifier.weight(1f))
+                if (nc > 0 && !inPage) Text(pl(nc, "commentaire", "commentaires"), Modifier.clip(RoundedCornerShape(10.dp)).clickable { ui.push(Screen.Comments(post.id)) }.padding(4.dp), fontSize = 13.sp, color = p.ink2, fontWeight = FontWeight.Bold)
             }
-            if (picker) FlowRowCompat(gap = 6.dp) {
+            // Barre d'actions : encourager (réaction choisie), autres réactions, commenter
+            Box(Modifier.fillMaxWidth().height(1.dp).background(p.line.copy(alpha = .6f)))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CheerButton(liked, post.likes.size, reactionEmoji(mine).takeIf { mine != null && mine != "fire" }, Modifier.weight(1f)) { react(mine ?: "fire") }
+                ActionPill("smile", if (picker) "Fermer" else "Réagir", picker, Modifier.weight(1f)) { picker = !picker }
+                if (!pend && !inPage) ActionPill("comment", "Commenter", false, Modifier.weight(1f)) { ui.push(Screen.Comments(post.id)) }
+            }
+            if (picker) Row(Modifier.fillMaxWidth().clip(CircleShape).background(p.glassStrong).border(1.dp, p.line, CircleShape).padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly) {
                 val cur = if (post.likes.contains(u.id)) post.reactions[u.id] ?: "fire" else null
-                REACTIONS.forEach { (k, e) -> FChip(e, cur == k, {
-                    if (!pg.socialBlocked("d'encourager")) { if (cur == null && !p.motion) ui.sparks(1); picker = false; ui.run { ui.cloud.react(post, k) } }
-                }) }
+                REACTIONS.forEach { (k, e) ->
+                    val sel = cur == k
+                    val sc by androidx.compose.animation.core.animateFloatAsState(if (sel) 1.25f else 1f, label = "reac")
+                    Box(Modifier.size(46.dp).scale(sc).clip(CircleShape).background(if (sel) p.flame.copy(alpha = .2f) else androidx.compose.ui.graphics.Color.Transparent)
+                        .clickable { react(k) }, contentAlignment = Alignment.Center) { Text(e, fontSize = 24.sp) }
+                }
             }
             // Réponses rapides sous la réussite d'un ami : encouragement et commentaire en un geste
             if (!pend && post.userId != u.id && (post.goalId != null || post.kind != "manual") && pg.canComment(u, post) && post.comments.none { it.userId == u.id } && pg.store.online)
@@ -230,6 +261,19 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
     }
 }
 
+/** Bouton de la barre d'actions d'une publication : icône et libellé, pleine largeur de sa part. */
+@Composable
+private fun ActionPill(icon: String, label: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val p = LocalPal.current
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Row(modifier.bounce(inter, .94f).height(40.dp).clip(CircleShape).background(if (on) p.ink.copy(alpha = .1f) else p.ink.copy(alpha = .05f))
+        .springClick(inter, label = label, onClick = onClick).padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+        Pi(icon, size = 17.dp, tint = p.ink2)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ink2, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+}
+
 fun modDeletePost(ui: AppState, post: Post) {
     ui.confirm("Supprimer cette publication ?", "« ${post.text.take(80)}${if (post.text.length > 80) "…" else ""} » sera supprimée pour tout le monde. L'auteur sera prévenu.", "Supprimer") {
         ui.run("Publication supprimée.", "trash") { ui.cloud.modPost(post.id, "delete") }
@@ -237,7 +281,7 @@ fun modDeletePost(ui: AppState, post: Post) {
 }
 
 @Composable
-fun CheerButton(on: Boolean, n: Int, emoji: String? = null, onClick: () -> Unit) {
+fun CheerButton(on: Boolean, n: Int, emoji: String? = null, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val p = LocalPal.current
     // Rebond uniquement quand on encourage (pas à l'affichage d'une publication déjà encouragée)
     val pop = remember { Animatable(1f) }
@@ -247,11 +291,13 @@ fun CheerButton(on: Boolean, n: Int, emoji: String? = null, onClick: () -> Unit)
         was = on
     }
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(Modifier.bounce(inter, .9f).graphicsLayer { scaleX = pop.value; scaleY = pop.value }.clip(CircleShape)
-        .background(if (on) p.flame.copy(alpha = .22f) else p.ink.copy(alpha = .06f)).border(1.dp, if (on) p.flame.copy(alpha = .45f) else ctlEdge(p), CircleShape)
-        .springClick(inter, label = "Encourager", onClick = onClick).padding(horizontal = 12.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (emoji != null) Text(emoji, fontSize = 16.sp) else Flame(18.dp, dim = !on); Text("$n", fontWeight = FontWeight.ExtraBold); Text("Encourager", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+    Row(modifier.bounce(inter, .9f).graphicsLayer { scaleX = pop.value; scaleY = pop.value }.height(40.dp).clip(CircleShape)
+        .background(if (on) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(p.flame.copy(alpha = .3f), p.pink.copy(alpha = .22f))) else androidx.compose.ui.graphics.SolidColor(p.ink.copy(alpha = .05f)))
+        .border(1.dp, if (on) p.flame.copy(alpha = .5f) else androidx.compose.ui.graphics.Color.Transparent, CircleShape)
+        .springClick(inter, label = "Encourager", onClick = onClick).padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+        if (emoji != null) Text(emoji, fontSize = 16.sp) else Flame(18.dp, dim = !on)
+        Text(if (n > 0) "$n" else "Bravo", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) p.ink else p.ink2, maxLines = 1)
     }
 }
 

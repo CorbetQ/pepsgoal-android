@@ -125,6 +125,9 @@ class User(
     var essentials: MutableList<String> = mutableListOf(),
     /** Couleur de flamme choisie (débloquée par la meilleure série). */
     var flameSkin: String = "classic",
+    /** Boutique : articles achetés (icônes, thèmes) et flammes dépensées (le niveau, lui, compte toutes les flammes gagnées). */
+    var shopOwned: MutableList<String> = mutableListOf(),
+    var shopSpent: Int = 0,
     /** Emplacements enregistrés (maison, travail…), pour les rappels par lieu. */
     var places: MutableList<SavedPlace> = mutableListOf(),
     /** Récompenses personnelles (« un resto à 30 jours de série »). */
