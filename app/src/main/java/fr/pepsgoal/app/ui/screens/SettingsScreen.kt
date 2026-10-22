@@ -205,6 +205,7 @@ private fun Appearance(ui: AppState, u: User) {
                 }
             }
         }
+        AppIconCard(ui)
         Glass(Modifier.alpha(if (ui.prefs.materialYou && dynOk) .55f else 1f)) {
             SectionTitle("Couleur d'accent")
             Muted("${if (ui.prefs.materialYou && dynOk) "Remplacée par Material You sur cet appareil · " else ""}${if (validAccent(s.accentCustom)) "Tirée de ton arrière-plan" else (ACCENTS.getOrNull(s.accent) ?: ACCENTS[0]).name} · flammes, boutons et anneau de progression", small = true)
@@ -792,5 +793,34 @@ fun ExportRow(ui: AppState) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PButton("CSV", { go(false) }, icon = "list", small = true, enabled = !busy)
         PButton("Bilan PDF", { go(true) }, icon = "book", small = true, enabled = !busy)
+    }
+}
+
+/** Paramètres › Apparence : icône de l'application et couleurs de saison. */
+@Composable
+private fun AppIconCard(ui: AppState) {
+    val ctx = LocalContext.current; val p = LocalPal.current
+    var cur by remember { mutableStateOf(fr.pepsgoal.app.sys.AppIcons.current(ctx)) }
+    Glass {
+        SectionTitle("Icône de l’application")
+        Muted("L’icône change sur l’écran d’accueil d’Android après quelques secondes. Selon le lanceur, un raccourci déjà posé sur l’écran d’accueil peut devoir être ajouté à nouveau.", small = true)
+        Spacer(Modifier.height(10.dp))
+        FlowRowCompat(gap = 10.dp) {
+            fr.pepsgoal.app.sys.AppIcons.ALL.forEach { ic ->
+                val on = cur == ic.key
+                Column(Modifier.width(64.dp).clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = "Icône ${ic.label}") {
+                    fr.pepsgoal.app.sys.AppIcons.set(ctx, ic.key); cur = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette")
+                }.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(ic.bg.map { Color(it) })).border(if (on) 3.dp else 1.dp, if (on) p.flame else p.line, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(ic.fg), null, Modifier.size(86.dp), colorFilter = if (ic.key == "mono") androidx.compose.ui.graphics.ColorFilter.tint(Color.White) else null)
+                    }
+                    Text(ic.label, fontSize = 11.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 1)
+                }
+            }
+        }
+        val season = fr.pepsgoal.app.sys.Season.now()
+        SetRow("Couleurs de saison", "Halloween, fêtes de fin d’année (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${fr.pepsgoal.app.sys.Season.LABELS[it]}." } ?: ""}") {
+            PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
+        }
     }
 }

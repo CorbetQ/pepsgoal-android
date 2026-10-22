@@ -99,7 +99,9 @@ class ThemeInput(
     val skyDark: Boolean,
     /** Opacité du verre givré (réglage de l'appareil) : low, mid, high. */
     val glassOpacity: String = "mid",
-    val easy: Boolean = false, val big: Boolean = false, val oneHand: Boolean = false
+    val easy: Boolean = false, val big: Boolean = false, val oneHand: Boolean = false,
+    /** Couleurs de saison de l'arrière-plan (null : aucune). */
+    val season: List<Long>? = null
 )
 
 private fun mix(a: Color, b: Color, k: Float) = lerp(a, b, k)
@@ -157,7 +159,7 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         if (dark) Color(3, 3, 14, 160) else Color(13, 14, 43, 97),
         ac[0], ac[1], ac[2], if (dyn != null) (if (dark) dyn.onPrimaryContainer else dyn.onPrimary) else hex("#10102A"),
         if (dark) hex("#5BE38A") else hex("#1E8E3E"), if (dark) hex("#FF6B81") else hex("#C8102E"), if (dark) hex("#6FE3FF") else hex("#0057D9"),
-        if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
+        if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
         if (oled) .22f else if (dark) .42f else .55f, types, dyn != null, input.contrast, transp, input.mono, motion,
         when (input.glassBlur) { "xlow" -> 20f; "low" -> 40f; "high" -> 110f; else -> 70f },
         input.easy, input.big || input.easy, input.oneHand

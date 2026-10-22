@@ -18,6 +18,7 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.core.*
+import fr.pepsgoal.core.model.target
 
 /** Modèle d'objectif : type, intitulé, emoji et réglages (mêmes clés que le formulaire). */
 class PackGoal(val type: String, val title: String, val icon: String, val fields: Map<String, String> = emptyMap())

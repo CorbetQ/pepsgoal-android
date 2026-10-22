@@ -43,7 +43,7 @@ object WidgetUpdater {
     fun update(ctx: Context) {
         scope.launch {
             val c = ctx.applicationContext
-            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget())) try { w.updateAll(c) } catch (e: Exception) {}
+            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget())) try { w.updateAll(c) } catch (e: Exception) {}
         }
     }
 
@@ -53,6 +53,7 @@ object WidgetUpdater {
         listOf(StreakWidgetReceiver::class.java, "Ta série", "Ta flamme, tes jours de série et ta semaine", "2 × 2", "streak"),
         listOf(ProgressWidgetReceiver::class.java, "Ta progression", "Validations du jour et niveau en cours", "3 × 2", "progress"),
         listOf(QuickWidgetReceiver::class.java, "Accès rapide", "Nouvel objectif, journée, messages et feed", "4 × 1", "quick"),
+        listOf(CapWidgetReceiver::class.java, "Cap du jour", "Jauge de ton cap quotidien (10 000 pas…) et bouton « + »", "2 × 2", "cap"),
     )
 
     /** Demande au lanceur d'ajouter le widget sur l'écran d'accueil (false si le lanceur ne le permet pas). */
@@ -275,6 +276,67 @@ class QuickWidget : GlanceAppWidget() {
                         Text(ic, style = TextStyle(color = if (k == 0) (if (s.you) GlanceTheme.colors.onPrimary else ColorProvider(Color.White)) else s.ink, fontSize = if (k == 0) 22.sp else 18.sp, fontWeight = FontWeight.Bold))
                     }
                     if (size.height >= 70.dp) Text(label, GlanceModifier.padding(top = 3.dp), style = TextStyle(color = s.ink, fontSize = 11.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ Cap du jour */
+
+class CapWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = CapWidget() }
+
+/** Ajoute la plus petite quantité proposée (1 000 pas pour un cap de 10 000…) au cap du jour, depuis le widget. */
+class CapAddAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val app = context.peps; val g = app.pg.goalById(parameters[GoalKey]) ?: return
+        app.pg.capAdd(g, app.pg.capQuick(g).first(), silent = true)
+        LiveUpdates.refresh(context); WidgetUpdater.update(context)
+    }
+}
+
+/** Jauge circulaire dessinée en image (Glance n'a pas de dessin libre). */
+private fun ringBitmap(pct: Float, dark: Boolean, color: Int): android.graphics.Bitmap {
+    val n = 240; val b = android.graphics.Bitmap.createBitmap(n, n, android.graphics.Bitmap.Config.ARGB_8888); val c = android.graphics.Canvas(b)
+    val sw = 26f; val r = android.graphics.RectF(sw / 2, sw / 2, n - sw / 2, n - sw / 2)
+    val track = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.STROKE; strokeWidth = sw; this.color = if (dark) 0x26FFFFFF else 0x170D0E2B }
+    val fill = android.graphics.Paint(track).apply { this.color = color; strokeCap = android.graphics.Paint.Cap.ROUND }
+    c.drawArc(r, 0f, 360f, false, track)
+    if (pct > 0f) c.drawArc(r, -90f, 360f * pct.coerceIn(0f, 1f), false, fill)
+    return b
+}
+
+/** Widget « Cap du jour » : jauge du premier cap quotidien (favori d'abord) et bouton « + ». */
+class CapWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Exact
+    override suspend fun provideGlance(context: Context, id: GlanceId) { provideContent { GlanceTheme { Content(context) } } }
+
+    @Composable
+    private fun Content(ctx: Context) {
+        val app = ctx.peps; val pg = app.pg; val u = pg.me(); val s = style(ctx); val size = LocalSize.current
+        val g = u?.let { me -> pg.myGoals(me.id).filter { it.type == "cap" && !it.archived }.sortedByDescending { pg.isFav(it) }.firstOrNull() }
+        Column(GlanceModifier.fillMaxSize().wBg(s).padding(12.dp).clickable(open(ctx) { if (g != null) putExtra(MainActivity.EXTRA_PROGRESS, g.id) else action = MainActivity.ACTION_NEW_GOAL }),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalAlignment = Alignment.CenterVertically) {
+            if (u == null) { Text("Connecte-toi à PepsGoal.", style = TextStyle(color = s.ink)); return@Column }
+            if (g == null) {
+                Text("Cap du jour", style = TextStyle(color = s.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+                Text("Crée un objectif « Cap quotidien » (10 000 pas…) pour le suivre ici.", style = TextStyle(color = s.ink2, fontSize = 12.sp, textAlign = TextAlign.Center))
+                return@Column
+            }
+            val v = pg.capDay(g); val pct = (v / g.target).toFloat(); val done = v >= g.target
+            val ring = minOf(size.width, size.height - 40.dp).coerceAtLeast(56.dp)
+            Box(GlanceModifier.size(ring), contentAlignment = Alignment.Center) {
+                Image(ImageProvider(ringBitmap(pct, s.dark, if (done) 0xFF2EC27E.toInt() else android.graphics.Color.rgb(0, 209, 178))), "${Math.round(pct * 100)} %", GlanceModifier.fillMaxSize())
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(g.icon, style = TextStyle(fontSize = 18.sp))
+                    Text(fmtNum(Math.round(v * 10) / 10.0), style = TextStyle(color = s.ink, fontSize = if (ring > 110.dp) 22.sp else 16.sp, fontWeight = FontWeight.Bold))
+                    Text("/ ${fmtNum(g.target)} ${g.unit}".trim(), style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
+                }
+            }
+            Row(GlanceModifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(if (done) "Cap atteint ✓" else g.title, GlanceModifier.defaultWeight(), style = TextStyle(color = s.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                Box(GlanceModifier.size(32.dp).wAccent(s, 16.dp).clickable(actionRunCallback<CapAddAction>(actionParametersOf(GoalKey to g.id))), contentAlignment = Alignment.Center) {
+                    Text("+", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontSize = 18.sp, fontWeight = FontWeight.Bold))
                 }
             }
         }

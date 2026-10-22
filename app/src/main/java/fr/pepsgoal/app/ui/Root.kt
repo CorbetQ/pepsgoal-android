@@ -82,7 +82,8 @@ fun PepsRoot(ui: AppState) {
     val wx = Wx.cached(ctx, s?.weather)
     val input = ThemeInput(s?.theme ?: "system", s?.accent ?: 0, s?.accentCustom, s?.glassBlur ?: "mid", ui.prefs.materialYou,
         ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion, ui.prefs.transp, Weather.skyDark(wx?.data), ui.prefs.glassOpacity,
-        ui.prefs.easy, rememberTalkBack(), ui.prefs.oneHand)
+        ui.prefs.easy, rememberTalkBack(), ui.prefs.oneHand,
+        if (ui.prefs.seasonal) fr.pepsgoal.app.sys.Season.now()?.let { fr.pepsgoal.app.sys.Season.COLORS[it] } else null)
     LaunchedEffect(s?.weather?.lat, s?.weather?.lon) { if (s?.weather != null) Wx.ensure(ctx, ui, false) }
     // Taille du texte et densité propres à l'application (en plus des réglages d'Android)
     val d0 = LocalDensity.current
@@ -107,7 +108,7 @@ fun PepsRoot(ui: AppState) {
                 // Changement d'arrière-plan ou de ciel (jour → crépuscule → nuit, pluie…) : fondu enchaîné
                 val kind = if (s?.theme == "weather") "sky" else s?.bg ?: "blob"
                 val sky = if (s?.theme == "weather") Weather.sky(wx?.data) else null
-                val snow = pg.eggWord() == "Cold"; val stamp = ui.prefs.bgStamp
+                val snow = pg.eggWord() == "Cold" || (ui.prefs.seasonal && fr.pepsgoal.app.sys.Season.now() == "noel"); val stamp = ui.prefs.bgStamp
                 val key = listOf(kind, sky?.phase, sky?.cond, sky?.code, snow, stamp, p.dark)
                 val skies = remember { mutableMapOf<List<Any?>, Weather.Sky?>() }
                 skies[key] = sky
