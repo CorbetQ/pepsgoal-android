@@ -414,7 +414,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
                     n.await().list().map { it.str("id") + it.str("read") },
                     c.await().list().map { it.obj("peer").str("id") + ":" + it.int("unread") + ":" + (it["last"]?.toString() ?: "") },
                     g.await().list().map { it.str("id") + ":" + it.int("unread") + ":" + (it["last"]?.toString() ?: "") },
-                    f.await().arr("posts").map { it.str("id") + ":" + it.arr("comments").size },
+                    // Encouragements compris : ceux des amis apparaissent sans rafraîchir le feed
+                    f.await().arr("posts").map { it.str("id") + ":" + it.arr("comments").size + ":" + it.arr("likers").size },
                 ).hashCode()
             }
         } catch (e: Exception) { pollStatus = "erreur : ${e.message ?: e::class.simpleName}"; return false }
