@@ -4,7 +4,9 @@
 set -u
 LANG_=${1:-fr}; THEME=${2:-light}
 PKG=fr.pepsgoal.app.debug
-adb install -r -g app/build/outputs/apk/github/debug/app-github-debug.apk
+adb wait-for-device
+until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; do sleep 2; done
+for try in 1 2 3; do adb install -r -g app/build/outputs/apk/github/debug/app-github-debug.apk && break; sleep 10; done
 adb shell svc power stayon true
 adb shell cmd uimode night $([ "$THEME" = dark ] && echo yes || echo no)
 # Barre d'état propre (mode démo système)
@@ -15,12 +17,19 @@ adb shell am broadcast -a com.android.systemui.demo -e command battery -e level 
 adb shell am broadcast -a com.android.systemui.demo -e command notifications -e visible false >/dev/null
 out=shots/$LANG_/$THEME; mkdir -p "$out"
 adb shell am start -W -n $PKG/fr.pepsgoal.app.MainActivity >/dev/null
-sleep 10
+sleep 15
 n=1
 for s in today goals goal stats week journal profile focus; do
-  adb shell am start -W -n $PKG/fr.pepsgoal.app.MainActivity --es shot $s --es lang $LANG_ >/dev/null
-  sleep 5
-  adb exec-out screencap -p > "$out/$n-$s.png" && echo "$out/$n-$s.png ($(stat -c %s "$out/$n-$s.png") octets)"
+  # Jusqu'à 3 essais : l'émulateur de la CI se fige parfois quelques secondes
+  for try in 1 2 3; do
+    adb wait-for-device
+    adb shell am start -W -n $PKG/fr.pepsgoal.app.MainActivity --es shot $s --es lang $LANG_ >/dev/null
+    sleep $((4 + try * 2))
+    adb exec-out screencap -p > "$out/$n-$s.png"
+    size=$(stat -c %s "$out/$n-$s.png")
+    echo "$out/$n-$s.png : $size octets (essai $try)"
+    [ "$size" -gt 50000 ] && break
+  done
   n=$((n+1))
 done
 adb shell am force-stop $PKG
