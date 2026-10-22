@@ -56,6 +56,7 @@ fun WidgetsSettings(ui: AppState) {
                         "today" -> PreviewToday(dark, hide)
                         "streak" -> PreviewStreak(dark)
                         "progress" -> PreviewProgress(dark)
+                        "cap" -> PreviewCap(dark)
                         else -> PreviewQuick(dark)
                     }
                 }
@@ -127,6 +128,19 @@ private fun PreviewStreak(dark: Boolean) = Frame(dark, 160.dp) { c ->
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card).padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
         WD.forEachIndexed { k, d -> Column(horizontalAlignment = Alignment.CenterHorizontally) { Image(painterResource(if (k == 3) R.drawable.ic_snow else R.drawable.ic_flame), null, Modifier.size(12.dp)); Text(d, color = c.ink2, fontSize = 8.sp) } }
     }
+}
+
+@Composable
+private fun PreviewCap(dark: Boolean) = Frame(dark, 150.dp) { c ->
+    Box(Modifier.fillMaxWidth().height(96.dp), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.size(92.dp)) {
+            val sw = 10.dp.toPx()
+            drawArc(c.ink2.copy(alpha = .2f), 0f, 360f, false, androidx.compose.ui.geometry.Offset(sw / 2, sw / 2), androidx.compose.ui.geometry.Size(size.width - sw, size.height - sw), style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
+            drawArc(Color(0xFF00D1B2), -90f, 360f * .72f, false, androidx.compose.ui.geometry.Offset(sw / 2, sw / 2), androidx.compose.ui.geometry.Size(size.width - sw, size.height - sw), style = androidx.compose.ui.graphics.drawscope.Stroke(sw, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("👟", fontSize = 14.sp); Text("7 200", color = c.ink, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text("/ 10 000 pas", color = c.ink2, fontSize = 9.sp) }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) { Text("10 000 pas", Modifier.weight(1f), color = c.ink, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold); Box(Modifier.size(24.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFFF7A3D)), contentAlignment = Alignment.Center) { Text("+", color = Color(0xFF10102A), fontWeight = FontWeight.ExtraBold) } }
 }
 
 @Composable

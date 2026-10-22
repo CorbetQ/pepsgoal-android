@@ -205,6 +205,7 @@ private fun Appearance(ui: AppState, u: User) {
                 }
             }
         }
+        AppIconCard(ui)
         Glass(Modifier.alpha(if (ui.prefs.materialYou && dynOk) .55f else 1f)) {
             SectionTitle("Couleur d'accent")
             Muted("${if (ui.prefs.materialYou && dynOk) "Remplacée par Material You sur cet appareil · " else ""}${if (validAccent(s.accentCustom)) "Tirée de ton arrière-plan" else (ACCENTS.getOrNull(s.accent) ?: ACCENTS[0]).name} · flammes, boutons et anneau de progression", small = true)
@@ -616,6 +617,7 @@ private fun DataSettings(ui: AppState, u: User) {
         }
         val mine = remember(ui.rev) { listOf(pg.db.goals.count { it.userId == u.id }, pg.db.checkins.count { it.userId == u.id }, pg.db.posts.count { it.userId == u.id }, pg.db.messages.count { it.from == u.id || it.to == u.id }) }
         StatGrid(listOf("Objectifs", "Validations", "Publications", "Messages").mapIndexed { i, l -> "${mine[i]}" to l })
+        BackupCard(ui)
         Glass {
             SetRow("Exporter mes données", "Objectifs, validations, publications, stories et messages (déchiffrés sur cet appareil), en JSON, à partager ou garder.") {
                 PButton("Exporter", {
@@ -623,6 +625,7 @@ private fun DataSettings(ui: AppState, u: User) {
                     else ui.open(Sheet.Export(localExport(ui, u)))
                 }, icon = "archive", kind = "primary", small = true, enabled = !pg.db.sandbox)
             }
+            ExportRow(ui)
             if (!pg.store.acct && !pg.db.sandbox) SetRow("Réinitialiser cet appareil", "Efface tous les profils sans compte et leurs données sur cet appareil.") {
                 PButton("Réinitialiser", { ui.confirm("Réinitialiser les données ?", "Tous les profils, objectifs et validations de cet appareil seront effacés définitivement.", "Tout réinitialiser") { ui.close(); pg.stopTimer(true); pg.store.use(Db(), false); pg.store.commit(); ui.sessionChanged(); ui.toast("Données réinitialisées.") } }, kind = "danger", small = true)
             }
@@ -767,6 +770,118 @@ private fun UpdateCard(ui: AppState) {
         if (state !in setOf("checking", "downloading")) PButton("Rechercher une mise à jour", check, icon = "clock", kind = "ghost", small = true, modifier = Modifier.padding(top = 6.dp))
         SetRow("Rechercher automatiquement", "Une notification t’avertit quand une nouvelle version est publiée.") {
             PSwitch(auto, { auto = it; ui.prefs.autoUpdate = it })
+        }
+    }
+}
+
+/** Exports CSV (tableurs) et PDF (bilan imprimable) des statistiques et du journal. */
+@Composable
+fun ExportRow(ui: AppState) {
+    val ctx = LocalContext.current
+    var busy by remember { mutableStateOf(false) }
+    val go = { pdf: Boolean ->
+        if (!busy) { busy = true
+            ui.scope.launch {
+                try {
+                    val files = withContext(Dispatchers.IO) { if (pdf) listOfNotNull(fr.pepsgoal.app.sys.Exports.pdf(ctx)) else fr.pepsgoal.app.sys.Exports.csv(ctx) }
+                    fr.pepsgoal.app.sys.Exports.share(ctx, files, if (pdf) "application/pdf" else "text/csv")
+                } catch (e: Exception) { ui.toast("Export impossible : ${e.message ?: "erreur inconnue"}.", "x") }
+                busy = false
+            }
+        }
+    }
+    SetRow("Statistiques et journal", "Tableurs CSV (objectifs, validations, journal) ou bilan PDF à imprimer ou envoyer à ton coach, ton médecin…")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PButton("CSV", { go(false) }, icon = "list", small = true, enabled = !busy)
+        PButton("Bilan PDF", { go(true) }, icon = "book", small = true, enabled = !busy)
+    }
+}
+
+/** Paramètres › Apparence : icône de l'application et couleurs de saison. */
+@Composable
+private fun AppIconCard(ui: AppState) {
+    val ctx = LocalContext.current; val p = LocalPal.current
+    var cur by remember { mutableStateOf(fr.pepsgoal.app.sys.AppIcons.current(ctx)) }
+    Glass {
+        SectionTitle("Icône de l’application")
+        Muted("L’icône change sur l’écran d’accueil d’Android après quelques secondes. Selon le lanceur, un raccourci déjà posé sur l’écran d’accueil peut devoir être ajouté à nouveau.", small = true)
+        Spacer(Modifier.height(10.dp))
+        FlowRowCompat(gap = 10.dp) {
+            fr.pepsgoal.app.sys.AppIcons.ALL.forEach { ic ->
+                val on = cur == ic.key
+                Column(Modifier.width(64.dp).clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = "Icône ${ic.label}") {
+                    fr.pepsgoal.app.sys.AppIcons.set(ctx, ic.key); cur = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette")
+                }.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(ic.bg.map { Color(it) })).border(if (on) 3.dp else 1.dp, if (on) p.flame else p.line, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(ic.fg), null, Modifier.size(86.dp), colorFilter = if (ic.key == "mono") androidx.compose.ui.graphics.ColorFilter.tint(Color.White) else null)
+                    }
+                    Text(ic.label, fontSize = 11.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 1)
+                }
+            }
+        }
+        val season = fr.pepsgoal.app.sys.Season.now()
+        SetRow("Couleurs de saison", "Halloween, fêtes de fin d’année (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${fr.pepsgoal.app.sys.Season.LABELS[it]}." } ?: ""}") {
+            PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
+        }
+    }
+}
+
+/** Paramètres › Données : sauvegarde automatique chiffrée et restauration. */
+@Composable
+private fun BackupCard(ui: AppState) {
+    val ctx = LocalContext.current; val p = LocalPal.current; val scope = rememberCoroutineScope()
+    var on by remember { mutableStateOf(fr.pepsgoal.app.sys.AutoBackup.configured(ctx)) }
+    var pass by remember { mutableStateOf("") }; var pass2 by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }; var rev by remember { mutableIntStateOf(0) }; rev.hashCode()
+    var restoreUri by remember { mutableStateOf<Uri?>(null) }; var restorePass by remember { mutableStateOf("") }
+    val pickDir = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        busy = true
+        scope.launch {
+            val ok = fr.pepsgoal.app.sys.AutoBackup.setup(ctx, uri, pass)
+            busy = false; on = fr.pepsgoal.app.sys.AutoBackup.configured(ctx); pass = ""; pass2 = ""; rev++
+            ui.toast(if (ok) "Sauvegarde automatique activée : première copie enregistrée." else "Dossier choisi, mais la première copie a échoué : réessaie « Sauvegarder maintenant ».", if (ok) "check" else "x")
+        }
+    }
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> restoreUri = uri; restorePass = "" }
+    Glass {
+        SetRow("Sauvegarde automatique chiffrée", "Chaque jour, une copie de tes objectifs, validations et journal dans le dossier de ton choix (stockage du téléphone, Google Drive…), chiffrée par un mot de passe. Les 7 dernières copies sont gardées.") {
+            if (on) Chip("Active", "check", p.type("routine").c)
+        }
+        if (on) {
+            val last = ui.prefs.backupLast
+            Muted(if (last > 0) "Dernière sauvegarde ${ago(last)}." else "Aucune sauvegarde réussie pour l’instant.", small = true)
+            if (ui.prefs.backupError.isNotEmpty()) Muted("Dernière erreur : ${ui.prefs.backupError}", small = true)
+            FlowRowCompat(Modifier.padding(top = 8.dp), gap = 8.dp) {
+                PButton(if (busy) "Sauvegarde…" else "Sauvegarder maintenant", { busy = true; scope.launch { val ok = fr.pepsgoal.app.sys.AutoBackup.run(ctx); busy = false; rev++; ui.toast(if (ok) "Sauvegarde enregistrée." else "Sauvegarde impossible : vérifie l’accès au dossier.", if (ok) "check" else "x") } }, icon = "archive", small = true, enabled = !busy)
+                PButton("Désactiver", { fr.pepsgoal.app.sys.AutoBackup.disable(ctx); on = false; ui.toast("Sauvegarde automatique désactivée. Les fichiers déjà enregistrés sont conservés.", "archive") }, kind = "ghost", small = true)
+            }
+        } else {
+            Field(pass, { pass = it }, "Mot de passe de sauvegarde", password = true, max = 100)
+            Field(pass2, { pass2 = it }, "Confirme le mot de passe", password = true, max = 100)
+            Muted("Sans ce mot de passe, impossible de restaurer : note-le précieusement. Il n’est pas enregistré sur le téléphone.", small = true)
+            PButton(if (busy) "Préparation…" else "Choisir le dossier et activer", {
+                when { pass.length < 8 -> ui.toast("Choisis un mot de passe d’au moins 8 caractères.", "x"); pass != pass2 -> ui.toast("Les deux mots de passe ne sont pas identiques.", "x"); else -> pickDir.launch(null) }
+            }, Modifier.padding(top = 8.dp), icon = "lock", kind = "primary", small = true, enabled = !busy)
+        }
+        Spacer(Modifier.height(12.dp))
+        SetRow("Restaurer une sauvegarde", "Ajoute les objectifs, validations et pages du journal d’un fichier .pgbak (nouveau téléphone, profil sans compte…). Rien n’est effacé.") {
+            PButton("Choisir", { pickFile.launch(arrayOf("*/*")) }, icon = "down", small = true)
+        }
+        restoreUri?.let { uri ->
+            Field(restorePass, { restorePass = it }, "Mot de passe de la sauvegarde", password = true, max = 100)
+            FlowRowCompat(gap = 8.dp) {
+                PButton(if (busy) "Restauration…" else "Restaurer", {
+                    busy = true
+                    scope.launch {
+                        val n = try { fr.pepsgoal.app.sys.AutoBackup.restore(ctx, uri, restorePass) } catch (e: Exception) { null }
+                        busy = false
+                        if (n == null) ui.toast("Mot de passe incorrect, ou fichier qui n’est pas une sauvegarde PepsGoal.", "x")
+                        else { restoreUri = null; ui.toast(if (n > 0) "Restauration terminée : ${pl(n, "objectif ajouté", "objectifs ajoutés")}." else "Restauration terminée : tout était déjà sur cet appareil.", "check") }
+                    }
+                }, icon = "check", kind = "primary", small = true, enabled = !busy && restorePass.isNotEmpty())
+                PButton("Annuler", { restoreUri = null }, kind = "ghost", small = true)
+            }
         }
     }
 }

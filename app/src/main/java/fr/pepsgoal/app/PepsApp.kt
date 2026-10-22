@@ -39,6 +39,7 @@ class PepsApp : Application() {
     lateinit var pg: Pg
     lateinit var cloud: Cloud
     lateinit var ui: AppState
+    lateinit var secrets: KeystoreSecrets
     val scope = MainScope()
     /** L'application est-elle visible à l'écran ? (sinon : notifications système) */
     var foreground = false
@@ -48,7 +49,7 @@ class PepsApp : Application() {
         instance = this
         prefs = DevicePrefs(this)
         fr.pepsgoal.app.ui.FluentEmoji.load(this)
-        val secrets = KeystoreSecrets(this)
+        secrets = KeystoreSecrets(this)
         store = Store(FileDb(this))
         pg = Pg(store)
         cloud = Cloud(store, pg, Api(BuildConfig.API_URL, secrets, "PepsGoal-Android/${BuildConfig.VERSION_NAME}"), secrets, scope)
@@ -71,7 +72,7 @@ class PepsApp : Application() {
             override fun onStop(owner: LifecycleOwner) { foreground = false; onBackground() }
         })
         SyncWorker.schedule(this)
-        Poller.schedule(this)
+        Poller.schedule(this); fr.pepsgoal.app.sys.GeoReminders.register(this); fr.pepsgoal.app.sys.AutoBackup.schedule(this)
         // Notifications du serveur (messages, publications, amis…) relevées toutes les minutes à l'écran
         scope.launch { while (true) { delay(Poller.EVERY_MS); if (foreground) cloud.poll() } }
         // Rappels, évaluations et minuteur : vérifiés régulièrement pendant que l'application tourne

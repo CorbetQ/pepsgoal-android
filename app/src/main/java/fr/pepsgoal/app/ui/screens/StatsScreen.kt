@@ -49,6 +49,7 @@ fun StatsScreen(ui: AppState) {
             ))
         }
         item("health") { HealthStatsCard(ui) }
+        item("export") { Glass { ExportRow(ui) } }
         // Carte de chaleur des 53 dernières semaines
         item("heat") {
             Glass {

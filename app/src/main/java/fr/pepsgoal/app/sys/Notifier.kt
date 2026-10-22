@@ -129,7 +129,13 @@ object Notifier {
             post(app, id, base(app, CH_SOCIAL).setContentTitle("$who a publié").setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setLargeIcon(avatarBitmap(app.pg.userById(p.userId)))
                 .setWhen(p.at).setShowWhen(true).setCategory(NotificationCompat.CATEGORY_SOCIAL).setGroup("pg.posts")
-                .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_TAB, "feed") }).build())
+                .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_TAB, "feed") })
+                .apply {
+                    // Réponses rapides : encourager et commenter sans ouvrir l'application
+                    if (p.goalId != null || p.kind != "manual") fr.pepsgoal.app.ui.screens.QUICK_CHEERS.take(2).forEachIndexed { i, q ->
+                        addAction(R.drawable.ic_notif, q, action(app, id * 10 + i, ActionReceiver.CHEER) { putExtra("post", p.id); putExtra("text", q); putExtra("nid", id) })
+                    }
+                }.build())
         }
         if (list.size > 1) post(app, 8, base(app, CH_SOCIAL).setGroup("pg.posts").setGroupSummary(true).setContentTitle("Nouvelles publications").setStyle(NotificationCompat.InboxStyle()).build())
     }

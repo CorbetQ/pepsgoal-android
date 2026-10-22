@@ -106,7 +106,9 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     val reacts = Social.reactions(ui, all)
     val edits = Social.edits(ui, all); val gone = Social.deleted(ui, all)
     var hidden by remember { mutableStateOf(ui.prefs.hiddenMsgs) }
-    val list = all.filter { (Social.body(ui, it)?.str("k") !in Msg.SILENT || Social.pending(ui, it)) && it.id !in hidden }
+    val list = all.filter { (Social.body(ui, it)?.str("k") !in Msg.SILENT || Social.pending(ui, it)) && it.id !in hidden && !Social.expired(ui, it) }
+    val pinId = Social.pinned(ui, all)?.takeIf { id -> id !in gone && list.any { it.id == id } }
+    var ttl by remember(key) { mutableStateOf(ui.prefs.chatTtl[key] ?: 0) }
 
     var e2eOpen by remember { mutableStateOf(false) }
     var safety by remember(key) { mutableStateOf<String?>(null) }
@@ -131,7 +133,12 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
         else if (x!!.role != null || !pg.areFriends(u.id, x.id) || pg.isBlockedPair(u.id, x.id)) { ui.toast("Ce compte ne reçoit pas de messages.", "comment"); null }
         else Target(null, x.id)
     }
-    val send: (JsonElement, ByteArray?, String?) -> Unit = { body, blob, mime ->
+    val send: (JsonElement, ByteArray?, String?) -> Unit = { body0, blob, mime ->
+        // Messages éphémères : date de fin de vie ajoutée au contenu chiffré (jamais aux messages de service)
+        val body = if (ttl > 0 && (body0 as? JsonObject)?.str("k") !in Msg.SILENT) {
+            val o = if (body0 is JsonObject) LinkedHashMap(body0) else linkedMapOf<String, JsonElement>("k" to JsonPrimitive("text"), "t" to body0)
+            o["x"] = JsonPrimitive(nowMs() + ttl * 3_600_000L); JsonObject(o)
+        } else body0
         target()?.let { t -> ui.scope.launch {
             try { val m = ui.cloud.e2e.deliver(t.chat, t.to, body, blob, mime); if (m != null && blob != null) Att.put(m.id, blob) }
             catch (e: ApiError) { ui.toast(e.message ?: "Envoi impossible, réessaie.", "x") } catch (e: Exception) { ui.toast(e.message ?: "Envoi impossible, réessaie.", "x") }
@@ -197,6 +204,10 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                         clip.setText(androidx.compose.ui.text.AnnotatedString(txt)); sel = emptySet(); ui.toast(if (picked.size > 1) "Messages copiés." else "Message copié.", "copy")
                     }, plain = true, size = 44.dp)
                     if (editable) IconBtn("edit", "Modifier", { editing = one; sel = emptySet(); replyTo = null }, plain = true, size = 44.dp)
+                    if (one != null && one.id !in gone && pg.store.online) IconBtn("pinned", if (pinId == one.id) "Désépingler" else "Épingler", {
+                        send(buildJsonObject { put("k", "pin"); put("p", one.id); put("on", pinId != one.id) }, null, null); sel = emptySet()
+                        ui.toast(if (pinId == one.id) "Message désépinglé." else "Message épinglé pour tout le monde.", "pinned")
+                    }, plain = true, size = 44.dp)
                     IconBtn("trash", "Supprimer", { askDel = true }, plain = true, size = 44.dp, tint = p.danger)
                 }
                 AnimatedVisibility(askDel) {
@@ -234,11 +245,15 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                         Muted(if (g != null) "${pl(g.members.size, "membre", "membres")} · infos et membres" else if (pg.isOfficial(x)) "Compte officiel" else "@${x!!.username}", small = true, maxLines = 1)
                     }
                 }
-                if (g != null || !pg.isOfficial(x)) IconBtn("palette", "Couleur de la conversation", { palette = !palette }, size = 44.dp, tint = if (palette) p.flame else null)
+                if (g != null || !pg.isOfficial(x)) IconBtn(if (ttl > 0) "timer" else "palette", "Couleur et messages éphémères", { palette = !palette }, size = 44.dp, tint = if (palette) p.flame else null)
                 if (g != null || !pg.isOfficial(x)) IconBtn("lock", "Chiffrement de bout en bout : en savoir plus", { e2eOpen = !e2eOpen }, size = 44.dp, tint = if (e2eOpen) p.flame else null)
             }
             AnimatedVisibility(palette && sel.isEmpty()) {
                 Glass(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), strong = true, pad = 12.dp) {
+                    Text("Messages éphémères", fontWeight = FontWeight.ExtraBold)
+                    Muted("Les messages que tu envoies disparaissent pour tout le monde après ce délai.", Modifier.padding(bottom = 8.dp), small = true)
+                    Seg(listOf(0 to "Désactivés", 24 to "24 h", 168 to "7 jours"), ttl, { h -> ttl = h; ui.prefs.chatTtl = ui.prefs.chatTtl.toMutableMap().apply { if (h == 0) remove(key) else put(key, h) } })
+                    Spacer(Modifier.height(12.dp))
                     Text("Couleur de la conversation", fontWeight = FontWeight.ExtraBold)
                     Muted("Le fond et tes bulles prennent cette couleur, sur ce téléphone.", Modifier.padding(bottom = 8.dp), small = true)
                     FlowRowCompat(gap = 8.dp) {
@@ -250,6 +265,25 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                                 .clickable(onClickLabel = a.name) { pick(i) }.semantics { contentDescription = a.name; selected = colorIdx == i })
                         }
                     }
+                }
+            }
+            if (pinId != null && sel.isEmpty()) {
+                val pm = list.first { it.id == pinId }
+                val scope = rememberCoroutineScope()
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(16.dp))
+                    .clickable(onClickLabel = "Aller au message épinglé") {
+                        // Position dans la liste : chaque changement de jour ajoute un séparateur
+                        var i = 0; var day = ""
+                        for (m in list) { val d = ymd(m.at); if (d != day) { i++; day = d }; if (m.id == pm.id) break; i++ }
+                        scope.launch { state.animateScrollToItem(i) }
+                    }.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Pi("pinned", size = 16.dp, tint = p.flame)
+                    Column(Modifier.weight(1f)) {
+                        Text("Épinglé", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = p.flame)
+                        Text(edits[pm.id] ?: Social.preview(ui, pm), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    if (pg.store.online) IconBtn("x", "Désépingler", { send(buildJsonObject { put("k", "pin"); put("p", pm.id); put("on", false) }, null, null) }, plain = true, size = 36.dp)
                 }
             }
             AnimatedVisibility(e2eOpen) {
@@ -347,7 +381,7 @@ private fun MessageRow(
                 }
                 else -> MsgText(ui, b, members)
             }
-            Text("${if (editedText != null && !gone) "modifié · " else ""}${hm(m.at)}", Modifier.align(Alignment.End).padding(top = 2.dp, end = if (kind == "photo") 6.dp else 0.dp), fontSize = 11.sp, color = p.ink3)
+            Text("${if (b?.get("x") != null && !gone) "⏳ " else ""}${if (editedText != null && !gone) "modifié · " else ""}${hm(m.at)}", Modifier.align(Alignment.End).padding(top = 2.dp, end = if (kind == "photo") 6.dp else 0.dp), fontSize = 11.sp, color = p.ink3)
         }
         val items = reacts?.filter { it.value.isNotEmpty() }
         if (!items.isNullOrEmpty()) Row(Modifier.padding(top = 2.dp, start = 6.dp, end = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {

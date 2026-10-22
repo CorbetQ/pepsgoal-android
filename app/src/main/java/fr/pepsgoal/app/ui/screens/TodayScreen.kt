@@ -70,6 +70,7 @@ fun TodayScreen(ui: AppState) {
                             Bar(lv.pct * 100)
                             Muted(if (lv.next != null) "${lv.next!! - lv.pts} flammes avant « ${lv.nextName} »" else "Niveau maximum atteint", small = true)
                             if (total > 0 && done == total) PButton("Journée parfaite", { ui.fs = Fs.Celebrate(pg.perfectCelebration()) }, icon = "star", small = true, kind = "primary")
+                            PButton(if (pg.isRest()) "😴 Jour de repos" else "Planifier un repos", { ui.open(Sheet.Rest) }, icon = if (pg.isRest()) null else "moon", small = true, kind = "ghost")
                         }
                     }
                 }
@@ -123,7 +124,8 @@ fun TodayScreen(ui: AppState) {
 @Composable
 private fun Hero(ui: AppState) {
     val pg = ui.pg; val u = pg.me() ?: return; val st = pg.globalStreak(u.id); val p = LocalPal.current
-    val msg = if (p.easy) (if (st.lit) "Bravo, tu as validé aujourd’hui." else "Valide un objectif aujourd’hui pour garder ta série.")
+    val msg = if (pg.isRest()) "Jour de repos 😴 : ta série est protégée aujourd’hui, sans dépenser de gel. Valide quand même si l’envie te prend."
+        else if (p.easy) (if (st.lit) "Bravo, tu as validé aujourd’hui." else "Valide un objectif aujourd’hui pour garder ta série.")
         else if (st.lit) "Ta flamme brûle aujourd'hui. Continue sur ta lancée." else if (st.n > 0) "Valide une action avant minuit pour prolonger ta série de ${pl(st.n, "jour", "jours")}." else "Valide ta première action pour allumer ta flamme."
     Glass(strong = false, pad = 20.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {

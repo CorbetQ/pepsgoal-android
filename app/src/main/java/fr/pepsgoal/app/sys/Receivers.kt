@@ -8,6 +8,8 @@ import fr.pepsgoal.app.MainActivity
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.core.Pg
 import fr.pepsgoal.core.cloud.openChat
+import fr.pepsgoal.core.cloud.comment
+import fr.pepsgoal.core.cloud.toggleLike
 import fr.pepsgoal.core.cloud.openGroup
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
@@ -16,6 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 class ActionReceiver : BroadcastReceiver() {
     companion object {
         const val VALIDATE = "fr.pepsgoal.app.VALIDATE"; const val CONFIRM = "fr.pepsgoal.app.CONFIRM"; const val REPLY = "fr.pepsgoal.app.REPLY"
+        const val CHEER = "fr.pepsgoal.app.CHEER"
         const val READ = "fr.pepsgoal.app.READ"; const val TIMER = "fr.pepsgoal.app.TIMER"; const val DISMISS_LIVE = "fr.pepsgoal.app.DISMISS_LIVE"
     }
 
@@ -32,6 +35,16 @@ class ActionReceiver : BroadcastReceiver() {
                 }
                 if (nid != 0 && !intent.getBooleanExtra("keep", false)) Notifier.cancel(ctx, nid)
                 LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
+            }
+            CHEER -> {
+                val post = app.pg.db.posts.firstOrNull { it.id == intent.getStringExtra("post") } ?: return
+                val text = intent.getStringExtra("text") ?: return
+                val done = goAsync()
+                app.scope.launch {
+                    try { if (!post.likes.contains(pg.meId())) app.cloud.toggleLike(post); app.cloud.comment(post, text); if (nid != 0) Notifier.cancel(ctx, nid) }
+                    catch (e: Exception) {}
+                    finally { done.finish() }
+                }
             }
             CONFIRM -> { app.cloud.confirmCheck(intent.getStringExtra("checkin") ?: return, intent.getBooleanExtra("ok", true)); if (nid != 0) Notifier.cancel(ctx, nid) }
             TIMER -> {
@@ -83,5 +96,6 @@ class AlarmReceiver : BroadcastReceiver() {
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Reminders.reschedule(ctx); SyncWorker.schedule(ctx); Poller.schedule(ctx); Poller.startLink(ctx); LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
+        GeoReminders.register(ctx)
     }
 }

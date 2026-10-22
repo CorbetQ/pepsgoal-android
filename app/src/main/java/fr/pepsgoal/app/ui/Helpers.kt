@@ -84,6 +84,16 @@ object Social {
         return out
     }
 
+    /** Message épinglé en haut de la conversation (dernière action d'épinglage), ou null. */
+    fun pinned(ui: AppState, list: List<Message>): String? {
+        var id: String? = null
+        for (m in list) { val b = body(ui, m) ?: continue; if (b.str("k") == "pin") id = if ((b["on"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "false") null else b.str("p").ifEmpty { null } }
+        return id
+    }
+
+    /** Message éphémère arrivé à expiration (champ « x » : fin de vie en ms). */
+    fun expired(ui: AppState, m: Message): Boolean = (body(ui, m)?.get("x") as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull()?.let { it < nowMs() } == true
+
     /** Messages supprimés pour tout le monde par leur auteur. */
     fun deleted(ui: AppState, list: List<Message>): Set<String> {
         val from = list.associate { it.id to it.from }

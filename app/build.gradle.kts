@@ -13,8 +13,8 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 340
-        versionName = "3.4.0"
+        versionCode = 350
+        versionName = "3.5.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
@@ -96,4 +96,12 @@ dependencies {
     // Health Connect (Santé d'Android) : validation automatique à partir des pas, du sommeil, du sport, de l'eau
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
+    // Rappels par lieu (géorepérage)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    // Sauvegarde automatique dans un dossier choisi (stockage du téléphone, Google Drive…)
+    implementation("androidx.documentfile:documentfile:1.1.0")
+    // Montre Wear OS : couche de données (journée publiée, validations reçues)
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    // Les services Google tirent une ancienne version de Fragment : version récente imposée (API ActivityResult)
+    implementation("androidx.fragment:fragment-ktx:1.8.8")
 }

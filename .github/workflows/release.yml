@@ -29,9 +29,11 @@ jobs:
       - name: Tests de la logique (module core)
         run: ./gradlew --no-daemon :core:test
       - name: Application Android
-        run: ./gradlew --no-daemon :app:assembleRelease
-      - name: Nom de l'APK
-        run: cp app/build/outputs/apk/release/app-release.apk "PepsGoal-${VERSION}.apk"
+        run: ./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease
+      - name: Nom des APK
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk "PepsGoal-${VERSION}.apk"
+          cp wear/build/outputs/apk/release/wear-release.apk "PepsGoal-Wear-${VERSION}.apk"
       - name: Notes de version
         run: |
           python3 - <<'PY'
@@ -41,6 +43,7 @@ jobs:
           items = next((n[2] for n in notes if n[0] == v), [])
           body = "PepsGoal pour Android, application native (Kotlin, Jetpack Compose).\n\n" + "\n".join("- " + i for i in items)
           body += "\n\nAPK optimisé (version release, identifiant `fr.pepsgoal.app`), signé avec la clé de test du dépôt : les prochaines versions s'installeront par-dessus. Pas destiné au Play Store."
+          body += "\n\n`PepsGoal-Wear` : application pour montre Wear OS (Wear OS 3 et plus), à installer sur la montre (par exemple avec `adb install` en débogage Wi-Fi) ; elle se synchronise avec l'application du téléphone."
           open("release-notes.md", "w").write(body)
           PY
       - uses: softprops/action-gh-release@v2
@@ -48,5 +51,7 @@ jobs:
           tag_name: ${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           name: PepsGoal ${{ env.VERSION }}
-          files: PepsGoal-${{ env.VERSION }}.apk
+          files: |
+            PepsGoal-${{ env.VERSION }}.apk
+            PepsGoal-Wear-${{ env.VERSION }}.apk
           body_path: release-notes.md

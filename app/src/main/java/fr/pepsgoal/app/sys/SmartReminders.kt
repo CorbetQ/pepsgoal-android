@@ -29,7 +29,7 @@ object SmartReminders {
     /** « Dernière chance » : avant l'heure à laquelle tu valides habituellement en dernier (entre 20 h et 22 h 45). */
     fun lastChance(ctx: Context): Long? {
         val app = ctx.peps; val pg = app.pg; val u = pg.me() ?: return null
-        if (!app.prefs.smartReminders) return null
+        if (!app.prefs.smartReminders || pg.isRest()) return null
         val st = pg.globalStreak(u.id); if (st.lit || st.n == 0) return null
         val since = nowMs() - 21L * 86_400_000
         val last = pg.userCheckins(u.id).filter { pg.isWin(it) && it.at > since }.groupBy { it.date }.values.map { l -> l.maxOf { localDateTime(it.at).let { t -> t.hour * 60 + t.minute } } }.sorted()
@@ -42,7 +42,7 @@ object SmartReminders {
 
     /** Envoie les rappels dont l'heure vient de passer (une seule fois par jour et par objectif). */
     fun check(ctx: Context) {
-        val app = ctx.peps; if (app.foreground || !app.prefs.smartReminders) return
+        val app = ctx.peps; if (app.foreground || !app.prefs.smartReminders || app.pg.isRest()) return
         val now = nowMs(); val t = today(); val sent = app.prefs.notifiedIds
         for ((g, at) in plan(ctx)) {
             val key = "smart|$t|${g.id}"

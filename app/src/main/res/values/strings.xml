@@ -14,6 +14,8 @@
     <string name="widget_streak_name">Ta série</string>
     <string name="widget_streak_desc">Ta flamme, le nombre de jours de série et ta semaine</string>
     <string name="widget_progress_name">Ta progression</string>
+    <string name="widget_cap_name">Cap du jour</string>
+    <string name="widget_cap_desc">Jauge de ton cap quotidien et bouton pour ajouter</string>
     <string name="widget_progress_desc">Validations du jour et progression vers le niveau suivant</string>
     <string name="widget_quick_name">Accès rapide</string>
     <string name="widget_quick_desc">Nouvel objectif, journée, messages et feed en un geste</string>

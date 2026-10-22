@@ -39,4 +39,4 @@ rootProject.name = "PepsGoal"
 include(":core")
 // Application Android : incluse dès qu'un SDK Android est disponible (Android Studio, CI)
 val hasAndroidSdk = System.getenv("ANDROID_HOME") != null || System.getenv("ANDROID_SDK_ROOT") != null || file("local.properties").exists()
-if (hasAndroidSdk) include(":app")
+if (hasAndroidSdk) { include(":app"); include(":wear") }

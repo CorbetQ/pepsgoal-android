@@ -53,6 +53,33 @@ class LogicTest {
         assertEquals(3, pg.globalStreak("me").n)
     }
 
+    @Test fun restDayKeepsStreak() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        for (i in listOf(1, 2, 4, 5)) pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        assertEquals(2, pg.globalStreak("me").n)
+        pg.me()!!.restDays.add(ymd(todayDate().minusDays(3)))
+        assertEquals(4, pg.globalStreak("me").n)
+        assertEquals(4, pg.goalStreak(g))
+        assertTrue(pg.toggleRest(ymd(todayDate().minusDays(1))) != null) // pas dans le passé
+        assertEquals(null, pg.toggleRest(today()))
+        assertTrue(pg.isRest())
+    }
+
+    @Test fun backupRoundTripAndMerge() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(1)))
+        val salt = Backup.newSalt(); val key = Backup.key("secret123", salt)
+        val raw = Backup.seal(JSON.encodeToString(fr.pepsgoal.core.model.Db.serializer(), pg.db), key, salt)
+        assertTrue(Backup.isBackup(raw))
+        assertEquals(null, Backup.open(raw, "faux"))
+        val back = JSON.decodeFromString(fr.pepsgoal.core.model.Db.serializer(), Backup.open(raw, "secret123")!!)
+        // Nouveau téléphone : profil vierge, puis restauration par fusion
+        pg.db.goals.clear(); pg.db.checkins.clear()
+        assertEquals(1, Backup.merge(pg, back))
+        assertEquals(1, pg.db.checkins.size)
+        assertEquals(0, Backup.merge(pg, back)) // rien en double
+    }
+
     @Test fun dailyCap() {
         val g = goal("cap") { target = 10000.0; unit = "pas" }
         pg.addCheck(g, "done", 1.0, 12, ymd(todayDate().minusDays(1)))
