@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.sheets
 
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
