@@ -146,12 +146,12 @@ private fun Hero(ui: AppState) {
 @Composable
 fun HeroFlame(n: Int, lit: Boolean) {
     val p = LocalPal.current
-    val inf = rememberInfiniteTransition(label = "flame")
-    val f by inf.animateFloat(1f, if (p.motion || !lit) 1f else 1.06f, infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "flicker")
+    // Flamme qui respire, à 15 images par seconde
+    val ph = slowPhaseState(2800, 15)
     val count = remember { Animatable(0f) }
     LaunchedEffect(n) { if (p.motion) count.snapTo(n.toFloat()) else count.animateTo(n.toFloat(), tween(minOf(1500, 600 + n * 6), easing = FastOutSlowInEasing)) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.graphicsLayer { scaleX = f; scaleY = f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f) }) { Flame(84.dp, dim = !lit) }
+        Box(Modifier.graphicsLayer { val f = if (lit) 1f + .03f * (1f - kotlin.math.cos(ph.value * 2f * kotlin.math.PI.toFloat())) else 1f; scaleX = f; scaleY = f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f) }) { Flame(84.dp, dim = !lit) }
         Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
         Text(if (n > 1) "jours de série" else "jour de série", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
     }
@@ -206,7 +206,8 @@ fun RecapCard(ui: AppState) {
                 val r = Recaps.range(k)
                 val name = if (r.past) mapOf("week" to "Semaine passée", "month" to "Mois passé", "year" to "Année passée")[k]!! else l
                 val g = SBG[listOf(0, 4, 1)[i]].map(::hex)
-                val glow = rememberInfiniteTransition(label = "glow").animateFloat(.0f, if (r.past && !p.motion) 1f else 0f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "g")
+                val gph = if (r.past) slowPhase(3200, 12) else 0f
+                val glow = object { val value: Float get() = .5f - .5f * kotlin.math.cos(gph * 2f * kotlin.math.PI.toFloat()) }
                 Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(18.dp)).background(Brush.linearGradient(g))
                     .then(if (r.past) Modifier.border((2 + glow.value * 2).dp, Color.White.copy(alpha = .5f + glow.value * .4f), RoundedCornerShape(18.dp)) else Modifier)
                     .clickable { val (sl, st) = Recaps.slides(pg, pg.meId(), k); ui.fs = Fs.Recap(k, sl, st) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {

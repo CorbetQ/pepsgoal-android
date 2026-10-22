@@ -174,9 +174,11 @@ private fun metal(tier: Int, locked: Boolean): List<Color> {
 fun Medal(e: String, tier: Int, locked: Boolean, size: Int, seed: String = e) {
     val p = LocalPal.current
     val (light, base, dark, deep) = metal(tier, locked)
-    val inf = rememberInfiniteTransition(label = "medal")
+    // Reflet qui passe de temps en temps, à 20 images par seconde (les grilles de médailles en comptent beaucoup)
     val delay = 1200 + (seed.hashCode() and 0x7FF)
-    val shine by inf.animateFloat(-.6f, 1.6f, infiniteRepeatable(tween(1500, delayMillis = delay, easing = FastOutSlowInEasing), RepeatMode.Restart), label = "shine")
+    val ph = if (locked) 0f else slowPhase(1500 + delay, 20)
+    val tt = ph * (1500 + delay)
+    val shine = if (tt < 1500) -.6f + 2.2f * FastOutSlowInEasing.transform(tt / 1500f) else 1.6f
     // Gravure : luminosité de l'emoji convertie en nuances du métal (du très foncé à la base)
     val engrave = remember(tier, locked) {
         fun row(lo: Float, hi: Float, i: Int) = floatArrayOf(.299f * (hi - lo), .587f * (hi - lo), .114f * (hi - lo), 0f, lo * 255f)

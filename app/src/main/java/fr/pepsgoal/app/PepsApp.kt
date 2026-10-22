@@ -74,10 +74,11 @@ class PepsApp : Application() {
         SyncWorker.schedule(this)
         Poller.schedule(this); fr.pepsgoal.app.sys.GeoReminders.register(this); fr.pepsgoal.app.sys.AutoBackup.schedule(this)
         // Notifications du serveur (messages, publications, amis…) relevées toutes les minutes à l'écran
-        scope.launch { while (true) { delay(Poller.EVERY_MS); if (foreground) cloud.poll() } }
-        // Rappels, évaluations et minuteur : vérifiés régulièrement pendant que l'application tourne
-        scope.launch { while (true) { delay(1000); pg.timerTick(); if (pg.badgeCheckPending) pg.checkBadges() } }
-        scope.launch { delay(1200); pg.checkReminders(); while (true) { delay(30_000); pg.checkReminders(); LiveUpdates.refresh(this@PepsApp) } }
+        scope.launch { while (true) { delay(Poller.EVERY_MS); if (foreground && cloud.poll()) Poller.lastNews = System.currentTimeMillis() } }
+        // Rappels, évaluations et minuteur : vérifiés régulièrement à l'écran ; en arrière-plan, les alarmes prennent le relais
+        // (pas de réveil du processeur chaque seconde quand l'application est fermée)
+        scope.launch { while (true) { delay(1000); if (foreground) { pg.timerTick(); if (pg.badgeCheckPending) pg.checkBadges() } } }
+        scope.launch { delay(1200); pg.checkReminders(); while (true) { delay(30_000); if (foreground) { pg.checkReminders(); LiveUpdates.refresh(this@PepsApp) } } }
     }
 
     private fun onForeground() {

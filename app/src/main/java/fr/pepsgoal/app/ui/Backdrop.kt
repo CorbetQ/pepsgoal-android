@@ -60,13 +60,28 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long) {
  * suffisent, et le verre givré des cartes n'a pas à être recalculé à chaque image (fluidité du défilement).
  */
 @Composable
-private fun anim(dur: Int, fps: Int = 12): Float {
+private fun anim(dur: Int, fps: Int = 12): Float = slowPhase(dur, fps)
+
+/**
+ * Phase 0 → 1 sur [dur] ms, mise à jour [fps] fois par seconde seulement. Entre deux images, aucune demande de
+ * rafraîchissement n'est faite (simple attente) : l'écran peut rester au repos, ce qui économise beaucoup de batterie
+ * par rapport aux animations infinies à 60/120 images par seconde. En arrière-plan, l'attente de l'image suspend tout.
+ */
+@Composable
+fun slowPhase(dur: Int, fps: Int = 12, offset: Int = 0): Float = slowPhaseState(dur, fps, offset).value
+
+/** Même horloge, à lire dans la phase de dessin (graphicsLayer, drawWithContent) : pas de recomposition à chaque image. */
+@Composable
+fun slowPhaseState(dur: Int, fps: Int = 12, offset: Int = 0): State<Float> {
     val p = LocalPal.current
-    if (p.motion) return 0f
-    var v by remember { mutableFloatStateOf(0f) }
+    val v = remember { mutableFloatStateOf(0f) }
+    if (p.motion) return v
     LaunchedEffect(dur, fps) {
-        val step = 1_000_000_000L / fps; var last = 0L; var t0 = -1L
-        while (isActive) withFrameNanos { n -> if (t0 < 0) t0 = n; if (n - last >= step) { last = n; v = ((n - t0) / 1_000_000L % dur) / dur.toFloat() } }
+        val step = 1000L / fps; var t0 = -1L
+        while (isActive) {
+            withFrameNanos { n -> if (t0 < 0) t0 = n; v.floatValue = (((n - t0) / 1_000_000L + offset) % dur) / dur.toFloat() }
+            kotlinx.coroutines.delay(step)
+        }
     }
     return v
 }
@@ -196,7 +211,8 @@ fun SkyCanvas(s: Weather.Sky) {
     LaunchedEffect(s.phase, s.cond, p.motion) {
         if (p.motion) return@LaunchedEffect
         var last = 0L
-        while (isActive) withFrameNanos { n -> if (n - last > 40_000_000) { last = n; frame = n } }
+        // 12 images par seconde : nuages et pluie restent fluides, l'écran et le flou des cartes travaillent deux fois moins
+        while (isActive) { withFrameNanos { n -> frame = n }; kotlinx.coroutines.delay(80) }
     }
     val seed = remember(s.phase, s.cond, s.code) { Random(s.code * 31 + s.phase.hashCode()) }
     val stars = remember(seed) { List(180) { floatArrayOf(seed.nextFloat(), seed.nextFloat() * .78f, .35f + seed.nextFloat() * 1.1f, seed.nextFloat() * 6.28f, .5f + seed.nextFloat() * 1.2f) } }

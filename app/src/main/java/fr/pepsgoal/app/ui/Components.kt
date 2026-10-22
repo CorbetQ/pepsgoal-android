@@ -138,6 +138,8 @@ fun Emoji(e: String, size: Dp, modifier: Modifier = Modifier, colorFilter: Color
 /* ------------------------------------------------------------------ cartes, boutons, puces */
 /** Source du flou des panneaux en verre (null : pas de flou, ex. dans une fenêtre du bas). */
 val LocalHaze = staticCompositionLocalOf<dev.chrisbanes.haze.HazeState?> { null }
+/** Contenu d'une fenêtre du bas : les cartes y ont un fond plein (sinon leur ombre transparaît en trait flou). */
+val LocalInSheet = staticCompositionLocalOf { false }
 
 /** Espace occupé par la barre du haut et la barre de navigation flottantes (le contenu défile dessous). */
 val LocalBars = compositionLocalOf { PaddingValues(0.dp) }
@@ -268,11 +270,12 @@ private val AI_COLORS = listOf(Color(0xFFFF4A12), Color(0xFFFFB000), Color(0xFF2
 @Composable
 fun Modifier.aiGlow(radius: Dp): Modifier {
     val motionOff = LocalPal.current.motion; val dark = LocalPal.current.dark
-    val inf = rememberInfiniteTransition(label = "ai")
-    val angle = inf.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(tween(if (motionOff) 1_000_000 else 5200, easing = androidx.compose.animation.core.LinearEasing)), label = "aiAngle")
+    // Rotation lente à 20 images par seconde (au lieu de chaque image de l'écran)
+    val ph = slowPhaseState(5200, 20)
     return this.drawWithContent {
+        val angle = ph.value * 360f
         val r = radius.toPx(); val c = Offset(size.width / 2, size.height / 2)
-        val m = android.graphics.Matrix().apply { setRotate(angle.value, c.x, c.y) }
+        val m = android.graphics.Matrix().apply { setRotate(angle, c.x, c.y) }
         val shader = SweepGradientShader(c, AI_COLORS).also { it.setLocalMatrix(m) }
         val brush = ShaderBrush(shader)
         // Lueur : plusieurs traits de plus en plus larges et transparents, sous la carte
@@ -327,6 +330,7 @@ fun Modifier.springClick(inter: MutableInteractionSource, enabled: Boolean = tru
 fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
     val p = LocalPal.current; val h = LocalHaze.current
     val tint = if (strong) p.glassStrong else p.glass
+    if (LocalInSheet.current) return this.clip(shape).background(p.bg).background(tint)
     if (h == null || p.transp || p.contrast || p.oled) return this.clip(shape).background(tint)
     return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.6f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
         // Flou calculé sur une image réduite de moitié : même rendu, bien moins de travail pour le GPU
@@ -529,11 +533,10 @@ fun Av(u: User?, size: Dp = 40.dp, a: Avatar? = null, modifier: Modifier = Modif
 fun LevelRing(level: Int, size: Dp, content: @Composable () -> Unit) {
     val p = LocalPal.current
     val cols = when (level) { 1 -> listOf(hex("#FFB000"), hex("#FFE45C")); 2 -> listOf(hex("#FF7A3D"), hex("#FFB000")); 3 -> listOf(p.flame, p.flame2); 4 -> listOf(p.pink, p.flame, p.flame2); 5 -> listOf(hex("#8C7DFF"), p.pink, p.flame); else -> listOf(hex("#22D3FF"), hex("#B48CFF"), p.pink, p.flame2) }
-    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "lv")
-    val rot by inf.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(tween(if (p.motion) 1_000_000 else 9000, easing = androidx.compose.animation.core.LinearEasing)), label = "rot")
+    val rot = slowPhaseState(9000, 12)
     // `size` : taille de l'avatar ; l'anneau l'entoure à 2 dp (comme .lv-ring de la version web)
     Box(Modifier.size(size + 10.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().graphicsLayer { rotationZ = rot }) { val w = 3.dp.toPx(); drawCircle(Brush.sweepGradient(cols + cols.first()), radius = this.size.minDimension / 2 - w / 2, style = Stroke(w)) }
+        Canvas(Modifier.fillMaxSize().graphicsLayer { rotationZ = rot.value * 360f }) { val w = 3.dp.toPx(); drawCircle(Brush.sweepGradient(cols + cols.first()), radius = this.size.minDimension / 2 - w / 2, style = Stroke(w)) }
         content()
     }
 }
