@@ -15,7 +15,8 @@ android {
         targetSdk = 34
         // Même version que l'application du téléphone
         val phone = rootProject.file("app/build.gradle.kts").readText()
-        versionCode = Regex("versionCode = (\\d+)").find(phone)!!.groupValues[1].toInt()
+        // Numéro distinct de celui du téléphone : la Play Console exige un versionCode unique par bundle
+        versionCode = 1_000_000 + Regex("versionCode = (\\d+)").find(phone)!!.groupValues[1].toInt()
         versionName = Regex("versionName = \"([^\"]+)\"").find(phone)!!.groupValues[1]
     }
 
