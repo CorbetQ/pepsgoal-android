@@ -53,6 +53,10 @@ sealed class Sheet {
     object Rest : Sheet()
     /** Actions rapides d'un objectif (balayage vers la gauche). */
     class Quick(val id: String) : Sheet()
+    /** Bilan du soir guidé. */
+    object Evening : Sheet()
+    /** Journée difficile : essentiels et activation. */
+    object Hard : Sheet()
 }
 
 /** Plein écran : célébrations, récaps, stories. */

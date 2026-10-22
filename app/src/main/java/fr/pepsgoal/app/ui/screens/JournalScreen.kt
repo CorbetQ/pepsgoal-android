@@ -49,6 +49,10 @@ fun MoodCard(ui: AppState) {
     Glass {
         CardHead("Ton humeur du jour") { IconBtn("book", "Ouvrir le journal", { ui.push(Screen.Journal) }, plain = true, size = 36.dp) }
         MoodPicker(e?.mood ?: 0) { m -> Journal.put(ctx, t, m, note); open = true; if (e == null) ui.toast("Humeur notée.", "check") }
+        // Étiquettes : ce qui colore la journée (reprises dans les corrélations de Stats)
+        if (e != null) FlowRowCompat(Modifier.padding(top = 8.dp), gap = 6.dp) {
+            Journal.TAGS.forEach { (tg, em) -> FChip("$em $tg", tg in e.tags, { Journal.toggleTag(ctx, t, tg) }) }
+        }
         if (open || (e?.text?.isNotEmpty() == true)) {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -89,6 +93,7 @@ fun JournalScreen(ui: AppState) {
                     }
                     IconBtn("trash", "Supprimer cette journée du journal", { ui.confirm("Supprimer cette page ?", "L’humeur et la note du ${fmtDate(e.date)} seront effacées.", "Supprimer") { Journal.remove(ctx, e.date) } }, plain = true, size = 36.dp)
                 }
+                if (e.tags.isNotEmpty()) FlowRowCompat(Modifier.padding(top = 8.dp), gap = 4.dp) { e.tags.forEach { tg -> Chip("${Journal.TAGS.firstOrNull { it.first == tg }?.second ?: "🏷️"} $tg") } }
                 if (e.text.isNotBlank()) Text(e.text, Modifier.padding(top = 8.dp), fontSize = 14.sp)
             }
         } }

@@ -13,8 +13,8 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 370
-        versionName = "3.7.0"
+        versionCode = 380
+        versionName = "3.8.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
@@ -104,4 +104,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
     // Les services Google tirent une ancienne version de Fragment : version récente imposée (API ActivityResult)
     implementation("androidx.fragment:fragment-ktx:1.8.8")
+    // Carte intégrée (OpenStreetMap) pour enregistrer des emplacements, sans clé d’API
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 }

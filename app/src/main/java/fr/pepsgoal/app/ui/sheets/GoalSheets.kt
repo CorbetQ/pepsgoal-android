@@ -527,9 +527,12 @@ fun GoalSheet(ui: AppState, id: String) {
     }
     GoalDetail(ui, g, own)
     if (g.type in STEP_TYPES && !pg.isClosedGoal(g)) StepsBlock(ui, g, own)
+    if (own) SavingsCard(ui, g)
+    GoalStatsBlock(ui, g)
     ProofsBlock(ui, g, own)
     if (own && !g.archived && !pg.isClosedGoal(g)) OptionsCard("Options") {
         ChainRow(ui, g, divider = false)
+        SavingsRow(ui, g)
         DuoRow(ui, g)
         AgendaRow(ui, g)
         GeoRow(ui, g)
@@ -748,8 +751,22 @@ private fun GeoRow(ui: AppState, g: Goal) {
         c?.let { "${if (it.exit) "En partant de" else "En arrivant à"} ${it.label.ifBlank { "l’endroit enregistré" }} · ${it.radius} m" } ?: "En arrivant à un endroit, ou en le quittant",
         open, { open = !open }) {
         if (c != null && !bgOk && android.os.Build.VERSION.SDK_INT >= 29) PButton("Autoriser la position en arrière-plan", { bgPerm.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) }, icon = "pin", small = true, kind = "primary")
-        Field(label, { label = it }, "Nom du lieu", placeholder = "Salle de sport, maison, bureau…", max = 40)
         Seg(listOf(false to "En arrivant", true to "En partant"), exit, { exit = it })
+        // Emplacements enregistrés (Paramètres › Emplacements) : un geste suffit
+        val saved = ui.pg.me()?.places.orEmpty()
+        Text("Mes emplacements", fontWeight = FontWeight.Bold)
+        if (saved.isEmpty()) Muted("Enregistre ta maison, ton travail… sur une carte pour les choisir ici d’un geste.", small = true)
+        FlowRowCompat(gap = 6.dp) {
+            saved.forEach { pl -> FChip("${pl.icon} ${pl.name}", c != null && c.label == pl.name && kotlin.math.abs(c.lat - pl.lat) < 1e-5, {
+                val gp = fr.pepsgoal.app.sys.GeoReminders.Place(g.id, pl.lat, pl.lon, pl.radius, exit, pl.name)
+                fr.pepsgoal.app.sys.GeoReminders.set(ctx, gp); cur = gp; open = false
+                ui.toast("Rappel ${if (exit) "en partant de" else "en arrivant à"} ${pl.name}.", "pin")
+                if (!bgOk && android.os.Build.VERSION.SDK_INT >= 29) bgPerm.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }) }
+            FChip("＋ Gérer", false, { ui.close(); ui.push(fr.pepsgoal.app.Screen.Settings("places")) })
+        }
+        Text("Ou ma position actuelle", Modifier.padding(top = 4.dp), fontWeight = FontWeight.Bold)
+        Field(label, { label = it }, "Nom du lieu", placeholder = "Salle de sport, maison, bureau…", max = 40)
         FlowRowCompat(gap = 6.dp) { listOf(100, 150, 300, 500).forEach { r -> FChip("$r m", radius == r, { radius = r }) } }
         Muted("Place-toi à l’endroit voulu : PepsGoal enregistre ta position actuelle. Le rappel n’arrive qu’une fois par jour, si l’objectif reste à faire.", small = true)
         FlowRowCompat(gap = 6.dp) {

@@ -13,7 +13,7 @@ import java.io.File
 
 /** Une page du journal : humeur du jour (1 à 5) et quelques lignes. */
 @Serializable
-class JournalEntry(val date: String, var mood: Int, var text: String = "", var at: Long = 0)
+class JournalEntry(val date: String, var mood: Int, var text: String = "", var at: Long = 0, var tags: List<String> = emptyList())
 
 /**
  * Journal et humeur du jour, gardés sur l'appareil (fichier local, non synchronisé). Les liens entre humeur et
@@ -21,6 +21,8 @@ class JournalEntry(val date: String, var mood: Int, var text: String = "", var a
  */
 object Journal {
     val MOODS = listOf("Difficile" to "😣", "Bof" to "🙁", "Correct" to "😐", "Bien" to "🙂", "Super" to "😄")
+    /** Étiquettes d'humeur, reprises dans les corrélations de Stats. */
+    val TAGS = listOf("motivé" to "🚀", "serein" to "😌", "fatigué" to "🥱", "stressé" to "😰", "malade" to "🤒", "débordé" to "📅", "sportif" to "🏃", "entouré" to "🫂")
     private fun file(ctx: Context) = File(ctx.filesDir, "journal.json")
     private val json = Json { ignoreUnknownKeys = true }
     var rev by mutableStateOf(0)
@@ -29,10 +31,17 @@ object Journal {
     fun get(ctx: Context, date: String) = all(ctx).firstOrNull { it.date == date }
     fun recent(ctx: Context, n: Int) = all(ctx).sortedBy { it.date }.takeLast(n)
 
-    fun put(ctx: Context, date: String, mood: Int, text: String) {
-        val l = all(ctx).filter { it.date != date } + JournalEntry(date, mood.coerceIn(1, 5), text.take(1000), nowMs())
+    fun put(ctx: Context, date: String, mood: Int, text: String, tags: List<String>? = null) {
+        val keep = tags ?: get(ctx, date)?.tags ?: emptyList()
+        val l = all(ctx).filter { it.date != date } + JournalEntry(date, mood.coerceIn(1, 5), text.take(1000), nowMs(), keep)
         file(ctx).writeText(json.encodeToString(ListSerializer(JournalEntry.serializer()), l.sortedBy { it.date })); rev++
     }
+    fun toggleTag(ctx: Context, date: String, tag: String) {
+        val e = get(ctx, date) ?: return
+        put(ctx, date, e.mood, e.text, if (tag in e.tags) e.tags - tag else e.tags + tag)
+    }
+    /** Jours marqués par chaque étiquette. */
+    fun tagDays(ctx: Context): Map<String, Set<String>> = all(ctx).flatMap { e -> e.tags.map { it to e.date } }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
     fun remove(ctx: Context, date: String) { file(ctx).writeText(json.encodeToString(ListSerializer(JournalEntry.serializer()), all(ctx).filter { it.date != date })); rev++ }
     fun clear(ctx: Context) { file(ctx).delete(); rev++ }
 

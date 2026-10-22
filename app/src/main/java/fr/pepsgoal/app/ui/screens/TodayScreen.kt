@@ -71,6 +71,9 @@ fun TodayScreen(ui: AppState) {
                             Muted(if (lv.next != null) "${lv.next!! - lv.pts} flammes avant « ${lv.nextName} »" else "Niveau maximum atteint", small = true)
                             if (total > 0 && done == total) PButton("Journée parfaite", { ui.fs = Fs.Celebrate(pg.perfectCelebration()) }, icon = "star", small = true, kind = "primary")
                             PButton(if (pg.vacationOf()?.let { today() >= it.first } == true) "🏖️ En vacances" else if (pg.isRest()) "😴 Jour de repos" else "Repos et vacances", { ui.open(Sheet.Rest) }, icon = if (pg.isRest()) null else "moon", small = true, kind = "ghost")
+                            PButton(if (pg.isHardDay()) "💛 Journée difficile" else "Journée difficile", { ui.open(Sheet.Hard) }, icon = if (pg.isHardDay()) null else "heart", small = true, kind = "ghost")
+                            // Bilan du soir, proposé à partir de 18 h
+                            if (nowHM() >= "18:00") PButton("Bilan du soir", { ui.open(Sheet.Evening) }, icon = "moon", small = true, kind = if (total > 0 && done < total) "primary" else "normal")
                         }
                     }
                 }
@@ -125,7 +128,8 @@ fun TodayScreen(ui: AppState) {
 private fun Hero(ui: AppState) {
     val pg = ui.pg; val u = pg.me() ?: return; val st = pg.globalStreak(u.id); val p = LocalPal.current
     val vac = pg.vacationOf()?.takeIf { today() >= it.first }
-    val msg = if (vac != null) "En vacances jusqu’au ${fmtDate(vac.second)} 🏖️ : tes séries sont en pause, profite à fond."
+    val msg = if (pg.isHardDay()) "Journée difficile 💛 : seuls tes essentiels comptent aujourd’hui. Fais ce que tu peux, c’est déjà beaucoup."
+        else if (vac != null) "En vacances jusqu’au ${fmtDate(vac.second)} 🏖️ : tes séries sont en pause, profite à fond."
         else if (pg.isRest()) "Jour de repos 😴 : ta série est protégée aujourd’hui, sans dépenser de gel. Valide quand même si l’envie te prend."
         else if (p.easy) (if (st.lit) "Bravo, tu as validé aujourd’hui." else "Valide un objectif aujourd’hui pour garder ta série.")
         else if (st.lit) "Ta flamme brûle aujourd'hui. Continue sur ta lancée." else if (st.n > 0) "Valide une action avant minuit pour prolonger ta série de ${pl(st.n, "jour", "jours")}." else "Valide ta première action pour allumer ta flamme."

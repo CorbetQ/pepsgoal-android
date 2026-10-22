@@ -72,6 +72,7 @@ val SET_CATS = listOf(
     listOf("reminders", "Rappels et notifications", "Rappels, notifications, activités en cours (Live Updates)", "bell"),
     listOf("account", "Compte", "Profil, mot de passe, déconnexion", "user"),
     listOf("weather", "Météo", "Ville, carte du jour et thème Météo", "cloud"),
+    listOf("places", "Emplacements", "Maison, travail, salle de sport… sur une carte, pour les rappels par lieu", "pin"),
     listOf("privacy", "Social et confidentialité", "Fonctions sociales, visibilité, stories", "lock"),
     listOf("ai", "Assistant IA", "Coach IA 100 % local : installation, fonctions et mémoire", "sparkle"),
     listOf("health", "Santé", "Health Connect : pas, sommeil, sport, eau et validation automatique", "heart"),
@@ -83,7 +84,7 @@ val SET_CATS = listOf(
 
 /** Couleurs des catégories de réglages (reprises des couleurs des types d'objectifs). */
 val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
-    "weather" to ("objective" to "period"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "home" to ("routine" to "objective"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
+    "weather" to ("objective" to "period"), "places" to ("measure" to "routine"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "home" to ("routine" to "objective"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
 
 /** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
 @Composable
@@ -181,6 +182,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
             "privacy" -> item("b") { PrivacySettings(ui, u) }
             "data" -> item("b") { DataSettings(ui, u) }
             "widgets" -> item("b") { WidgetsSettings(ui) }
+            "places" -> item("b") { PlacesSettings(ui) }
             "ai" -> item("b") { AiSettings(ui) }
             "health" -> item("b") { HealthSettings(ui) }
             "home" -> item("b") { HomeSettings(ui) }
@@ -928,6 +930,7 @@ fun setSummary(ui: AppState, k: String): String? {
         "a11y" -> listOfNotNull(if (pr.easy) "Lecture facile" else null, if (pr.textScale != 1f) "texte ${Math.round(pr.textScale * 100)} %" else null, if (pr.oneHand) "une main" else null,
             if (pr.contrast) "contraste" else null, if (pr.motion) "animations réduites" else null).joinToString(" · ").replaceFirstChar { it.uppercase() }.ifEmpty { null }
         "help" -> "Version ${fr.pepsgoal.core.APP_VERSION}"
+        "places" -> if (u.places.isEmpty()) null else u.places.take(4).joinToString(" · ") { "${it.icon} ${it.name}" }
         else -> null
     }
 }

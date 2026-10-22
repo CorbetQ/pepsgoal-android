@@ -40,6 +40,7 @@ import fr.pepsgoal.app.ui.screens.*
 import fr.pepsgoal.app.ui.sheets.SheetHost
 import fr.pepsgoal.app.ui.fullscreen.FullscreenHost
 import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.hex
 import fr.pepsgoal.app.ui.theme.PepsTheme
 import fr.pepsgoal.app.ui.theme.ThemeInput
 import fr.pepsgoal.app.ui.theme.Unbounded
@@ -118,7 +119,10 @@ fun PepsRoot(ui: AppState) {
                 }
                 LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
             }
-            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze) {
+            // Flamme de collection choisie (si elle est toujours débloquée par la meilleure série)
+            val skinKey = u?.flameSkin ?: "classic"
+            val flame = remember(skinKey, u?.id, rev) { FLAME_SKINS.firstOrNull { it.key == skinKey && it.colors != null && u != null && pg.bestStreak(u.id) >= it.min }?.colors?.map(::hex) }
+            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame) {
                 Reachable(ui) {
                 when {
                     u == null -> AuthScreen(ui)

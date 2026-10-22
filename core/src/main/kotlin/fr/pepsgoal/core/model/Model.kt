@@ -86,6 +86,9 @@ class Settings(
 )
 
 @Serializable
+class SavedPlace(val id: String, var name: String, var icon: String = "📍", var lat: Double, var lon: Double, var radius: Int = 150)
+
+@Serializable
 class GoalGroup(val id: String, var name: String, var icon: String = "📁")
 
 @Serializable
@@ -113,6 +116,14 @@ class User(
     var restDays: MutableList<String> = mutableListOf(),
     /** Périodes de vacances (« début|fin », dates incluses) : séries en pause, rappels coupés. */
     var vacations: MutableList<String> = mutableListOf(),
+    /** Journées difficiles : seuls les objectifs essentiels comptent ces jours-là. */
+    var hardDays: MutableList<String> = mutableListOf(),
+    /** Objectifs essentiels (3 au plus) gardés les journées difficiles. */
+    var essentials: MutableList<String> = mutableListOf(),
+    /** Couleur de flamme choisie (débloquée par la meilleure série). */
+    var flameSkin: String = "classic",
+    /** Emplacements enregistrés (maison, travail…), pour les rappels par lieu. */
+    var places: MutableList<SavedPlace> = mutableListOf(),
     /** Encouragements reçus qui comptent pour les gels (nombre fourni par le serveur). */
     var cheersIn: Int = 0,
     var tutorialDone: Boolean = false,

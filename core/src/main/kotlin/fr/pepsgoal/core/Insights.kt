@@ -43,8 +43,16 @@ object Insights {
     private fun pct(v: Double) = "${(v * 100).roundToInt()} %"
 
     /** Constats triés du plus marquant au moins marquant ; [values] : facteur → (jour → valeur). */
-    fun findings(rates: Map<String, Double>, values: Map<String, Map<String, Double>>): List<Finding> {
+    fun findings(rates: Map<String, Double>, values: Map<String, Map<String, Double>>, tags: Map<String, Set<String>> = emptyMap()): List<Finding> {
         val out = mutableListOf<Finding>()
+        // Étiquettes d'humeur du journal : jours marqués comparés aux autres jours notés
+        val noted = tags.values.flatten().toSet()
+        for ((tag, days) in tags) {
+            val hi = rates.filterKeys { it in days }.values; val lo = rates.filterKeys { it in noted && it !in days }.values
+            if (hi.size < MIN_SAMPLES || lo.size < MIN_SAMPLES) continue
+            val a = hi.average(); val b = lo.average(); if (abs(a - b) < MIN_DIFF) continue
+            out += Finding("smile", "Les jours où tu te sens « $tag », tu réussis ${pct(a)} de tes objectifs, contre ${pct(b)} les autres jours.", a - b)
+        }
         for (f in FACTORS) {
             val v = values[f.key] ?: continue
             val hi = rates.filterKeys { k -> v[k]?.let { it >= f.threshold } == true }.values
