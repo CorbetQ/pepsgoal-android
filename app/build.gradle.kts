@@ -102,4 +102,6 @@ dependencies {
     implementation("androidx.documentfile:documentfile:1.1.0")
     // Montre Wear OS : couche de données (journée publiée, validations reçues)
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    // Les services Google tirent une ancienne version de Fragment : version récente imposée (API ActivityResult)
+    implementation("androidx.fragment:fragment-ktx:1.8.8")
 }
