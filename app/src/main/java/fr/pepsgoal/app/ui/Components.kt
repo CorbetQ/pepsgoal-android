@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Shape
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -548,11 +549,55 @@ fun rich(s: String, bold: Color? = null): AnnotatedString = buildAnnotatedString
 }
 
 @Composable
-fun Empty(title: String, text: String, action: (@Composable () -> Unit)? = null) {
+fun Empty(title: String, text: String, icon: String = "sparkle", action: (@Composable () -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink, textAlign = TextAlign.Center)
+        if (title.isNotEmpty()) EmptyArt(icon)
+        if (title.isNotEmpty()) Text(title, fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink, textAlign = TextAlign.Center)
         Muted(text, center = true)
         action?.let { Spacer(Modifier.height(6.dp)); it() }
+    }
+}
+
+/** Illustration des états vides : halo coloré, petites étincelles et pastille d'icône qui flotte doucement. */
+@Composable
+private fun EmptyArt(icon: String) {
+    val p = LocalPal.current; val ph = slowPhaseState(3600, 15)
+    Box(Modifier.size(120.dp).padding(bottom = 4.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val c = Offset(size.width / 2, size.height / 2); val r = size.minDimension / 2
+            drawCircle(Brush.radialGradient(listOf(p.flame2.copy(alpha = .28f), p.pink.copy(alpha = .12f), Color.Transparent), c, r), r, c)
+            drawCircle(p.ink.copy(alpha = .06f), r * .62f, c, style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx()))))
+            // Étincelles
+            for ((dx, dy, rr, col) in listOf(Quad(-.72f, -.42f, 4f, p.flame2), Quad(.7f, -.55f, 3f, p.pink), Quad(.62f, .58f, 5f, p.type("objective").c), Quad(-.6f, .62f, 3f, p.type("routine").c)))
+                drawCircle(col.copy(alpha = .8f), rr.dp.toPx(), Offset(c.x + dx * r, c.y + dy * r))
+        }
+        Box(Modifier.graphicsLayer { translationY = kotlin.math.sin(ph.value * 2f * kotlin.math.PI.toFloat()) * 4.dp.toPx(); rotationZ = kotlin.math.sin(ph.value * 2f * kotlin.math.PI.toFloat()) * 3f }) {
+            IconTile(icon, p.flame2, p.pink, 62.dp, 20.dp)
+        }
+    }
+}
+private data class Quad(val a: Float, val b: Float, val c: Float, val d: Color)
+
+/** Bloc gris qui pulse doucement pendant un chargement (squelette de la future interface). */
+@Composable
+fun Skeleton(modifier: Modifier = Modifier, height: Dp = 14.dp, radius: Dp = 8.dp) {
+    val p = LocalPal.current; val ph = slowPhaseState(1400, 15)
+    Box(modifier.height(height).clip(RoundedCornerShape(radius)).drawBehind {
+        drawRect(p.ink.copy(alpha = .07f + .06f * (.5f - .5f * kotlin.math.cos(ph.value * 2f * kotlin.math.PI.toFloat()))))
+    })
+}
+
+/** Carte squelette : une pastille (ou un avatar), un titre et quelques lignes. */
+@Composable
+fun SkeletonCard(lines: Int = 2, round: Boolean = false) {
+    Glass {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Skeleton(Modifier.width(44.dp), 44.dp, if (round) 22.dp else 14.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Skeleton(Modifier.fillMaxWidth(.55f), 16.dp)
+                repeat(lines) { i -> Skeleton(Modifier.fillMaxWidth(if (i % 2 == 0) .9f else .7f), 12.dp) }
+            }
+        }
     }
 }
 

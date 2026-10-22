@@ -2,6 +2,10 @@ package fr.pepsgoal.app.ui.sheets
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,16 +43,29 @@ fun SheetHost(ui: AppState) {
     val p = LocalPal.current
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // La fenêtre s'arrête sous la barre d'état ; ses cartes n'ont pas de flou (autre fenêtre que l'arrière-plan)
+    val slot = remember(s) { FootSlot() }
     ModalBottomSheet(onDismissRequest = { ui.back() }, modifier = Modifier.statusBarsPadding(), sheetState = state, containerColor = if (p.transp || p.contrast) p.bg else p.glassStrong.copy(alpha = 1f), contentColor = p.ink,
-        scrimColor = p.scrim, dragHandle = null) {
-        key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true) {
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SheetBody(ui, s)
+        scrimColor = p.scrim, shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        // Poignée bien visible : on comprend qu'un glissement vers le bas ferme la fenêtre
+        dragHandle = { Box(Modifier.padding(top = 10.dp, bottom = 2.dp).size(42.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink3.copy(alpha = .45f))) }) {
+        key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true, LocalFootSlot provides slot) {
+            val foot = slot.content
+            Column(Modifier.fillMaxWidth().imePadding()) {
+                Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()).then(if (foot == null) Modifier.navigationBarsPadding() else Modifier)
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = if (foot == null) 24.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SheetBody(ui, s)
+                }
+                // Boutons d'action toujours visibles en bas, même quand le contenu défile
+                if (foot != null) Row(Modifier.fillMaxWidth().drawBehind { drawRect(p.line, size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx())) }
+                    .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) { foot() }
             }
         } }
     }
 }
+
+/** Emplacement des boutons du pied de fenêtre, rendu hors de la zone qui défile. */
+class FootSlot { var content by mutableStateOf<(@Composable RowScope.() -> Unit)?>(null) }
+val LocalFootSlot = staticCompositionLocalOf<FootSlot?> { null }
 
 @Composable
 private fun SheetBody(ui: AppState, s: Sheet) {
@@ -95,7 +112,11 @@ fun SheetHead(ui: AppState, title: String, right: @Composable RowScope.() -> Uni
 /** Pied de fenêtre : boutons alignés à droite. */
 @Composable
 fun SheetFoot(content: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically, content = content)
+    val slot = LocalFootSlot.current
+    if (slot == null) { Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically, content = content); return }
+    // Dans une fenêtre : les boutons sont affichés par la fenêtre elle-même, collés en bas
+    SideEffect { slot.content = content }
+    DisposableEffect(slot) { onDispose { slot.content = null } }
 }
 
 /** Choix d'une date (AAAA-MM-JJ) avec le sélecteur d'Android ; `optional` permet de l'effacer. */

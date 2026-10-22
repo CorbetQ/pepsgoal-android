@@ -334,7 +334,7 @@ private fun ModServer(ui: AppState) {
     val p = LocalPal.current; val cloud = ui.cloud
     LaunchedEffect(Unit) { while (true) { cloud.loadStats(); delay(30_000) } }
     val d = cloud.stats
-    if (d == null) { Glass { Muted(cloud.statsError ?: "Chargement des statistiques…") }; return }
+    if (d == null) { if (cloud.statsError != null) Glass { Muted(cloud.statsError!!) } else Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { SkeletonCard(); SkeletonCard() }; return }
     fun num(o: JsonObject?, k: String) = (o?.get(k) as? JsonPrimitive)?.doubleOrNull
     fun n(o: JsonObject?, k: String) = num(o, k)?.let { fmtNum(it) } ?: "—"
     val c = d.obj("counts"); val s = d.obj("server"); val t = d.obj("traffic"); val mem = s.obj("memory")

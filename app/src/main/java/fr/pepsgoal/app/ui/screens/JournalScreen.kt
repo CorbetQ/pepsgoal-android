@@ -77,7 +77,7 @@ fun JournalScreen(ui: AppState) {
                 insight?.let { Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("sparkle", size = 15.dp, tint = p.flame); Muted(it, small = true) } }
             }
         }
-        if (list.isEmpty()) item("empty") { Glass { Empty("Ton journal est vide", "Note ton humeur chaque jour : tu verras ce qui t’aide à avancer.") } }
+        if (list.isEmpty()) item("empty") { Glass { Empty("Ton journal est vide", "Note ton humeur chaque jour : tu verras ce qui t’aide à avancer.", icon = "book") } }
         list.forEach { e -> item("e-${e.date}") {
             Glass(pad = 14.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

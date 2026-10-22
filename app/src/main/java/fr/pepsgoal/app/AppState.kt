@@ -95,7 +95,7 @@ class Toast(val id: Long, val text: String, val icon: String, val action: String
  * État de l'interface (équivalent de l'objet `UI` de la version web) et réactions aux demandes de la logique.
  * Toute lecture de `rev` dans l'interface la redessine quand la base change.
  */
-class AppState(private val app: PepsApp) : Hooks {
+class AppState(val app: PepsApp) : Hooks {
     var rev by mutableLongStateOf(0L)
         private set
     var tab by mutableStateOf("today")

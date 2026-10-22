@@ -48,7 +48,7 @@ fun FriendsScreen(ui: AppState) {
         item("friends") {
             Glass {
                 CardHead("Mes amis") { Count(friends.size) }
-                if (friends.isEmpty()) Empty("Pas encore d'amis", "Cherche des personnes ci-dessous pour suivre vos séries ensemble.")
+                if (friends.isEmpty()) Empty("Pas encore d'amis", "Cherche des personnes ci-dessous pour suivre vos séries ensemble.", icon = "users")
                 friends.forEach { x -> PersonRow(ui, x) {
                     val n = Social.unreadFrom(ui, x.id)
                     PButton(if (n > 0) "Message · $n" else "Message", { ui.push(Screen.Chat(with = x.id)) }, icon = "comment", small = true)

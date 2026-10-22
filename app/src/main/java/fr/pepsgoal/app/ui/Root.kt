@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import kotlinx.coroutines.launch
 import fr.pepsgoal.app.ui.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -125,7 +126,17 @@ fun PepsRoot(ui: AppState) {
                     else -> Shell(ui)
                 }
                 val top = ui.screens.lastOrNull()
-                AnimatedContent(top, transitionSpec = { (slideInHorizontally { it / 3 } + fadeIn()) togetherWith (fadeOut()) }, label = "screen") { sc ->
+                // Transitions dans le sens de la navigation : on avance vers la droite, on revient vers la gauche
+                val depth = ui.screens.size; val prevDepth = remember { intArrayOf(depth) }
+                val forward = depth >= prevDepth[0]; SideEffect { prevDepth[0] = depth }
+                AnimatedContent(top, transitionSpec = {
+                    val sp = spring<IntOffset>(dampingRatio = .86f, stiffness = 380f)
+                    when {
+                        p.motion -> EnterTransition.None togetherWith ExitTransition.None
+                        forward -> (slideInHorizontally(sp) { it / 3 } + fadeIn(tween(200))) togetherWith (slideOutHorizontally(tween(240)) { -it / 8 } + fadeOut(tween(180)))
+                        else -> (slideInHorizontally(sp) { -it / 8 } + fadeIn(tween(200))) togetherWith (slideOutHorizontally(tween(240)) { it / 3 } + fadeOut(tween(200)))
+                    }
+                }, label = "screen") { sc ->
                     when (sc) {
                         is Screen.Search -> SearchScreen(ui, sc.q)
                         is Screen.Challenges -> ChallengesScreen(ui)
@@ -223,10 +234,11 @@ private fun Shell(ui: AppState) {
             Box(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier)) {
                 remember(ui.tab) { Stagger.reset() }
                 AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(140)) + scaleIn(spring(dampingRatio = .68f, stiffness = 420f), initialScale = .93f) + slideInVertically(spring(dampingRatio = .72f, stiffness = 420f)) { it / 18 }) togetherWith (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 1.02f)) }, label = "tab") { tab ->
-                    when (tab) {
+                    // Tirer pour actualiser sur l'accueil, le feed et les amis
+                    if (tab in setOf("today", "feed", "friends")) PullRefresh(ui, with(d) { topH.toDp() }) {
+                        when (tab) { "feed" -> FeedScreen(ui); "friends" -> FriendsScreen(ui); else -> TodayScreen(ui) }
+                    } else when (tab) {
                         "goals" -> GoalsScreen(ui)
-                        "feed" -> FeedScreen(ui)
-                        "friends" -> FriendsScreen(ui)
                         "profile" -> ProfileScreen(ui)
                         "mod" -> ModerationScreen(ui)
                         else -> TodayScreen(ui)
@@ -243,6 +255,41 @@ private fun Shell(ui: AppState) {
         if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabMod) { ui.open(Sheet.GoalForm()) }
         else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabMod) { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }
     }
+}
+
+/**
+ * Tirer pour actualiser : une flamme grandit pendant qu'on tire, puis s'anime le temps de recharger
+ * (synchronisation du compte, social et météo).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content: @Composable () -> Unit) {
+    val p = LocalPal.current; val ctx = androidx.compose.ui.platform.LocalContext.current
+    var refreshing by remember { mutableStateOf(false) }
+    val st = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+    val spin = slowPhaseState(900, 20)
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(refreshing, {
+        refreshing = true; fr.pepsgoal.app.ui.Feedback.tick()
+        ui.scope.launch {
+            try {
+                if (ui.pg.store.acct && ui.pg.store.online) { ui.cloud.syncNow(); ui.cloud.refreshSocial() }
+                Wx.ensure(ctx, ui, true)
+            } catch (e: Exception) {}
+            kotlinx.coroutines.delay(500); refreshing = false; ui.bump()
+        }
+    }, Modifier.fillMaxSize(), state = st, indicator = {
+        Box(Modifier.align(Alignment.TopCenter).padding(top = top + 6.dp).graphicsLayer {
+            val f = if (refreshing) 1f else st.distanceFraction.coerceIn(0f, 1.3f)
+            alpha = f.coerceAtMost(1f); translationY = (f - 1f) * 24.dp.toPx(); val sc = .6f + .4f * f.coerceAtMost(1f); scaleX = sc; scaleY = sc
+        }.size(46.dp).shadow(10.dp, CircleShape, spotColor = p.flame.copy(alpha = .5f)).clip(CircleShape).background(p.glassStrong.copy(alpha = 1f)), contentAlignment = Alignment.Center) {
+            Box(Modifier.graphicsLayer {
+                // Flamme qui vacille pendant le chargement
+                val w = if (refreshing) kotlin.math.sin(spin.value * 2f * kotlin.math.PI.toFloat()) else 0f
+                scaleX = 1f + .08f * w; scaleY = 1f - .06f * w; rotationZ = 6f * w
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
+            }) { Flame(26.dp, dim = !refreshing && st.distanceFraction < 1f) }
+        }
+    }) { content() }
 }
 
 /** Barre de navigation PepsGoal : pilule en verre flottante, onglet actif repéré par une pastille qui glisse. */
@@ -348,21 +395,29 @@ private fun Toasts(ui: AppState) {
                 var shown by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { shown = true }
                 AnimatedVisibility(shown, enter = fadeIn(tween(120)) + scaleIn(spring(dampingRatio = .45f, stiffness = 500f), initialScale = .8f) + slideInVertically(spring(dampingRatio = .55f, stiffness = 500f)) { it / 2 }) {
-                    // Annoncé par TalkBack dès son apparition (région « live »)
-                    Row(Modifier.clip(RoundedCornerShape(18.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(18.dp)).semantics { liveRegion = LiveRegionMode.Polite }
-                        .padding(start = 14.dp, end = if (t.action != null) 6.dp else 14.dp, top = if (t.action != null) 6.dp else 11.dp, bottom = if (t.action != null) 6.dp else 11.dp),
+                    // Pilule flottante : pastille colorée selon le type de message, fine barre du temps restant en bas.
+                    // Annoncée par TalkBack dès son apparition (région « live ») ; un appui la ferme.
+                    val kind = when (t.icon) { "x", "ban", "lock", "cloudoff" -> p.danger; "check", "flame", "star", "trophy", "medal", "sparkle" -> p.ok; else -> p.focus }
+                    val tint = if (t.icon == "flame") p.flame else kind
+                    val left = remember { Animatable(1f) }
+                    LaunchedEffect(Unit) { left.animateTo(0f, tween(if (t.action != null || p.easy) 5000 else 3600, easing = LinearEasing)) }
+                    val shape = RoundedCornerShape(26.dp)
+                    Row(Modifier.shadow(if (p.transp) 0.dp else 14.dp, shape, ambientColor = Color(0x4428186E), spotColor = tint.copy(alpha = .45f)).clip(shape)
+                        .background(p.glassStrong.copy(alpha = 1f)).border(1.dp, tint.copy(alpha = .35f), shape)
+                        .drawWithContent { drawContent(); drawRect(tint.copy(alpha = .85f), topLeft = Offset(0f, size.height - 3.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width * left.value, 3.dp.toPx())) }
+                        .semantics { liveRegion = LiveRegionMode.Polite }
+                        .then(if (t.action == null) Modifier.clickable(onClickLabel = "Fermer") { ui.toasts.remove(t) } else Modifier)
+                        .padding(start = 8.dp, end = if (t.action != null) 6.dp else 16.dp, top = 6.dp, bottom = 7.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (t.icon == "flame") Flame(22.dp) else Pi(t.icon, size = 20.dp, tint = p.ink)
-                        Text(t.text, Modifier.weight(1f, fill = false), fontWeight = FontWeight.Bold, fontSize = if (p.easy) 16.sp else 14.sp, color = p.ink)
+                        Box(Modifier.size(34.dp).clip(CircleShape).background(tint.copy(alpha = .16f)), contentAlignment = Alignment.Center) {
+                            if (t.icon == "flame") Flame(20.dp) else Pi(t.icon, size = 18.dp, tint = tint)
+                        }
+                        Text(t.text, Modifier.weight(1f, fill = false).padding(vertical = 4.dp), fontWeight = FontWeight.Bold, fontSize = if (p.easy) 16.sp else 14.sp, color = p.ink)
                         if (t.action != null) {
-                            // Compte à rebours discret autour du bouton : le temps restant pour annuler
-                            val left = remember { Animatable(1f) }
-                            LaunchedEffect(Unit) { left.animateTo(0f, tween(5000, easing = LinearEasing)) }
                             val inter = remember { MutableInteractionSource() }
-                            Box(Modifier.bounce(inter, .9f).heightIn(min = 44.dp).clip(RoundedCornerShape(14.dp)).background(p.ink)
-                                .drawWithContent { drawContent(); drawRect(p.flame.copy(alpha = .9f), topLeft = Offset(0f, size.height - 3.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width * left.value, 3.dp.toPx())) }
-                                .springClick(inter, label = t.action, role = Role.Button) { ui.toasts.remove(t); t.onAction?.invoke() }.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-                                Text(t.action, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = p.bg)
+                            Box(Modifier.bounce(inter, .9f).heightIn(min = 40.dp).clip(RoundedCornerShape(20.dp)).background(tint)
+                                .springClick(inter, label = t.action, role = Role.Button) { ui.toasts.remove(t); t.onAction?.invoke() }.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+                                Text(t.action, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = readable(tint))
                             }
                         }
                     }

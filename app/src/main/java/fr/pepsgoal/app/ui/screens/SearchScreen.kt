@@ -27,7 +27,7 @@ import fr.pepsgoal.core.*
 import fr.pepsgoal.core.cloud.str
 
 /** Mots-clés supplémentaires des catégories de réglages (la recherche trouve « vibration » dans Accessibilité…). */
-private val SET_WORDS = mapOf(
+internal val SET_WORDS = mapOf(
     "appearance" to "theme sombre clair oled couleur accent fond arriere-plan flou verre material you avatar",
     "home" to "accueil cartes ordre masquer afficher personnaliser",
     "reminders" to "rappel notification heure live updates rappels intelligents",
@@ -140,7 +140,7 @@ fun SearchScreen(ui: AppState, initial: String) {
             }
         }
         if (goals.isEmpty() && sets.isEmpty() && tools.isEmpty() && pages.isEmpty()) item("none") {
-            Glass { Empty("Aucun résultat pour « ${q.trim()} »", "Essaie un autre mot, ou dis une commande avec le micro.") { PButton("Parler", command, icon = "mic", small = true) } }
+            Glass { Empty("Aucun résultat pour « ${q.trim()} »", "Essaie un autre mot, ou dis une commande avec le micro.", icon = "search") { PButton("Parler", command, icon = "mic", small = true) } }
         }
     }
 }

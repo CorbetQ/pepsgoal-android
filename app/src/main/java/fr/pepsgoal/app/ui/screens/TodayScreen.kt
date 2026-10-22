@@ -235,7 +235,7 @@ fun WeatherCard(ui: AppState) {
     }
     LaunchedEffect(place.lat, place.lon) { Wx.ensure(ctx, ui, false) }
     val c = Wx.cached(ctx, place)
-    if (c == null) { Glass { CardHead("Météo · ${place.name}"); Muted(Wx.error ?: "Chargement de la météo…") }; return }
+    if (c == null) { Glass { CardHead("Météo · ${place.name}"); if (Wx.error != null) Muted(Wx.error!!) else { Skeleton(Modifier.fillMaxWidth(.4f), 34.dp); Spacer(Modifier.height(10.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { repeat(3) { Skeleton(Modifier.weight(1f), 64.dp, 16.dp) } } } }; return }
     val w = c.data; val cur = w.current; val info = Weather.wmo(cur.code, cur.isDay); val d0 = w.daily.firstOrNull()
     Glass {
         CardHead(place.name) { IconBtn("gear", "Réglages de la météo", { ui.push(Screen.Settings("weather")) }, plain = true, size = 36.dp) }
@@ -297,7 +297,7 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
             Muted("Balaie un objectif vers la droite pour le valider, vers la gauche pour reporter, mettre en favori ou lancer un Focus.", Modifier.weight(1f).padding(vertical = 8.dp), small = true)
             IconBtn("x", "Masquer l’astuce", { ui.prefs.swipeHint = true; ui.bump() }, plain = true, size = 36.dp)
         }
-        if (total == 0) Empty("Rien de prévu aujourd'hui", "Profite de ta journée, ou ajoute une routine.")
+        if (total == 0) Empty("Rien de prévu aujourd'hui", "Profite de ta journée, ou ajoute une routine.", icon = "sun")
         else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             sorted.forEach { d -> key(d.g.id) {
                 Column {

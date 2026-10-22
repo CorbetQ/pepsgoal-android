@@ -115,6 +115,8 @@ class ThemeInput(
 )
 
 private fun mix(a: Color, b: Color, k: Float) = lerp(a, b, k)
+/** Rapproche une couleur de son gris de même luminosité. */
+private fun desat(c: Color, k: Float): Color { val l = .299f * c.red + .587f * c.green + .114f * c.blue; return lerp(c, Color(l, l, l, c.alpha), k) }
 
 /** Fait tendre une couleur vers la teinte de la palette Material You (harmonisation des types d'objectifs). */
 private fun harmonize(c: Color, toward: Color, k: Float = .35f): Color {
@@ -140,9 +142,10 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         else -> (ACCENTS.getOrNull(input.accent) ?: ACCENTS[0]).c.map(::hex)
     }
     var bg = if (dark) hex("#07081A") else hex("#ECEEFF")
-    var ink = if (dark) hex("#F4F5FF") else hex("#0D0E2B"); var ink2 = if (dark) hex("#C9CCF2") else hex("#34375F"); var ink3 = if (dark) hex("#9C9FD0") else hex("#575A86")
-    var glass = if (dark) Color(24, 26, 66, (255 * .62).toInt()) else Color(255, 255, 255, (255 * .62).toInt())
-    var glassStrong = if (dark) Color(28, 30, 76, 230) else Color(255, 255, 255, 220)
+    var ink = if (dark) hex("#F4F5FF") else hex("#0D0E2B"); var ink2 = if (dark) hex("#D3D6F7") else hex("#34375F"); var ink3 = if (dark) hex("#AAADDB") else hex("#575A86")
+    // Sombre : cartes un peu plus claires que le fond, pour mieux s'en détacher
+    var glass = if (dark) Color(31, 34, 80, (255 * .62).toInt()) else Color(255, 255, 255, (255 * .62).toInt())
+    var glassStrong = if (dark) Color(34, 37, 86, 230) else Color(255, 255, 255, 220)
     if (dyn != null) {
         bg = dyn.background; ink = dyn.onBackground; ink2 = dyn.onSurfaceVariant; ink3 = mix(dyn.onSurfaceVariant, dyn.background, .25f)
         glass = dyn.surfaceContainerLow.copy(alpha = .78f); glassStrong = dyn.surfaceContainerHigh.copy(alpha = .92f)
@@ -161,6 +164,8 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         var c = hex(v.first); var tink = if (dark) hex(TYPE_DARK_INK[k]!!) else hex(v.second)
         if (cvd != null) { c = hex(cvd[i % cvd.size]); tink = if (dark) mix(c, Color.White, .3f) else mix(c, Color.Black, .35f) }
         else if (dyn != null) { c = harmonize(c, dyn.primary); tink = harmonize(tink, dyn.primary) }
+        // La nuit, couleurs des types légèrement désaturées : moins criardes sur fond sombre
+        else if (dark && !input.contrast) c = desat(c, .14f)
         k to TypeColor(c, tink)
     }.toMap()
 
@@ -185,12 +190,14 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     ).let { if (dyn != null) it.copy(primary = dyn.primary, onPrimary = dyn.onPrimary, primaryContainer = dyn.primaryContainer, secondary = dyn.secondary, tertiary = dyn.tertiary, surface = dyn.surface) else it }
 
     val t = Typography()
-    val body = TextStyle(fontFamily = Manrope)
+    // Chiffres à largeur fixe partout : compteurs et scores ne « dansent » plus quand ils changent
+    val body = TextStyle(fontFamily = Manrope, fontFeatureSettings = "tnum")
+    val head = TextStyle(fontFamily = Unbounded, fontFeatureSettings = "tnum", letterSpacing = (-.2).sp)
     val typo = Typography(
-        displayLarge = t.displayLarge.copy(fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold), displayMedium = t.displayMedium.copy(fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold),
-        displaySmall = t.displaySmall.copy(fontFamily = Unbounded, fontWeight = FontWeight.Bold), headlineLarge = t.headlineLarge.copy(fontFamily = Unbounded, fontWeight = FontWeight.Bold),
-        headlineMedium = t.headlineMedium.copy(fontFamily = Unbounded, fontWeight = FontWeight.Bold), headlineSmall = t.headlineSmall.copy(fontFamily = Unbounded, fontWeight = FontWeight.Bold),
-        titleLarge = t.titleLarge.copy(fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 19.sp), titleMedium = t.titleMedium.copy(fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp),
+        displayLarge = t.displayLarge.merge(head).copy(fontWeight = FontWeight.Bold), displayMedium = t.displayMedium.merge(head).copy(fontWeight = FontWeight.Bold),
+        displaySmall = t.displaySmall.merge(head).copy(fontWeight = FontWeight.Bold), headlineLarge = t.headlineLarge.merge(head).copy(fontWeight = FontWeight.Bold),
+        headlineMedium = t.headlineMedium.merge(head).copy(fontWeight = FontWeight.Bold), headlineSmall = t.headlineSmall.merge(head).copy(fontWeight = FontWeight.Bold),
+        titleLarge = t.titleLarge.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 18.sp), titleMedium = t.titleMedium.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.sp),
         titleSmall = t.titleSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold), bodyLarge = t.bodyLarge.merge(body), bodyMedium = t.bodyMedium.merge(body).copy(fontSize = 15.sp),
         bodySmall = t.bodySmall.merge(body).copy(fontSize = 13.sp), labelLarge = t.labelLarge.merge(body).copy(fontWeight = FontWeight.ExtraBold),
         labelMedium = t.labelMedium.merge(body).copy(fontWeight = FontWeight.Bold), labelSmall = t.labelSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold)
