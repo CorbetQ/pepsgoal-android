@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -227,7 +228,7 @@ private fun ThemeFx(kind: String) {
                     }
                     drawPath(path, c.copy(alpha = a))
                 }
-                else -> androidx.compose.ui.graphics.drawscope.rotate(rot, Offset(x, y)) {
+                else -> rotate(rot, Offset(x, y)) {
                     // Pétales et feuilles : ovales ; confettis : petits rectangles
                     if (kind == "confetti") drawRect(c.copy(alpha = a), Offset(x - r * .5f, y - r), androidx.compose.ui.geometry.Size(r, r * 2f))
                     else drawOval(c.copy(alpha = a), Offset(x - r, y - r * .6f), androidx.compose.ui.geometry.Size(r * 2f, r * 1.2f))

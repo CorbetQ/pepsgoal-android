@@ -102,7 +102,7 @@ fun ShopScreen(ui: AppState) {
                 }
             }
         }
-        else SHOP_THEMES.sortedBy { t -> when { t.season == null -> 1; seasonWindow(t.season) != null -> 0; else -> 2 } }.forEach { t ->
+        else SHOP_THEMES.sortedBy { t -> val ss = t.season; when { ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.forEach { t ->
             item("th:${t.key}") {
                 val owned = pg.owns("theme:${t.key}", t.price, u)
                 val on = u.settings.accentCustom == t.colors && u.settings.bg == t.bg
