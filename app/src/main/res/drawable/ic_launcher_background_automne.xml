@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Automne » : arrière-plan -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="108" android:endY="108">
+            <item android:offset="0" android:color="#FF5A2A12" />
+            <item android:offset="1" android:color="#FF1A0B06" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M10.00,50.00a44.00,44.00 0 1,0 88.00,0a44.00,44.00 0 1,0 -88.00,0Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="50" android:gradientRadius="44">
+            <item android:offset="0" android:color="#66FF8A1A" />
+            <item android:offset="1" android:color="#00FF8A1A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <group android:translateX="22" android:translateY="28" android:rotation="30">
+        <path android:pathData="M-3.20,0.00a3.20,1.60 0 1,0 6.40,0a3.20,1.60 0 1,0 -6.40,0Z" android:fillColor="#FFFFB000" />
+    </group>
+    <group android:translateX="86" android:translateY="40" android:rotation="-20">
+        <path android:pathData="M-3.20,0.00a3.20,1.60 0 1,0 6.40,0a3.20,1.60 0 1,0 -6.40,0Z" android:fillColor="#FFFF6A00" />
+    </group>
+    <group android:translateX="24" android:translateY="86" android:rotation="60">
+        <path android:pathData="M-3.20,0.00a3.20,1.60 0 1,0 6.40,0a3.20,1.60 0 1,0 -6.40,0Z" android:fillColor="#FFD7263D" />
+    </group>
+    <group android:translateX="84" android:translateY="84" android:rotation="-45">
+        <path android:pathData="M-3.20,0.00a3.20,1.60 0 1,0 6.40,0a3.20,1.60 0 1,0 -6.40,0Z" android:fillColor="#FFFFB000" />
+    </group>
+</vector>

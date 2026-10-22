@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Fusée » : arrière-plan -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="54" android:gradientRadius="80">
+            <item android:offset="0" android:color="#FF1E1A4A" />
+            <item android:offset="1" android:color="#FF05040F" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M23.30,30.00a0.70,0.70 0 1,0 1.40,0a0.70,0.70 0 1,0 -1.40,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M79.10,26.00a0.90,0.90 0 1,0 1.80,0a0.90,0.90 0 1,0 -1.80,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M87.40,60.00a0.60,0.60 0 1,0 1.20,0a0.60,0.60 0 1,0 -1.20,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M21.20,74.00a0.80,0.80 0 1,0 1.60,0a0.80,0.80 0 1,0 -1.60,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M69.30,86.00a0.70,0.70 0 1,0 1.40,0a0.70,0.70 0 1,0 -1.40,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M35.50,22.00a0.50,0.50 0 1,0 1.00,0a0.50,0.50 0 1,0 -1.00,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M89.50,84.00a0.50,0.50 0 1,0 1.00,0a0.50,0.50 0 1,0 -1.00,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M15.50,50.00a0.50,0.50 0 1,0 1.00,0a0.50,0.50 0 1,0 -1.00,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M59.40,14.00a0.60,0.60 0 1,0 1.20,0a0.60,0.60 0 1,0 -1.20,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M13.50,34.00a0.50,0.50 0 1,0 1.00,0a0.50,0.50 0 1,0 -1.00,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+    <path android:pathData="M93.40,70.00a0.60,0.60 0 1,0 1.20,0a0.60,0.60 0 1,0 -1.20,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.9" />
+</vector>

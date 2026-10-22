@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Cristal » : premier plan (sujet dans la zone sûre centrale de l'icône adaptative) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M20.00,56.00a34.00,34.00 0 1,0 68.00,0a34.00,34.00 0 1,0 -68.00,0Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="56" android:gradientRadius="34">
+            <item android:offset="0" android:color="#667FDBFF" />
+            <item android:offset="1" android:color="#007FDBFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M54.00,60.00L54.00,22.00L63.00,34.00Z" android:fillColor="#FFB9F3FF" />
+    <path android:pathData="M54.00,60.00L63.00,34.00L71.00,50.00Z" android:fillColor="#FF7FDBFF" />
+    <path android:pathData="M54.00,60.00L71.00,50.00L70.00,66.00Z" android:fillColor="#FF4FA8FF" />
+    <path android:pathData="M54.00,60.00L70.00,66.00L62.00,78.00Z" android:fillColor="#FF7B6BFF" />
+    <path android:pathData="M54.00,60.00L62.00,78.00L54.00,82.00Z" android:fillColor="#FFA98BFF" />
+    <path android:pathData="M54.00,60.00L54.00,82.00L46.00,78.00Z" android:fillColor="#FF6A5CFF" />
+    <path android:pathData="M54.00,60.00L46.00,78.00L38.00,66.00Z" android:fillColor="#FF8AD8FF" />
+    <path android:pathData="M54.00,60.00L38.00,66.00L37.00,50.00Z" android:fillColor="#FFC7B8FF" />
+    <path android:pathData="M54.00,60.00L37.00,50.00L44.00,40.00Z" android:fillColor="#FF5EC9FF" />
+    <path android:pathData="M54.00,60.00L44.00,40.00L47.00,47.00Z" android:fillColor="#FF9FE8FF" />
+    <path android:pathData="M54.00,60.00L47.00,47.00L54.00,22.00Z" android:fillColor="#FFE0F7FF" />
+    <path android:pathData="M54.00,22.00L63.00,34.00L71.00,50.00L70.00,66.00L62.00,78.00L54.00,82.00L46.00,78.00L38.00,66.00L37.00,50.00L44.00,40.00L47.00,47.00Z" android:strokeColor="#FFFFFFFF" android:strokeWidth="0.8" android:strokeLineJoin="round" android:strokeAlpha="0.7" />
+    <path android:pathData="M54,22L54,60M37,50L54,60M71,50L54,60M54,82L54,60" android:strokeColor="#FFFFFFFF" android:strokeWidth="0.5" android:strokeLineJoin="round" android:strokeAlpha="0.5" />
+    <path android:pathData="M66,34.6Q66.612,37.388 69.4,38Q66.612,38.612 66,41.4Q65.388,38.612 62.6,38Q65.388,37.388 66,34.6Z" android:fillColor="#FFFFFFFF" />
+    <path android:pathData="M30,31.6Q30.432,33.568 32.4,34Q30.432,34.432 30,36.4Q29.568,34.432 27.6,34Q29.568,33.568 30,31.6Z" android:fillColor="#FFD6F7FF" />
+    <path android:pathData="M80,75.8Q80.396,77.604 82.2,78Q80.396,78.396 80,80.2Q79.604,78.396 77.8,78Q79.604,77.604 80,75.8Z" android:fillColor="#FFD6F7FF" />
+</vector>

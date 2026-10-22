@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Pâques » : arrière-plan -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="108" android:endY="108">
+            <item android:offset="0" android:color="#FFB9A7FF" />
+            <item android:offset="1" android:color="#FF7FD6C2" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M20.80,28.00a1.20,1.20 0 1,0 2.40,0a1.20,1.20 0 1,0 -2.40,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M85.00,30.00a1.00,1.00 0 1,0 2.00,0a1.00,1.00 0 1,0 -2.00,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M18.90,80.00a1.10,1.10 0 1,0 2.20,0a1.10,1.10 0 1,0 -2.20,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M86.70,84.00a1.30,1.30 0 1,0 2.60,0a1.30,1.30 0 1,0 -2.60,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M29.20,50.00a0.80,0.80 0 1,0 1.60,0a0.80,0.80 0 1,0 -1.60,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+    <path android:pathData="M79.10,58.00a0.90,0.90 0 1,0 1.80,0a0.90,0.90 0 1,0 -1.80,0Z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.7" />
+</vector>
