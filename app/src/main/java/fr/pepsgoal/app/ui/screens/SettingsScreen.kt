@@ -305,7 +305,7 @@ private fun BackgroundSettings(ui: AppState, u: User) {
             mine.forEach { b ->
                 val on = s.bg == "s:${b.key}"
                 Column(Modifier.width(76.dp).clickable { ui.pg.applyBg(b); ui.themeTick++ }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(Modifier.size(76.dp, 56.dp).clip(RoundedCornerShape(14.dp)).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, RoundedCornerShape(14.dp))) { SceneBg(b.key, Modifier.fillMaxSize()) }
+                    Box(Modifier.size(76.dp, 56.dp).clip(RoundedCornerShape(14.dp)).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, RoundedCornerShape(14.dp))) { SceneBg(b.key, Modifier.fillMaxSize(), still = true) }
                     Text(b.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }

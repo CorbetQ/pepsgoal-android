@@ -133,7 +133,7 @@ fun ShopScreen(ui: AppState) {
                         val owned = pg.owns("bg:${b.key}", b.price, u); val on = u.settings.bg == "s:${b.key}"
                         Glass(Modifier.weight(1f), pad = 0.dp, border = if (on) p.flame else null, onClick = { purchase("bg:${b.key}", b.name, b.price, b.season) { pg.applyBg(b); ui.themeTick++; ui.toast("Fond « ${b.name} » appliqué.", "image") } }) {
                             Box(Modifier.fillMaxWidth().aspectRatio(.62f).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(Brush.verticalGradient(b.sky.map(::hex)))) {
-                                SceneBg(b.key, Modifier.fillMaxSize())
+                                SceneBg(b.key, Modifier.fillMaxSize(), still = true)
                             }
                             Column(Modifier.padding(12.dp)) {
                                 Text(b.name, fontWeight = FontWeight.ExtraBold, maxLines = 1)
