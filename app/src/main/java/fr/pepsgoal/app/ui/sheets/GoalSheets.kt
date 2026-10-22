@@ -504,7 +504,11 @@ fun GoalSheet(ui: AppState, id: String) {
         Emoji(g.icon, 46.dp, Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -25f })
         Column { Text(s.v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp, color = tc.ink); Text(s.l, fontWeight = FontWeight.Bold, color = p.ink2) }
     }
-    if (!g.archived) FlowRowCompat(gap = 8.dp) { GoalActions(ui, g, doneToday, running) }
+    if (!g.archived) FlowRowCompat(gap = 8.dp) {
+        GoalActions(ui, g, doneToday, running)
+        // « Je n'ai pas pu » : noter la raison d'un jour qui ne se fera pas
+        if (own && pg.todayPlan().due.any { it.g.id == g.id && !it.done }) PButton(g.missWhy()[today()]?.let { k -> MISS_REASONS.firstOrNull { it.first == k }?.second } ?: "Je n’ai pas pu", { ui.open(Sheet.Miss(g.id, today())) }, kind = "ghost")
+    }
     // Informations
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
         .border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(22.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -531,7 +535,10 @@ fun GoalSheet(ui: AppState, id: String) {
     GoalStatsBlock(ui, g)
     ProofsBlock(ui, g, own)
     if (own && !g.archived && !pg.isClosedGoal(g)) OptionsCard("Options") {
-        ChainRow(ui, g, divider = false)
+        RemindRow(ui, g, divider = false)
+        ChainRow(ui, g)
+        AutoPlaceRow(ui, g)
+        OutdoorRow(ui, g)
         SavingsRow(ui, g)
         DuoRow(ui, g)
         AgendaRow(ui, g)
@@ -569,7 +576,7 @@ private fun GoalActions(ui: AppState, g: Goal, doneToday: Boolean, running: Bool
         "objective" -> if (g.completedAt == null) PButton("Ajouter un progrès", { doValidate(ui, id) }, icon = "plus", kind = "primary")
         "deadline" -> if (g.completedAt != null) PButton("Rouvrir", { pg.reopen(id) }) else PButton("Marquer comme terminé", { doValidate(ui, id) }, icon = "check", kind = "primary")
         "limit" -> { PButton("Noter 1 ${g.unit}", { pg.limitAdd(id) }, icon = "plus"); PButton("Retirer 1", { pg.limitSub(id) }, kind = "ghost"); vbtn("Valider ma journée") }
-        "duration" -> { PButton(if (running) "Mettre en pause" else "Démarrer le minuteur", { pg.toggleTimer(g) }, icon = if (running) "pause" else "play", kind = "primary"); PButton("Ajouter des minutes", { ui.open(Sheet.Progress(id)) }, icon = "plus") }
+        "duration" -> { PButton(if (running) "Mettre en pause" else "Démarrer le minuteur", { pg.toggleTimer(g) }, icon = if (running) "pause" else "play", kind = "primary"); PButton("Ajouter des minutes", { ui.open(Sheet.Progress(id)) }, icon = "plus"); PButton("Intervalles", { ui.close(); ui.fs = fr.pepsgoal.app.Fs.Intervals(id) }, icon = "timer") }
         "measure" -> PButton("Nouvelle mesure", { doValidate(ui, id) }, icon = "plus", kind = "primary")
         "cap" -> PButton("Ajouter", { ui.open(Sheet.Progress(id)) }, icon = "plus", kind = "primary")
         "timed" -> { val k = pg.timedDate(g); if (g.days.contains(wdIdx(parseYmd(k)))) PButton(if (pg.hasCheck(id, k)) "Annuler la validation" else if (g.mode == "notafter") "J'ai tenu hier soir" else "Valider aujourd'hui", { doValidate(ui, id) }, icon = "check", kind = if (pg.hasCheck(id, k)) "normal" else "primary") }

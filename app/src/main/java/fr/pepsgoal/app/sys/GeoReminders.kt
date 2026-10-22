@@ -15,6 +15,10 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import fr.pepsgoal.app.peps
+import fr.pepsgoal.core.autoPlace
+import fr.pepsgoal.core.autoMin
+import fr.pepsgoal.core.steps
+import fr.pepsgoal.core.stepDate
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -56,12 +60,21 @@ object GeoReminders {
     /** (Ré)inscrit toutes les zones auprès d'Android : au démarrage, après un redémarrage et à chaque modification. */
     @SuppressLint("MissingPermission")
     fun register(ctx: Context) {
-        val list = all(ctx).filter { ctx.peps.pg.goalById(it.goalId) != null }
-        if (list.isEmpty() || !hasFine(ctx) || !hasBackground(ctx)) return
-        val fences = list.take(90).map {
+        val pg = ctx.peps.pg
+        val list = all(ctx).filter { pg.goalById(it.goalId) != null }
+        // Validation automatique : rester un moment à un emplacement enregistré (géorepérage « séjour »)
+        val places = pg.me()?.places.orEmpty()
+        val autos = pg.myGoals().filter { it.userId == pg.meId() && !pg.isClosedGoal(it) && it.autoPlace != null }.mapNotNull { g -> places.firstOrNull { it.id == g.autoPlace }?.let { g to it } }
+        try { LocationServices.getGeofencingClient(ctx).removeGeofences(pending(ctx)) } catch (e: Exception) {}
+        if ((list.isEmpty() && autos.isEmpty()) || !hasFine(ctx) || !hasBackground(ctx)) return
+        val fences = list.take(60).map {
             Geofence.Builder().setRequestId("geo:${it.goalId}").setCircularRegion(it.lat, it.lon, it.radius.toFloat())
                 .setExpirationDuration(Geofence.NEVER_EXPIRE).setTransitionTypes(if (it.exit) Geofence.GEOFENCE_TRANSITION_EXIT else Geofence.GEOFENCE_TRANSITION_ENTER)
                 .setLoiteringDelay(60_000).build()
+        } + autos.take(30).map { (g, pl) ->
+            Geofence.Builder().setRequestId("auto:${g.id}").setCircularRegion(pl.lat, pl.lon, pl.radius.toFloat())
+                .setExpirationDuration(Geofence.NEVER_EXPIRE).setTransitionTypes(Geofence.GEOFENCE_TRANSITION_DWELL)
+                .setLoiteringDelay(g.autoMin * 60_000).build()
         }
         val req = GeofencingRequest.Builder().setInitialTrigger(0).addGeofences(fences).build()
         try { LocationServices.getGeofencingClient(ctx).addGeofences(req, pending(ctx)) } catch (e: Exception) {}
@@ -76,6 +89,20 @@ class GeoReceiver : BroadcastReceiver() {
         val app = ctx.peps; val pg = app.pg; if (pg.me() == null || pg.isRest()) return
         val due = pg.todayPlan().due.associate { it.g.id to it.done }
         for (f in ev.triggeringGeofences ?: emptyList()) {
+            // Séjour à un emplacement : validation automatique (une fois par jour), annulable depuis la notification
+            if (f.requestId.startsWith("auto:")) {
+                val gid = f.requestId.removePrefix("auto:"); val g = pg.goalById(gid) ?: continue
+                if (due[gid] != false || g.steps.isNotEmpty()) continue
+                val key = "auto|${fr.pepsgoal.core.today()}|$gid"; if (key in app.prefs.notifiedIds) continue
+                app.prefs.notifiedIds = app.prefs.notifiedIds + key
+                pg.validate(gid)
+                if (pg.hasCheck(gid, pg.stepDate(g))) {
+                    val pl = pg.me()?.places?.firstOrNull { it.id == g.autoPlace }
+                    Notifier.autoValidated(ctx, gid, "${g.icon} ${g.title} : validé ✓", "Tu es resté ${g.autoMin} min ${pl?.let { "à ${it.name}" } ?: "sur place"} : c’est noté. Pas pour ça ? Touche « Annuler ».")
+                    LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
+                }
+                continue
+            }
             val id = f.requestId.removePrefix("geo:"); val g = pg.goalById(id) ?: continue
             val pl = GeoReminders.of(ctx, id) ?: continue
             if (due[id] == true || (due[id] == null && g.type !in setOf("measure", "objective", "monthly", "project", "program", "group", "duel"))) continue

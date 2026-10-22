@@ -83,6 +83,7 @@ fun GoalsScreen(ui: AppState) {
         item("tools") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(query, { query = it }, "", Modifier.weight(1f), placeholder = "Rechercher un objectif", max = 60, icon = "search")
+                IconBtn("cal", "Ma semaine", { ui.push(fr.pepsgoal.app.Screen.Week) }, size = 46.dp)
                 IconBtn(if (compact) "list" else "grip", if (compact) "Afficher en cartes" else "Afficher en liste", { compact = !compact; ui.prefs.goalView = if (compact) "list" else "cards" }, size = 46.dp)
             }
         }

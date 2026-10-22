@@ -89,6 +89,9 @@ class Settings(
 class SavedPlace(val id: String, var name: String, var icon: String = "📍", var lat: Double, var lon: Double, var radius: Int = 150)
 
 @Serializable
+class Reward(val id: String, var title: String, var emoji: String = "🎁", var goalId: String? = null, var target: Int = 30, val createdAt: Long = 0, var reachedAt: Long? = null, var claimedAt: Long? = null)
+
+@Serializable
 class GoalGroup(val id: String, var name: String, var icon: String = "📁")
 
 @Serializable
@@ -124,6 +127,8 @@ class User(
     var flameSkin: String = "classic",
     /** Emplacements enregistrés (maison, travail…), pour les rappels par lieu. */
     var places: MutableList<SavedPlace> = mutableListOf(),
+    /** Récompenses personnelles (« un resto à 30 jours de série »). */
+    var rewards: MutableList<Reward> = mutableListOf(),
     /** Encouragements reçus qui comptent pour les gels (nombre fourni par le serveur). */
     var cheersIn: Int = 0,
     var tutorialDone: Boolean = false,

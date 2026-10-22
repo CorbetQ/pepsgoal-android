@@ -125,7 +125,8 @@ fun Pg.duoStreak(g: Goal, peerDays: Set<String>): Int = dayStreak(g, { hasCheck(
 /** Jours où un objectif ne compte pas : repos, vacances, et journées difficiles s'il n'est pas essentiel. */
 fun Pg.goalRest(g: Goal): Set<String> {
     val u = userById(g.userId) ?: return emptySet()
-    val base = restSet(g.userId)
+    // Jours décalés pour cet objectif seul (météo), puis repos, vacances et journées difficiles
+    val base = restSet(g.userId) + g.strs("skipDays")
     return if (u.hardDays.isEmpty() || g.id in u.essentials) base else base + u.hardDays
 }
 const val HARD_PER_MONTH = 4

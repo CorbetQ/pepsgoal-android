@@ -204,4 +204,21 @@ class LogicTest {
         assertEquals(100.0, sv.units); assertEquals(50.0, sv.money)
         assertEquals(3, pg.goalStats(b).longest)
     }
+
+    @Test fun weatherMissRewardsSuggestions() {
+        val run = goal("routine") { title = "Course du matin"; mode = "days"; days = (0..6).toList() }
+        for (i in 1..3) pg.addCheck(run, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        assertTrue(run.outdoor)
+        val fc = Forecast(daily = listOf(WxDay(today(), code = 63, pop = 90.0, max = 14.0)))
+        assertEquals(listOf(run.id), pg.weatherAdaptable(fc).map { it.id })
+        assertEquals(null, pg.skipToday(run)); assertTrue(pg.skipToday(run) != null)
+        at(2026, 10, 22)
+        assertEquals(3, pg.goalStreak(run))
+        pg.setMissReason(run, "2026-10-21", "fatigue")
+        assertEquals("fatigue" to 1, pg.missStats().first())
+        pg.me()!!.rewards.add(Reward("r", "Resto", goalId = run.id, target = 3))
+        assertEquals(1, pg.checkRewards().size); assertEquals(0, pg.checkRewards().size)
+        val lazy = goal("routine", ago = 40) { mode = "days"; days = listOf(0, 2, 4) }
+        assertTrue(pg.weeklySuggestions().any { it.goal.id == lazy.id && it.lighten })
+    }
 }

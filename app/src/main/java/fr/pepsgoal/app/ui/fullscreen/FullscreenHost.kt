@@ -79,6 +79,7 @@ fun FullscreenHost(ui: AppState) {
             is Fs.Stories -> StoriesFs(ui, f)
             is Fs.Tuto -> TutorialFs(ui, f.start)
             is Fs.Focus -> FocusFs(ui, f.goalId)
+            is Fs.Intervals -> IntervalsFs(ui, f.goalId)
         }
     }
 }

@@ -57,7 +57,7 @@ fun TodayScreen(ui: AppState) {
         }
         // Cartes dans l'ordre choisi (Paramètres › Accueil)
         for (k in cards) when (k) {
-            "hero" -> item("hero") { Hero(ui) }
+            "hero" -> { item("hero") { Hero(ui) }; item("ctx") { ContextCards(ui) } }
             "aipromo" -> item("aipromo") { AiPromoCard(ui) }
             "day" -> item("day") {
                 Glass {
@@ -344,5 +344,61 @@ private fun QuickTools(ui: AppState) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Cartes du moment, sous l'en-tête : météo qui contrarie un objectif d'extérieur, plan du dimanche du coach,
+ * récompense atteinte. Chacune n'apparaît que lorsqu'elle sert.
+ */
+@Composable
+private fun ContextCards(ui: AppState) {
+    val ctx = LocalContext.current; val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        // 1. Météo
+        val fc = u.settings.weather?.let { Wx.cached(ctx, it)?.data }
+        val issue = weatherIssue(fc)
+        val adapt = remember(ui.rev, fc) { pg.weatherAdaptable(fc) }.filter { ui.prefs.raw.getString("wxKeep:${it.id}", "") != today() }
+        if (issue != null && adapt.isNotEmpty()) Glass {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Emoji(Weather.wmo(fc?.daily?.firstOrNull()?.code).emoji, 34.dp)
+                Column(Modifier.weight(1f)) { Text(issue, fontWeight = FontWeight.ExtraBold); Muted("Adapter tes objectifs d’extérieur ?", small = true) }
+            }
+            adapt.take(3).forEach { g ->
+                Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GoalIcon(g, 32.dp); Text(g.title, Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1)
+                    PButton("Demain", { pg.skipToday(g)?.let { ui.toast(it, "x") } ?: ui.toast("« ${g.title} » décalé : ta série est préservée.", "cloud") }, small = true)
+                    PButton("Je le fais", { ui.prefs.raw.edit().putString("wxKeep:${g.id}", today()).apply(); ui.bump() }, small = true, kind = "ghost")
+                }
+            }
+        }
+        // 2. Plan du dimanche (et du lundi) : ajustements proposés par le coach
+        val wk = weekKey()
+        if (wdIdx(todayDate()) in setOf(0, 6) && ui.prefs.raw.getString("planDone", "") != (if (wdIdx(todayDate()) == 6) ymd(weekStart(todayDate()).plusDays(7)) else wk)) {
+            val sug = remember(ui.rev) { pg.weeklySuggestions() }
+            var intro by remember { mutableStateOf<String?>(null) }
+            LaunchedEffect(sug.size) {
+                if (sug.isEmpty()) return@LaunchedEffect
+                if (fr.pepsgoal.app.ai.LocalAi.on(ctx)) intro = fr.pepsgoal.app.ai.LocalAi.generate(ctx, "Tu es le coach bienveillant de PepsGoal. En une phrase courte et motivante, en français et en tutoyant, présente ces ajustements de la semaine à venir : " + sug.joinToString(" ; ") { it.text }, 60)?.trim()?.trim('"')
+            }
+            val key = if (wdIdx(todayDate()) == 6) ymd(weekStart(todayDate()).plusDays(7)) else wk
+            if (sug.isNotEmpty()) Glass(ai = true) {
+                CardHead("Le plan de la semaine") { IconBtn("x", "Masquer", { ui.prefs.raw.edit().putString("planDone", key).apply(); ui.bump() }, plain = true, size = 34.dp) }
+                Muted(intro ?: "D’après tes 4 dernières semaines, quelques ajustements pour que tes objectifs restent à ta portée.", small = true)
+                sug.forEach { s ->
+                    var applied by remember(s.goal.id) { mutableStateOf(false) }
+                    Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(if (s.lighten) "🪶" else "🚀", fontSize = 20.sp)
+                        Text(s.text, Modifier.weight(1f), fontSize = 14.sp)
+                        if (applied) Text("✓", color = p.ok, fontWeight = FontWeight.ExtraBold)
+                        else PButton("Oui", { s.apply(); applied = true; ui.toast("Objectif ajusté.", "check") }, small = true, kind = "primary")
+                    }
+                }
+            }
+        }
+        // 3. Récompenses atteintes à célébrer
+        LaunchedEffect(ui.rev) { pg.checkRewards().forEach { r -> Feedback.success(); ui.toast("Récompense débloquée : ${r.emoji} ${r.title} ! Tu l’as bien méritée.", "star") } }
+        val ready = u.rewards.filter { it.claimedAt == null && pg.rewardProgress(it) >= it.target }
+        if (ready.isNotEmpty()) fr.pepsgoal.app.ui.sheets.RewardsCard(ui, compact = true)
     }
 }

@@ -57,7 +57,12 @@ fun EveningSheet(ui: AppState) {
     // 1. Ce qu'il reste
     SectionTitle(if (left.isEmpty()) "Journée bouclée" else "Il te reste ${pl(left.size, "objectif", "objectifs")}")
     if (left.isEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Flame(30.dp); Text(if (plan.due.isEmpty()) "Rien n’était prévu aujourd’hui." else "Tout est validé, bravo !", fontWeight = FontWeight.Bold) }
-    left.forEach { MiniGoal(ui, it.g, false) }
+    left.forEach { x -> MiniGoal(ui, x.g, false) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            PButton(if (x.g.missWhy()[t] != null) "Noté" else "Pas pu", { ui.open(Sheet.Miss(x.g.id, t)) }, small = true, kind = "ghost")
+            CheckButton(false, false, "Valider : ${x.g.title}", p.type(x.g.type).c) { doValidate(ui, x.g.id) }
+        }
+    } }
     // 2. Humeur, étiquettes et note
     SectionTitle("Ta journée")
     MoodPicker(e?.mood ?: 0) { m -> Journal.put(ctx, t, m, note) }

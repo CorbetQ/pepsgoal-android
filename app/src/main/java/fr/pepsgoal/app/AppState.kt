@@ -57,6 +57,10 @@ sealed class Sheet {
     object Evening : Sheet()
     /** Journée difficile : essentiels et activation. */
     object Hard : Sheet()
+    /** « Je n'ai pas pu » : raison d'un jour manqué. */
+    class Miss(val id: String, val date: String) : Sheet()
+    /** Nouvelle récompense personnelle (ou modification). */
+    class Reward(val id: String? = null) : Sheet()
 }
 
 /** Plein écran : célébrations, récaps, stories. */
@@ -68,6 +72,8 @@ sealed class Fs {
     class Tuto(val start: Int = 0) : Fs()
     /** Mode Focus (session de concentration). */
     class Focus(val goalId: String? = null) : Fs()
+    /** Minuteur d'intervalles (effort / repos) d'un objectif de durée. */
+    class Intervals(val goalId: String) : Fs()
 }
 
 /** Écrans plein écran empilés au-dessus des onglets. */
@@ -90,6 +96,10 @@ sealed class Screen {
     object Challenges : Screen()
     /** Recherche globale : objectifs, amis, messages, réglages, journal. */
     class Search(val q: String = "") : Screen()
+    /** Planning de la semaine. */
+    object Week : Screen()
+    /** Ligue de la semaine entre amis. */
+    object League : Screen()
 }
 
 /** Message éphémère en bas de l'écran, avec une action facultative (« Annuler »). */

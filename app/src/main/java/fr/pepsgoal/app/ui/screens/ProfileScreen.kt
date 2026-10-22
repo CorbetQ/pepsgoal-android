@@ -82,6 +82,7 @@ fun ProfileScreen(ui: AppState) {
         item("recap") { RecapCard(ui) }
         item("gel") { GelCard(ui, u, false) }
         item("stories") { StoryArchiveCard(ui, u) }
+        item("rewards") { fr.pepsgoal.app.ui.sheets.RewardsCard(ui) }
         item("flames") { FlameSkinsCard(ui, u) }
         item("badges") { BadgesCard(ui, u) }
     }
