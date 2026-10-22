@@ -265,4 +265,15 @@ class LogicTest {
         assertTrue(seasonWindow("easter", d(4, 1)) != null); assertTrue(seasonWindow("autumn", d(10, 22)) != null)
         assertEquals(d(12, 1), seasonNext("noel", d(10, 22)))
     }
+
+    @Test fun badgesGiveFlames() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        pg.checkBadges() // première fois : état de référence, sans récompense
+        val w0 = pg.wallet()
+        pg.validate(g.id); pg.checkBadges()
+        val u = pg.me()!!
+        assertTrue(u.shopBonus >= 25)
+        assertEquals(w0 + u.shopBonus + pg.db.checkins.filter { it.goalId == g.id }.sumOf { it.pts }, pg.wallet())
+        assertTrue(BADGE_FAMILIES.size >= 28)
+    }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,7 +53,10 @@ fun SheetHost(ui: AppState) {
         dragHandle = { Box(Modifier.padding(top = 10.dp, bottom = 2.dp).size(42.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink3.copy(alpha = .45f))) }) {
         key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true, LocalFootSlot provides slot) {
             val foot = slot.content
-            Column(Modifier.fillMaxWidth().imePadding()) {
+            // Contenu d'une fenêtre (ou de l'étape suivante dans la même fenêtre) : fondu et léger glissement vers le haut
+            val shown = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else 0f) }
+            LaunchedEffect(Unit) { if (shown.value < 1f) shown.animateTo(1f, androidx.compose.animation.core.tween(260, easing = Motion.Emphasized)) }
+            Column(Modifier.fillMaxWidth().imePadding().graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 14.dp.toPx() }) {
                 Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()).then(if (foot == null) Modifier.navigationBarsPadding() else Modifier)
                     .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = if (foot == null) 24.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SheetBody(ui, s)

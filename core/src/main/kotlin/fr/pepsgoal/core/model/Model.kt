@@ -130,6 +130,8 @@ class User(
     /** Boutique : articles achetés (icônes, thèmes) et flammes dépensées (le niveau, lui, compte toutes les flammes gagnées). */
     var shopOwned: MutableList<String> = mutableListOf(),
     var shopSpent: Int = 0,
+    /** Flammes offertes (badges) : elles s'ajoutent au porte-monnaie sans compter dans le niveau. */
+    var shopBonus: Int = 0,
     /** Emplacements enregistrés (maison, travail…), pour les rappels par lieu. */
     var places: MutableList<SavedPlace> = mutableListOf(),
     /** Récompenses personnelles (« un resto à 30 jours de série »). */

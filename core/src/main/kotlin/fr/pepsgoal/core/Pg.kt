@@ -36,7 +36,8 @@ interface CloudBridge {
 
 sealed class Celebration {
     class Perfect(val eyebrow: String, val title: String, val text: String, val icons: List<String>, val stats: List<Triple<Int, String, String>>, val share: String, val shareLabel: String = "ma réussite") : Celebration()
-    class Badge(val family: BadgeFamily, val tier: Int, val more: Int) : Celebration()
+    /** [flames] : flammes offertes avec le badge (à dépenser dans la boutique). */
+    class Badge(val family: BadgeFamily, val tier: Int, val more: Int, val flames: Int = 0) : Celebration()
 }
 
 class Stat(val v: String, val l: String)
@@ -1002,13 +1003,19 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         }
         if (u.badges == null) { u.badges = keys.toMutableList(); u.badgeFams = fams.toMutableList(); store.commit(); return }
         val fresh = keys.filter { it !in u.badges!! }; if (fresh.isEmpty()) return
-        u.badges = (u.badges!! + fresh).distinct().toMutableList(); store.commit()
+        u.badges = (u.badges!! + fresh).distinct().toMutableList()
         val items = fresh.map { k -> val (fk, ti) = k.split(":"); st.first { it.f.k == fk } to ti.toInt() }
-        items.forEach { (b, tier) -> notify(u.id, "Badge débloqué : ${b.f.n} ${BADGE_TIERS[tier].first} (${b.f.d(b.f.t[tier])}).", "badge", view = "profile") }
+        // Chaque palier débloqué rapporte des flammes à dépenser dans la boutique (le niveau n'en dépend pas)
+        val reward = items.sumOf { BADGE_REWARDS.getOrElse(it.second) { 400 } }
+        u.shopBonus += reward; store.commit()
+        items.forEach { (b, tier) -> notify(u.id, "Badge débloqué : ${b.f.n} ${BADGE_TIERS[tier].first} (${b.f.d(b.f.t[tier])}) · +${BADGE_REWARDS.getOrElse(tier) { 400 }} flammes.", "badge", view = "profile") }
         val best = LinkedHashMap<String, Pair<BadgeState, Int>>()
         items.forEach { if ((best[it.first.f.k]?.second ?: -1) < it.second) best[it.first.f.k] = it }
         val sorted = best.values.sortedByDescending { it.second }
-        sorted.forEachIndexed { i, (b, tier) -> hooks.celebrate(Celebration.Badge(b.f, tier, sorted.size - 1 - i)) }
+        sorted.forEachIndexed { i, (b, tier) ->
+            val fl = items.filter { it.first.f.k == b.f.k }.sumOf { BADGE_REWARDS.getOrElse(it.second) { 400 } }
+            hooks.celebrate(Celebration.Badge(b.f, tier, sorted.size - 1 - i, fl))
+        }
     }
 
     /* ---------------------------------------------------------------- favoris et groupes d'objectifs */

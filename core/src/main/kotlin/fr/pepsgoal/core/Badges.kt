@@ -1,5 +1,7 @@
 package fr.pepsgoal.core
 
+import fr.pepsgoal.core.model.*
+
 /** Badges à paliers (Bronze → Diamant), calculés sur l'appareil à partir des données synchronisées. */
 val BADGE_TIERS = listOf("Bronze" to "#D08A4F", "Argent" to "#B9C3D6", "Or" to "#FFC83D", "Platine" to "#7FE3D9", "Diamant" to "#B48CFF")
 
@@ -24,8 +26,21 @@ val BADGE_FAMILIES = listOf(
     BadgeFamily("period", "Ponctuel", "🕰️", { n -> pl(n, "période tenue", "périodes tenues") }, listOf(3, 15, 50, 150)) { it["period"]!! },
     BadgeFamily("builder", "Bâtisseur", "🧱", { n -> pl(n, "étape de projet franchie", "étapes de projet franchies") }, listOf(5, 25, 100, 300)) { it["builder"]!! },
     BadgeFamily("stories", "Conteur", "📸", { n -> pl(n, "story publiée", "stories publiées") }, listOf(1, 10, 30, 100)) { it["stories"]!! },
-    BadgeFamily("writer", "Plume", "✍️", { n -> "${pl(n, "publication", "publications")} dans le feed" }, listOf(1, 10, 50, 150)) { it["writer"]!! }
+    BadgeFamily("writer", "Plume", "✍️", { n -> "${pl(n, "publication", "publications")} dans le feed" }, listOf(1, 10, 50, 150)) { it["writer"]!! },
+    // Nouveaux badges (4.5)
+    BadgeFamily("loyal", "Fidèle", "💎", { n -> "Une série de ${pl(n, "jour", "jours")} sur un même objectif" }, listOf(7, 30, 100, 365)) { it["loyal"]!! },
+    BadgeFamily("mini", "Petits pas", "🌱", { n -> pl(n, "version mini validée", "versions mini validées") }, listOf(1, 10, 30, 100)) { it["mini"]!! },
+    BadgeFamily("trial", "Défi relevé", "🏅", { n -> pl(n, "défi de N jours réussi", "défis de N jours réussis") }, listOf(1, 3, 10)) { it["trial"]!! },
+    BadgeFamily("chain", "Enchaîneur", "🔗", { n -> "${pl(n, "validation", "validations")} d’habitudes enchaînées" }, listOf(10, 50, 200, 500)) { it["chain"]!! },
+    BadgeFamily("ambition", "Ambitieux", "🎯", { n -> pl(n, "objectif créé", "objectifs créés") }, listOf(5, 15, 30, 60)) { it["ambition"]!! },
+    BadgeFamily("supporter", "Supporter", "📣", { n -> pl(n, "réaction donnée", "réactions données") }, listOf(10, 50, 200, 500)) { it["supporter"]!! },
+    BadgeFamily("chatty", "Bavard", "💬", { n -> pl(n, "commentaire écrit", "commentaires écrits") }, listOf(5, 25, 100, 300)) { it["chatty"]!! },
+    BadgeFamily("collector", "Collectionneur", "🛍️", { n -> pl(n, "article de la boutique", "articles de la boutique") }, listOf(1, 5, 15, 30)) { it["collector"]!! },
+    BadgeFamily("dawn", "Aurore", "🌄", { n -> "${pl(n, "validation", "validations")} avant 6 h" }, listOf(5, 25, 100)) { it["dawn"]!! },
 )
+
+/** Flammes offertes à chaque palier débloqué (Bronze → Diamant), à dépenser dans la boutique. */
+val BADGE_REWARDS = listOf(25, 50, 100, 200, 400)
 val BADGE_FAMS_V20 = listOf("streak", "checks", "days", "perfect", "finish", "ontime", "team", "friends", "cheers", "shield", "variety", "level")
 
 class BadgeState(val f: BadgeFamily, val v: Int, val tier: Int, val next: Int?, val pct: Double)
@@ -47,7 +62,16 @@ object Badges {
             "early" to cs.count { hour(it) < 8 }, "night" to cs.count { hour(it) >= 22 },
             "weekend" to cs.count { wdIdx(parseYmd(it.date)) >= 5 }, "period" to cs.count { it.goalId in periodIds },
             "builder" to cs.count { it.taskId != null }, "stories" to db.stories.count { it.userId == id },
-            "writer" to db.posts.count { it.userId == id && it.kind != "milestone" }
+            "writer" to db.posts.count { it.userId == id && it.kind != "milestone" },
+            "loyal" to (gs.filter { !it.archived }.maxOfOrNull { pg.goalStreak(it) } ?: 0),
+            "mini" to cs.count { it.kind == "done" && it.value < 1.0 },
+            "trial" to gs.count { it.bool("trialDone") && (pg.trialState(it)?.success == true) },
+            "chain" to cs.count { c -> gs.firstOrNull { it.id == c.goalId }?.after != null },
+            "ambition" to gs.size,
+            "supporter" to db.posts.count { it.userId != id && it.likes.contains(id) },
+            "chatty" to db.posts.sumOf { p -> p.comments.count { it.userId == id } },
+            "collector" to (u?.shopOwned?.size ?: 0),
+            "dawn" to cs.count { hour(it) < 6 }
         )
     }
 

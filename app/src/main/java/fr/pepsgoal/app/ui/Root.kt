@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -29,6 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceAtLeast
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -135,11 +138,16 @@ fun PepsRoot(ui: AppState) {
                 val depth = ui.screens.size; val prevDepth = remember { intArrayOf(depth) }
                 val forward = depth >= prevDepth[0]; SideEffect { prevDepth[0] = depth }
                 AnimatedContent(top, transitionSpec = {
-                    val sp = spring<IntOffset>(dampingRatio = .86f, stiffness = 380f)
+                    // Page qui avance : arrive de la droite en grandissant légèrement, la précédente recule et s'estompe ;
+                    // au retour, le mouvement inverse. Ressorts sans rebond pour un glissement net.
+                    val sp = spring<IntOffset>(dampingRatio = .9f, stiffness = 420f)
+                    val sc = spring<Float>(dampingRatio = .9f, stiffness = 420f)
                     when {
-                        p.motion -> EnterTransition.None togetherWith ExitTransition.None
-                        forward -> (slideInHorizontally(sp) { it / 3 } + fadeIn(tween(200))) togetherWith (slideOutHorizontally(tween(240)) { -it / 8 } + fadeOut(tween(180)))
-                        else -> (slideInHorizontally(sp) { -it / 8 } + fadeIn(tween(200))) togetherWith (slideOutHorizontally(tween(240)) { it / 3 } + fadeOut(tween(200)))
+                        p.motion -> fadeIn(tween(120)) togetherWith fadeOut(tween(90))
+                        forward -> (slideInHorizontally(sp) { it / 4 } + fadeIn(Motion.fadeIn(220)) + scaleIn(sc, initialScale = .97f)) togetherWith
+                            (slideOutHorizontally(tween(260, easing = Motion.Emphasized)) { -it / 10 } + fadeOut(Motion.fadeOut(180)) + scaleOut(tween(260, easing = Motion.Emphasized), targetScale = .96f))
+                        else -> (slideInHorizontally(sp) { -it / 10 } + fadeIn(Motion.fadeIn(200)) + scaleIn(sc, initialScale = .96f)) togetherWith
+                            (slideOutHorizontally(tween(240, easing = Motion.Emphasized)) { it / 4 } + fadeOut(Motion.fadeOut(180)) + scaleOut(tween(240, easing = Motion.Emphasized), targetScale = .98f))
                     }
                 }, label = "screen") { sc ->
                     when (sc) {
@@ -246,7 +254,7 @@ private fun Shell(ui: AppState) {
             Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier), contentAlignment = Alignment.TopCenter) {
                 Box(Modifier.fillMaxHeight().then(if (wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth())) {
                 remember(ui.tab) { Stagger.reset() }
-                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(140)) + scaleIn(spring(dampingRatio = .68f, stiffness = 420f), initialScale = .93f) + slideInVertically(spring(dampingRatio = .72f, stiffness = 420f)) { it / 18 }) togetherWith (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 1.02f)) }, label = "tab") { tab ->
+                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .86f, stiffness = 460f), initialScale = .965f) + slideInVertically(spring(dampingRatio = .88f, stiffness = 460f)) { it / 28 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.015f)) }, label = "tab") { tab ->
                     // Tirer pour actualiser sur l'accueil, le feed et les amis
                     if (tab in setOf("today", "feed", "friends")) PullRefresh(ui, with(d) { topH.toDp() }) {
                         when (tab) { "feed" -> FeedScreen(ui); "friends" -> FriendsScreen(ui); else -> TodayScreen(ui) }
@@ -326,15 +334,21 @@ private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>,
         .glassBg(shape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, shape).padding(6.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val w = maxWidth / items.size
-            val x by animateDpAsState(w * idx, if (p.motion) snap() else spring(dampingRatio = .58f, stiffness = 480f), label = "nav")
-            Box(Modifier.offset(x = x).width(w).height(56.dp).shadow(if (p.transp) 0.dp else 6.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
+            // Pastille de l'onglet actif : le bord avant part le premier et le bord arrière suit, d'où un léger
+            // étirement pendant le glissement (effet « goutte »), puis elle reprend sa largeur
+            val prev = remember { intArrayOf(idx) }
+            val right = idx >= prev[0]; SideEffect { prev[0] = idx }
+            val lead = spring<Dp>(dampingRatio = .72f, stiffness = 620f); val lag = spring<Dp>(dampingRatio = .8f, stiffness = 260f)
+            val l by animateDpAsState(w * idx, if (p.motion) snap() else if (right) lag else lead, label = "navL")
+            val r by animateDpAsState(w * (idx + 1), if (p.motion) snap() else if (right) lead else lag, label = "navR")
+            Box(Modifier.offset(x = l).width((r - l).coerceAtLeast(w * .6f)).height(56.dp).shadow(if (p.transp) 0.dp else 6.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
             Row(Modifier.fillMaxWidth()) {
                 items.forEachIndexed { i, (k, l0, ic) ->
                     // Lecture facile : libellés en mots courants
                     val l = if (p.easy) EASY_NAV[k] ?: l0 else l0
                     val sel = i == idx
                     val col by animateColorAsState(if (sel) p.bg else p.ink2, tween(if (p.motion) 0 else 200), label = "navc")
-                    val pop by animateFloatAsState(if (sel && !p.motion) 1.14f else 1f, spring(dampingRatio = .35f, stiffness = 520f), label = "navi")
+                    val pop by animateFloatAsState(if (sel && !p.motion) 1.12f else 1f, Motion.emphasis(), label = "navi")
                     val n = badges[k] ?: 0
                     val inter = remember { MutableInteractionSource() }
                     Column(Modifier.weight(1f).bounce(inter, .86f).height(56.dp).clip(RoundedCornerShape(18.dp)).springClick(inter, label = l) { ui.nav(k) }
@@ -368,7 +382,7 @@ private fun TopBar(ui: AppState) {
     Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.weight(1f)) {
-                AnimatedContent(ui.tab, transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(160)) + slideInVertically(spring(dampingRatio = .6f, stiffness = 500f)) { it / 2 }) togetherWith (fadeOut(tween(90)) + slideOutVertically(tween(120)) { -it / 2 }) }, label = "title") { t ->
+                AnimatedContent(ui.tab, transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(Motion.fadeIn(200)) + slideInVertically(spring(dampingRatio = .8f, stiffness = 520f)) { it / 2 }) togetherWith (fadeOut(Motion.fadeOut(100)) + slideOutVertically(tween(140, easing = Motion.Exit)) { -it / 3 }) }, label = "title") { t ->
                     // Titre entier : sa taille s'adapte à la place laissée par les boutons
                     FitText(NAV_TITLES[t] ?: "PepsGoal", size = 24, min = 14, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
                 }
@@ -416,9 +430,30 @@ private fun Toasts(ui: AppState) {
     Box(Modifier.fillMaxSize().navigationBarsPadding().padding(bottom = 92.dp, start = 16.dp, end = 16.dp), contentAlignment = Alignment.BottomCenter) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             for (t in ui.toasts) key(t.id) {
-                var shown by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { shown = true }
-                AnimatedVisibility(shown, enter = fadeIn(tween(120)) + scaleIn(spring(dampingRatio = .45f, stiffness = 500f), initialScale = .8f) + slideInVertically(spring(dampingRatio = .55f, stiffness = 500f)) { it / 2 }) {
+                // Entrée en ressort, sortie en fondu juste avant l'expiration, et balayage latéral pour fermer
+                val dur = if (t.action != null || p.easy) 5000 else 3600
+                val appear = remember { Animatable(if (p.motion) 1f else 0f) }
+                val dx = remember { Animatable(0f) }
+                val scope = rememberCoroutineScope()
+                var wpx by remember { mutableIntStateOf(1) }
+                LaunchedEffect(Unit) {
+                    if (!p.motion) launch { appear.animateTo(1f, spring(dampingRatio = .62f, stiffness = 520f)) }
+                    kotlinx.coroutines.delay(dur - 260L)
+                    appear.animateTo(0f, tween(240, easing = Motion.Exit))
+                }
+                val drag = androidx.compose.foundation.gestures.rememberDraggableState { d -> scope.launch { dx.snapTo(dx.value + d) } }
+                Box(Modifier.onSizeChanged { wpx = it.width.coerceAtLeast(1) }.graphicsLayer {
+                    val a = appear.value
+                    alpha = (a * (1f - kotlin.math.abs(dx.value) / (wpx * 1.1f))).coerceIn(0f, 1f)
+                    translationY = (1f - a) * 40.dp.toPx(); translationX = dx.value
+                    val sc = .86f + .14f * a; scaleX = sc; scaleY = sc
+                    rotationZ = dx.value / wpx * 6f
+                }.then(if (p.motion) Modifier else Modifier.draggable(drag, androidx.compose.foundation.gestures.Orientation.Horizontal, onDragStopped = { v ->
+                    if (kotlin.math.abs(dx.value) > wpx * .35f || kotlin.math.abs(v) > 1400f) {
+                        val dir = if (dx.value + v / 10f >= 0f) 1f else -1f
+                        dx.animateTo(dir * wpx * 1.3f, tween(180, easing = Motion.Exit)); ui.toasts.remove(t)
+                    } else dx.animateTo(0f, spring(dampingRatio = .6f, stiffness = 600f))
+                }))) {
                     // Pilule flottante : pastille colorée selon le type de message, fine barre du temps restant en bas.
                     // Annoncée par TalkBack dès son apparition (région « live ») ; un appui la ferme.
                     val kind = when (t.icon) { "x", "ban", "lock", "cloudoff" -> p.danger; "check", "flame", "star", "trophy", "medal", "sparkle" -> p.ok; else -> p.focus }
@@ -451,21 +486,50 @@ private fun Toasts(ui: AppState) {
     }
 }
 
-/** Étincelles et « +N » à l'endroit touché après une validation. */
+/** Particule des étincelles : angle, vitesse, taille, couleur, forme (0 rond, 1 losange, 2 trait), rotation. */
+private class SparkBit(val a: Float, val v: Float, val r: Float, val c: Int, val shape: Int, val spin: Float)
+
+/**
+ * Étincelles à l'endroit touché après une validation : onde de choc, gerbe de particules aux couleurs de la flamme
+ * qui retombent avec la gravité, et « +N » qui monte en rebondissant puis s'estompe. Une seule animation de 900 ms.
+ */
 @Composable
 private fun Sparks(ui: AppState) {
     val p = LocalPal.current
     val sp = ui.sparks ?: return
     val prog = remember(sp) { Animatable(0f) }
-    LaunchedEffect(sp) { prog.animateTo(1f, tween(800, easing = FastOutSlowInEasing)); if (ui.sparks === sp) ui.sparks = null }
-    val parts = remember(sp) { List(16) { Triple(Random.nextFloat() * 6.283f, 40 + Random.nextFloat() * 70, it) } }
-    val cols = listOf(p.flame, p.flame2, p.pink, p.type("objective").c, p.type("routine").c)
+    val label = remember(sp) { Animatable(0f) }
+    LaunchedEffect(sp) {
+        launch { label.animateTo(1f, spring(dampingRatio = .45f, stiffness = 380f)) }
+        prog.animateTo(1f, tween(900, easing = LinearEasing)); if (ui.sparks === sp) ui.sparks = null
+    }
+    val bits = remember(sp) { List(26) { SparkBit(Random.nextFloat() * 6.283f, 120f + Random.nextFloat() * 170f, 2.5f + Random.nextFloat() * 3.5f, it, Random.nextInt(3), Random.nextFloat() * 8f - 4f) } }
+    val cols = listOf(p.flame, p.flame2, p.pink, p.flame2, p.type("objective").c, p.type("routine").c)
     Box(Modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
-            val k = prog.value
-            for ((a, d, i) in parts) drawCircle(cols[i % cols.size].copy(alpha = 1 - k), 5.dp.toPx() * (1 - k * .5f), Offset(sp.first.x + cos(a) * d * k * density, sp.first.y + (sin(a) * d - 30) * k * density))
+            val k = prog.value; val o = sp.first
+            // Onde de choc : anneau qui s'élargit en s'affinant (premier tiers)
+            val w = (k * 3f).coerceAtMost(1f)
+            if (w < 1f) drawCircle(p.flame.copy(alpha = (1f - w) * .6f), (10f + 46f * FastOutSlowInEasing.transform(w)) * density, o, style = androidx.compose.ui.graphics.drawscope.Stroke((1f - w) * 5f * density + .5f))
+            // Gerbe : départ rapide, freinage, puis chute (gravité) ; fondu dans le dernier tiers
+            val t = k * .9f
+            for (b in bits) {
+                val dx = cos(b.a) * b.v * t * (1f - t * .45f)
+                val dy = sin(b.a) * b.v * t * (1f - t * .45f) - 70f * t + 260f * t * t
+                val c = Offset(o.x + dx * density / 2.4f * 1.6f, o.y + dy * density / 2.4f * 1.6f)
+                val a = (1f - ((k - .55f) / .45f).coerceIn(0f, 1f))
+                val col = cols[b.c % cols.size].copy(alpha = a)
+                val r = b.r * density * (1f - k * .35f)
+                when (b.shape) {
+                    0 -> drawCircle(col, r, c)
+                    1 -> rotate(b.spin * 90f * k, c) { drawRect(col, Offset(c.x - r * .8f, c.y - r * .8f), androidx.compose.ui.geometry.Size(r * 1.6f, r * 1.6f)) }
+                    else -> drawLine(col, c, Offset(c.x - cos(b.a) * r * 2.6f, c.y - sin(b.a) * r * 2.6f), strokeWidth = r * .7f, cap = StrokeCap.Round)
+                }
+            }
         }
-        Text("+${sp.second}", Modifier.offset { IntOffset(sp.first.x.roundToInt() - 20, (sp.first.y - 40 - prog.value * 60).roundToInt()) }.graphicsLayer { alpha = 1 - prog.value },
-            fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = p.flame)
+        val l = label.value; val fade = (1f - ((prog.value - .6f) / .4f).coerceIn(0f, 1f))
+        Text("+${sp.second}", Modifier.offset { IntOffset(sp.first.x.roundToInt() - 24, (sp.first.y - 30 - l * 70 - prog.value * 30).roundToInt()) }
+            .graphicsLayer { alpha = fade; val sc = .6f + .4f * l; scaleX = sc; scaleY = sc },
+            fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = p.flame)
     }
 }

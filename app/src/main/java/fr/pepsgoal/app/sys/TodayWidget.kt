@@ -239,19 +239,23 @@ class ProgressWidget : GlanceAppWidget() {
                 Text("Aujourd’hui", GlanceModifier.defaultWeight(), style = TextStyle(color = s.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold))
                 Text("$done/$total", style = TextStyle(color = s.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold))
             }
-            Text(if (total == 0) "Repos" else "${Math.round(done * 100f / total)} %", style = TextStyle(color = s.ink, fontSize = 30.sp, fontWeight = FontWeight.Bold))
+            Text(if (total == 0) "Repos" else "${Math.round(done * 100f / total)} %", style = TextStyle(color = s.ink, fontSize = if (size.height < 130.dp) 24.sp else 30.sp, fontWeight = FontWeight.Bold), maxLines = 1)
             WBar(s, if (total == 0) 1f else done.toFloat() / total, 8.dp)
-            if (size.height >= 130.dp) {
-                Spacer(GlanceModifier.height(10.dp))
-                Column(GlanceModifier.fillMaxWidth().wCard(s).padding(10.dp)) {
+            if (size.height >= 140.dp) {
+                Spacer(GlanceModifier.height(8.dp))
+                val wide = size.width >= 220.dp
+                Column(GlanceModifier.fillMaxWidth().wCard(s).padding(horizontal = 10.dp, vertical = 8.dp)) {
+                    // Ligne 1 : flamme et nom du niveau seul (sans « Niveau »), points à droite en petit si la place le permet
                     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Image(ImageProvider(R.drawable.ic_flame), "Niveau", GlanceModifier.size(16.dp))
-                        Text("Niveau ${lv.name}", GlanceModifier.defaultWeight().padding(start = 4.dp), style = TextStyle(color = s.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-                        Text("${fmtNum(lv.pts)}", style = TextStyle(color = s.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold))
+                        Image(ImageProvider(R.drawable.ic_flame), "Niveau", GlanceModifier.size(14.dp))
+                        Text(lv.name, GlanceModifier.defaultWeight().padding(start = 4.dp), style = TextStyle(color = s.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                        if (wide) Text("${fmtNum(lv.pts)} 🔥", style = TextStyle(color = s.ink2, fontSize = 11.sp, fontWeight = FontWeight.Medium), maxLines = 1)
                     }
-                    Spacer(GlanceModifier.height(6.dp))
-                    WBar(s, lv.pct.toFloat(), 6.dp)
-                    if (lv.next != null) Text("Encore ${fmtNum(lv.next!! - lv.pts)} flammes avant ${lv.nextName}", GlanceModifier.padding(top = 4.dp), style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
+                    Spacer(GlanceModifier.height(5.dp))
+                    WBar(s, lv.pct.toFloat(), 5.dp)
+                    // Ligne 3 : phrase courte (« 1 479 avant Supernova » ; « → Supernova » en tout petit format)
+                    if (lv.next != null) Text(if (wide) "${fmtNum(lv.next!! - lv.pts)} avant ${lv.nextName}" else "→ ${lv.nextName}", GlanceModifier.padding(top = 4.dp),
+                        style = TextStyle(color = s.ink2, fontSize = 11.sp, fontWeight = FontWeight.Medium), maxLines = 1)
                 }
             }
         }
@@ -329,17 +333,25 @@ class CapWidget : GlanceAppWidget() {
                 return@Column
             }
             val v = pg.capDay(g); val pct = (v / g.target).toFloat(); val done = v >= g.target
-            val ring = minOf(size.width, size.height - 40.dp).coerceAtLeast(56.dp)
+            // Place réelle : marges intérieures (2 × 12 dp) et rangée du bas (titre + bouton, 40 dp) déduites, avec une marge de sûreté
+            val small = size.height < 150.dp
+            val bottom = if (small) 32.dp else 40.dp
+            val ring = minOf(size.width - 28.dp, size.height - 28.dp - bottom).coerceAtLeast(48.dp)
             Box(GlanceModifier.size(ring), contentAlignment = Alignment.Center) {
                 Image(ImageProvider(ringBitmap(pct, s.dark, if (done) 0xFF2EC27E.toInt() else android.graphics.Color.rgb(0, 209, 178))), "${Math.round(pct * 100)} %", GlanceModifier.fillMaxSize())
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(g.icon, style = TextStyle(fontSize = 18.sp))
-                    Text(fmtNum(Math.round(v * 10) / 10.0), style = TextStyle(color = s.ink, fontSize = if (ring > 110.dp) 22.sp else 16.sp, fontWeight = FontWeight.Bold))
-                    Text("/ ${fmtNum(g.target)} ${g.unit}".trim(), style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
+                    if (ring > 90.dp) Text(g.icon, style = TextStyle(fontSize = 18.sp))
+                    Text(fmtNum(Math.round(v * 10) / 10.0), style = TextStyle(color = s.ink, fontSize = if (ring > 110.dp) 22.sp else 15.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                    if (ring > 76.dp) Text("/ ${fmtNum(g.target)} ${g.unit}".trim(), style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
                 }
             }
-            Row(GlanceModifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (done) "Cap atteint ✓" else g.title, GlanceModifier.defaultWeight(), style = TextStyle(color = s.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+            // Petit widget : le bouton « + » passe sous l'anneau, sans titre ; sinon titre (une ligne) et bouton côte à côte
+            if (small) Spacer(GlanceModifier.height(4.dp))
+            if (small) Box(GlanceModifier.size(28.dp).wAccent(s, 14.dp).clickable(actionRunCallback<CapAddAction>(actionParametersOf(GoalKey to g.id))), contentAlignment = Alignment.Center) {
+                Text("+", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontSize = 16.sp, fontWeight = FontWeight.Bold))
+            }
+            if (!small) Row(GlanceModifier.fillMaxWidth().height(36.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(if (done) "Cap atteint ✓" else g.title, GlanceModifier.defaultWeight().padding(end = 6.dp), style = TextStyle(color = s.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                 Box(GlanceModifier.size(32.dp).wAccent(s, 16.dp).clickable(actionRunCallback<CapAddAction>(actionParametersOf(GoalKey to g.id))), contentAlignment = Alignment.Center) {
                     Text("+", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontSize = 18.sp, fontWeight = FontWeight.Bold))
                 }
@@ -381,7 +393,7 @@ class WeekWidget : GlanceAppWidget() {
     @Composable
     private fun Content(ctx: Context) {
         val app = ctx.peps; val pg = app.pg; val u = pg.me(); val s = style(ctx)
-        Column(GlanceModifier.fillMaxSize().wBg(s).padding(12.dp).clickable(open(ctx) { action = MainActivity.ACTION_WEEK }), verticalAlignment = Alignment.CenterVertically) {
+        Column(GlanceModifier.fillMaxSize().wBg(s).padding(horizontal = 12.dp, vertical = 10.dp).clickable(open(ctx) { action = MainActivity.ACTION_WEEK })) {
             if (u == null) { Text("Connecte-toi à PepsGoal.", style = TextStyle(color = s.ink)); return@Column }
             val ws = fr.pepsgoal.core.weekStart(fr.pepsgoal.core.todayDate()); val t = fr.pepsgoal.core.today()
             val goals = pg.myGoals(u.id).filter { !it.archived && it.userId == u.id }
@@ -397,8 +409,9 @@ class WeekWidget : GlanceAppWidget() {
                 Text(fr.pepsgoal.app.ui.I18n.tr("Ma semaine"), GlanceModifier.defaultWeight(), style = TextStyle(color = s.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold))
                 Text("🔥 ${pg.globalStreak(u.id).n}", style = TextStyle(color = s.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold))
             }
-            Image(ImageProvider(weekBitmap(rates, fr.pepsgoal.core.wdIdx(fr.pepsgoal.core.todayDate()), s.dark)), fr.pepsgoal.app.ui.I18n.tr("Ma semaine"), GlanceModifier.fillMaxWidth().padding(vertical = 6.dp))
-            Text(fr.pepsgoal.app.ui.I18n.tr(if (perfect > 0) "Journées parfaites" else "Valide un objectif aujourd’hui pour garder ta série.") + if (perfect > 0) " : $perfect" else "", style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
+            Image(ImageProvider(weekBitmap(rates, fr.pepsgoal.core.wdIdx(fr.pepsgoal.core.todayDate()), s.dark)), fr.pepsgoal.app.ui.I18n.tr("Ma semaine"),
+                GlanceModifier.fillMaxWidth().defaultWeight().padding(vertical = 4.dp), contentScale = ContentScale.Fit)
+            if (LocalSize.current.height >= 110.dp) Text(fr.pepsgoal.app.ui.I18n.tr(if (perfect > 0) "Journées parfaites" else "Valide un objectif aujourd’hui pour garder ta série.") + if (perfect > 0) " : $perfect" else "", style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
         }
     }
 }
@@ -414,14 +427,14 @@ class FlameWidget : GlanceAppWidget() {
 
     @Composable
     private fun Content(ctx: Context) {
-        val app = ctx.peps; val pg = app.pg; val u = pg.me(); val s = style(ctx)
+        val app = ctx.peps; val pg = app.pg; val u = pg.me(); val s = style(ctx); val tiny = LocalSize.current.height < 90.dp
         val next = u?.let { pg.todayPlan(it.id).due.firstOrNull { x -> !x.done && x.g.type in setOf("routine", "abstinence", "timed", "challenge", "period") } }
         val click = if (next != null) actionRunCallback<ValidateAction>(actionParametersOf(GoalKey to next.g.id)) else open(ctx) { putExtra(MainActivity.EXTRA_TAB, "today") }
         Column(GlanceModifier.fillMaxSize().wBg(s).padding(6.dp).clickable(click), horizontalAlignment = Alignment.CenterHorizontally, verticalAlignment = Alignment.CenterVertically) {
             val st = u?.let { pg.globalStreak(it.id) }
-            Image(ImageProvider(if (st?.lit == true) R.drawable.ic_flame else R.drawable.ic_flame_dim), "Flamme", GlanceModifier.size(28.dp))
-            Text("${st?.n ?: 0}", style = TextStyle(color = s.ink, fontWeight = FontWeight.Bold, fontSize = 20.sp))
-            if (next != null) Text("✓ ${next.g.icon}", style = TextStyle(color = s.ink2, fontSize = 10.sp))
+            Image(ImageProvider(if (st?.lit == true) R.drawable.ic_flame else R.drawable.ic_flame_dim), "Flamme", GlanceModifier.size(if (tiny) 20.dp else 28.dp))
+            Text("${st?.n ?: 0}", style = TextStyle(color = s.ink, fontWeight = FontWeight.Bold, fontSize = if (tiny) 15.sp else 20.sp), maxLines = 1)
+            if (next != null && !tiny) Text("✓ ${next.g.icon}", style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
         }
     }
 }
