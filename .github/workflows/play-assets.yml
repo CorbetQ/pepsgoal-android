@@ -1,9 +1,23 @@
 name: Play Store assets
 
 # Captures d'écran de la fiche Play Store (français et anglais, thème clair et sombre) sur un émulateur,
-# avec les données de démonstration, plus les textes de la fiche (metadata/android). À lancer à la main.
+# avec les données de démonstration, plus les textes de la fiche (metadata/android). À lancer à la main, ou en modifiant
+# ce workflow ou le script de capture sur la branche de travail ; les captures sont ajoutées au dépôt
+# (metadata/android/<langue>/images/phoneScreenshots, format fastlane) et jointes en artefact.
 on:
   workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths:
+      - .github/workflows/play-assets.yml
+      - .github/scripts/play-shots.sh
+
+permissions:
+  contents: write
+
+concurrency:
+  group: play-assets-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   shots:
@@ -39,3 +53,17 @@ jobs:
             metadata/android/
             docs/play-declarations.md
           if-no-files-found: error
+      # Fiche Play : 8 captures par langue (thème clair, puis sombre en artefact uniquement)
+      - name: Ajout des captures au dépôt
+        run: |
+          for l in fr:fr-FR en:en-US; do
+            d="metadata/android/${l#*:}/images/phoneScreenshots"
+            rm -rf "$d"; mkdir -p "$d"
+            cp shots/${l%%:*}/light/*.png "$d/"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add metadata/android
+          git diff --cached --quiet && exit 0
+          git commit -m "Captures de la fiche Play Store [skip ci]"
+          git pull --rebase -q origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}"
