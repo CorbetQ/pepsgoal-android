@@ -134,7 +134,7 @@ fun NotifsSheet(ui: AppState) {
     val ic = mapOf("period" to "clock", "mention" to "comment", "story" to "image", "group" to "group", "friend" to "userplus", "like" to "feed", "comment" to "comment", "reminder" to "bell",
         "deadline" to "cal", "badge" to "medal", "freeze" to "snow", "mod" to "shield", "official" to "flameo", "verify" to "shield")
     SheetHead(ui, "Notifications")
-    if (list.isEmpty()) Empty("Tout est calme", "Tes rappels et l'activité de tes amis apparaîtront ici.")
+    if (list.isEmpty()) Empty("Tout est calme", "Tes rappels et l'activité de tes amis apparaîtront ici.", icon = "bell")
     list.forEach { n ->
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (n.read) Color.Transparent else p.flame.copy(alpha = .1f)).clickable {
             when {

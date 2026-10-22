@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -497,7 +498,10 @@ fun GoalSheet(ui: AppState, id: String) {
     val s = pg.statBig(g); val t = today(); val doneToday = pg.hasCheck(g.id, t); val own = g.userId == u.id
     SheetHead(ui, g.title) { IconBtn("star", if (pg.isFav(g)) "Retirer des favoris" else "Ajouter aux favoris", { pg.toggleFav(g.id) }, plain = true, tint = if (pg.isFav(g)) p.flame2 else p.ink3) }
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(tc.c.copy(alpha = .2f)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Emoji(g.icon, 46.dp)
+        // L'icône de l'objectif « arrive » de la ligne touchée : elle grandit avec un léger rebond
+        val pop = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else .55f) }
+        LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .5f, stiffness = 300f)) }
+        Emoji(g.icon, 46.dp, Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -25f })
         Column { Text(s.v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp, color = tc.ink); Text(s.l, fontWeight = FontWeight.Bold, color = p.ink2) }
     }
     if (!g.archived) FlowRowCompat(gap = 8.dp) { GoalActions(ui, g, doneToday, running) }

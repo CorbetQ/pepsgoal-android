@@ -221,7 +221,7 @@ private fun InsightsCard(ui: AppState) {
         CardHead("Ce qui t’aide à réussir")
         val f = found
         when {
-            f == null -> Muted("Analyse de tes 60 derniers jours…", small = true)
+            f == null -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { repeat(2) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Skeleton(Modifier.width(36.dp), 36.dp, 12.dp); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { Skeleton(Modifier.fillMaxWidth(), 12.dp); Skeleton(Modifier.fillMaxWidth(.6f), 12.dp) } } } }
             f.isEmpty() -> Muted("Pas encore de tendance nette. Continue à valider, à noter ton humeur et, si tu veux, relie Health Connect : les liens avec ton sommeil, tes pas et ton sport apparaîtront ici.", small = true)
             else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 f.forEach { x ->

@@ -21,6 +21,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import fr.pepsgoal.app.ui.Text
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -95,17 +98,34 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
         PageBackdrop(c1, c2)
         // Mode une main : le bouton retour et les actions passent en bas de l'écran, sous le pouce
         val low = p.oneHand
+        val list = state ?: androidx.compose.foundation.lazy.rememberLazyListState()
+        // En-tête qui se rétracte : passé le grand titre, il s'affiche en petit dans une barre givrée
+        val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 60 } }
+        val k by androidx.compose.animation.core.animateFloatAsState(if (collapsed && !low) 1f else 0f, if (p.motion) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(220), label = "head")
         val head = @Composable { mod: Modifier ->
-            Row(mod.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PButton(back, onBack, icon = "chevronleft", small = true)
-                Spacer(Modifier.weight(1f)); right()
+            Box(mod.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PButton(back, onBack, icon = "chevronleft", small = true)
+                    Text(title, Modifier.weight(1f).padding(horizontal = 6.dp).graphicsLayer { alpha = k; translationY = (1f - k) * 10.dp.toPx() }, fontFamily = Unbounded, fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    right()
+                }
             }
         }
         Column(Modifier.fillMaxSize().imePadding()) {
-            if (!low) head(Modifier.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state ?: androidx.compose.foundation.lazy.rememberLazyListState(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (!low) head(Modifier.drawBehind {
+                // Barre givrée qui apparaît avec le titre compact, fine ligne de séparation en bas
+                drawRect(p.glassStrong.copy(alpha = p.glassStrong.alpha * k))
+                drawRect(p.line.copy(alpha = p.line.alpha * k), androidx.compose.ui.geometry.Offset(0f, size.height - 1.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
+            }.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item("title") {
-                    Row(Modifier.enter().padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    // Le grand titre s'efface et rétrécit en défilant (lu dans la phase de dessin : pas de recomposition)
+                    Row(Modifier.enter().graphicsLayer {
+                        val off = if (list.firstVisibleItemIndex == 0) list.firstVisibleItemScrollOffset.toFloat() else 200f
+                        val f = (off / 120.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
+                    }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
                         Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp)
                     }
@@ -127,16 +147,22 @@ fun SettingsScreen(ui: AppState, cat: String?) {
     val c = SET_CATS.firstOrNull { it[0] == cat }
     val p = LocalPal.current
     if (c == null) {
+        var q by rememberSaveable { mutableStateOf("") }
+        val n = VoiceCmd.norm(q.trim())
+        val cats = if (n.length < 2) SET_CATS else SET_CATS.filter { c -> listOf(c[1], c[2], SET_WORDS[c[0]] ?: "", setSummary(ui, c[0]) ?: "").any { VoiceCmd.norm(it).contains(n) } }
         ScreenFrame(ui, "Paramètres", "Profil", { ui.back() }, icon = "gear") {
-            item("cats") {
+            item("search") { Field(q, { q = it }, "", placeholder = "Rechercher un réglage…", max = 40, icon = "search") }
+            if (cats.isEmpty()) item("none") { Glass { Empty("Aucun réglage trouvé", "Essaie « thème », « rappel », « vibrations »…", icon = "search") } }
+            else item("cats") {
                 Glass(pad = 8.dp) {
-                    SET_CATS.forEach { (k, l, d, i) ->
+                    cats.forEach { (k, l, d, i) ->
                         val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                         Row(Modifier.fillMaxWidth().bounce(inter, .97f).clip(RoundedCornerShape(16.dp)).springClick(inter) { ui.screens[ui.screens.lastIndex] = Screen.Settings(k) }.padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             val (k1, k2) = SET_COLORS[k] ?: ("routine" to "duration")
                             IconTile(i, p.type(k1).c, p.type(k2).c)
-                            Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.ExtraBold); Muted(d, small = true) }
+                            // Sous le nom : l'état actuel de la catégorie quand il se résume en quelques mots
+                            Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.ExtraBold); Muted(setSummary(ui, k) ?: d, small = true, maxLines = 2) }
                             Text("›", color = p.ink3, fontSize = 22.sp)
                         }
                     }
@@ -883,5 +909,25 @@ private fun BackupCard(ui: AppState) {
                 PButton("Annuler", { restoreUri = null }, kind = "ghost", small = true)
             }
         }
+    }
+}
+
+/** État actuel d'une catégorie de réglages, en quelques mots (null : on garde sa description). */
+fun setSummary(ui: AppState, k: String): String? {
+    val u = ui.pg.me() ?: return null; val st = u.settings; val pr = ui.prefs; val ctx = ui.app
+    return when (k) {
+        "appearance" -> listOfNotNull(fr.pepsgoal.core.THEMES.firstOrNull { it.first == st.theme }?.second,
+            if (pr.materialYou) "Material You" else if (st.accentCustom != null) "accent personnalisé" else "accent ${fr.pepsgoal.core.ACCENTS.getOrNull(st.accent)?.name ?: ""}".trim()).joinToString(" · ")
+        "home" -> homeOrder(pr).count { it.second }.let { "$it ${if (it > 1) "cartes affichées" else "carte affichée"}" }
+        "reminders" -> listOfNotNull(if (st.morning.on) "Matin ${st.morning.time}" else null, if (st.evening.on) "soir ${st.evening.time}" else null).joinToString(" · ").ifEmpty { "Rappels du matin et du soir coupés" }
+        "account" -> if (ui.pg.isGuest(u)) "Mode invité, sur ce téléphone" else "@${u.username}"
+        "weather" -> st.weather?.let { "${it.name}${if (st.theme == "weather") " · thème Météo actif" else ""}" } ?: "Aucune ville choisie"
+        "privacy" -> if (!st.social) "Fonctions sociales désactivées" else "Visibilité par défaut : ${VIS[st.defaultVis]?.first?.lowercase() ?: st.defaultVis}"
+        "ai" -> if (!fr.pepsgoal.app.ai.LocalAi.installed(ctx)) "Coach non installé" else if (pr.aiEnabled) "Coach installé et actif" else "Coach installé, en pause"
+        "data" -> if (pr.backupUri.isNotEmpty()) "Sauvegarde auto${if (pr.backupLast > 0) " · dernière le ${fr.pepsgoal.core.fmtDT(pr.backupLast)}" else ""}" else null
+        "a11y" -> listOfNotNull(if (pr.easy) "Lecture facile" else null, if (pr.textScale != 1f) "texte ${Math.round(pr.textScale * 100)} %" else null, if (pr.oneHand) "une main" else null,
+            if (pr.contrast) "contraste" else null, if (pr.motion) "animations réduites" else null).joinToString(" · ").replaceFirstChar { it.uppercase() }.ifEmpty { null }
+        "help" -> "Version ${fr.pepsgoal.core.APP_VERSION}"
+        else -> null
     }
 }

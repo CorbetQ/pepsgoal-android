@@ -67,8 +67,8 @@ fun ChallengesScreen(ui: AppState) {
         if (creating) item("new") { NewChallenge(ui) { creating = false; reload() } }
         err?.let { e -> item("err") { Glass { Muted(e, small = true); PButton("Réessayer", reload, small = true) } } }
         val l = list
-        if (l == null && err == null) item("load") { Muted("Chargement des défis…", small = true) }
-        if (l != null && l.isEmpty()) item("none") { Glass { Empty("Aucun défi pour l’instant", "Les prochains défis de la communauté apparaîtront ici.") } }
+        if (l == null && err == null) { item("load1") { SkeletonCard() }; item("load2") { SkeletonCard() } }
+        if (l != null && l.isEmpty()) item("none") { Glass { Empty("Aucun défi pour l’instant", "Les prochains défis de la communauté apparaîtront ici.", icon = "trophy") } }
         l?.forEach { c -> item(c.id) {
             val g = pg.db.goals.firstOrNull { it.communityId == c.id && it.userId == u.id }
             val tc = p.type("challenge")
@@ -109,7 +109,7 @@ fun ChallengesScreen(ui: AppState) {
                 if (open == c.id) {
                     val d = detail
                     Spacer(Modifier.height(10.dp)); SectionTitle("Classement")
-                    if (d == null) Muted("Chargement…", small = true)
+                    if (d == null) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { repeat(3) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Skeleton(Modifier.width(28.dp), 20.dp); Skeleton(Modifier.width(30.dp), 30.dp, 15.dp); Skeleton(Modifier.weight(1f), 14.dp); Skeleton(Modifier.width(36.dp), 14.dp) } } }
                     else if (d.board.isEmpty()) Muted("Personne pour l’instant : sois le premier !", small = true)
                     else d.board.forEach { r ->
                         val meRow = r.userId == u.id
