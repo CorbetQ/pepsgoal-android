@@ -159,6 +159,10 @@ class DevicePrefs(context: Context) {
     var geoPlaces get() = p.getString("geoPlaces", "") ?: ""; set(v) = p.edit().putString("geoPlaces", v).apply()
     /** Couleurs de saison (Halloween, Noël, printemps…) sur l'arrière-plan. */
     var seasonal get() = p.getBoolean("seasonal", true); set(v) = p.edit().putBoolean("seasonal", v).apply()
+    /** Sauvegarde automatique : dossier choisi (URI d'arborescence), dernière réussite, dernière erreur. */
+    var backupUri get() = p.getString("backupUri", "") ?: ""; set(v) = p.edit().putString("backupUri", v).apply()
+    var backupLast get() = p.getLong("backupLast", 0L); set(v) = p.edit().putLong("backupLast", v).apply()
+    var backupError get() = p.getString("backupError", "") ?: ""; set(v) = p.edit().putString("backupError", v).apply()
     var swipeHint get() = p.getBoolean("swipeHint", false); set(v) = p.edit().putBoolean("swipeHint", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp, easy, oneHand, textScale != 1f).count { it }
 }

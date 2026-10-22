@@ -98,4 +98,6 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
     // Rappels par lieu (géorepérage)
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    // Sauvegarde automatique dans un dossier choisi (stockage du téléphone, Google Drive…)
+    implementation("androidx.documentfile:documentfile:1.1.0")
 }

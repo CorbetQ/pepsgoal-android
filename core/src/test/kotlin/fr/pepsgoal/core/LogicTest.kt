@@ -65,6 +65,21 @@ class LogicTest {
         assertTrue(pg.isRest())
     }
 
+    @Test fun backupRoundTripAndMerge() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(1)))
+        val salt = Backup.newSalt(); val key = Backup.key("secret123", salt)
+        val raw = Backup.seal(JSON.encodeToString(fr.pepsgoal.core.model.Db.serializer(), pg.db), key, salt)
+        assertTrue(Backup.isBackup(raw))
+        assertEquals(null, Backup.open(raw, "faux"))
+        val back = JSON.decodeFromString(fr.pepsgoal.core.model.Db.serializer(), Backup.open(raw, "secret123")!!)
+        // Nouveau téléphone : profil vierge, puis restauration par fusion
+        pg.db.goals.clear(); pg.db.checkins.clear()
+        assertEquals(1, Backup.merge(pg, back))
+        assertEquals(1, pg.db.checkins.size)
+        assertEquals(0, Backup.merge(pg, back)) // rien en double
+    }
+
     @Test fun dailyCap() {
         val g = goal("cap") { target = 10000.0; unit = "pas" }
         pg.addCheck(g, "done", 1.0, 12, ymd(todayDate().minusDays(1)))

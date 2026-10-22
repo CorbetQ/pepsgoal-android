@@ -34,6 +34,8 @@ import fr.pepsgoal.app.peps
 import fr.pepsgoal.app.ui.theme.TYPE_LIGHT
 import fr.pepsgoal.app.ui.theme.hex
 import fr.pepsgoal.core.*
+import fr.pepsgoal.core.model.target
+import fr.pepsgoal.core.model.unit
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 

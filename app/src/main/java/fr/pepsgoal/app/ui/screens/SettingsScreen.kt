@@ -617,6 +617,7 @@ private fun DataSettings(ui: AppState, u: User) {
         }
         val mine = remember(ui.rev) { listOf(pg.db.goals.count { it.userId == u.id }, pg.db.checkins.count { it.userId == u.id }, pg.db.posts.count { it.userId == u.id }, pg.db.messages.count { it.from == u.id || it.to == u.id }) }
         StatGrid(listOf("Objectifs", "Validations", "Publications", "Messages").mapIndexed { i, l -> "${mine[i]}" to l })
+        BackupCard(ui)
         Glass {
             SetRow("Exporter mes données", "Objectifs, validations, publications, stories et messages (déchiffrés sur cet appareil), en JSON, à partager ou garder.") {
                 PButton("Exporter", {
@@ -821,6 +822,66 @@ private fun AppIconCard(ui: AppState) {
         val season = fr.pepsgoal.app.sys.Season.now()
         SetRow("Couleurs de saison", "Halloween, fêtes de fin d’année (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${fr.pepsgoal.app.sys.Season.LABELS[it]}." } ?: ""}") {
             PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
+        }
+    }
+}
+
+/** Paramètres › Données : sauvegarde automatique chiffrée et restauration. */
+@Composable
+private fun BackupCard(ui: AppState) {
+    val ctx = LocalContext.current; val p = LocalPal.current; val scope = rememberCoroutineScope()
+    var on by remember { mutableStateOf(fr.pepsgoal.app.sys.AutoBackup.configured(ctx)) }
+    var pass by remember { mutableStateOf("") }; var pass2 by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }; var rev by remember { mutableIntStateOf(0) }; rev.hashCode()
+    var restoreUri by remember { mutableStateOf<Uri?>(null) }; var restorePass by remember { mutableStateOf("") }
+    val pickDir = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        busy = true
+        scope.launch {
+            val ok = fr.pepsgoal.app.sys.AutoBackup.setup(ctx, uri, pass)
+            busy = false; on = fr.pepsgoal.app.sys.AutoBackup.configured(ctx); pass = ""; pass2 = ""; rev++
+            ui.toast(if (ok) "Sauvegarde automatique activée : première copie enregistrée." else "Dossier choisi, mais la première copie a échoué : réessaie « Sauvegarder maintenant ».", if (ok) "check" else "x")
+        }
+    }
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> restoreUri = uri; restorePass = "" }
+    Glass {
+        SetRow("Sauvegarde automatique chiffrée", "Chaque jour, une copie de tes objectifs, validations et journal dans le dossier de ton choix (stockage du téléphone, Google Drive…), chiffrée par un mot de passe. Les 7 dernières copies sont gardées.") {
+            if (on) Chip("Active", "check", p.type("routine").c)
+        }
+        if (on) {
+            val last = ui.prefs.backupLast
+            Muted(if (last > 0) "Dernière sauvegarde ${ago(last)}." else "Aucune sauvegarde réussie pour l’instant.", small = true)
+            if (ui.prefs.backupError.isNotEmpty()) Muted("Dernière erreur : ${ui.prefs.backupError}", small = true)
+            FlowRowCompat(Modifier.padding(top = 8.dp), gap = 8.dp) {
+                PButton(if (busy) "Sauvegarde…" else "Sauvegarder maintenant", { busy = true; scope.launch { val ok = fr.pepsgoal.app.sys.AutoBackup.run(ctx); busy = false; rev++; ui.toast(if (ok) "Sauvegarde enregistrée." else "Sauvegarde impossible : vérifie l’accès au dossier.", if (ok) "check" else "x") } }, icon = "archive", small = true, enabled = !busy)
+                PButton("Désactiver", { fr.pepsgoal.app.sys.AutoBackup.disable(ctx); on = false; ui.toast("Sauvegarde automatique désactivée. Les fichiers déjà enregistrés sont conservés.", "archive") }, kind = "ghost", small = true)
+            }
+        } else {
+            Field(pass, { pass = it }, "Mot de passe de sauvegarde", password = true, max = 100)
+            Field(pass2, { pass2 = it }, "Confirme le mot de passe", password = true, max = 100)
+            Muted("Sans ce mot de passe, impossible de restaurer : note-le précieusement. Il n’est pas enregistré sur le téléphone.", small = true)
+            PButton(if (busy) "Préparation…" else "Choisir le dossier et activer", {
+                when { pass.length < 8 -> ui.toast("Choisis un mot de passe d’au moins 8 caractères.", "x"); pass != pass2 -> ui.toast("Les deux mots de passe ne sont pas identiques.", "x"); else -> pickDir.launch(null) }
+            }, Modifier.padding(top = 8.dp), icon = "lock", kind = "primary", small = true, enabled = !busy)
+        }
+        Spacer(Modifier.height(12.dp))
+        SetRow("Restaurer une sauvegarde", "Ajoute les objectifs, validations et pages du journal d’un fichier .pgbak (nouveau téléphone, profil sans compte…). Rien n’est effacé.") {
+            PButton("Choisir", { pickFile.launch(arrayOf("*/*")) }, icon = "down", small = true)
+        }
+        restoreUri?.let { uri ->
+            Field(restorePass, { restorePass = it }, "Mot de passe de la sauvegarde", password = true, max = 100)
+            FlowRowCompat(gap = 8.dp) {
+                PButton(if (busy) "Restauration…" else "Restaurer", {
+                    busy = true
+                    scope.launch {
+                        val n = try { fr.pepsgoal.app.sys.AutoBackup.restore(ctx, uri, restorePass) } catch (e: Exception) { null }
+                        busy = false
+                        if (n == null) ui.toast("Mot de passe incorrect, ou fichier qui n’est pas une sauvegarde PepsGoal.", "x")
+                        else { restoreUri = null; ui.toast(if (n > 0) "Restauration terminée : ${pl(n, "objectif ajouté", "objectifs ajoutés")}." else "Restauration terminée : tout était déjà sur cet appareil.", "check") }
+                    }
+                }, icon = "check", kind = "primary", small = true, enabled = !busy && restorePass.isNotEmpty())
+                PButton("Annuler", { restoreUri = null }, kind = "ghost", small = true)
+            }
         }
     }
 }
