@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Captures de la fiche Play Store pour une langue (fr, en) et un thème (light, dark) : installe l'APK debug
-# et ouvre chaque écran avec les données de démonstration. Un émulateur neuf par appel (plus stable sur la CI).
+# et ouvre chaque écran avec les données de démonstration (version 4.0.1). Un émulateur neuf par appel (plus stable sur la CI).
 set -u
 LANG_=${1:-fr}; THEME=${2:-light}
 PKG=fr.pepsgoal.app.debug

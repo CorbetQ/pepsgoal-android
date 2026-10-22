@@ -62,7 +62,7 @@ object I18n {
     fun tr(s: String): String {
         if (!Lang.en || s.isBlank()) return s
         synchronized(cache) { cache[s] }?.let { return it }
-        val r = exact[s] ?: exact[s.trim()]?.let { s.replace(s.trim(), it) } ?: template(s) ?: prefixed(s) ?: upper(s) ?: s
+        val r = exact[s] ?: exact[s.trim()]?.let { s.replace(s.trim(), it) } ?: template(s) ?: prefixed(s) ?: upper(s) ?: parts(s) ?: s
         synchronized(cache) { cache[s] = r }
         return r
     }
@@ -74,6 +74,20 @@ object I18n {
         val rest = m.groupValues[2]
         val t = exact[rest] ?: template(rest) ?: return null
         return m.groupValues[1] + t
+    }
+
+    /** Texte assemblé : « Lun, Mer · 7 séances d’affilée » → chaque morceau traduit séparément ; « 7 séances » → nombre + texte. */
+    private val NUM = Regex("^([0-9][0-9 .,+%/×−-]*)\\s(\\p{L}.*)$", RegexOption.DOT_MATCHES_ALL)
+    private fun parts(s: String): String? {
+        if (s.contains(" · ")) {
+            val segs = s.split(" · ")
+            val out = segs.map { tr(it) }
+            return if (out != segs) out.joinToString(" · ") else null
+        }
+        val m = NUM.find(s) ?: return null
+        val rest = m.groupValues[2]
+        val t = exact[rest] ?: template(rest) ?: return null
+        return m.groupValues[1] + " " + t
     }
 
     /** Texte déjà mis en majuscules (« NIVEAU 5 ») : on cherche sa version normale. */

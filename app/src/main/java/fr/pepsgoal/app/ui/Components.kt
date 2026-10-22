@@ -344,7 +344,9 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
     val p = LocalPal.current; val h = LocalHaze.current
     val tint = if (strong) p.glassStrong else p.glass
     if (LocalInSheet.current) return this.clip(shape).background(p.bg).background(tint)
-    if (h == null || p.transp || p.contrast || p.oled) return this.clip(shape).background(tint)
+    // Sans flou (pages secondaires, contraste) : fond plein sous la teinte, sinon l'ombre portée de la carte se voit
+    // à travers le verre et dessine un rectangle plus clair à l'intérieur
+    if (h == null || p.transp || p.contrast || p.oled) return this.clip(shape).then(if (p.transp || p.oled) Modifier else Modifier.background(p.bg)).background(tint)
     return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.6f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
         // Flou calculé sur une image réduite de moitié : même rendu, bien moins de travail pour le GPU
         inputScale = HazeInputScale.Fixed(.5f)

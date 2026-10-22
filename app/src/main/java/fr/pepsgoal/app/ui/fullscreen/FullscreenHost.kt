@@ -43,6 +43,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.SolidColor
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Sheet
@@ -69,7 +72,12 @@ private val INK = Color(0xFF10102A)
 fun FullscreenHost(ui: AppState) {
     val f = ui.fs ?: return
     BackHandler { ui.closeFs() }
-    Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { } }) {
+    val p = LocalPal.current; val h = LocalHaze.current
+    // Fond : l'écran derrière est flouté (verre dépoli), ou masqué par une teinte opaque si la transparence est réduite
+    val back = if (h != null && !p.transp && f !is Fs.Stories)
+        Modifier.hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.bg.copy(alpha = .6f))), blurRadius = 40.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.bg)))
+    else Modifier.background(p.bg)
+    Box(Modifier.fillMaxSize().then(back).pointerInput(Unit) { detectTapGestures { } }) {
         when (f) {
             is Fs.Celebrate -> when (val c = f.c) {
                 is Celebration.Perfect -> PerfectFs(ui, c)
@@ -128,7 +136,7 @@ private fun Pop(i: Int, content: @Composable () -> Unit) {
 @Composable
 private fun PerfectFs(ui: AppState, c: Celebration.Perfect) {
     val p = LocalPal.current
-    FsFrame(ui, Brush.verticalGradient(listOf(p.bg, p.flame.copy(alpha = .35f), p.pink.copy(alpha = .35f))), true) {
+    FsFrame(ui, Brush.verticalGradient(listOf(p.bg.copy(alpha = .4f), p.flame.copy(alpha = .3f), p.pink.copy(alpha = .3f))), true) {
         Pop(0) { Eyebrow(c.eyebrow) }
         Pop(1) { val inf = rememberInfiniteTransition(label = "pf"); val s by inf.animateFloat(1f, if (p.motion) 1f else 1.08f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "s"); Box(Modifier.scale(s)) { Flame(120.dp) } }
         Pop(2) { Text(c.title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp, textAlign = TextAlign.Center) }
@@ -162,7 +170,7 @@ private fun CountUp(v: Int, prefix: String = "", suffix: String = "", size: Int 
 private fun BadgeFs(ui: AppState, c: Celebration.Badge) {
     val p = LocalPal.current; val (label, color) = BADGE_TIERS[c.tier]; val tc = hex(color); val f = c.family
     val next = f.t.getOrNull(c.tier + 1)
-    FsFrame(ui, Brush.radialGradient(listOf(tc.copy(alpha = .55f), p.bg)), true) {
+    FsFrame(ui, Brush.radialGradient(listOf(tc.copy(alpha = .45f), p.bg.copy(alpha = .4f))), true) {
         val inf = rememberInfiniteTransition(label = "bd")
         val rot by inf.animateFloat(0f, 360f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 14000, easing = LinearEasing)), label = "r")
         val pop = remember { Animatable(if (p.motion) 1f else .2f) }
