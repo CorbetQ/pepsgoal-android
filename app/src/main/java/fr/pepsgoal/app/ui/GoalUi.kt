@@ -40,6 +40,8 @@ import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import fr.pepsgoal.core.cloud.pushChallengeDays
 
 /** Valider (ou ouvrir la saisie adaptée au type). */
 fun doValidate(ui: AppState, id: String) {
@@ -60,6 +62,8 @@ fun doValidate(ui: AppState, id: String) {
             pg.hooks.liveChanged()
         }
     } else if (g != null && myDone(pg, id) < before) Feedback.undo()
+    // Défi de la communauté : le jour validé (ou annulé) est reporté au classement
+    if (g?.let { it.data["communityId"] } != null && ui.pg.store.acct) ui.scope.launch { try { ui.cloud.pushChallengeDays() } catch (e: Exception) {} }
 }
 
 private fun myDone(pg: Pg, id: String) = pg.db.checkins.count { it.goalId == id && it.kind == "done" && it.userId == pg.meId() }
@@ -435,4 +439,36 @@ fun WeekStrip(pg: Pg, id: String) {
             }
         }
     }
+}
+
+/**
+ * Courbe des quantités quotidiennes (cap quotidien, minutes d'une durée) : 30 derniers jours en barres,
+ * ou l'année en moyennes hebdomadaires, avec la ligne du cap.
+ */
+@Composable
+fun QtyChart(g: Goal, target: Double, unit: String, valueOf: (String) -> Double) {
+    val p = LocalPal.current; val tc = p.type(g.type)
+    var range by remember { mutableStateOf("30") }
+    val pts = remember(range, g.id, valueOf(ymd(todayDate()))) {
+        if (range == "30") (29 downTo 0).map { i -> val k = ymd(todayDate().minusDays(i.toLong())); k to valueOf(k) }
+        else (51 downTo 0).map { w ->
+            val start = todayDate().minusDays(w * 7L + 6)
+            ymd(start) to (0 until 7).sumOf { valueOf(ymd(start.plusDays(it.toLong()))) } / 7.0
+        }
+    }
+    Seg(listOf("30" to "30 jours", "365" to "1 an"), range, { range = it })
+    val max = maxOf(target * 1.15, pts.maxOfOrNull { it.second } ?: 0.0, 1.0)
+    val line = readable(tc.c)
+    Canvas(Modifier.fillMaxWidth().height(150.dp).padding(top = 8.dp).semantics { contentDescription = "Graphique : ${if (range == "30") "30 derniers jours" else "moyennes par semaine sur un an"}, cap de ${fmtNum(target)} $unit" }) {
+        val n = pts.size; val gap = 2.dp.toPx(); val w = (size.width - gap * (n - 1)) / n
+        pts.forEachIndexed { i, (_, v) ->
+            val h = (v / max * size.height).toFloat()
+            drawRoundRect(if (v >= target) tc.c else tc.c.copy(alpha = .35f), Offset(i * (w + gap), size.height - h), androidx.compose.ui.geometry.Size(w, h.coerceAtLeast(2f)), androidx.compose.ui.geometry.CornerRadius(w / 3, w / 3))
+        }
+        val y = (size.height - target / max * size.height).toFloat()
+        drawLine(line, Offset(0f, y), Offset(size.width, y), 2.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
+    }
+    val vals = pts.map { it.second }
+    val hits = if (range == "30") vals.count { it >= target } else null
+    Muted("Moyenne ${fmtNum(Math.round(vals.average() * 10) / 10.0)} $unit · meilleur ${fmtNum(Math.round((vals.maxOrNull() ?: 0.0) * 10) / 10.0)} $unit${hits?.let { " · cap atteint ${pl(it, "jour", "jours")} sur 30" } ?: " par jour (moyenne hebdomadaire)"} · ligne : cap de ${fmtNum(target)} $unit", small = true)
 }

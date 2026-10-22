@@ -65,7 +65,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     var step by remember { mutableStateOf(when { editing -> "values"; s.preTitle != null && s.preType != null -> "summary"; s.preType != null -> "values"; else -> "mode" }) }
     var ask by remember { mutableStateOf("") }; var thinking by remember { mutableStateOf(false) }
     if (editing && t["health"] == null) fr.pepsgoal.app.sys.Health.links(ctx).firstOrNull { it.goalId == g0!!.id }?.let { t["health"] = it.metric }
-    val steps = when { editing -> listOf("values" to "Réglages", "summary" to "Résumé"); fromAi -> listOf("mode" to "Méthode", "ai" to "Ta demande", "summary" to "Résumé"); else -> listOf("mode" to "Méthode", "type" to "Type", "values" to "Réglages", "summary" to "Résumé") }
+    val steps = when { editing -> listOf("values" to "Réglages", "summary" to "Résumé"); step == "packs" -> listOf("mode" to "Méthode", "packs" to "Modèles"); fromAi -> listOf("mode" to "Méthode", "ai" to "Ta demande", "summary" to "Résumé"); else -> listOf("mode" to "Méthode", "type" to "Type", "values" to "Réglages", "summary" to "Résumé") }
     val go = { k: String -> err = null; step = k }
 
     SheetHead(ui, if (editing) "Modifier l’objectif" else "Nouvel objectif")
@@ -75,6 +75,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
         val aiOn = fr.pepsgoal.app.ai.LocalAi.on(ctx, ui.prefs.aiCreate)
         ModeCard("sparkle", "Avec le coach", if (aiOn) "Décris ton objectif en une phrase : le coach IA choisit le type, l’intitulé, l’emoji et les valeurs." else "Décris ton objectif en une phrase : PepsGoal le comprend et prépare tout (installe le coach IA dans Paramètres pour des propositions plus fines).", true) { fromAi = true; go("ai") }
         ModeCard("edit", "Manuellement", "Choisis le type d’objectif, puis règle toi-même l’intitulé, l’emoji et les valeurs.", false) { fromAi = false; go("type") }
+        ModeCard("star", "À partir d’un modèle", "Des packs prêts à l’emploi : Matinée parfaite, Santé, Lecture, Zéro écran le soir, Sport, Sérénité.", false) { fromAi = false; go("packs") }
         SheetFoot { PButton("Annuler", { ui.close() }, kind = "ghost") }
     }
     if (step == "ai") {
@@ -99,6 +100,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
             }, icon = "sparkle", kind = "primary", enabled = !thinking)
         }
     }
+    if (step == "packs") PacksStep(ui) { go("mode") }
     if (step == "type") {
         Muted("Quel genre d’objectif ?")
         TYPE_GROUPS.forEach { (lab, ks) ->
@@ -383,7 +385,7 @@ private fun buildGoal(ui: AppState, u: User, g0: Goal?, type: String, title0: St
     return g to e
 }
 
-private fun buildGoal0(ui: AppState, u: User, g0: Goal?, type: String, title0: String, icon: String, note: String, vis: String, t: Map<String, String>,
+internal fun buildGoal0(ui: AppState, u: User, g0: Goal?, type: String, title0: String, icon: String, note: String, vis: String, t: Map<String, String>,
                        members: List<String>): Pair<Goal?, String?> {
     val pg = ui.pg; val title = title0.trim()
     fun bad(m: String) = null to m
@@ -519,6 +521,7 @@ fun GoalSheet(ui: AppState, id: String) {
         if (g.note.isNotEmpty()) Info("Pourquoi") { Text(g.note) }
     }
     GoalDetail(ui, g, own)
+    if (own && !g.archived && !pg.isClosedGoal(g)) GeoRow(ui, g)
     if (g.type == "objective") Bar(minOf(100.0, pg.objProgress(g) / g.target * 100), color = tc.c)
     if (g.type != "deadline" && pg.hasCalendar(g.type)) { SectionTitle("5 dernières semaines"); GoalCalendar(pg, g) }
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -586,9 +589,8 @@ private fun GoalDetail(ui: AppState, g: Goal, own: Boolean) {
                 Muted("sur ${fmtNum(g.target)}${pg.unitSfx(g)} aujourd'hui")
                 Bar(minOf(100.0, v / g.target * 100), color = tc.c)
             }
-            SectionTitle("7 derniers jours")
-            for (i in 6 downTo 0) { val k = ymd(todayDate().minusDays(i.toLong())); val x = pg.capDay(g, k)
-                ProgLine(WD_SHORT[wdIdx(parseYmd(k))], x / g.target * 100, "${fmtNum(x)}/${fmtNum(g.target)}", tc.c, cur = i == 0, hit = x >= g.target) }
+            SectionTitle("Historique")
+            QtyChart(g, g.target, g.unit) { k -> pg.capDay(g, k) }
         }
         "duration" -> {
             val m = pg.durationLiveMins(g)
@@ -597,6 +599,8 @@ private fun GoalDetail(ui: AppState, g: Goal, own: Boolean) {
                 Muted("sur ${fmtNum(g.minutes)} min aujourd'hui")
                 Bar(minOf(100.0, m / g.minutes * 100), color = tc.c)
             }
+            SectionTitle("Historique")
+            QtyChart(g, g.minutes, "min") { k -> pg.durationMins(g, k) }
         }
         "measure" -> {
             SectionTitle("Tendance"); MeasureChart(pg, g)
@@ -698,5 +702,59 @@ fun ProgressSheet(ui: AppState, id: String) {
             if (!(n > 0)) { ui.toast(if (g.type == "measure") (if (g.timeFmt) "Temps invalide : écris par exemple 52:30." else "Valeur invalide : écris un nombre, par exemple 72,5.") else "Indique une quantité supérieure à zéro.", "x"); return@PButton }
             ui.close(); pg.addProgress(g.id, n)
         }, kind = "primary")
+    }
+}
+
+/** Fiche d'un objectif : rappel en arrivant à un lieu (ou en le quittant). */
+@Composable
+private fun GeoRow(ui: AppState, g: Goal) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current; val p = LocalPal.current; val scope = rememberCoroutineScope()
+    var cur by remember(g.id) { mutableStateOf(fr.pepsgoal.app.sys.GeoReminders.of(ctx, g.id)) }
+    var open by remember { mutableStateOf(false) }
+    var radius by remember { mutableIntStateOf(cur?.radius ?: 150) }; var exit by remember { mutableStateOf(cur?.exit ?: false) }
+    var label by remember { mutableStateOf(cur?.label ?: "") }; var busy by remember { mutableStateOf(false) }
+    var bgOk by remember { mutableStateOf(fr.pepsgoal.app.sys.GeoReminders.hasBackground(ctx)) }
+    val save: () -> Unit = {
+        busy = true
+        scope.launch {
+            val loc = fr.pepsgoal.app.sys.GeoReminders.here(ctx)
+            busy = false
+            if (loc == null) { ui.toast("Position introuvable : active la localisation et réessaie.", "pin"); return@launch }
+            val pl = fr.pepsgoal.app.sys.GeoReminders.Place(g.id, loc.latitude, loc.longitude, radius, exit, label.trim().take(40))
+            fr.pepsgoal.app.sys.GeoReminders.set(ctx, pl); cur = pl; open = false
+            ui.toast("Rappel enregistré pour ce lieu.", "pin")
+        }
+    }
+    val bgPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
+        bgOk = ok; if (ok) fr.pepsgoal.app.sys.GeoReminders.register(ctx) else ui.toast("Choisis « Toujours autoriser » pour la position, sinon le rappel ne peut pas se déclencher.", "pin")
+    }
+    val finePerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { r ->
+        if (r.values.any { it }) save() else ui.toast("Autorise la localisation pour créer un rappel par lieu.", "pin")
+    }
+    Info("Rappel par lieu") {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val c = cur
+            if (c != null && !open) {
+                Text("${if (c.exit) "En partant de" else "En arrivant à"} ${c.label.ifBlank { "l’endroit enregistré" }} (${c.radius} m)", fontSize = 14.sp)
+                if (!bgOk && android.os.Build.VERSION.SDK_INT >= 29) PButton("Autoriser la position en arrière-plan", { bgPerm.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) }, icon = "pin", small = true, kind = "primary")
+                FlowRowCompat(gap = 6.dp) {
+                    PButton("Modifier", { open = true }, small = true)
+                    PButton("Retirer", { fr.pepsgoal.app.sys.GeoReminders.remove(ctx, g.id); cur = null }, small = true, kind = "ghost")
+                }
+            } else if (!open) PButton("Ajouter un lieu", { open = true }, icon = "pin", small = true)
+            else {
+                Field(label, { label = it }, "Nom du lieu", placeholder = "Salle de sport, maison, bureau…", max = 40)
+                Seg(listOf(false to "En arrivant", true to "En partant"), exit, { exit = it })
+                FlowRowCompat(gap = 6.dp) { listOf(100, 150, 300, 500).forEach { r -> FChip("$r m", radius == r, { radius = r }) } }
+                Muted("Place-toi à l’endroit voulu : PepsGoal enregistre ta position actuelle. Le rappel n’arrive qu’une fois par jour, si l’objectif reste à faire.", small = true)
+                FlowRowCompat(gap = 6.dp) {
+                    PButton(if (busy) "Localisation…" else "Utiliser ma position", {
+                        if (fr.pepsgoal.app.sys.GeoReminders.hasFine(ctx)) save()
+                        else finePerm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
+                    }, icon = "pin", small = true, kind = "primary", enabled = !busy)
+                    PButton("Annuler", { open = false }, small = true, kind = "ghost")
+                }
+            }
+        }
     }
 }

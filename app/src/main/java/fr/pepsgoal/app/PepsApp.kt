@@ -71,7 +71,7 @@ class PepsApp : Application() {
             override fun onStop(owner: LifecycleOwner) { foreground = false; onBackground() }
         })
         SyncWorker.schedule(this)
-        Poller.schedule(this)
+        Poller.schedule(this); fr.pepsgoal.app.sys.GeoReminders.register(this)
         // Notifications du serveur (messages, publications, amis…) relevées toutes les minutes à l'écran
         scope.launch { while (true) { delay(Poller.EVERY_MS); if (foreground) cloud.poll() } }
         // Rappels, évaluations et minuteur : vérifiés régulièrement pendant que l'application tourne

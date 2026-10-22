@@ -152,6 +152,11 @@ class DevicePrefs(context: Context) {
     /** Couleur choisie pour chaque conversation : lignes « clé=index d'accent ». */
     var chatColors: Map<String, Int> get() = (p.getString("chatColors", "") ?: "").lines().mapNotNull { l -> l.split('=').takeIf { it.size == 2 }?.let { it[0] to (it[1].toIntOrNull() ?: return@mapNotNull null) } }.toMap()
         set(v) = p.edit().putString("chatColors", v.entries.joinToString("\n") { "${it.key}=${it.value}" }).apply()
+    /** Messages éphémères par conversation : lignes « clé=heures ». */
+    var chatTtl: Map<String, Int> get() = (p.getString("chatTtl", "") ?: "").lines().mapNotNull { l -> l.split('=').takeIf { it.size == 2 }?.let { it[0] to (it[1].toIntOrNull() ?: return@mapNotNull null) } }.toMap()
+        set(v) = p.edit().putString("chatTtl", v.entries.joinToString("\n") { "${it.key}=${it.value}" }).apply()
+    /** Rappels par lieu : lignes « objectif|lat|lon|rayon|sortie|nom ». */
+    var geoPlaces get() = p.getString("geoPlaces", "") ?: ""; set(v) = p.edit().putString("geoPlaces", v).apply()
     var swipeHint get() = p.getBoolean("swipeHint", false); set(v) = p.edit().putBoolean("swipeHint", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp, easy, oneHand, textScale != 1f).count { it }
 }

@@ -109,6 +109,8 @@ class User(
     var avatar: Avatar = Avatar(),
     var freezes: Int = 0,
     var frozenDays: MutableList<String> = mutableListOf(),
+    /** Jours de repos planifiés : ils ne cassent pas la série (sans compter comme jour réussi). */
+    var restDays: MutableList<String> = mutableListOf(),
     /** Encouragements reçus qui comptent pour les gels (nombre fourni par le serveur). */
     var cheersIn: Int = 0,
     var tutorialDone: Boolean = false,

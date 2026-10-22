@@ -127,6 +127,7 @@ fun PepsRoot(ui: AppState) {
                 AnimatedContent(top, transitionSpec = { (slideInHorizontally { it / 3 } + fadeIn()) togetherWith (fadeOut()) }, label = "screen") { sc ->
                     when (sc) {
                         is Screen.Search -> SearchScreen(ui, sc.q)
+                        is Screen.Challenges -> ChallengesScreen(ui)
                         is Screen.Settings -> SettingsScreen(ui, sc.cat)
                         is Screen.Chat -> ChatScreen(ui, sc.with, sc.group)
                         is Screen.Stories -> StoryHistoryScreen(ui)

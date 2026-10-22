@@ -48,6 +48,8 @@ sealed class Sheet {
     object GroupNew : Sheet()
     class GroupInfo(val gid: String) : Sheet()
     object DeleteAccount : Sheet()
+    /** Jours de repos planifiés. */
+    object Rest : Sheet()
     /** Actions rapides d'un objectif (balayage vers la gauche). */
     class Quick(val id: String) : Sheet()
 }
@@ -79,6 +81,8 @@ sealed class Screen {
     object Journal : Screen()
     /** Statistiques avancées. */
     object Stats : Screen()
+    /** Défis de la communauté. */
+    object Challenges : Screen()
     /** Recherche globale : objectifs, amis, messages, réglages, journal. */
     class Search(val q: String = "") : Screen()
 }

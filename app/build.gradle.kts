@@ -96,4 +96,6 @@ dependencies {
     // Health Connect (Santé d'Android) : validation automatique à partir des pas, du sommeil, du sport, de l'eau
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
+    // Rappels par lieu (géorepérage)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }

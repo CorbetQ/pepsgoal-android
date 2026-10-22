@@ -58,6 +58,7 @@ fun FeedScreen(ui: AppState) {
                 if (!banned) PButton("Story", { if (!pg.socialBlocked("de publier une story")) ui.open(Sheet.StoryNew()) }, icon = "image", small = true)
             }
         }
+        item("challenges") { ChallengesCard(ui) }
         item("gel") { GelCard(ui, u, true) }
         if (posts.isEmpty()) item("empty") { Glass { Empty(if (ui.feedTab == "friends") "Ton fil est encore calme" else "Aucune publication publique", if (ui.feedTab == "friends") "Ajoute des amis ou publie ta première victoire." else "Sois la première personne à partager.") } }
         posts.take(ui.postLimit).forEach { p -> item(p.id) { PostCard(ui, p) } }
@@ -188,6 +189,16 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
                 val nc = post.comments.count { !pg.isBlockedPair(it.userId, u.id) }
                 if (!pend && !inPage) PButton(if (nc > 0) "$nc" else "Commenter", { ui.push(Screen.Comments(post.id)) }, icon = "comment", small = true)
             }
+            // Réponses rapides sous la réussite d'un ami : encouragement et commentaire en un geste
+            if (!pend && post.userId != u.id && (post.goalId != null || post.kind != "manual") && pg.canComment(u, post) && post.comments.none { it.userId == u.id } && pg.store.online)
+                FlowRowCompat(gap = 6.dp) {
+                    QUICK_CHEERS.forEach { q ->
+                        FChip(q, false, {
+                            if (pg.socialBlocked("d'encourager")) return@FChip
+                            ui.run("Encouragement envoyé à ${first(a.name)}.", "flame") { if (!post.likes.contains(u.id)) ui.cloud.toggleLike(post); ui.cloud.comment(post, q) }
+                        })
+                    }
+                }
             // Aperçu : les deux derniers commentaires
             val shown = if (inPage) emptyList() else post.comments.filter { !pg.isBlockedPair(it.userId, u.id) }
             shown.takeLast(2).forEach { c -> CommentBubble(ui, c.userId, c.text, c.at, compact = true) }
@@ -299,3 +310,6 @@ fun CommentsScreen(ui: AppState, postId: String) {
         item("end") { Spacer(Modifier.height(4.dp)) }
     }
 }
+
+/** Réponses rapides aux réussites des amis (feed et notifications). */
+val QUICK_CHEERS = listOf("🔥 Bravo !", "💪 Continue comme ça", "👏 Chapeau", "🚀 Tu gères")

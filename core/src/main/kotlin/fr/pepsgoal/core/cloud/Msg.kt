@@ -12,8 +12,8 @@ import kotlinx.serialization.json.*
 object Msg {
     private const val RICH = "{\"pg\":1,"
     /** Messages de service, jamais affichés ni notifiés : votes, réactions, modification et suppression d'un message. */
-    val SILENT = setOf("vote", "react", "edit", "del")
-    private val KINDS = setOf("photo", "voice", "goal", "text", "poll", "vote", "react", "edit", "del")
+    val SILENT = setOf("vote", "react", "edit", "del", "pin")
+    private val KINDS = setOf("photo", "voice", "goal", "text", "poll", "vote", "react", "edit", "del", "pin")
 
     fun pack(o: JsonObject): String = JsonObject(mapOf("pg" to JsonPrimitive(1)) + o.filterKeys { it != "pg" }).toString()
 
@@ -38,6 +38,7 @@ object Msg {
             "react" -> "A réagi ${b.str("e")}"
             "edit" -> "✏️ ${b.str("t")}"
             "del" -> "Message supprimé"
+            "pin" -> if (b["on"]?.toString() == "false") "A désépinglé un message" else "📌 A épinglé un message"
             else -> b.str("t")
         }
     }

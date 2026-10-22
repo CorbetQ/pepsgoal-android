@@ -53,6 +53,18 @@ class LogicTest {
         assertEquals(3, pg.globalStreak("me").n)
     }
 
+    @Test fun restDayKeepsStreak() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        for (i in listOf(1, 2, 4, 5)) pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        assertEquals(2, pg.globalStreak("me").n)
+        pg.me()!!.restDays.add(ymd(todayDate().minusDays(3)))
+        assertEquals(4, pg.globalStreak("me").n)
+        assertEquals(4, pg.goalStreak(g))
+        assertTrue(pg.toggleRest(ymd(todayDate().minusDays(1))) != null) // pas dans le passé
+        assertEquals(null, pg.toggleRest(today()))
+        assertTrue(pg.isRest())
+    }
+
     @Test fun dailyCap() {
         val g = goal("cap") { target = 10000.0; unit = "pas" }
         pg.addCheck(g, "done", 1.0, 12, ymd(todayDate().minusDays(1)))

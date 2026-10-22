@@ -623,6 +623,7 @@ private fun DataSettings(ui: AppState, u: User) {
                     else ui.open(Sheet.Export(localExport(ui, u)))
                 }, icon = "archive", kind = "primary", small = true, enabled = !pg.db.sandbox)
             }
+            ExportRow(ui)
             if (!pg.store.acct && !pg.db.sandbox) SetRow("Réinitialiser cet appareil", "Efface tous les profils sans compte et leurs données sur cet appareil.") {
                 PButton("Réinitialiser", { ui.confirm("Réinitialiser les données ?", "Tous les profils, objectifs et validations de cet appareil seront effacés définitivement.", "Tout réinitialiser") { ui.close(); pg.stopTimer(true); pg.store.use(Db(), false); pg.store.commit(); ui.sessionChanged(); ui.toast("Données réinitialisées.") } }, kind = "danger", small = true)
             }
@@ -768,5 +769,28 @@ private fun UpdateCard(ui: AppState) {
         SetRow("Rechercher automatiquement", "Une notification t’avertit quand une nouvelle version est publiée.") {
             PSwitch(auto, { auto = it; ui.prefs.autoUpdate = it })
         }
+    }
+}
+
+/** Exports CSV (tableurs) et PDF (bilan imprimable) des statistiques et du journal. */
+@Composable
+fun ExportRow(ui: AppState) {
+    val ctx = LocalContext.current
+    var busy by remember { mutableStateOf(false) }
+    val go = { pdf: Boolean ->
+        if (!busy) { busy = true
+            ui.scope.launch {
+                try {
+                    val files = withContext(Dispatchers.IO) { if (pdf) listOfNotNull(fr.pepsgoal.app.sys.Exports.pdf(ctx)) else fr.pepsgoal.app.sys.Exports.csv(ctx) }
+                    fr.pepsgoal.app.sys.Exports.share(ctx, files, if (pdf) "application/pdf" else "text/csv")
+                } catch (e: Exception) { ui.toast("Export impossible : ${e.message ?: "erreur inconnue"}.", "x") }
+                busy = false
+            }
+        }
+    }
+    SetRow("Statistiques et journal", "Tableurs CSV (objectifs, validations, journal) ou bilan PDF à imprimer ou envoyer à ton coach, ton médecin…")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PButton("CSV", { go(false) }, icon = "list", small = true, enabled = !busy)
+        PButton("Bilan PDF", { go(true) }, icon = "book", small = true, enabled = !busy)
     }
 }

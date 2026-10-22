@@ -24,6 +24,7 @@ import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.fmtDate
 import fr.pepsgoal.core.parseYmd
 import fr.pepsgoal.core.today
+import fr.pepsgoal.core.todayDate
 import fr.pepsgoal.core.ymd
 
 /** Fenêtres du bas (feuilles modales Material 3), une à la fois comme dans la version web. */
@@ -50,6 +51,7 @@ private fun SheetBody(ui: AppState, s: Sheet) {
     when (s) {
         is Sheet.GoalForm -> GoalFormSheet(ui, s)
         is Sheet.Quick -> QuickSheet(ui, s.id)
+        is Sheet.Rest -> RestSheet(ui)
         is Sheet.Goal -> GoalSheet(ui, s.id)
         is Sheet.Progress -> ProgressSheet(ui, s.id)
         is Sheet.User -> UserSheet(ui, s.id)
@@ -144,3 +146,25 @@ fun ConfirmSheet(ui: AppState, s: Sheet.Confirm) {
 }
 
 fun Sheet.isOpen(ui: AppState) = ui.sheet === this
+
+/** Jours de repos : planifiés à l'avance, ils protègent la série sans dépenser de gel. */
+@Composable
+fun RestSheet(ui: AppState) {
+    ui.watch()
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    val days = (0 until 28).map { todayDate().plusDays(it.toLong()) }
+    val month = today().substring(0, 7)
+    SheetHead(ui, "Jours de repos")
+    Muted("Un jour de repos ne compte pas comme réussi, mais il ne casse ni ta série ni celles de tes objectifs, et ne dépense aucun gel. Pas de rappel ce jour-là. Au plus ${pg.REST_PER_MONTH} par mois, à planifier à l’avance.", small = true)
+    Text("${u.restDays.count { it.startsWith(month) }}/${pg.REST_PER_MONTH} ce mois-ci", fontWeight = FontWeight.ExtraBold)
+    FlowRowCompat(gap = 6.dp) {
+        days.forEach { d ->
+            val k = ymd(d); val on = k in u.restDays
+            val lbl = if (k == today()) "Aujourd’hui" else "${d.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, fr.pepsgoal.core.FR).removeSuffix(".")} ${d.dayOfMonth}"
+            FChip(if (on) "😴 $lbl" else lbl, on, { pg.toggleRest(k)?.let { ui.toast(it, "x") } })
+        }
+    }
+    val later = u.restDays.filter { it >= today() }
+    if (later.isNotEmpty()) Muted("Prévus : ${later.joinToString(", ") { fmtDate(it) }}", small = true)
+    SheetFoot { PButton("Terminé", { ui.close() }, kind = "primary") }
+}

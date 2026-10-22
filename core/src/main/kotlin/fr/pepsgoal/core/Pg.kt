@@ -154,11 +154,27 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         return s
     }
     fun globalStreak(id: String): Streak {
-        val days = streakDays(id); var d = todayDate(); var n = 0
+        val days = streakDays(id); val rest = restSet(id); var d = todayDate(); var n = 0
         val lit = activeDays(id).contains(ymd(d))
         if (!days.contains(ymd(d))) d = d.minusDays(1)
-        while (days.contains(ymd(d)) && n < 3650) { n++; d = d.minusDays(1) }
+        // Un jour de repos ne compte pas mais ne casse pas la série
+        for (i in 0 until 4000) { val k = ymd(d); if (days.contains(k)) n++ else if (k !in rest) break; d = d.minusDays(1) }
         return Streak(n, lit)
+    }
+
+    /* ---------------------------------------------------------------- jours de repos */
+    fun restSet(id: String = meId()): Set<String> = userById(id)?.restDays?.toSet() ?: emptySet()
+    fun isRest(date: String = today(), id: String = meId()) = date in restSet(id)
+    /** Nombre maximal de jours de repos par mois. */
+    val REST_PER_MONTH = 6
+    /** Planifie (ou retire) un jour de repos : aujourd'hui ou plus tard, jamais dans le passé. Renvoie un message d'erreur. */
+    fun toggleRest(date: String): String? {
+        val u = me() ?: return null
+        if (date < today()) return "Un jour de repos se planifie à l’avance, pas après coup."
+        if (u.restDays.contains(date)) { u.restDays.remove(date); store.commit(); hooks.liveChanged(); return null }
+        val month = date.substring(0, 7)
+        if (u.restDays.count { it.startsWith(month) } >= REST_PER_MONTH) return "Tu as déjà $REST_PER_MONTH jours de repos ce mois-ci."
+        u.restDays.add(date); u.restDays.sort(); store.commit(); hooks.liveChanged(); return null
     }
     fun bestStreak(id: String): Int {
         val ds = streakDays(id).sorted(); var best = 0; var run = 0; var prev: String? = null
@@ -169,9 +185,9 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
     fun applyFreezes(u: User?) {
         if (u == null || u.freezes <= 0) return
         if (store.acct && cloud?.pulledBefore == false) return
-        val days = streakDays(u.id); val gap = mutableListOf<String>()
+        val days = streakDays(u.id); val rest = restSet(u.id); val gap = mutableListOf<String>()
         var d = todayDate().minusDays(1)
-        while (gap.size < 30 && !days.contains(ymd(d))) { gap.add(ymd(d)); d = d.minusDays(1) }
+        while (gap.size < 30 && (!days.contains(ymd(d)) || ymd(d) in rest)) { if (ymd(d) !in rest) gap.add(ymd(d)); d = d.minusDays(1); if (ymd(d) < ymd(todayDate().minusDays(400))) break }
         if (gap.isEmpty() || !days.contains(ymd(d)) || gap.size > u.freezes) return
         u.freezes -= gap.size; u.frozenDays.addAll(gap)
         val n = globalStreak(u.id).n
@@ -201,10 +217,10 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
 
     /** Jours consécutifs réussis ; le jour « en attente » ne casse pas la série. */
     fun dayStreak(g: Goal, isOk: (String) -> Boolean, isSched: (LocalDate) -> Boolean = { true }, pendKey: String = today(), from: LocalDate = todayDate()): Int {
-        val start = ymd(g.createdAt); var d = from; var n = 0
+        val start = ymd(g.createdAt); var d = from; var n = 0; val rest = restSet(g.userId)
         for (i in 0 until 800) {
             val k = ymd(d); if (k < start) break
-            if (isSched(d)) { if (isOk(k)) n++ else if (k != pendKey) break }
+            if (isSched(d)) { if (isOk(k)) n++ else if (k != pendKey && k !in rest) break }
             d = d.minusDays(1)
         }
         return n
@@ -212,10 +228,10 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
 
     fun goalStreak(g: Goal): Int = when (g.type) {
         "routine" -> if (g.mode == "days") {
-            val start = ymd(g.createdAt); val t = today(); var d = todayDate(); var n = 0
+            val start = ymd(g.createdAt); val t = today(); var d = todayDate(); var n = 0; val rs = restSet(g.userId)
             for (i in 0 until 800) {
                 val k = ymd(d); if (k < start) break
-                if (g.days.contains(wdIdx(d))) { if (hasCheck(g.id, k)) n++ else if (k != t) break }
+                if (g.days.contains(wdIdx(d))) { if (hasCheck(g.id, k)) n++ else if (k != t && k !in rs) break }
                 d = d.minusDays(1)
             }
             n
@@ -909,10 +925,12 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         var fired = false
         val once = { key: String, fn: () -> Unit -> val k = "${u.id}|$t|$key"; if (db.reminderLog[k] == null) { db.reminderLog[k] = 1; fn(); fired = true } }
         val s = u.settings
-        if (s.morning.on && h >= s.morning.time && plan.due.isNotEmpty()) once("morning") {
+        val rest = isRest(t, u.id)
+        if (rest) once("rest") { notify(u.id, "Jour de repos : ta série est protégée aujourd’hui. Profite, sans culpabiliser.", "reminder", view = "today") }
+        if (!rest && s.morning.on && h >= s.morning.time && plan.due.isNotEmpty()) once("morning") {
             notify(u.id, "Rappel du jour : ${pl(plan.due.size, "validation prévue", "validations prévues")}. ${if (st.n > 0) "Ta série de ${pl(st.n, "jour", "jours")} t'attend." else "Allume ta flamme !"}", "reminder", view = "today")
         }
-        if (s.evening.on && h >= s.evening.time && pending > 0) once("evening") {
+        if (!rest && s.evening.on && h >= s.evening.time && pending > 0) once("evening") {
             notify(u.id, "Il te reste ${pl(pending, "validation", "validations")} avant minuit${if (st.n > 0 && !st.lit) " pour garder ta série de ${pl(st.n, "jour", "jours")}" else ""}.", "reminder", view = "today")
         }
         for ((k, lbl) in listOf("week" to "de la semaine passée", "month" to "du mois dernier", "year" to "de l’année dernière")) {
