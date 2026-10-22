@@ -80,6 +80,8 @@ class Settings(
     var weather: Place? = null,
     var wxCard: Boolean = true,
     var glassBlur: String = "mid",
+    /** Effet animé du thème (neige, pétales…), vide sans effet. */
+    var fx: String = "",
     var hideOngoing: Boolean = false,
     /** Clés de réglages inconnues de cette version (écrites par une autre version) : conservées telles quelles. */
     var extraRaw: JsonObject? = null

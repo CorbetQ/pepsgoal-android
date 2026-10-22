@@ -112,11 +112,11 @@ fun PepsRoot(ui: AppState) {
                 val kind = if (s?.theme == "weather") "sky" else s?.bg ?: "blob"
                 val sky = if (s?.theme == "weather") Weather.sky(wx?.data) else null
                 val snow = pg.eggWord() == "Cold" || (ui.prefs.seasonal && fr.pepsgoal.app.sys.Season.now() == "noel"); val stamp = ui.prefs.bgStamp
-                val key = listOf(kind, sky?.phase, sky?.cond, sky?.code, snow, stamp, p.dark)
+                val key = listOf(kind, sky?.phase, sky?.cond, sky?.code, snow, stamp, p.dark, s?.fx ?: "")
                 val skies = remember { mutableMapOf<List<Any?>, Weather.Sky?>() }
                 skies[key] = sky
                 Crossfade(key, animationSpec = tween(if (p.motion) 0 else 900), label = "backdrop") { k ->
-                    Backdrop(k[0] as String, skies[k], k[4] as Boolean, k[5] as Long)
+                    Backdrop(k[0] as String, skies[k], k[4] as Boolean, k[5] as Long, k[7] as String)
                 }
                 LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
             }

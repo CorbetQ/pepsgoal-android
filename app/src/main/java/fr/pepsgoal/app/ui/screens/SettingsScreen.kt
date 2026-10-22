@@ -850,6 +850,7 @@ fun ExportRow(ui: AppState) {
 private fun AppIconCard(ui: AppState) {
     val ctx = LocalContext.current; val p = LocalPal.current
     var cur by remember { mutableStateOf(fr.pepsgoal.app.sys.AppIcons.current(ctx)) }
+    LaunchedEffect(Unit) { keepCurrentIcon(ui, ctx) }
     Glass {
         SectionTitle("Icône de l’application")
         Muted("L’icône change sur l’écran d’accueil d’Android après quelques secondes. Selon le lanceur, un raccourci déjà posé sur l’écran d’accueil peut devoir être ajouté à nouveau.", small = true)

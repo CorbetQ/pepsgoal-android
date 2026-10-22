@@ -255,4 +255,14 @@ class LogicTest {
         assertEquals(pts - 300, pg.wallet()); assertEquals(pts, pg.points(pg.meId()))
         assertTrue(pg.owns("theme:forest", 300)); assertEquals(null, pg.buy("theme:forest", 300)); assertEquals(pts - 300, pg.wallet())
     }
+
+    @Test fun seasonsOfTheShop() {
+        assertEquals(java.time.LocalDate.of(2026, 4, 5), easter(2026))
+        assertEquals(java.time.LocalDate.of(2025, 4, 20), easter(2025))
+        val d = { m: Int, j: Int -> java.time.LocalDate.of(2026, m, j) }
+        assertTrue(seasonWindow("halloween", d(10, 22)) != null); assertTrue(seasonWindow("halloween", d(11, 10)) == null)
+        assertTrue(seasonWindow("newyear", java.time.LocalDate.of(2027, 1, 5)) != null); assertTrue(seasonWindow("winter", d(2, 1)) != null)
+        assertTrue(seasonWindow("easter", d(4, 1)) != null); assertTrue(seasonWindow("autumn", d(10, 22)) != null)
+        assertEquals(d(12, 1), seasonNext("noel", d(10, 22)))
+    }
 }
