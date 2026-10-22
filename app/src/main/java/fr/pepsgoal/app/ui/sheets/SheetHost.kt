@@ -26,6 +26,10 @@ import fr.pepsgoal.core.parseYmd
 import fr.pepsgoal.core.today
 import fr.pepsgoal.core.todayDate
 import fr.pepsgoal.core.ymd
+import fr.pepsgoal.core.vacationOf
+import fr.pepsgoal.core.setVacation
+import fr.pepsgoal.core.endVacation
+import fr.pepsgoal.core.VACATION_MAX
 
 /** Fenêtres du bas (feuilles modales Material 3), une à la fois comme dans la version web. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -166,5 +170,30 @@ fun RestSheet(ui: AppState) {
     }
     val later = u.restDays.filter { it >= today() }
     if (later.isNotEmpty()) Muted("Prévus : ${later.joinToString(", ") { fmtDate(it) }}", small = true)
+    VacationBlock(ui)
     SheetFoot { PButton("Terminé", { ui.close() }, kind = "primary") }
+}
+
+/** Mode vacances : une pause datée de toutes les séries, sans entamer les jours de repos, rappels coupés. */
+@Composable
+private fun VacationBlock(ui: AppState) {
+    val pg = ui.pg; val vac = pg.vacationOf()
+    var from by remember { mutableStateOf(vac?.first ?: today()) }
+    var to by remember { mutableStateOf(vac?.second ?: ymd(todayDate().plusDays(6))) }
+    SectionTitle("🏖️ Mode vacances")
+    if (vac != null) {
+        val now = today() >= vac.first
+        Text(if (now) "En vacances jusqu’au ${fmtDate(vac.second)}" else "Vacances prévues du ${fmtDate(vac.first)} au ${fmtDate(vac.second)}", fontWeight = FontWeight.ExtraBold)
+        Muted("Tes séries sont en pause et les rappels coupés pendant cette période. Valider reste possible si l’envie te prend.", small = true)
+        PButton(if (now) "Revenir de vacances" else "Annuler ces vacances", {
+            pg.endVacation(); ui.toast(if (now) "Bon retour ! Tes séries reprennent aujourd’hui." else "Vacances annulées.", "flame")
+        }, icon = "x", small = true)
+    } else {
+        Muted("Pars l’esprit libre : jusqu’à $VACATION_MAX jours de pause d’un coup, sans toucher à tes ${pg.REST_PER_MONTH} jours de repos du mois.", small = true)
+        DateField("Début", from, { from = it; if (to < it) to = it }, min = today())
+        DateField("Fin", to, { to = it }, min = from)
+        PButton("Partir en vacances", {
+            pg.setVacation(from, to)?.let { ui.toast(it, "x") } ?: ui.toast("Bonnes vacances ! Tes séries t’attendront.", "sun")
+        }, icon = "check", kind = "primary", small = true)
+    }
 }

@@ -58,6 +58,7 @@ object Backup {
         val bu = b.users.firstOrNull { it.id == from }; val me = pg.me()
         if (bu != null && me != null) {
             me.restDays = (me.restDays + bu.restDays).distinct().sorted().toMutableList()
+            if (me.vacations.isEmpty()) me.vacations = bu.vacations.toMutableList()
             me.goalGroups = (me.goalGroups + bu.goalGroups.filter { g -> me.goalGroups.none { it.id == g.id } }).toMutableList()
             bu.goalGroupOf.forEach { (k, v) -> if (k !in me.goalGroupOf && k in ids) me.goalGroupOf[k] = v }
         }

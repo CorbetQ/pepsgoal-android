@@ -59,7 +59,7 @@ class PepsApp : Application() {
             override fun onlineChanged(online: Boolean) = ui.onlineChanged(online)
             override fun sessionChanged() { ui.sessionChanged(); Poller.schedule(this@PepsApp); Poller.startLink(this@PepsApp) }
             override fun serverNotifications(fresh: List<Notif>) { if (!foreground) fresh.forEach { Notifier.server(this@PepsApp, it) } }
-            override fun incomingMessages(fresh: List<Message>) { Notifier.messages(this@PepsApp, fresh) }
+            override fun incomingMessages(fresh: List<Message>) { Notifier.messages(this@PepsApp, fresh); fr.pepsgoal.app.sys.Duo.syncSoon(this@PepsApp) }
             override fun newPosts(fresh: List<Post>) { if (!foreground) Notifier.posts(this@PepsApp, fresh) }
         }
         store.onChange = { ui.bump() }
@@ -88,6 +88,7 @@ class PepsApp : Application() {
         Poller.startLink(this)
         scope.launch { fr.pepsgoal.app.sys.Updater.autoCheck(this@PepsApp) }
         scope.launch { try { fr.pepsgoal.app.sys.Health.sync(this@PepsApp) } catch (e: Exception) {} }
+        scope.launch { try { fr.pepsgoal.app.sys.Agenda.prune(this@PepsApp) } catch (e: Exception) {} }
     }
 
     private fun onBackground() {

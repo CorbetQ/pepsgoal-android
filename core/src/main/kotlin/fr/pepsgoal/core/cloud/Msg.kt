@@ -12,8 +12,8 @@ import kotlinx.serialization.json.*
 object Msg {
     private const val RICH = "{\"pg\":1,"
     /** Messages de service, jamais affichés ni notifiés : votes, réactions, modification et suppression d'un message. */
-    val SILENT = setOf("vote", "react", "edit", "del", "pin")
-    private val KINDS = setOf("photo", "voice", "goal", "text", "poll", "vote", "react", "edit", "del", "pin")
+    val SILENT = setOf("vote", "react", "edit", "del", "pin", "duoj", "duod", "duox")
+    private val KINDS = setOf("photo", "voice", "goal", "text", "poll", "vote", "react", "edit", "del", "pin", "duo", "duoj", "duod", "duox")
 
     fun pack(o: JsonObject): String = JsonObject(mapOf("pg" to JsonPrimitive(1)) + o.filterKeys { it != "pg" }).toString()
 
@@ -33,6 +33,10 @@ object Msg {
             "photo" -> "📷 Photo" + (b.strN("t")?.takeIf { it.isNotEmpty() }?.let { " · $it" } ?: "")
             "voice" -> "🎤 Message vocal (${fmtDur(b.obj("a")?.get("dur")?.jsonPrimitive?.doubleOrNull ?: 0.0)})"
             "goal" -> "🎯 ${b.obj("g").str("title", "Objectif partagé")}"
+            "duo" -> "🤝 Invitation en duo : ${b.obj("g").str("title", "objectif")}"
+            "duoj" -> "🤝 A rejoint le duo"
+            "duod" -> "🤝 Jours du duo"
+            "duox" -> "🤝 A quitté le duo"
             "poll" -> "📊 ${b.str("q", "Sondage")}"
             "vote" -> "📊 A voté au sondage"
             "react" -> "A réagi ${b.str("e")}"

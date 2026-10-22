@@ -20,6 +20,8 @@ interface Hooks {
     fun localNotification(n: Notif) {}
     /** Le minuteur ou une validation a changé : rafraîchir les activités en cours (Live Updates, widget). */
     fun liveChanged() {}
+    /** [next] est enchaîné après [prev], qui vient d'être validé : proposer de le faire maintenant. */
+    fun chained(prev: Goal, next: Goal) {}
 }
 
 /** Fonctions de la couche connectée appelées par la logique (cloud.js : notify, autoPost, gels…). */
@@ -163,7 +165,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
     }
 
     /* ---------------------------------------------------------------- jours de repos */
-    fun restSet(id: String = meId()): Set<String> = userById(id)?.restDays?.toSet() ?: emptySet()
+    fun restSet(id: String = meId()): Set<String> { val u = userById(id) ?: return emptySet(); return u.restDays.toSet() + vacationDays(u) }
     fun isRest(date: String = today(), id: String = meId()) = date in restSet(id)
     /** Nombre maximal de jours de repos par mois. */
     val REST_PER_MONTH = 6
@@ -422,6 +424,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         }
         hooks.liveChanged()
         queueBadgeCheck()
+        chainNext(g).firstOrNull()?.let { hooks.chained(g, it) }
     }
 
     fun autoPost(u: User, g: Goal, text: String) {
@@ -445,6 +448,8 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
     fun validate(id: String): VResult {
         val g = goalById(id); val u = me() ?: return VResult.Done
         if (g == null || !isMember(g, u.id)) return VResult.Done
+        // Sous-tâches : la validation se fait en cochant chaque étape dans la fiche
+        if (g.steps.isNotEmpty() && g.type in STEP_TYPES && !hasCheck(g.id, stepDate(g)) && !stepsComplete(g)) return VResult.OpenGoal(g.id)
         val t = today()
         when (g.type) {
             "routine", "abstinence" -> {
@@ -926,7 +931,9 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         val once = { key: String, fn: () -> Unit -> val k = "${u.id}|$t|$key"; if (db.reminderLog[k] == null) { db.reminderLog[k] = 1; fn(); fired = true } }
         val s = u.settings
         val rest = isRest(t, u.id)
-        if (rest) once("rest") { notify(u.id, "Jour de repos : ta série est protégée aujourd’hui. Profite, sans culpabiliser.", "reminder", view = "today") }
+        val vac = vacationOf(u)?.takeIf { t in it.first..it.second }
+        if (vac != null) once("vac" + vac.first) { notify(u.id, "Mode vacances jusqu’au ${fmtDate(vac.second)} : tes séries sont en pause et les rappels coupés. Bonnes vacances !", "reminder", view = "today") }
+        else if (rest) once("rest") { notify(u.id, "Jour de repos : ta série est protégée aujourd’hui. Profite, sans culpabiliser.", "reminder", view = "today") }
         if (!rest && s.morning.on && h >= s.morning.time && plan.due.isNotEmpty()) once("morning") {
             notify(u.id, "Rappel du jour : ${pl(plan.due.size, "validation prévue", "validations prévues")}. ${if (st.n > 0) "Ta série de ${pl(st.n, "jour", "jours")} t'attend." else "Allume ta flamme !"}", "reminder", view = "today")
         }

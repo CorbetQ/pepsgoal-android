@@ -5,6 +5,7 @@
     <string name="widget_desc">Ta série et tes validations du jour, à valider d’un geste</string>
     <string name="tile_validate">Valider (PepsGoal)</string>
     <string name="tile_focus">Focus (PepsGoal)</string>
+    <string name="tile_cap">Cap quotidien (PepsGoal)</string>
     <string name="sc_focus">Focus</string>
     <string name="sc_focus_long">Lancer une session Focus</string>
     <string name="sc_coach">Coach</string>

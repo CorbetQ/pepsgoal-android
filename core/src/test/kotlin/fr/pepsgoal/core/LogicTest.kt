@@ -149,4 +149,42 @@ class LogicTest {
         assertEquals("été", fixMojibake("ÃƒÂ©tÃƒÂ©"))
         assertEquals("plain text", fixMojibake("plain text"))
     }
+
+    @Test fun stepsValidateWhenAllChecked() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        pg.stepAdd(g.id, "Brossage"); pg.stepAdd(g.id, "Lecture")
+        val (a, b) = g.steps.map { it.id }
+        assertTrue(pg.validate(g.id) is Pg.VResult.OpenGoal)
+        assertTrue(!pg.hasCheck(g.id, today()))
+        pg.stepToggle(g.id, a); assertTrue(!pg.hasCheck(g.id, today()))
+        pg.stepToggle(g.id, b); assertTrue(pg.hasCheck(g.id, today()))
+        pg.stepToggle(g.id, b); assertTrue(!pg.hasCheck(g.id, today()))
+        assertEquals(setOf(a), pg.stepsDone(g))
+    }
+
+    @Test fun chainAndVacation() {
+        val a = goal("routine") { mode = "days"; days = (0..6).toList() }
+        val b = goal("routine") { mode = "days"; days = (0..6).toList() }
+        b.after = a.id
+        assertEquals(listOf(b.id), pg.chainNext(a).map { it.id })
+        assertTrue(pg.chainCandidates(a).none { it.id == b.id })
+        var chained: String? = null
+        pg.hooks = object : Hooks { override fun chained(prev: Goal, next: Goal) { chained = next.id } }
+        pg.validate(a.id); assertEquals(b.id, chained)
+        // Vacances : la série tient pendant la pause
+        for (i in 1..3) pg.addCheck(a, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        assertEquals(null, pg.setVacation(today(), ymd(todayDate().plusDays(5))))
+        assertTrue(pg.isRest(ymd(todayDate().plusDays(3))))
+        at(2026, 10, 25)
+        assertEquals(4, pg.goalStreak(a))
+        pg.endVacation()
+        assertEquals("2026-10-21|2026-10-24", pg.me()!!.vacations.single())
+    }
+
+    @Test fun insightsFindings() {
+        val rates = (1..30).associate { ymd(todayDate().minusDays(it.toLong())) to if (it % 2 == 0) .9 else .4 }
+        val sleep = (1..30).associate { ymd(todayDate().minusDays(it.toLong())) to if (it % 2 == 0) 8.0 else 6.0 }
+        val f = Insights.findings(rates, mapOf("sleep" to sleep))
+        assertTrue(f.first().text.contains("90 %") && f.first().text.contains("40 %"))
+    }
 }

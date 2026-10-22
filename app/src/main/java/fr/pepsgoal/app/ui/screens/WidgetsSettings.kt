@@ -47,6 +47,7 @@ fun WidgetsSettings(ui: AppState) {
                 PSwitch(hide, { hide = it; ui.prefs.widgetHideDone = it; WidgetUpdater.update(ctx) })
             }
         }
+        QuickTilesCard(ui)
         WidgetUpdater.ALL.forEach { w ->
             val cls = w[0] as Class<*>; val name = w[1] as String; val desc = w[2] as String; val size = w[3] as String; val kind = w[4] as String
             Glass {
@@ -165,5 +166,34 @@ private fun PreviewQuick(dark: Boolean) = Frame(dark, 280.dp) { c ->
                 Text(l, Modifier.padding(top = 3.dp), color = c.ink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+/** Tuiles des réglages rapides (volet de notifications) : valider l'objectif suivant, compléter son cap, lancer un focus. */
+@Composable
+private fun QuickTilesCard(ui: AppState) {
+    val ctx = LocalContext.current
+    val tiles = listOf(
+        Triple(fr.pepsgoal.app.sys.ValidateTile::class.java, "Valider", "Valide l’objectif suivant d’un geste (ou l’ouvre s’il demande une saisie)."),
+        Triple(fr.pepsgoal.app.sys.CapTile::class.java, "Cap quotidien", "Ajoute la quantité habituelle à ton cap du jour (pas, verres d’eau…)."),
+        Triple(fr.pepsgoal.app.sys.FocusTile::class.java, "Focus", "Lance ou arrête une session de 25 minutes.")
+    )
+    Glass {
+        Text("Réglages rapides", fontWeight = FontWeight.ExtraBold)
+        Muted("Des tuiles PepsGoal dans le volet de notifications, sans ouvrir l’application.", Modifier.padding(top = 2.dp, bottom = 8.dp), small = true)
+        tiles.forEach { (cls, name, desc) ->
+            SetRow(name, desc) {
+                if (android.os.Build.VERSION.SDK_INT >= 33) PButton("Ajouter", {
+                    val sbm = ctx.getSystemService(android.app.StatusBarManager::class.java)
+                    try {
+                        sbm.requestAddTileService(android.content.ComponentName(ctx, cls), "$name (PepsGoal)", android.graphics.drawable.Icon.createWithResource(ctx, fr.pepsgoal.app.R.drawable.ic_notif), ctx.mainExecutor) { r ->
+                            if (r == android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED) ui.toast("Tuile « $name » ajoutée.", "check")
+                            else if (r == android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED) ui.toast("Cette tuile est déjà dans tes réglages rapides.", "check")
+                        }
+                    } catch (e: Exception) { ui.toast("Ajoute la tuile depuis le crayon des réglages rapides.", "x") }
+                }, small = true)
+            }
+        }
+        if (android.os.Build.VERSION.SDK_INT < 33) Muted("Ouvre les réglages rapides, touche le crayon et fais glisser les tuiles PepsGoal.", small = true)
     }
 }

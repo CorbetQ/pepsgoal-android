@@ -68,6 +68,8 @@ class KeystoreSecrets(context: Context) : Secrets {
 /** Réglages propres à cet appareil (accessibilité, Material You, image d'arrière-plan…), pour tous les comptes. */
 class DevicePrefs(context: Context) {
     private val p = context.getSharedPreferences("pepsgoal.device", Context.MODE_PRIVATE)
+    /** Accès direct, pour les petits états techniques (duo, agenda…). */
+    val raw: android.content.SharedPreferences get() = p
     var contrast get() = p.getBoolean("contrast", false); set(v) = p.edit().putBoolean("contrast", v).apply()
     var cvd get() = p.getString("cvd", "") ?: ""; set(v) = p.edit().putString("cvd", v).apply()
     var mono get() = p.getBoolean("mono", false); set(v) = p.edit().putBoolean("mono", v).apply()

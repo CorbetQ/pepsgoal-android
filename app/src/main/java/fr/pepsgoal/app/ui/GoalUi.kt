@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Sheet
+import fr.pepsgoal.app.peps
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
@@ -187,6 +188,14 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
             meta = "${fmtNum(pr)} / ${fmtNum(g.target)} ${g.unit}${if (mo) " · ${if (pr >= g.target) "atteint ce mois-ci" else pl(pg.daysLeftInMonth(), "jour restant", "jours restants")}" else ""}"; bar = minOf(100.0, pr / g.target * 100)
             right = { MiniBtn("+ Progrès", tc.c) { doValidate(ui, g.id) } } }
         else -> { val s = pg.statBig(g); meta = "${metaOverride ?: pg.metaLine(g)} · ${s.v} ${s.l}" }
+    }
+    // Sous-tâches, enchaînement et duo
+    if (g.steps.isNotEmpty() && g.type in STEP_TYPES && !done) { val n = pg.stepsDone(g).size; meta = "$n/${g.steps.size} sous-tâches · $meta"; if (bar == null) bar = n * 100.0 / g.steps.size }
+    if (!done) pg.goalById(g.after)?.let { prev -> meta = "Après ${prev.icon} ${prev.title.take(20)} · $meta" }
+    if (g.duoId != null && g.duoPeer != null) {
+        val app = androidx.compose.ui.platform.LocalContext.current.peps
+        val n = remember(ui.rev, g.id) { fr.pepsgoal.app.sys.Duo.streak(app, g) }
+        meta = "🤝 $n · $meta"
     }
     val pend = pg.db.checkins.any { it.goalId == g.id && it.pending && it.userId == pg.meId() }
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
