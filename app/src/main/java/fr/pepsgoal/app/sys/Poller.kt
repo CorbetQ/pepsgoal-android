@@ -30,17 +30,32 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 object Poller {
     const val EVERY_MS = 60_000L
+    /** Activité sociale récente (nouveautés relevées) : la relève reste à la minute pendant un quart d'heure. */
+    @Volatile var lastNews = 0L
+    @Volatile private var lastRun = 0L
+    private var lastHealth = 0L
+
+    /**
+     * Intervalle de relève adapté : à la minute quand ça bouge (nouveautés récentes), toutes les 3 minutes au calme,
+     * toutes les 15 minutes la nuit (00 h – 7 h). Les réveils du processeur coûtent cher en batterie.
+     */
+    fun interval(app: PepsApp): Long {
+        val now = System.currentTimeMillis()
+        if (now - lastNews < 15 * 60_000L) return EVERY_MS
+        val h = java.time.LocalTime.now().hour
+        return if (h < 7) 15 * 60_000L else 3 * 60_000L
+    }
     private fun pi(ctx: Context) = PendingIntent.getBroadcast(ctx, 2, Intent(ctx, PollReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-    fun schedule(ctx: Context, delayMs: Long = EVERY_MS) {
+    fun schedule(ctx: Context, delayMs: Long? = null) {
         val app = ctx.peps
         val a = ctx.getSystemService(AlarmManager::class.java); val p = pi(ctx)
         if (!app.store.acct) { a.cancel(p); return }
-        val t = SystemClock.elapsedRealtime() + delayMs
-        try {
-            if (Reminders.canExact(ctx)) a.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p)
-            else a.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p)
-        } catch (e: Exception) { a.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p) }
+        // Avec la connexion en direct, le service relève lui-même : l'alarme n'est plus qu'un filet de sécurité
+        val d = delayMs ?: if (app.prefs.pollTest > 0) 30_000L else if (app.prefs.instantNotifs) 15 * 60_000L else interval(app)
+        val t = SystemClock.elapsedRealtime() + d
+        // Alarme inexacte : Android la regroupe avec les autres réveils (bien moins coûteux qu'une alarme exacte chaque minute)
+        try { a.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p) } catch (e: Exception) { a.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p) }
     }
 
     fun cancel(ctx: Context) = ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
@@ -50,17 +65,21 @@ object Poller {
     /** Une relève : réseau relu, serveur interrogé, nouveautés notifiées ; le processeur reste éveillé le temps de la relève. */
     suspend fun run(app: PepsApp, src: String) {
         if (!lock.tryLock()) return
+        // Relève toute récente (service et alarme qui se croisent) : inutile de recommencer
+        if (System.currentTimeMillis() - lastRun < 40_000L && app.prefs.pollTest == 0L) { lock.unlock(); return }
         val wl = app.getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pepsgoal:poll")
         try {
             wl.acquire(40_000)
             val ok = withTimeoutOrNull(30_000) {
                 app.cloud.navOnline = app.networkUp()
-                if (app.cloud.poll()) WidgetUpdater.update(app)
-                try { SmartReminders.check(app); Health.sync(app) } catch (e: Exception) {}
+                if (app.cloud.poll()) { lastNews = System.currentTimeMillis(); WidgetUpdater.update(app) }
+                try { SmartReminders.check(app) } catch (e: Exception) {}
+                // Santé Connect : relu au plus tous les quarts d'heure
+                if (System.currentTimeMillis() - lastHealth > 15 * 60_000L) { lastHealth = System.currentTimeMillis(); try { Health.sync(app) } catch (e: Exception) {} }
                 true
             }
             if (ok == null) app.cloud.pollStatus = "délai dépassé"
-            val now = System.currentTimeMillis()
+            val now = System.currentTimeMillis(); lastRun = now
             if (app.store.online) app.prefs.lastPoll = now
             val hm = java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE).format(java.util.Date(now))
             app.prefs.pollLog = (listOf("$hm · $src · ${app.cloud.pollStatus}") + app.prefs.pollLog).take(6)
@@ -121,7 +140,7 @@ class LinkService : Service() {
         if (!app.store.acct || !app.prefs.instantNotifs) { stopSelf(); return START_NOT_STICKY }
         if (job?.isActive != true) job = app.scope.launch {
             while (isActive) {
-                delay(Poller.EVERY_MS)
+                delay(Poller.interval(app))
                 if (!app.foreground) Poller.run(app, "service")
             }
         }

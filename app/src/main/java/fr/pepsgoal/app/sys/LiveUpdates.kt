@@ -54,9 +54,15 @@ object LiveUpdates {
         if (u != null && app.prefs.liveUpdates && Notifier.allowed(ctx)) try { build(ctx, out) } catch (e: Exception) {}
         val dismissed = app.prefs.liveDismissed
         val shown = out.filter { "${it.which}|${it.token}" != dismissed }
-        for (id in listOf(ID_TIMER, ID_PERIOD, ID_STREAK)) if (shown.none { it.id == id }) nm.cancel(id)
-        shown.forEach { l -> try { nm.notify(l.id, if (supported()) promoted(ctx, l) else compat(ctx, l)) } catch (e: SecurityException) {} }
+        for (id in listOf(ID_TIMER, ID_PERIOD, ID_STREAK)) if (shown.none { it.id == id }) { nm.cancel(id); posted.remove(id) }
+        // Notification identique à celle déjà affichée : on ne la republie pas (chaque mise à jour réveille l'interface système)
+        shown.forEach { l ->
+            val sig = listOf(l.token, l.title, l.text, l.short, l.progress / 10, l.chrono?.div(60_000), l.countDown).hashCode()
+            if (posted[l.id] == sig) return@forEach
+            try { nm.notify(l.id, if (supported()) promoted(ctx, l) else compat(ctx, l)); posted[l.id] = sig } catch (e: SecurityException) {}
+        }
     }
+    private val posted = HashMap<Int, Int>()
 
     private fun build(ctx: Context, out: MutableList<Live>) {
         val pg = ctx.peps.pg; val u = pg.me()!!; val now = nowMs()
