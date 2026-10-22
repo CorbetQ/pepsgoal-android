@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Sauvegarde dans le cloud et transfert vers un nouveau téléphone (Android 12 et plus) : mêmes données que backup_rules. -->
-<data-extraction-rules>
+<data-extraction-rules xmlns:tools="http://schemas.android.com/tools">
     <cloud-backup>
         <include domain="file" path="journal.json" />
         <include domain="file" path="proofs.json" />
@@ -10,7 +10,7 @@
         <include domain="file" path="db" />
         <include domain="file" path="bg.jpg" />
         <include domain="sharedpref" path="pepsgoal.device.xml" />
-        <exclude domain="sharedpref" path="pepsgoal.secrets.xml" />
+        <exclude domain="sharedpref" path="pepsgoal.secrets.xml" tools:ignore="FullBackupContent" />
     </cloud-backup>
     <device-transfer>
         <include domain="file" path="journal.json" />
@@ -21,6 +21,6 @@
         <include domain="file" path="db" />
         <include domain="file" path="bg.jpg" />
         <include domain="sharedpref" path="pepsgoal.device.xml" />
-        <exclude domain="sharedpref" path="pepsgoal.secrets.xml" />
+        <exclude domain="sharedpref" path="pepsgoal.secrets.xml" tools:ignore="FullBackupContent" />
     </device-transfer>
 </data-extraction-rules>
