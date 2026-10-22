@@ -46,6 +46,7 @@ object WidgetUpdater {
         scope.launch {
             val c = ctx.applicationContext
             for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget())) try { w.updateAll(c) } catch (e: Exception) {}
+            WearSync.push(c)
         }
     }
 
