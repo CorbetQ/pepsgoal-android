@@ -150,6 +150,9 @@ fun GoalAttach(ui: AppState, g: Goal?) {
 
 @Composable
 fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
+    // Les encouragements, commentaires et votes modifient la publication sur place (même objet) : sans lecture de la
+    // révision des données, Compose sauterait la carte et le compteur ne bougerait qu'au prochain rafraîchissement
+    ui.rev
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val a = pg.userById(post.userId) ?: return
     val liked = post.likes.contains(u.id); val adm = pg.isAdmin(u); val pend = post.status == "pending"
     var photo by remember { mutableStateOf(false) }
@@ -235,6 +238,7 @@ fun CheerButton(on: Boolean, n: Int, onClick: () -> Unit) {
 
 @Composable
 fun PollView(ui: AppState, post: Post) {
+    ui.rev
     val p = LocalPal.current; val pg = ui.pg; val poll = post.poll ?: return
     val closed = nowMs() >= poll.endsAt; val voted = poll.options.any { it.mine }; val showRes = closed || voted || post.userId == pg.meId()
     val top = poll.options.maxOfOrNull { it.n } ?: 0

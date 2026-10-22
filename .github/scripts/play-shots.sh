@@ -8,6 +8,9 @@ timeout 120 adb wait-for-device || true
 for w in $(seq 1 60); do [ "$(timeout 10 adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 2; done
 for try in 1 2 3; do adb install -r -g app/build/outputs/apk/github/debug/app-github-debug.apk && break; sleep 10; done
 adb shell svc power stayon true
+# Pas de fenêtre « … ne répond pas » (le lanceur de l'émulateur est parfois lent sur la CI)
+adb shell settings put global hide_error_dialogs 1
+adb shell settings put global anr_show_background 0
 adb shell cmd uimode night $([ "$THEME" = dark ] && echo yes || echo no)
 # Barre d'état propre (mode démo système)
 adb shell settings put global sysui_demo_allowed 1
@@ -25,6 +28,10 @@ for s in today goals goal stats week journal profile focus; do
     timeout 60 adb wait-for-device || true
     timeout 60 adb shell am start -W -n $PKG/fr.pepsgoal.app.MainActivity --es shot $s --es lang $LANG_ >/dev/null
     sleep $((4 + try * 2))
+    # Fenêtre d'erreur système à l'écran : on la ferme (« Attendre ») et on recommence
+    if timeout 20 adb shell dumpsys window | grep -qE "Application Not Responding|isn.t responding|ne répond pas"; then
+      echo "fenêtre « ne répond pas » fermée"; timeout 10 adb shell input keyevent KEYCODE_BACK; sleep 3; continue
+    fi
     timeout 30 adb exec-out screencap -p > "$out/$n-$s.png"
     size=$(stat -c %s "$out/$n-$s.png")
     echo "$out/$n-$s.png : $size octets (essai $try)"
