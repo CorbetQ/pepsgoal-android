@@ -177,7 +177,9 @@ object LocalAi {
             withContext(Dispatchers.Default) {
                 val e = engine ?: LlmInference.createFromOptions(ctx.applicationContext,
                     LlmInference.LlmInferenceOptions.builder().setModelPath(f.path).setMaxTokens(1024).build()).also { engine = it }
-                withTimeoutOrNull(60_000) { runInterruptible { e.generateResponse(prompt) } }?.let(::fixEncoding)?.trim()?.take(maxTokens * 6)
+                // Interface en anglais : le coach répond en anglais
+                val p = if (fr.pepsgoal.core.Lang.en) "$prompt\n(Answer in English.)" else prompt
+                withTimeoutOrNull(60_000) { runInterruptible { e.generateResponse(p) } }?.let(::fixEncoding)?.trim()?.take(maxTokens * 6)
             }
         } catch (e: Throwable) { error = e.message; null }
         finally {

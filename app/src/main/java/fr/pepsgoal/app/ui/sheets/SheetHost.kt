@@ -41,6 +41,8 @@ import fr.pepsgoal.core.VACATION_MAX
 fun SheetHost(ui: AppState) {
     val s = ui.sheet ?: return
     val p = LocalPal.current
+    // Grand écran : la fiche d'un objectif s'affiche dans le volet latéral (voir Shell), pas en fenêtre du bas
+    if (s is Sheet.Goal && androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 900 && ui.screens.isEmpty() && ui.fs == null) return
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // La fenêtre s'arrête sous la barre d'état ; ses cartes n'ont pas de flou (autre fenêtre que l'arrière-plan)
     val slot = remember(s) { FootSlot() }
@@ -77,6 +79,8 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.Hard -> HardDaySheet(ui)
         is Sheet.Miss -> MissSheet(ui, s.id, s.date)
         is Sheet.Reward -> RewardSheet(ui, s.id)
+        is Sheet.GoalQr -> GoalQrSheet(ui, s.id)
+        is Sheet.ImportGoal -> ImportGoalSheet(ui, s.link)
         is Sheet.Goal -> GoalSheet(ui, s.id)
         is Sheet.Progress -> ProgressSheet(ui, s.id)
         is Sheet.User -> UserSheet(ui, s.id)

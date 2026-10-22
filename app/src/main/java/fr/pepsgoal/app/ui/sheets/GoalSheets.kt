@@ -506,6 +506,9 @@ fun GoalSheet(ui: AppState, id: String) {
     }
     if (!g.archived) FlowRowCompat(gap = 8.dp) {
         GoalActions(ui, g, doneToday, running)
+        // Version mini : garde la série les jours sans énergie
+        if (own && g.miniLabel != null && !pg.hasCheck(g.id, pg.stepDate(g)) && pg.todayPlan().due.any { it.g.id == g.id }) PButton("Mini : ${g.miniLabel}", { pg.validateMini(g.id)?.let { ui.toast(it, "x") } ?: ui.toast("Version mini validée : ta série continue 💪", "check") }, icon = "check")
+        if (own && pg.isMiniDone(g)) Chip("Version mini", "check")
         // « Je n'ai pas pu » : noter la raison d'un jour qui ne se fera pas
         if (own && pg.todayPlan().due.any { it.g.id == g.id && !it.done }) PButton(g.missWhy()[today()]?.let { k -> MISS_REASONS.firstOrNull { it.first == k }?.second } ?: "Je n’ai pas pu", { ui.open(Sheet.Miss(g.id, today())) }, kind = "ghost")
     }
@@ -536,8 +539,10 @@ fun GoalSheet(ui: AppState, id: String) {
     ProofsBlock(ui, g, own)
     if (own && !g.archived && !pg.isClosedGoal(g)) OptionsCard("Options") {
         RemindRow(ui, g, divider = false)
+        MiniRow(ui, g)
         ChainRow(ui, g)
         AutoPlaceRow(ui, g)
+        NfcRow(ui, g)
         OutdoorRow(ui, g)
         SavingsRow(ui, g)
         DuoRow(ui, g)
@@ -549,6 +554,7 @@ fun GoalSheet(ui: AppState, id: String) {
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         FlowRowCompat(Modifier.weight(1f), gap = 6.dp) {
             PButton("Partager", { ui.open(Sheet.ShareHub(goalId = g.id)) }, icon = "share", small = true)
+            if (own && g.type !in setOf("group", "duel")) PButton("QR code", { ui.open(Sheet.GoalQr(g.id)) }, icon = "link", small = true)
             if (own) PButton("Modifier", { ui.open(Sheet.GoalForm(editId = g.id)) }, icon = "edit", small = true)
             if (own) PButton(if (g.archived) "Désarchiver" else "Archiver", { archiveWithUndo(ui, g.id) }, icon = "archive", kind = "ghost", small = true)
             if (own) PButton("Supprimer", { ui.confirm("Supprimer cet objectif ?", "« ${g.title} » et toutes ses validations seront supprimés définitivement.", "Supprimer", back = Sheet.Goal(g.id)) { deleteWithUndo(ui, g.id) } }, icon = "trash", kind = "danger", small = true)

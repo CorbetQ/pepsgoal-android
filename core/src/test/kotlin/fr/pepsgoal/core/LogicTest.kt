@@ -221,4 +221,15 @@ class LogicTest {
         val lazy = goal("routine", ago = 40) { mode = "days"; days = listOf(0, 2, 4) }
         assertTrue(pg.weeklySuggestions().any { it.goal.id == lazy.id && it.lighten })
     }
+
+    @Test fun miniVersionKeepsStreak() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        for (i in 1..2) pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        assertTrue(pg.validateMini(g.id) == null) // pas de libellé : rien
+        assertTrue(!pg.hasCheck(g.id, today()))
+        g.miniLabel = "1 page"
+        assertEquals(null, pg.validateMini(g.id))
+        assertTrue(pg.isMiniDone(g)); assertEquals(3, pg.goalStreak(g))
+        pg.validate(g.id); assertTrue(!pg.hasCheck(g.id, today()))
+    }
 }

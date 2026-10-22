@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -235,9 +236,14 @@ private fun Shell(ui: AppState) {
     var topH by remember { mutableIntStateOf(0) }; var botH by remember { mutableIntStateOf(0) }
     val haze = LocalHaze.current
     Box(Modifier.fillMaxSize()) {
+        // Grand écran (tablette, pliable ouvert) : la fiche d'un objectif s'ouvre à côté de la liste, et la colonne
+        // de contenu reste à une largeur confortable
+        val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 900
+        val side = (ui.sheet as? Sheet.Goal)?.takeIf { wide && ui.screens.isEmpty() && ui.fs == null }
         // Contenu des onglets : il défile sous les barres en verre (niveau 1 du flou)
         CompositionLocalProvider(LocalBars provides PaddingValues(top = with(d) { topH.toDp() }, bottom = with(d) { botH.toDp() })) {
-            Box(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier)) {
+            Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier), contentAlignment = Alignment.TopCenter) {
+                Box(Modifier.fillMaxHeight().then(if (wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth())) {
                 remember(ui.tab) { Stagger.reset() }
                 AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(140)) + scaleIn(spring(dampingRatio = .68f, stiffness = 420f), initialScale = .93f) + slideInVertically(spring(dampingRatio = .72f, stiffness = 420f)) { it / 18 }) togetherWith (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 1.02f)) }, label = "tab") { tab ->
                     // Tirer pour actualiser sur l'accueil, le feed et les amis
@@ -249,6 +255,16 @@ private fun Shell(ui: AppState) {
                         "mod" -> ModerationScreen(ui)
                         else -> TodayScreen(ui)
                     }
+                }
+                }
+            }
+        }
+        // Volet latéral de la fiche (grand écran)
+        if (side != null) Box(Modifier.align(Alignment.TopEnd).padding(top = with(d) { topH.toDp() } + 8.dp, bottom = with(d) { botH.toDp() } + 8.dp, end = 12.dp).width(440.dp).fillMaxHeight()
+            .shadow(18.dp, RoundedCornerShape(28.dp)).clip(RoundedCornerShape(28.dp)).background(p.glassStrong.copy(alpha = 1f))) {
+            CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true) {
+                Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    key(side.id) { fr.pepsgoal.app.ui.sheets.GoalSheet(ui, side.id) }
                 }
             }
         }

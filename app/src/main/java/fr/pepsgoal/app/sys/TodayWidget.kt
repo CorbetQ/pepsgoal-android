@@ -45,7 +45,7 @@ object WidgetUpdater {
     fun update(ctx: Context) {
         scope.launch {
             val c = ctx.applicationContext
-            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget())) try { w.updateAll(c) } catch (e: Exception) {}
+            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget())) try { w.updateAll(c) } catch (e: Exception) {}
             WearSync.push(c)
         }
     }
@@ -57,6 +57,7 @@ object WidgetUpdater {
         listOf(ProgressWidgetReceiver::class.java, "Ta progression", "Validations du jour et niveau en cours", "3 × 2", "progress"),
         listOf(QuickWidgetReceiver::class.java, "Accès rapide", "Nouvel objectif, journée, messages et feed", "4 × 1", "quick"),
         listOf(CapWidgetReceiver::class.java, "Cap du jour", "Jauge de ton cap quotidien (10 000 pas…) et bouton « + »", "2 × 2", "cap"),
+        listOf(WeekWidgetReceiver::class.java, "Ma semaine", "Les 7 jours de la semaine et ce que tu as validé chaque jour", "4 × 1", "week"),
     )
 
     /** Demande au lanceur d'ajouter le widget sur l'écran d'accueil (false si le lanceur ne le permet pas). */
@@ -342,6 +343,61 @@ class CapWidget : GlanceAppWidget() {
                     Text("+", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontSize = 18.sp, fontWeight = FontWeight.Bold))
                 }
             }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ Ma semaine */
+
+class WeekWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = WeekWidget() }
+
+/** Image de la semaine : 7 colonnes (lundi → dimanche), une pastille remplie selon la part d'objectifs validés. */
+private fun weekBitmap(rates: List<Double?>, todayIdx: Int, dark: Boolean): android.graphics.Bitmap {
+    val w = 700; val h = 150; val b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888); val c = android.graphics.Canvas(b)
+    val cw = w / 7f; val r = 44f
+    val track = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) 0x22FFFFFF else 0x140D0E2B }
+    val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.STROKE; strokeWidth = 7f; color = if (dark) 0xCCFFFFFF.toInt() else 0xCC0D0E2B.toInt() }
+    val txt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textSize = 30f; textAlign = android.graphics.Paint.Align.CENTER; isFakeBoldText = true; color = if (dark) 0xDDFFFFFF.toInt() else 0xDD0D0E2B.toInt() }
+    for (i in 0..6) {
+        val cx = cw * i + cw / 2; val cy = 62f; val v = rates[i]
+        c.drawCircle(cx, cy, r, track)
+        if (v != null && v > 0) {
+            val col = when { v >= 1.0 -> 0xFF2EC27E.toInt(); v >= .5 -> 0xFFFFB000.toInt(); else -> 0xFFFF6B5E.toInt() }
+            val fill = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = col }
+            c.drawArc(android.graphics.RectF(cx - r, cy - r, cx + r, cy + r), -90f, (360f * v).toFloat().coerceAtMost(360f), true, fill)
+        }
+        if (i == todayIdx) c.drawCircle(cx, cy, r + 6f, ring)
+        c.drawText(fr.pepsgoal.core.WD[i], cx, 140f, txt)
+    }
+    return b
+}
+
+/** Widget « Ma semaine » : les 7 jours et la part d'objectifs validés chaque jour ; ouvre le planning de la semaine. */
+class WeekWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Exact
+    override suspend fun provideGlance(context: Context, id: GlanceId) { provideContent { GlanceTheme { Content(context) } } }
+
+    @Composable
+    private fun Content(ctx: Context) {
+        val app = ctx.peps; val pg = app.pg; val u = pg.me(); val s = style(ctx)
+        Column(GlanceModifier.fillMaxSize().wBg(s).padding(12.dp).clickable(open(ctx) { action = MainActivity.ACTION_WEEK }), verticalAlignment = Alignment.CenterVertically) {
+            if (u == null) { Text("Connecte-toi à PepsGoal.", style = TextStyle(color = s.ink)); return@Column }
+            val ws = fr.pepsgoal.core.weekStart(fr.pepsgoal.core.todayDate()); val t = fr.pepsgoal.core.today()
+            val goals = pg.myGoals(u.id).filter { !it.archived && it.userId == u.id }
+            val rates = (0..6).map { i ->
+                val d = ws.plusDays(i.toLong()); val k = fr.pepsgoal.core.ymd(d)
+                if (k > t) null else {
+                    val due = goals.filter { g -> fr.pepsgoal.core.ymd(g.createdAt) <= k && pg.scheduled(g, d) && k !in pg.restSet() }
+                    if (due.isEmpty()) null else due.count { g -> pg.db.checkins.any { it.goalId == g.id && it.date == k && it.userId == u.id && pg.isWin(it) } }.toDouble() / due.size
+                }
+            }
+            val perfect = rates.count { it != null && it >= 1.0 }
+            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(fr.pepsgoal.app.ui.I18n.tr("Ma semaine"), GlanceModifier.defaultWeight(), style = TextStyle(color = s.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+                Text("🔥 ${pg.globalStreak(u.id).n}", style = TextStyle(color = s.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold))
+            }
+            Image(ImageProvider(weekBitmap(rates, fr.pepsgoal.core.wdIdx(fr.pepsgoal.core.todayDate()), s.dark)), fr.pepsgoal.app.ui.I18n.tr("Ma semaine"), GlanceModifier.fillMaxWidth().padding(vertical = 6.dp))
+            Text(fr.pepsgoal.app.ui.I18n.tr(if (perfect > 0) "Journées parfaites" else "Valide un objectif aujourd’hui pour garder ta série.") + if (perfect > 0) " : $perfect" else "", style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
         }
     }
 }

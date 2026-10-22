@@ -123,3 +123,23 @@ fun Pg.weeklySuggestions(): List<Suggestion> {
 
 /** Lundi de la semaine en cours. */
 fun weekKey(): String = ymd(weekStart(todayDate()))
+
+/* ---------------------------------------------------------------- Version mini */
+
+/** Version réduite de l'habitude (« 1 page » au lieu de 20) : garde la série, rapporte moitié moins de flammes. */
+var Goal.miniLabel: String? get() = strOrNull("mini")?.ifEmpty { null }; set(v) = set("mini", v ?: "")
+val MINI_TYPES = setOf("routine", "timed", "period", "challenge")
+fun Pg.isMiniDone(g: Goal, date: String = stepDate(g)) = db.checkins.any { it.goalId == g.id && it.date == date && it.kind == "done" && it.userId == meId() && it.value < 1.0 }
+
+/** Valide la version mini du jour. Renvoie un message d'erreur, ou null. */
+fun Pg.validateMini(id: String): String? {
+    val g = goalById(id) ?: return null; val k = stepDate(g)
+    if (g.type !in MINI_TYPES || g.miniLabel == null) return null
+    if (hasCheck(g.id, k)) return "Déjà validé aujourd’hui."
+    if (todayPlan().due.none { it.g.id == g.id }) return "Cet objectif n’est pas prévu aujourd’hui."
+    val lit = globalStreak(meId()).lit
+    val pts = maxOf(1, typeInfo(g.type).pts / 2)
+    addCheck(g, "done", 0.5, pts, k); justDone = g.id
+    store.commit(); afterValidation(g, pts, lit); store.commit(); checkPerfect()
+    return null
+}

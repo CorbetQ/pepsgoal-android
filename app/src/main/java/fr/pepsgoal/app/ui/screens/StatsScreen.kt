@@ -13,6 +13,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +51,7 @@ fun StatsScreen(ui: AppState) {
         }
         item("health") { HealthStatsCard(ui) }
         item("insights") { InsightsCard(ui) }
+        item("pixels") { YearPixels(ui) }
         // Raisons notées les jours manqués (« Je n'ai pas pu »)
         val why = pg.missStats()
         if (why.isNotEmpty()) item("why") {
@@ -252,4 +254,79 @@ private fun InsightsCard(ui: AppState) {
             }
         }
     }
+}
+
+/** Couleur d'un jour selon sa réussite : du rouge doux (rien) au vert (tout), gris s'il n'y avait rien de prévu. */
+private fun pixelColor(r: Double?, p: fr.pepsgoal.app.ui.theme.Pal): androidx.compose.ui.graphics.Color = when {
+    r == null -> p.ink.copy(alpha = .06f)
+    r <= 0.0 -> p.danger.copy(alpha = .45f)
+    r < .5 -> androidx.compose.ui.graphics.lerp(p.danger, p.flame2, (r * 2).toFloat()).copy(alpha = .8f)
+    else -> androidx.compose.ui.graphics.lerp(p.flame2, p.ok, ((r - .5) * 2).toFloat())
+}
+
+/** Année en pixels : un carré par jour (colonnes = mois), coloré selon la part d'objectifs validés ; à partager en image. */
+@Composable
+private fun YearPixels(ui: AppState) {
+    val p = LocalPal.current; val ctx = androidx.compose.ui.platform.LocalContext.current; val pg = ui.pg
+    val year = todayDate().year
+    val rates = remember(ui.rev) { val d0 = LocalDate.of(year, 1, 1); Insights.dayRates(pg, daysBetween(d0, todayDate()).toInt() + 1) }
+    val withToday = remember(rates) { val t = todayDate(); val due = pg.todayPlan().due; if (due.isEmpty()) rates else rates + (ymd(t) to due.count { it.done }.toDouble() / due.size) }
+    Glass {
+        CardHead("Année en pixels") {
+            PButton("Partager", {
+                val bmp = yearBitmap(year, withToday, p)
+                fr.pepsgoal.app.sys.Exports.shareImage(ctx, bmp, "pepsgoal-annee-$year")
+            }, icon = "share", small = true)
+        }
+        Muted("$year · chaque carré est un jour, chaque colonne un mois", small = true)
+        Spacer(Modifier.height(10.dp))
+        Canvas(Modifier.fillMaxWidth().aspectRatio(12f / 31f * 1.25f)) {
+            val cw = size.width / 12f; val ch = size.height / 31f; val gap = 2.dp.toPx()
+            for (m in 1..12) {
+                val len = LocalDate.of(year, m, 1).lengthOfMonth()
+                for (d in 1..len) {
+                    val k = ymd(LocalDate.of(year, m, d))
+                    val c = if (k > today()) p.ink.copy(alpha = .03f) else pixelColor(withToday[k], p)
+                    drawRoundRect(c, Offset((m - 1) * cw + gap / 2, (d - 1) * ch + gap / 2), Size(cw - gap, ch - gap), CornerRadius(3.dp.toPx()))
+                    if (k == today()) drawRoundRect(p.ink, Offset((m - 1) * cw + gap / 2, (d - 1) * ch + gap / 2), Size(cw - gap, ch - gap), CornerRadius(3.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+                }
+            }
+        }
+        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Muted("Rien", small = true)
+            listOf(0.0, .3, .6, .85, 1.0).forEach { r -> Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(pixelColor(r, p))) }
+            Muted("Tout validé", small = true)
+        }
+    }
+}
+
+/** Image partageable de l'année en pixels (fond sombre, titre, grille, légende). */
+private fun yearBitmap(year: Int, rates: Map<String, Double>, p: fr.pepsgoal.app.ui.theme.Pal): android.graphics.Bitmap {
+    val w = 1080; val h = 1920; val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+    val c = android.graphics.Canvas(bmp)
+    c.drawPaint(android.graphics.Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), 0xFF141638.toInt(), 0xFF07081A.toInt(), android.graphics.Shader.TileMode.CLAMP) })
+    val tp = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; textSize = 64f; isFakeBoldText = true }
+    c.drawText(tr("Mon année PepsGoal") + " $year", 80f, 170f, tp)
+    tp.textSize = 34f; tp.isFakeBoldText = false; tp.color = 0xBBFFFFFF.toInt()
+    val done = rates.values.count { it >= 1.0 }
+    c.drawText(tr("Journées parfaites") + " : $done", 80f, 230f, tp)
+    val left = 110f; val top = 300f; val cw = (w - left - 60f) / 12f; val ch = (h - top - 200f) / 31f
+    val dark = p.copy(ink = androidx.compose.ui.graphics.Color.White)
+    val months = listOf("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
+    tp.textSize = 30f; tp.textAlign = android.graphics.Paint.Align.CENTER
+    for (m in 1..12) {
+        c.drawText(months[m - 1], left + (m - 0.5f) * cw, top - 16f, tp)
+        val len = LocalDate.of(year, m, 1).lengthOfMonth()
+        for (d in 1..len) {
+            val k = ymd(LocalDate.of(year, m, d))
+            val col = if (k > today()) dark.ink.copy(alpha = .05f) else pixelColor(rates[k], dark)
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = col.toArgb() }
+            c.drawRoundRect(left + (m - 1) * cw + 4, top + (d - 1) * ch + 4, left + m * cw - 4, top + d * ch - 4, 8f, 8f, paint)
+        }
+    }
+    tp.textAlign = android.graphics.Paint.Align.RIGHT
+    for (d in listOf(1, 10, 20, 31)) c.drawText("$d", left - 16f, top + (d - .5f) * ch + 10f, tp)
+    tp.textAlign = android.graphics.Paint.Align.CENTER; tp.color = 0x99FFFFFF.toInt()
+    c.drawText("PepsGoal 🔥", w / 2f, h - 90f, tp)
+    return bmp
 }

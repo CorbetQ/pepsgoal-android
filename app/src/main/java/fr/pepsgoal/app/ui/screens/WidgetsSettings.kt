@@ -58,6 +58,7 @@ fun WidgetsSettings(ui: AppState) {
                         "streak" -> PreviewStreak(dark)
                         "progress" -> PreviewProgress(dark)
                         "cap" -> PreviewCap(dark)
+                        "week" -> PreviewWeek(dark)
                         else -> PreviewQuick(dark)
                     }
                 }
@@ -128,6 +129,23 @@ private fun PreviewStreak(dark: Boolean) = Frame(dark, 160.dp) { c ->
     Spacer(Modifier.height(8.dp))
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card).padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
         WD.forEachIndexed { k, d -> Column(horizontalAlignment = Alignment.CenterHorizontally) { Image(painterResource(if (k == 3) R.drawable.ic_snow else R.drawable.ic_flame), null, Modifier.size(12.dp)); Text(d, color = c.ink2, fontSize = 8.sp) } }
+    }
+}
+
+@Composable
+private fun PreviewWeek(dark: Boolean) = Frame(dark, 280.dp) { c ->
+    Text("Ma semaine", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.ink)
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        listOf(1f, 1f, .6f, 1f, .3f, 0f, 0f).forEachIndexed { i, v ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                androidx.compose.foundation.Canvas(Modifier.size(26.dp)) {
+                    drawCircle(c.ink2.copy(alpha = .18f))
+                    if (v > 0f) drawArc(if (v >= 1f) Color(0xFF2EC27E) else Color(0xFFFFB000), -90f, 360f * v, true)
+                    if (i == 4) drawCircle(c.ink, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+                }
+                Text(fr.pepsgoal.core.WD[i], fontSize = 10.sp, color = c.ink2)
+            }
+        }
     }
 }
 

@@ -89,6 +89,8 @@ object Updater {
 
     /** Vérification automatique (au plus toutes les 6 heures) : notification si une nouvelle version est publiée. */
     suspend fun autoCheck(ctx: Context) {
+        // Version Play Store : les mises à jour passent par Google Play
+        if (BuildConfig.PLAY) return
         val prefs = ctx.peps.prefs
         if (!prefs.autoUpdate || System.currentTimeMillis() - prefs.updateChecked < 6 * 3_600_000L) return
         val r = latest() ?: return

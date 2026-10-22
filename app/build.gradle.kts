@@ -13,8 +13,8 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 390
-        versionName = "3.9.0"
+        versionCode = 400
+        versionName = "4.0.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
@@ -48,6 +48,14 @@ android {
             resValue("string", "pkg", "fr.pepsgoal.app.debug")
             versionNameSuffix = "-debug"
         }
+    }
+
+    // Deux distributions : « github » (APK des releases, mise à jour intégrée) et « play » (Play Store : mises à jour
+    // et avis par Google Play, permissions conformes à ses règles)
+    flavorDimensions += "store"
+    productFlavors {
+        create("github") { dimension = "store"; buildConfigField("boolean", "PLAY", "false") }
+        create("play") { dimension = "store"; buildConfigField("boolean", "PLAY", "true") }
     }
 
     compileOptions {
@@ -106,4 +114,10 @@ dependencies {
     implementation("androidx.fragment:fragment-ktx:1.8.8")
     // Carte intégrée (OpenStreetMap) pour enregistrer des emplacements, sans clé d’API
     implementation("org.osmdroid:osmdroid-android:6.1.20")
+    // Play Store seulement : mises à jour et avis sans quitter l'application
+    // Codes QR des objectifs partagés : génération (ZXing) et lecture (scanner Google, sans permission caméra)
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    "playImplementation"("com.google.android.play:app-update-ktx:2.1.0")
+    "playImplementation"("com.google.android.play:review-ktx:2.0.2")
 }

@@ -121,7 +121,8 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
                 drawRect(p.glassStrong.copy(alpha = p.glassStrong.alpha * k))
                 drawRect(p.line.copy(alpha = p.line.alpha * k), androidx.compose.ui.geometry.Offset(0f, size.height - 1.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
             }.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            // Grand écran : colonne de lecture centrée, à largeur confortable
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp), list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item("title") {
                     // Le grand titre s'efface et rétrécit en défilant (lu dans la phase de dessin : pas de recomposition)
                     Row(Modifier.enter().graphicsLayer {
@@ -202,6 +203,13 @@ private fun Appearance(ui: AppState, u: User) {
     val p = LocalPal.current; val s = u.settings; val ctx = LocalContext.current
     val dynOk = Build.VERSION.SDK_INT >= 31
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        // Langue de l'interface : celle du téléphone, ou forcée
+        Glass {
+            var lang by remember { mutableStateOf(ui.prefs.raw.getString("lang", "auto") ?: "auto") }
+            SectionTitle("Langue · Language")
+            Seg(listOf("auto" to "Auto", "fr" to "Français", "en" to "English"), lang, { lang = it; ui.prefs.raw.edit().putString("lang", it).apply(); I18n.apply(ctx, it); ui.themeTick++; ui.bump() })
+            Muted("« Auto » suit la langue du téléphone. L’anglais traduit l’interface ; tes contenus (objectifs, messages, journal) restent tels que tu les as écrits.", Modifier.padding(top = 8.dp), small = true)
+        }
         Glass {
             SetRow("Couleurs Material You", if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface : panneaux, boutons, flammes, navigation, et couleurs des types harmonisées." else "Nécessite Android 12 ou plus récent.") {
                 PSwitch(ui.prefs.materialYou && dynOk, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = dynOk)
@@ -732,7 +740,7 @@ private fun HelpSettings(ui: AppState) {
     val ctx = LocalContext.current
     val open = { url: String -> try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { ui.toast("Aucune application pour ouvrir ce lien.", "x") } }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        UpdateCard(ui)
+        if (!fr.pepsgoal.app.BuildConfig.PLAY) UpdateCard(ui)
         Glass {
             SetRow("Tutoriel", "Revoir les bases de PepsGoal") { PButton("Revoir", { ui.fs = Fs.Tuto() }, small = true, leading = { Flame(18.dp) }) }
             SetRow("Notes de version", "Les nouveautés de chaque version de PepsGoal") { PButton("Voir", { ui.open(Sheet.Notes) }, icon = "list", small = true) }

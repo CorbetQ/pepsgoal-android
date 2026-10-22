@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sauvegarde Android (jusqu'à Android 11) : journal, preuves, coach, base locale et réglages de l'appareil.
+     Les secrets (jetons de session, clés de chiffrement liées au Keystore de l'appareil) ne quittent jamais le téléphone. -->
+<full-backup-content>
+    <include domain="file" path="journal.json" />
+    <include domain="file" path="proofs.json" />
+    <include domain="file" path="proofs" />
+    <include domain="file" path="ai/chat.json" />
+    <include domain="file" path="ai/memory.json" />
+    <include domain="file" path="db" />
+    <include domain="file" path="bg.jpg" />
+    <include domain="sharedpref" path="pepsgoal.device.xml" />
+    <exclude domain="sharedpref" path="pepsgoal.secrets.xml" />
+</full-backup-content>

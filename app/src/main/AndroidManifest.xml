@@ -40,6 +40,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Validation par tag NFC (facultative : l'application s'installe aussi sans NFC) -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <!-- Créneaux des objectifs dans l'agenda du téléphone -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
@@ -51,7 +54,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.PepsGoal"
         android:supportsRtl="false"
-        android:allowBackup="false"
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
         android:localeConfig="@xml/locales_config">
 
@@ -65,6 +70,19 @@
             <!-- Health Connect : explication des autorisations (Android 13 et moins) -->
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+            <!-- Objectif partagé par lien ou QR code : pepsgoal://goal?d=… -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pepsgoal" android:host="goal" />
+            </intent-filter>
+            <!-- Tag NFC associé à un objectif : pepsgoal://nfc/<objectif> -->
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="pepsgoal" android:host="nfc" />
             </intent-filter>
         </activity>
         <!-- Icônes de l'application au choix (Paramètres › Apparence) : une seule entrée du lanceur est active à la fois -->
@@ -197,6 +215,10 @@
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/pepsgoal" />
             </intent-filter>
         </service>
+        <receiver android:name=".sys.WeekWidgetReceiver" android:exported="true" android:label="@string/widget_week_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_week" />
+        </receiver>
         <receiver android:name=".sys.CapWidgetReceiver" android:exported="true" android:label="@string/widget_cap_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

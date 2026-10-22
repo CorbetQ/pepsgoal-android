@@ -555,8 +555,8 @@ fun LevelRing(level: Int, size: Dp, content: @Composable () -> Unit) {
 }
 
 /* ------------------------------------------------------------------ texte enrichi (**gras**) */
-fun rich(s: String, bold: Color? = null): AnnotatedString = buildAnnotatedString {
-    val parts = s.split("**")
+fun rich(s0: String, bold: Color? = null): AnnotatedString = buildAnnotatedString {
+    val parts = I18n.tr(s0).split("**")
     parts.forEachIndexed { i, t -> if (i % 2 == 1) withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, color = bold ?: Color.Unspecified)) { append(t) } else append(t) }
 }
 

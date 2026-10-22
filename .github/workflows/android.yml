@@ -24,11 +24,11 @@ jobs:
       - name: Tests de la logique (module core)
         run: ./gradlew --no-daemon :core:test
       - name: Application Android (debug + release)
-        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleRelease :wear:assembleRelease :app:bundleRelease :wear:bundleRelease
+        run: ./gradlew --no-daemon :app:assembleGithubDebug :app:assembleGithubRelease :app:bundlePlayRelease :wear:assembleRelease :wear:bundleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: pepsgoal-apk
           path: |
-            app/build/outputs/apk/*/*.apk
+            app/build/outputs/apk/*/*/*.apk
             wear/build/outputs/apk/release/*.apk
           if-no-files-found: error

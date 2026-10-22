@@ -1,0 +1,19 @@
+PepsGoal t'aide à tenir tes objectifs, un jour à la fois.
+
+🔥 Séries et flammes
+Valide tes objectifs chaque jour et regarde ta série grandir. Gels de série, jours de repos et vacances : un imprévu ne casse pas tout.
+
+🎯 Tous les types d'objectifs
+Habitudes quotidiennes, objectifs chiffrés, durées, caps à ne pas dépasser, étapes, enchaînements… et la version mini d'une habitude pour les jours difficiles.
+
+📊 Statistiques claires
+Semaine, mois, année en pixels, corrélations avec ton humeur, bilans et récapitulatifs à partager.
+
+🤝 Avec tes amis
+Duos, ligues de la semaine, défis communautaires et messagerie chiffrée de bout en bout. Partage un objectif par lien ou QR code.
+
+📱 Pensé pour Android
+Widgets (aujourd'hui, ma semaine…), notification du matin interactive, Live Updates, tuiles de réglages rapides, Assistant Google, validation par tag NFC, Wear OS, Health Connect, tablettes et pliables.
+
+🔒 Respect de ta vie privée
+Mode sans compte : tes données restent sur ton appareil. Pas de publicité. Logiciel libre (licence MIT).
