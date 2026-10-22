@@ -187,22 +187,8 @@ object LocalAi {
     }
 }
 
-/**
- * Certaines versions du moteur renvoient le texte UTF-8 décodé comme du Latin-1 (« FÃ©licitations ») :
- * on le redécode correctement quand c'est le cas.
- */
-internal fun fixEncoding(s: String): String {
-    if (!Regex("[ÃÂâ][\u0080-\u00BF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u0192\u02C6\u02DC\u2013-\u2122]").containsMatchIn(s)) return s
-    for (cs in listOf(java.nio.charset.Charset.forName("windows-1252"), Charsets.ISO_8859_1)) {
-        try {
-            val bytes = s.toByteArray(cs)
-            if (String(bytes, cs) != s) continue
-            val fixed = String(bytes, Charsets.UTF_8)
-            if (!fixed.contains('\uFFFD')) return fixed
-        } catch (e: Exception) {}
-    }
-    return s
-}
+/** Répare le texte UTF-8 mal décodé par certaines versions du moteur (voir [fr.pepsgoal.core.fixMojibake]). */
+internal fun fixEncoding(s: String): String = fr.pepsgoal.core.fixMojibake(s)
 
 /** Une entrée de la mémoire de l'IA (ce que l'assistant retient de toi), lisible et effaçable dans les réglages. */
 @Serializable

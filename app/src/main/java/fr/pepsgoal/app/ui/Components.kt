@@ -3,6 +3,8 @@ package fr.pepsgoal.app.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -615,12 +617,54 @@ fun FitText(text: String, modifier: Modifier = Modifier, size: Int = 14, min: In
 
 @Composable
 fun Field(value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, placeholder: String = "", singleLine: Boolean = true, minLines: Int = 1,
-          max: Int = 500, keyboard: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default, password: Boolean = false) {
+          max: Int = 500, keyboard: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default, password: Boolean = false,
+          icon: String? = null) {
     val p = LocalPal.current
-    OutlinedTextField(value, { if (it.length <= max) onChange(it) }, modifier.fillMaxWidth(), label = { Text(label) }, placeholder = if (placeholder.isNotEmpty()) ({ Text(placeholder, color = p.ink3) }) else null,
-        singleLine = singleLine, minLines = minLines, keyboardOptions = keyboard, shape = RoundedCornerShape(14.dp),
-        visualTransformation = if (password) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = p.focus, unfocusedBorderColor = p.line, focusedContainerColor = p.glassStrong, unfocusedContainerColor = p.glassStrong))
+    val inter = remember { MutableInteractionSource() }
+    val focused by inter.collectIsFocusedAsState()
+    var reveal by remember { mutableStateOf(false) }
+    // Pilule de verre : bord discret au repos, liseré et halo de l'accent quand le champ a le focus
+    val k by androidx.compose.animation.core.animateFloatAsState(if (focused) 1f else 0f, if (p.motion) snap() else tween(220), label = "field")
+    val shape = RoundedCornerShape(if (singleLine) 20.dp else 18.dp)
+    val edge = androidx.compose.ui.graphics.lerp(ctlEdge(p), p.focus, k)
+    androidx.compose.foundation.text.BasicTextField(
+        value, { if (it.length <= max) onChange(it) },
+        modifier.fillMaxWidth().semantics { label.ifBlank { placeholder }.takeIf { it.isNotBlank() }?.let { contentDescription = it } },
+        singleLine = singleLine, minLines = minLines, maxLines = if (singleLine) 1 else 12, keyboardOptions = keyboard, interactionSource = inter,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = p.ink, fontWeight = FontWeight.SemiBold),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(p.flame),
+        visualTransformation = if (password && !reveal) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        decorationBox = { inner ->
+            Row(
+                Modifier.fillMaxWidth()
+                    .shadow(if (p.transp) 0.dp else (2 + 10 * k).dp, shape, ambientColor = p.focus.copy(alpha = .5f * k), spotColor = p.focus.copy(alpha = .6f * k))
+                    .clip(shape).background(p.glassStrong)
+                    .background(Brush.verticalGradient(listOf(p.ink.copy(alpha = if (p.dark) .05f else .0f), p.focus.copy(alpha = .06f * k))))
+                    .border((1 + .6f * k).dp, edge, shape)
+                    .heightIn(min = 56.dp).padding(start = if (icon != null) 14.dp else 18.dp, end = 8.dp, top = 9.dp, bottom = 9.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (icon != null) Pi(icon, size = 20.dp, tint = androidx.compose.ui.graphics.lerp(p.ink3, p.focus, k))
+                Column(Modifier.weight(1f).padding(end = 6.dp)) {
+                    if (label.isNotBlank()) Text(label, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = androidx.compose.ui.graphics.lerp(p.ink3, p.focus, k), maxLines = 1, letterSpacing = .2.sp)
+                    Box {
+                        if (value.isEmpty() && placeholder.isNotEmpty()) Text(placeholder, color = p.ink3, fontSize = MaterialTheme.typography.bodyLarge.fontSize, maxLines = if (singleLine) 1 else 3, overflow = TextOverflow.Ellipsis)
+                        inner()
+                    }
+                    if (!singleLine && max <= 600 && value.length > max * .7) Text("${value.length}/$max", Modifier.align(Alignment.End), fontSize = 11.sp, color = if (value.length >= max) p.danger else p.ink3, fontWeight = FontWeight.Bold)
+                }
+                when {
+                    password -> Box(Modifier.size(36.dp).clip(CircleShape).clickable { reveal = !reveal }.semantics { contentDescription = if (reveal) "Masquer le mot de passe" else "Afficher le mot de passe" }, contentAlignment = Alignment.Center) {
+                        Pi(if (reveal) "eye" else "lock", size = 18.dp, tint = p.ink2)
+                    }
+                    singleLine && value.isNotEmpty() && focused -> Box(Modifier.size(30.dp).clip(CircleShape).background(p.ink.copy(alpha = .08f)).clickable { onChange("") }.semantics { contentDescription = "Effacer" }, contentAlignment = Alignment.Center) {
+                        Pi("x", size = 14.dp, tint = p.ink2)
+                    }
+                    else -> Spacer(Modifier.width(if (icon != null || singleLine) 4.dp else 0.dp))
+                }
+            }
+        }
+    )
 }
 
 @Composable

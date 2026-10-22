@@ -26,6 +26,7 @@ import java.io.File
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
@@ -224,14 +225,46 @@ fun SkyCanvas(s: Weather.Sky) {
         val r = min(size.width, size.height) * .085f
         if (!night) {
             val a = (1 - cov * 1.15f).coerceAtLeast(0f)
+            // Lueur diffuse : reste visible derrière un voile nuageux, même quand le disque est caché
+            val glow = (1 - cov * .8f).coerceAtLeast(0f)
+            val sx = size.width * (.08f + s.prog * .84f); val sy = size.height * (.6f - sin(PI.toFloat() * s.prog) * .46f)
+            val warm = s.phase != "day"; val low = (sy / size.height - .3f).coerceIn(0f, 1f)
+            val c = Offset(sx, sy); val pulse = 1f + .035f * sin(t * .7f)
+            val hot = if (warm) Color(255, 214, 160) else Color(255, 246, 214)
+            val gold = if (warm) Color(255, 150, 70) else Color(255, 212, 110)
+            if (glow > .02f) {
+                // Grand voile coloré du ciel autour du soleil, puis halo resserré
+                drawCircle(Brush.radialGradient(listOf(gold.copy(alpha = (if (warm) .42f else .26f) * glow), gold.copy(alpha = .1f * glow), Color.Transparent), c, r * 10), r * 10, c)
+                drawCircle(Brush.radialGradient(listOf(hot.copy(alpha = .7f * glow), hot.copy(alpha = .22f * glow), Color.Transparent), c, r * 3.4f * pulse), r * 3.4f * pulse, c)
+                // Soleil bas : bande chaude le long de l'horizon
+                if (warm || low > .2f) drawRect(Brush.verticalGradient(listOf(Color.Transparent, gold.copy(alpha = .22f * glow * max(low, if (warm) .7f else 0f)), Color.Transparent), sy - r * 2, sy + r * 3), Offset(0f, sy - r * 2), androidx.compose.ui.geometry.Size(size.width, r * 5))
+            }
             if (a > .02f) {
-                val sx = size.width * (.08f + s.prog * .84f); val sy = size.height * (.6f - sin(PI.toFloat() * s.prog) * .46f); val warm = s.phase != "day"
-                drawCircle(Brush.radialGradient(listOf((if (warm) Color(255, 190, 120) else Color(255, 236, 170)).copy(alpha = .55f * a), Color.Transparent), Offset(sx, sy), r * 5), r * 5, Offset(sx, sy))
-                if (s.cond == "clear" && !warm) for (i in 0 until 12) {
-                    val ang = t * .03f + i * PI.toFloat() / 6
-                    drawLine(Color(0xFFFFF4C8).copy(alpha = .07f * a), Offset(sx, sy), Offset(sx + cos(ang) * r * 6, sy + sin(ang) * r * 6), r * .5f)
+                // Rayons effilés qui tournent lentement, fondus vers l'extérieur
+                if (s.cond == "clear") {
+                    val rays = Brush.radialGradient(listOf(hot.copy(alpha = .2f * a), hot.copy(alpha = .06f * a), Color.Transparent), c, r * 7.5f)
+                    for (i in 0 until 14) {
+                        val ang = t * .02f + i * PI.toFloat() / 7; val len = r * (if (i % 2 == 0) 7.5f else 5f) * (1 + .06f * sin(t * .5f + i)); val wd = if (i % 2 == 0) .06f else .04f
+                        val path = Path().apply {
+                            moveTo(sx + cos(ang - wd * 3) * r * .9f, sy + sin(ang - wd * 3) * r * .9f)
+                            lineTo(sx + cos(ang) * len, sy + sin(ang) * len)
+                            lineTo(sx + cos(ang + wd * 3) * r * .9f, sy + sin(ang + wd * 3) * r * .9f); close()
+                        }
+                        drawPath(path, rays)
+                    }
                 }
-                drawCircle(Brush.radialGradient(listOf(Color(255, 252, 235).copy(alpha = a), (if (warm) Color(255, 186, 96) else Color(255, 222, 120)).copy(alpha = a), Color.Transparent), Offset(sx - r * .25f, sy - r * .25f), r * 1.1f), r, Offset(sx, sy))
+                // Couronne lumineuse, puis disque chauffé à blanc au centre, doré au bord
+                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .85f * a), hot.copy(alpha = .5f * a), Color.Transparent), c, r * 1.6f), r * 1.6f, c)
+                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = a), Color(255, 251, 236).copy(alpha = a), hot.copy(alpha = a), gold.copy(alpha = .96f * a)), c, r), r, c)
+                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .9f * a), Color.Transparent), Offset(sx - r * .3f, sy - r * .32f), r * .55f), r * .55f, Offset(sx - r * .3f, sy - r * .32f))
+                // Reflets d'objectif le long de l'axe soleil → centre de l'écran
+                if (s.cond == "clear" && a > .4f) {
+                    val cx = size.width / 2; val cy = size.height * .55f; val f = (a - .4f) / .6f
+                    for ((d, rr, col) in listOf(Triple(.55f, .5f, Color(255, 220, 150)), Triple(.9f, .28f, Color(170, 220, 255)), Triple(1.25f, .8f, Color(255, 190, 210)), Triple(1.6f, .35f, Color(200, 255, 220)))) {
+                        val o = Offset(sx + (cx - sx) * d, sy + (cy - sy) * d)
+                        drawCircle(Brush.radialGradient(listOf(col.copy(alpha = .16f * f), col.copy(alpha = .05f * f), Color.Transparent), o, r * rr), r * rr, o)
+                    }
+                }
             }
         } else {
             val a = (1 - cov).coerceAtLeast(0f); val mx = size.width * .78f; val my = size.height * .15f; val mr = r * .62f

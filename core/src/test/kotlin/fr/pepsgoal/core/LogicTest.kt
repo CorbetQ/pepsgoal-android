@@ -141,4 +141,12 @@ class LogicTest {
         val state = Badges.state(pg, "me")
         assertTrue(state.first { it.f.k == "streak" }.tier >= 1)
     }
+
+    @Test fun mojibake() {
+        assertEquals("Objectif validé, bravo !", fixMojibake("Objectif validÃ©, bravo !"))
+        assertEquals("Déjà validé à 7 h – génial 🎉", fixMojibake("Déjà validÃ© Ã  7 h â€“ gÃ©nial ðŸŽ‰"))
+        assertEquals("Âge, où, ça, ÉTÉ, « œuvre »", fixMojibake("Âge, où, ça, ÉTÉ, « œuvre »"))
+        assertEquals("été", fixMojibake("ÃƒÂ©tÃƒÂ©"))
+        assertEquals("plain text", fixMojibake("plain text"))
+    }
 }

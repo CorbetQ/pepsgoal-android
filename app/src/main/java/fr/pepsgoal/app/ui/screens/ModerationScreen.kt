@@ -95,7 +95,7 @@ private fun ModAccounts(ui: AppState) {
             CardHead("Comptes") { Count(people.size) }
             ChipsRow { listOf("all" to "Tous", "banned" to "Bannis", "warned" to "Avertis", "muted" to "Commentaires restreints", "new" to "Nouveaux (7 j)").forEach { (k, l) -> FChip(l, fl == k, { fl = k }) } }
             Spacer(Modifier.height(10.dp))
-            Field(q, { q = it }, "Rechercher un compte", placeholder = "Nom ou @utilisateur", max = 40)
+            Field(q, { q = it }, "", placeholder = "Rechercher un compte : nom ou @utilisateur", max = 40, icon = "search")
             val ql = q.trim().lowercase()
             val list = pg.db.users.filter { !pg.isOfficial(it) }.filter { x -> fl == "all" || (fl == "banned" && pg.isBanned(x)) || (fl == "warned" && x.warned != null) || (fl == "muted" && x.noComments) || (fl == "new" && nowMs() - x.createdAt < 7 * DAY_MS) }
                 .filter { ql.isEmpty() || it.name.lowercase().contains(ql) || it.username.contains(ql) }
@@ -287,7 +287,7 @@ private fun ModNews(ui: AppState) {
                 PButton("Choisir", { pickTo = !pickTo }, small = true); if (to != null) PButton("Tous", { to = null }, kind = "ghost", small = true)
             }
             if (pickTo) {
-                Field(q, { q = it }, "Rechercher", placeholder = "Nom ou @utilisateur", max = 40)
+                Field(q, { q = it }, "", placeholder = "Rechercher : nom ou @utilisateur", max = 40, icon = "search")
                 pg.db.users.filter { it.role == null && (q.isBlank() || it.name.lowercase().contains(q.lowercase()) || it.username.contains(q.lowercase())) }.sortedBy { it.name.lowercase() }.take(12).forEach { x ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { to = x.id; pickTo = false }.padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 28.dp); Text("${x.name} (@${x.username})") }
                 }

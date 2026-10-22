@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import fr.pepsgoal.app.ui.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -563,8 +565,13 @@ private fun Composer(ui: AppState, u: User, members: List<String>?, replyTo: Mes
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             IconBtn("plus", "Joindre une photo, un objectif ou un sondage", { panel = if (panel == "tools" || panel == "goal" || panel == "poll") null else "tools" }, plain = true, size = 40.dp)
             IconBtn("smile", "Emojis", { panel = if (panel == "emoji") null else "emoji" }, plain = true, size = 40.dp)
-            TextField(tv, { if (it.text.length <= 500) tv = it }, Modifier.weight(1f), placeholder = { Text("Écrire un message…") }, maxLines = 5, shape = RoundedCornerShape(22.dp),
-                colors = TextFieldDefaults.colors(focusedContainerColor = p.glass, unfocusedContainerColor = p.glass, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent))
+            val composeInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val composeFocus by composeInter.collectIsFocusedAsState()
+            TextField(tv, { if (it.text.length <= 500) tv = it }, Modifier.weight(1f).border(if (composeFocus) 1.5.dp else 1.dp, if (composeFocus) p.focus else ctlEdge(p), RoundedCornerShape(24.dp)),
+                placeholder = { Text("Écrire un message…", color = p.ink3) }, maxLines = 5, shape = RoundedCornerShape(24.dp), interactionSource = composeInter,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                colors = TextFieldDefaults.colors(focusedContainerColor = p.glassStrong, unfocusedContainerColor = p.glassStrong, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = p.flame, focusedTextColor = p.ink, unfocusedTextColor = p.ink))
             if (tv.text.isBlank()) IconBtn("mic", "Enregistrer un message vocal", {
                 if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRec() else micPerm.launch(Manifest.permission.RECORD_AUDIO)
             }, plain = true, size = 40.dp)

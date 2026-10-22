@@ -535,7 +535,7 @@ private fun WeatherSettings(ui: AppState, u: User) {
             if (pl0 != null) PButton("Retirer", { s.weather = null; Wx.clear(ctx); save(ui) }, kind = "ghost", small = true)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Field(q, { q = it }, "Rechercher une ville", Modifier.weight(1f), placeholder = "Angers, Lyon, Bruxelles…", max = 60)
+            Field(q, { q = it }, "Rechercher une ville", Modifier.weight(1f), placeholder = "Angers, Lyon, Bruxelles…", max = 60, icon = "pin")
             PButton("Chercher", {
                 if (q.trim().length < 2) return@PButton
                 if (!ui.pg.store.online) { err = "Hors ligne : la recherche de ville nécessite internet."; return@PButton }
