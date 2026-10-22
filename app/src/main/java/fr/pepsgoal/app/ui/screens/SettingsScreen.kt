@@ -101,7 +101,9 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
         val low = p.oneHand
         val list = state ?: androidx.compose.foundation.lazy.rememberLazyListState()
         // En-tête qui se rétracte : passé le grand titre, il s'affiche en petit dans une barre givrée
-        val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 60 } }
+        // Le petit titre n'apparaît qu'une fois le grand presque effacé (pas de doublon à l'écran)
+        val dens = androidx.compose.ui.platform.LocalDensity.current; val fadePx = with(dens) { 44.dp.toPx() }
+        val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > fadePx * .85f } }
         val k by androidx.compose.animation.core.animateFloatAsState(if (collapsed && !low) 1f else 0f, if (p.motion) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(220), label = "head")
         val head = @Composable { mod: Modifier ->
             Box(mod.fillMaxWidth()) {
@@ -124,7 +126,7 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
                     // Le grand titre s'efface et rétrécit en défilant (lu dans la phase de dessin : pas de recomposition)
                     Row(Modifier.enter().graphicsLayer {
                         val off = if (list.firstVisibleItemIndex == 0) list.firstVisibleItemScrollOffset.toFloat() else 200f
-                        val f = (off / 120.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
+                        val f = (off / 44.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
                     }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
