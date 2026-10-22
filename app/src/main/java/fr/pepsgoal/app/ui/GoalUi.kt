@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
@@ -353,10 +354,11 @@ fun GoalCalendar(pg: Pg, g: Goal) {
                 val on = pg.db.checkins.any { it.goalId == g.id && it.date == k && pg.isWin(it) }; val rel = pg.hasCheck(g.id, k, "relapse")
                 val cls = when { rel -> "relapse"; on -> "on"; fut -> "fut"; k >= created && pg.scheduled(g, d) && !(g.type == "abstinence" && k < g.since) -> if (k == t) "pending" else "miss"; else -> "rest" }
                 Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(9.dp))
-                    .background(when (cls) { "on" -> tc.c; "relapse" -> p.danger; "rest", "fut" -> p.ink.copy(alpha = .05f); else -> Color.Transparent })
+                    .background(when (cls) { "on" -> Brush.verticalGradient(listOf(tc.c, androidx.compose.ui.graphics.lerp(tc.c, p.pink, .25f))); "relapse" -> SolidColor(p.danger); "rest" -> SolidColor(p.ink.copy(alpha = .045f)); else -> SolidColor(Color.Transparent) })
+                    .then(if (cls == "fut") Modifier.border(1.dp, p.line.copy(alpha = .5f), RoundedCornerShape(9.dp)) else Modifier)
                     .then(if (cls == "miss" || cls == "pending") Modifier.border(1.5.dp, if (cls == "pending") tc.c else p.ink3.copy(alpha = .6f), RoundedCornerShape(9.dp)) else Modifier)
                     .then(if (k == t) Modifier.border(2.dp, p.ink, RoundedCornerShape(9.dp)) else Modifier), contentAlignment = Alignment.Center) {
-                    Text("${d.dayOfMonth}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (cls == "on") p.onAccent else if (fut) p.ink3 else p.ink2)
+                    Text("${d.dayOfMonth}", fontSize = 12.sp, fontWeight = if (cls == "on" || k == t) FontWeight.ExtraBold else FontWeight.Bold, color = if (cls == "on") p.onAccent else if (fut) p.ink3.copy(alpha = .6f) else p.ink2)
                 }
             }
         }

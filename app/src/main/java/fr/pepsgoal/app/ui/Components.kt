@@ -671,4 +671,11 @@ fun Field(value: String, onChange: (String) -> Unit, label: String, modifier: Mo
 fun Err(text: String?) { if (!text.isNullOrEmpty()) Text(text, color = LocalPal.current.danger, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
 
 @Composable
-fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp), modifier = Modifier.padding(bottom = 8.dp, top = 4.dp).semantics { heading() })
+fun SectionTitle(text: String) {
+    val p = LocalPal.current
+    // Petit liseré dégradé aux couleurs de l'accent devant le titre
+    Row(Modifier.padding(bottom = 8.dp, top = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(4.dp, 15.dp).clip(RoundedCornerShape(2.dp)).background(Brush.verticalGradient(listOf(p.flame2, p.pink))))
+        Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp))
+    }
+}

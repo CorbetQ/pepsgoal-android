@@ -17,7 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -76,35 +79,28 @@ fun StepsBlock(ui: AppState, g: Goal, own: Boolean) {
 
 /** Enchaînement : « après tel objectif → celui-ci ». */
 @Composable
-fun ChainRow(ui: AppState, g: Goal) {
-    val pg = ui.pg; val prev = pg.goalById(g.after)
+fun ChainRow(ui: AppState, g: Goal, divider: Boolean = true) {
+    val p = LocalPal.current; val pg = ui.pg; val prev = pg.goalById(g.after)
     var open by remember { mutableStateOf(false) }
-    InfoRow("Enchaînement") {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (prev != null) Text("Après ${prev.icon} ${prev.title}", fontWeight = FontWeight.Bold)
-            else Muted("Associe-le à une habitude existante : « après mon café → méditation ».", small = true)
-            if (!open) FlowRowCompat(gap = 6.dp) {
-                PButton(if (prev == null) "Enchaîner après…" else "Changer", { open = true }, icon = "repeat", small = true)
-                if (prev != null) PButton("Retirer", { g.after = null; pg.store.commit() }, small = true, kind = "ghost")
-            } else {
-                val cands = pg.chainCandidates(g)
-                if (cands.isEmpty()) Muted("Aucun autre objectif disponible.", small = true)
-                FlowRowCompat(gap = 6.dp) {
-                    cands.forEach { c -> FChip("${c.icon} ${c.title.take(24)}", c.id == g.after, { g.after = c.id; pg.store.commit(); open = false; ui.toast("Quand « ${c.title} » sera validé, PepsGoal te proposera « ${g.title} ».", "repeat") }) }
-                }
-                PButton("Annuler", { open = false }, small = true, kind = "ghost")
-            }
+    OptionRow("repeat", p.type("routine").c, p.type("timed").c, "Enchaînement",
+        prev?.let { "Après ${it.icon} ${it.title}" } ?: "Après une habitude existante : « café → méditation »", open, { open = !open }, divider) {
+        val cands = pg.chainCandidates(g)
+        if (cands.isEmpty()) Muted("Aucun autre objectif disponible.", small = true)
+        else Muted("Quand celui-ci sera validé, PepsGoal te proposera « ${g.title} » :", small = true)
+        FlowRowCompat(gap = 6.dp) {
+            cands.forEach { c -> FChip("${c.icon} ${c.title.take(24)}", c.id == g.after, { g.after = c.id; pg.store.commit(); open = false; ui.toast("Enchaîné après « ${c.title} ».", "repeat") }) }
         }
+        if (prev != null) PButton("Retirer l’enchaînement", { g.after = null; pg.store.commit(); open = false }, small = true, kind = "ghost")
     }
 }
 
 /** Galerie des preuves (note, photo) et ajout de celle du jour. */
 @Composable
 fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
-    val ctx = LocalContext.current; val p = LocalPal.current; val pg = ui.pg
+    val ctx = LocalContext.current; val p = LocalPal.current; val pg = ui.pg; val tc = p.type(g.type)
     val rev = Proofs.rev
     val list = remember(rev, g.id) { Proofs.of(ctx, g.id) }
-    val k = stepDateOrToday(pg, g); val doneNow = pg.hasCheck(g.id, k) || pg.db.checkins.any { it.goalId == g.id && it.date == k && it.userId == pg.meId() && pg.isWin(it) }
+    val k = stepDateOrToday(pg, g); val doneNow = pg.db.checkins.any { it.goalId == g.id && it.date == k && it.userId == pg.meId() && pg.isWin(it) }
     if (list.isEmpty() && !(own && doneNow)) return
     val todayProof = list.firstOrNull { it.date == k }
     var editing by remember { mutableStateOf(false) }
@@ -112,31 +108,52 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
     var photo by remember { mutableStateOf<android.net.Uri?>(null) }
     var big by remember { mutableStateOf<Proof?>(null) }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { u -> if (u != null) photo = u }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f)) { SectionTitle(if (list.isEmpty()) "Preuve du jour" else "Preuves · ${list.size}") }
-        if (own && doneNow && !editing) PButton(if (todayProof == null) "Ajouter" else "Modifier", { editing = true }, icon = if (todayProof == null) "plus" else "edit", small = true, kind = "ghost")
-    }
-    if (editing) {
-        Field(note, { note = it }, "", placeholder = "Une note : ce que tu as fait, comment tu t’es senti…", singleLine = false, minLines = 2, max = 500, icon = "edit")
-        FlowRowCompat(gap = 6.dp) {
-            PButton(if (photo != null || todayProof?.photo != null) "Changer la photo" else "Ajouter une photo", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image", small = true)
-            PButton("Enregistrer", { Proofs.put(ctx, g.id, k, note, photo); photo = null; editing = false; ui.toast("Preuve enregistrée sur ton téléphone.", "check") }, icon = "check", small = true, kind = "primary")
-            if (todayProof != null) PButton("Supprimer", { Proofs.remove(ctx, g.id, k); note = ""; editing = false }, small = true, kind = "danger")
-            PButton("Annuler", { photo = null; editing = false }, small = true, kind = "ghost")
+    SectionTitle(if (list.isEmpty()) "Preuve du jour" else "Preuves · ${list.size}")
+    if (list.isEmpty() && !editing) Muted("Garde une trace de ta réussite : une photo ou quelques mots, gardés sur ton téléphone.", small = true)
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Tuile d'ajout de la preuve du jour
+        if (own && doneNow && todayProof == null && !editing) Column(Modifier.width(104.dp).height(128.dp).clip(RoundedCornerShape(18.dp))
+            .background(Brush.linearGradient(listOf(tc.c.copy(alpha = .22f), p.pink.copy(alpha = .12f))))
+            .dashedBorder(tc.c.copy(alpha = .7f), 18.dp).clickable { editing = true },
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Box(Modifier.size(38.dp).clip(RoundedCornerShape(50)).background(tc.c), contentAlignment = Alignment.Center) { Pi("plus", size = 20.dp, tint = tc.ink) }
+            Text("Ajouter", Modifier.padding(top = 8.dp), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+            Text("photo ou note", fontSize = 11.sp, color = p.ink2)
         }
-        if (photo != null) Muted("Photo prête à être enregistrée.", small = true)
-    } else if (list.isEmpty()) Muted("Garde une trace de ta réussite : une photo ou quelques mots. Les preuves restent sur ton téléphone.", small = true)
-    if (list.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         list.take(60).forEach { pr -> ProofTile(ctx, pr, pr.id == big?.id) { big = if (big?.id == pr.id) null else pr } }
     }
     big?.let { pr ->
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.glassStrong).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            val bmp = remember(pr.id) { Proofs.photoFile(ctx, pr)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-            if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 360.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Fit)
-            Text(cap(weekdayLongDate(parseYmd(pr.date))), fontWeight = FontWeight.ExtraBold)
-            if (pr.note.isNotBlank()) Text(pr.note)
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(20.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val bmp = remember(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
+            if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 380.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Fit)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(cap(weekdayLongDate(parseYmd(pr.date))), Modifier.weight(1f), fontWeight = FontWeight.ExtraBold)
+                if (own && pr.date == k) PButton("Modifier", { note = pr.note; editing = true; big = null }, icon = "edit", small = true, kind = "ghost")
+            }
+            if (pr.note.isNotBlank()) Text(pr.note, color = p.ink2)
         }
     }
+    if (editing) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f)).border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(20.dp)).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Field(note, { note = it }, "", placeholder = "Ce que tu as fait, comment tu t’es senti…", singleLine = false, minLines = 2, max = 500, icon = "edit")
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            val has = photo != null || todayProof?.photo != null
+            IconTile("image", if (has) p.ok else p.ink3, if (has) tc.c else p.ink3.copy(alpha = .6f), 36.dp, 12.dp)
+            Text(if (photo != null) "Nouvelle photo prête" else if (todayProof?.photo != null) "Photo enregistrée" else "Aucune photo", Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            PButton(if (has) "Changer" else "Choisir", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, small = true)
+        }
+        FlowRowCompat(gap = 6.dp) {
+            PButton("Enregistrer", { Proofs.put(ctx, g.id, k, note, photo); photo = null; editing = false; ui.toast("Preuve enregistrée.", "check") }, icon = "check", small = true, kind = "primary")
+            if (todayProof != null) PButton("Supprimer", { Proofs.remove(ctx, g.id, k); note = ""; editing = false }, icon = "trash", small = true, kind = "danger")
+            PButton("Annuler", { photo = null; editing = false }, small = true, kind = "ghost")
+        }
+    }
+}
+
+/** Bordure en pointillés (tuile d'ajout). */
+private fun Modifier.dashedBorder(c: Color, r: androidx.compose.ui.unit.Dp) = drawBehind {
+    val px = r.toPx()
+    drawRoundRect(c, cornerRadius = androidx.compose.ui.geometry.CornerRadius(px), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx()))))
 }
 
 private fun stepDateOrToday(pg: Pg, g: Goal) = if (g.type == "timed") pg.timedDate(g) else today()
@@ -146,56 +163,57 @@ private fun ProofTile(ctx: android.content.Context, pr: Proof, on: Boolean, onCl
     val p = LocalPal.current
     val bmp = remember(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f ->
         val o = BitmapFactory.Options().apply { inSampleSize = 4 }; BitmapFactory.decodeFile(f.path, o)?.asImageBitmap() } }
-    Column(Modifier.width(96.dp).clip(RoundedCornerShape(14.dp)).background(p.glassStrong).border(if (on) 2.dp else 1.dp, if (on) p.focus else p.line, RoundedCornerShape(14.dp)).clickable(onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().height(80.dp).background(p.ink.copy(alpha = .05f)), contentAlignment = Alignment.Center) {
-            if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            else Text(pr.note.take(60), Modifier.padding(6.dp), fontSize = 11.sp, maxLines = 4, overflow = TextOverflow.Ellipsis, color = p.ink2)
+    Box(Modifier.width(104.dp).height(128.dp).clip(RoundedCornerShape(18.dp)).background(p.glassStrong)
+        .border(if (on) 2.dp else 1.dp, if (on) p.focus else p.line, RoundedCornerShape(18.dp)).clickable(onClick = onClick)) {
+        if (bmp != null) Image(bmp, "Preuve du ${fmtDate(pr.date)}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Text("“${pr.note.take(80)}”", Modifier.padding(10.dp), fontSize = 12.sp, maxLines = 5, overflow = TextOverflow.Ellipsis, color = p.ink2, lineHeight = 16.sp)
+        // Date sur un dégradé, lisible sur la photo
+        Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = if (bmp != null) .55f else 0f)))).padding(8.dp)) {
+            Text(fmtDateShort(pr.date), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (bmp != null) Color.White else p.ink)
         }
-        Text(fmtDateShort(pr.date), Modifier.padding(6.dp), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
 /** Duo : inviter un ami, suivre la flamme commune, quitter le duo. */
 @Composable
-fun DuoRow(ui: AppState, g: Goal) {
+fun DuoRow(ui: AppState, g: Goal, divider: Boolean = true) {
     val pg = ui.pg; val p = LocalPal.current; val ctx = LocalContext.current; val app = ctx.peps
     if (!pg.socialOn() || !duoOk(g)) return
     var open by remember { mutableStateOf(false) }; var busy by remember { mutableStateOf(false) }
     val peer = pg.userById(g.duoPeer)
-    InfoRow("En duo") {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (g.duoId != null && peer != null) {
-                val st = remember(ui.rev) { Duo.state(app, g) }
-                val n = remember(ui.rev) { Duo.streak(app, g) }
-                val peerToday = remember(ui.rev) { today() in Duo.peerDays(app, g) }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Av(peer, 28.dp)
-                    Column(Modifier.weight(1f)) {
-                        Text(when (st) { Duo.State.PENDING -> "Invitation envoyée à ${first(peer.name)}"; Duo.State.LEFT -> "${first(peer.name)} a quitté le duo"; else -> "Avec ${first(peer.name)}" }, fontWeight = FontWeight.Bold)
-                        if (st == Duo.State.JOINED) Muted("${if (peerToday) "✓ ${first(peer.name)} a validé aujourd’hui" else "${first(peer.name)} n’a pas encore validé aujourd’hui"}", small = true)
+    val st = if (g.duoId != null && peer != null) remember(ui.rev) { Duo.state(app, g) } else null
+    val n = if (st == Duo.State.JOINED) remember(ui.rev) { Duo.streak(app, g) } else 0
+    val sub = when {
+        peer == null || st == null -> "Une flamme commune avec un ami"
+        st == Duo.State.PENDING -> "Invitation envoyée à ${first(peer.name)}"
+        st == Duo.State.LEFT -> "${first(peer.name)} a quitté le duo"
+        else -> "Avec ${first(peer.name)}"
+    }
+    OptionRow("users", p.type("group").c, p.pink, "En duo", sub, open, { open = !open }, divider,
+        right = if (st == Duo.State.JOINED) ({ Text("🔥 $n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = p.flame) }) else null) {
+        if (peer != null && st != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Av(peer, 32.dp)
+                Column(Modifier.weight(1f)) {
+                    Text(peer.name, fontWeight = FontWeight.Bold)
+                    if (st == Duo.State.JOINED) Muted(if (today() in remember(ui.rev) { Duo.peerDays(app, g) }) "✓ A validé aujourd’hui" else "N’a pas encore validé aujourd’hui", small = true)
+                }
+            }
+            Muted("La flamme commune ne grandit que les jours où vous validez tous les deux.", small = true)
+            PButton("Quitter le duo", { ui.confirm("Quitter le duo ?", "L’objectif reste à toi, sans la flamme commune. ${first(peer.name)} en est informé.", "Quitter", back = fr.pepsgoal.app.Sheet.Goal(g.id)) { ui.scope.launch { Duo.leave(app, g); ui.bump() } } }, small = true, kind = "ghost")
+        } else {
+            val friends = pg.friendsOf(pg.meId()).mapNotNull { pg.userById(it) }.filter { it.role == null }
+            Muted(if (friends.isEmpty()) "Ajoute d’abord des amis pour lancer un duo." else "Choisis l’ami à inviter : il reçoit l’objectif dans vos messages et garde le sien.", small = true)
+            FlowRowCompat(gap = 6.dp) {
+                friends.forEach { f -> FChip(first(f.name), false, {
+                    if (busy) return@FChip
+                    busy = true
+                    ui.scope.launch {
+                        val ok = try { Duo.invite(app, g, f.id) } catch (e: Exception) { ui.toast(e.message ?: "Invitation impossible.", "x"); false }
+                        busy = false
+                        if (ok) { open = false; ui.toast("Invitation envoyée à ${first(f.name)}.", "users") }
                     }
-                    if (st == Duo.State.JOINED) Text("🔥 $n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = p.flame)
-                }
-                if (st == Duo.State.JOINED) Muted("Flamme commune : elle ne grandit que les jours où vous validez tous les deux.", small = true)
-                PButton("Quitter le duo", { ui.confirm("Quitter le duo ?", "L’objectif reste à toi, sans la flamme commune. ${first(peer.name)} en est informé.", "Quitter", back = fr.pepsgoal.app.Sheet.Goal(g.id)) { ui.scope.launch { Duo.leave(app, g); ui.bump() } } }, small = true, kind = "ghost")
-            } else if (!open) {
-                Muted("Invite un ami à le faire avec toi : vous gardez chacun votre objectif, avec une flamme commune.", small = true)
-                PButton("Inviter un ami", { open = true }, icon = "users", small = true)
-            } else {
-                val friends = pg.friendsOf(pg.meId()).mapNotNull { pg.userById(it) }.filter { it.role == null }
-                if (friends.isEmpty()) Muted("Ajoute d’abord des amis pour lancer un duo.", small = true)
-                FlowRowCompat(gap = 6.dp) {
-                    friends.forEach { f -> FChip(first(f.name), false, {
-                        if (busy) return@FChip
-                        busy = true
-                        ui.scope.launch {
-                            val ok = try { Duo.invite(app, g, f.id) } catch (e: Exception) { ui.toast(e.message ?: "Invitation impossible.", "x"); false }
-                            busy = false
-                            if (ok) { open = false; ui.toast("Invitation envoyée à ${first(f.name)} dans vos messages.", "users") }
-                        }
-                    }, leading = { Av(f, 20.dp) }) }
-                }
-                PButton("Annuler", { open = false }, small = true, kind = "ghost")
+                }, leading = { Av(f, 20.dp) }) }
             }
         }
     }
@@ -203,8 +221,8 @@ fun DuoRow(ui: AppState, g: Goal) {
 
 /** Créneau récurrent dans l'agenda du téléphone. */
 @Composable
-fun AgendaRow(ui: AppState, g: Goal) {
-    val ctx = LocalContext.current
+fun AgendaRow(ui: AppState, g: Goal, divider: Boolean = true) {
+    val ctx = LocalContext.current; val p = LocalPal.current
     if (!Agenda.supported(g)) return
     var slot by remember(g.id) { mutableStateOf(Agenda.slot(ctx, g.id)) }
     var open by remember { mutableStateOf(false) }
@@ -213,46 +231,60 @@ fun AgendaRow(ui: AppState, g: Goal) {
     var mins by remember { mutableIntStateOf(slot?.minutes ?: def.second) }
     var cals by remember { mutableStateOf<List<Agenda.Cal>>(emptyList()) }
     var cal by remember { mutableStateOf(slot?.calId) }
+    val show = { cals = Agenda.calendars(ctx); if (cal == null) cal = cals.firstOrNull()?.id; open = true }
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
-        if (r.values.all { it }) { cals = Agenda.calendars(ctx); if (cal == null) cal = cals.firstOrNull()?.id; open = true }
-        else ui.toast("Autorise l’agenda pour y bloquer un créneau.", "cal")
+        if (r.values.all { it }) show() else ui.toast("Autorise l’agenda pour y bloquer un créneau.", "cal")
     }
-    InfoRow("Agenda") {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            val s = slot
-            if (s != null && !open) {
-                Text("Créneau à ${s.time} (${s.minutes} min), ${pg(ui).metaLine(g).lowercase()}", fontSize = 14.sp)
-                FlowRowCompat(gap = 6.dp) {
-                    PButton("Modifier", { if (Agenda.granted(ctx)) { cals = Agenda.calendars(ctx); open = true } else perm.launch(Agenda.PERMS) }, small = true)
-                    PButton("Retirer", { Agenda.remove(ctx, g.id); slot = null; ui.toast("Créneau retiré de l’agenda.", "cal") }, small = true, kind = "ghost")
-                }
-            } else if (!open) PButton("Bloquer un créneau", { if (Agenda.granted(ctx)) { cals = Agenda.calendars(ctx); if (cal == null) cal = cals.firstOrNull()?.id; open = true } else perm.launch(Agenda.PERMS) }, icon = "cal", small = true)
-            else {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Heure", fontSize = 14.sp); TimeButton(time, { time = it }, "Heure du créneau")
-                }
-                FlowRowCompat(gap = 6.dp) { listOf(15, 30, 45, 60, 90).forEach { m -> FChip("$m min", mins == m, { mins = m }) } }
-                if (cals.size > 1) FlowRowCompat(gap = 6.dp) { cals.forEach { c -> FChip(c.name.take(22), cal == c.id, { cal = c.id }) } }
-                if (cals.isEmpty()) Muted("Aucun agenda modifiable sur ce téléphone.", small = true)
-                Muted("Un événement récurrent suit le rythme de l’objectif. Il disparaît si tu archives ou supprimes l’objectif.", small = true)
-                FlowRowCompat(gap = 6.dp) {
-                    PButton("Enregistrer", {
-                        val c = cal ?: return@PButton ui.toast("Choisis un agenda.", "cal")
-                        Agenda.set(ctx, g, c, time, mins)?.let { ui.toast(it, "x") } ?: run { slot = Agenda.slot(ctx, g.id); open = false; ui.toast("Créneau ajouté à ton agenda.", "cal") }
-                    }, icon = "check", small = true, kind = "primary", enabled = cal != null)
-                    PButton("Annuler", { open = false }, small = true, kind = "ghost")
-                }
-            }
+    OptionRow("cal", p.type("deadline").c, p.type("project").c, "Agenda",
+        slot?.let { "Créneau à ${it.time} · ${it.minutes} min" } ?: "Bloquer un créneau récurrent", open,
+        { if (open) open = false else if (Agenda.granted(ctx)) show() else perm.launch(Agenda.PERMS) }, divider) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Heure", Modifier.weight(1f), fontWeight = FontWeight.Bold); TimeButton(time, { time = it }, "Heure du créneau")
+        }
+        Text("Durée", fontWeight = FontWeight.Bold)
+        FlowRowCompat(gap = 6.dp) { listOf(15, 30, 45, 60, 90).forEach { m -> FChip("$m min", mins == m, { mins = m }) } }
+        if (cals.size > 1) { Text("Agenda", fontWeight = FontWeight.Bold); FlowRowCompat(gap = 6.dp) { cals.forEach { c -> FChip(c.name.take(22), cal == c.id, { cal = c.id }) } } }
+        if (cals.isEmpty()) Muted("Aucun agenda modifiable sur ce téléphone.", small = true)
+        Muted("Un événement récurrent suit le rythme de l’objectif ; il disparaît si tu archives ou supprimes l’objectif.", small = true)
+        FlowRowCompat(gap = 6.dp) {
+            PButton("Enregistrer", {
+                val c = cal ?: return@PButton ui.toast("Choisis un agenda.", "cal")
+                Agenda.set(ctx, g, c, time, mins)?.let { ui.toast(it, "x") } ?: run { slot = Agenda.slot(ctx, g.id); open = false; ui.toast("Créneau ajouté à ton agenda.", "cal") }
+            }, icon = "check", small = true, kind = "primary", enabled = cal != null)
+            if (slot != null) PButton("Retirer", { Agenda.remove(ctx, g.id); slot = null; open = false; ui.toast("Créneau retiré de l’agenda.", "cal") }, small = true, kind = "ghost")
         }
     }
 }
 
-private fun pg(ui: AppState) = ui.pg
-
+/** Carte qui regroupe les options d'un objectif, séparées par de fins traits. */
 @Composable
-internal fun InfoRow(label: String, content: @Composable () -> Unit) {
-    Row(verticalAlignment = Alignment.Top) {
-        Text(label, Modifier.width(110.dp).padding(top = 4.dp), color = LocalPal.current.ink2, fontSize = 14.sp)
-        Box(Modifier.weight(1f)) { content() }
+fun OptionsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    val p = LocalPal.current
+    SectionTitle(title)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
+        .border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(22.dp)).padding(horizontal = 14.dp, vertical = 4.dp), content = content)
+}
+
+/** Ligne d'option : pastille d'icône, titre, état en sous-titre ; l'éditeur se déplie dessous. */
+@Composable
+fun OptionRow(icon: String, c1: Color, c2: Color, title: String, sub: String?, open: Boolean, onClick: () -> Unit, divider: Boolean = true,
+              right: (@Composable () -> Unit)? = null, body: @Composable ColumnScope.() -> Unit = {}) {
+    val p = LocalPal.current
+    val rot by androidx.compose.animation.core.animateFloatAsState(if (open) 90f else 0f, label = "chev")
+    Column {
+        if (divider) Box(Modifier.fillMaxWidth().padding(start = 52.dp).height(1.dp).background(p.line.copy(alpha = .5f)))
+        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = if (open) "Replier" else "Modifier", onClick = onClick).padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            IconTile(icon, c1, c2, 38.dp, 12.dp)
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                sub?.let { Text(it, fontSize = 13.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 17.sp) }
+            }
+            right?.invoke()
+            Text("›", Modifier.graphicsLayer { rotationZ = rot }, color = p.ink3, fontSize = 22.sp)
+        }
+        androidx.compose.animation.AnimatedVisibility(open, enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()) {
+            Column(Modifier.fillMaxWidth().padding(start = 52.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = body)
+        }
     }
 }

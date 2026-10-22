@@ -502,7 +502,8 @@ fun GoalSheet(ui: AppState, id: String) {
     }
     if (!g.archived) FlowRowCompat(gap = 8.dp) { GoalActions(ui, g, doneToday, running) }
     // Informations
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
+        .border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(22.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Info("Type") { TypeChip(g.type) }
         if (own) Info("Groupe") {
             FlowRowCompat(gap = 4.dp) {
@@ -523,8 +524,8 @@ fun GoalSheet(ui: AppState, id: String) {
     GoalDetail(ui, g, own)
     if (g.type in STEP_TYPES && !pg.isClosedGoal(g)) StepsBlock(ui, g, own)
     ProofsBlock(ui, g, own)
-    if (own && !g.archived && !pg.isClosedGoal(g)) {
-        ChainRow(ui, g)
+    if (own && !g.archived && !pg.isClosedGoal(g)) OptionsCard("Options") {
+        ChainRow(ui, g, divider = false)
         DuoRow(ui, g)
         AgendaRow(ui, g)
         GeoRow(ui, g)
@@ -545,7 +546,7 @@ fun GoalSheet(ui: AppState, id: String) {
 @Composable
 private fun Info(label: String, content: @Composable () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.width(110.dp), color = LocalPal.current.ink2, fontSize = 14.sp)
+        Text(label, Modifier.width(118.dp).padding(end = 8.dp), color = LocalPal.current.ink2, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 2)
         Box(Modifier.weight(1f)) { content() }
     }
 }
@@ -738,30 +739,21 @@ private fun GeoRow(ui: AppState, g: Goal) {
     val finePerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { r ->
         if (r.values.any { it }) save() else ui.toast("Autorise la localisation pour créer un rappel par lieu.", "pin")
     }
-    Info("Rappel par lieu") {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            val c = cur
-            if (c != null && !open) {
-                Text("${if (c.exit) "En partant de" else "En arrivant à"} ${c.label.ifBlank { "l’endroit enregistré" }} (${c.radius} m)", fontSize = 14.sp)
-                if (!bgOk && android.os.Build.VERSION.SDK_INT >= 29) PButton("Autoriser la position en arrière-plan", { bgPerm.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) }, icon = "pin", small = true, kind = "primary")
-                FlowRowCompat(gap = 6.dp) {
-                    PButton("Modifier", { open = true }, small = true)
-                    PButton("Retirer", { fr.pepsgoal.app.sys.GeoReminders.remove(ctx, g.id); cur = null }, small = true, kind = "ghost")
-                }
-            } else if (!open) PButton("Ajouter un lieu", { open = true }, icon = "pin", small = true)
-            else {
-                Field(label, { label = it }, "Nom du lieu", placeholder = "Salle de sport, maison, bureau…", max = 40)
-                Seg(listOf(false to "En arrivant", true to "En partant"), exit, { exit = it })
-                FlowRowCompat(gap = 6.dp) { listOf(100, 150, 300, 500).forEach { r -> FChip("$r m", radius == r, { radius = r }) } }
-                Muted("Place-toi à l’endroit voulu : PepsGoal enregistre ta position actuelle. Le rappel n’arrive qu’une fois par jour, si l’objectif reste à faire.", small = true)
-                FlowRowCompat(gap = 6.dp) {
-                    PButton(if (busy) "Localisation…" else "Utiliser ma position", {
-                        if (fr.pepsgoal.app.sys.GeoReminders.hasFine(ctx)) save()
-                        else finePerm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
-                    }, icon = "pin", small = true, kind = "primary", enabled = !busy)
-                    PButton("Annuler", { open = false }, small = true, kind = "ghost")
-                }
-            }
+    val c = cur
+    OptionRow("pin", p.type("measure").c, p.type("routine").c, "Rappel par lieu",
+        c?.let { "${if (it.exit) "En partant de" else "En arrivant à"} ${it.label.ifBlank { "l’endroit enregistré" }} · ${it.radius} m" } ?: "En arrivant à un endroit, ou en le quittant",
+        open, { open = !open }) {
+        if (c != null && !bgOk && android.os.Build.VERSION.SDK_INT >= 29) PButton("Autoriser la position en arrière-plan", { bgPerm.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) }, icon = "pin", small = true, kind = "primary")
+        Field(label, { label = it }, "Nom du lieu", placeholder = "Salle de sport, maison, bureau…", max = 40)
+        Seg(listOf(false to "En arrivant", true to "En partant"), exit, { exit = it })
+        FlowRowCompat(gap = 6.dp) { listOf(100, 150, 300, 500).forEach { r -> FChip("$r m", radius == r, { radius = r }) } }
+        Muted("Place-toi à l’endroit voulu : PepsGoal enregistre ta position actuelle. Le rappel n’arrive qu’une fois par jour, si l’objectif reste à faire.", small = true)
+        FlowRowCompat(gap = 6.dp) {
+            PButton(if (busy) "Localisation…" else if (c != null) "Mettre à jour ici" else "Utiliser ma position", {
+                if (fr.pepsgoal.app.sys.GeoReminders.hasFine(ctx)) save()
+                else finePerm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
+            }, icon = "pin", small = true, kind = "primary", enabled = !busy)
+            if (c != null) PButton("Retirer", { fr.pepsgoal.app.sys.GeoReminders.remove(ctx, g.id); cur = null; open = false }, small = true, kind = "ghost")
         }
     }
 }
