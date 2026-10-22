@@ -8,15 +8,21 @@ import fr.pepsgoal.core.today
 
 /** Icônes de l'application au choix : chaque icône est une entrée du lanceur (activity-alias), une seule active. */
 object AppIcons {
-    class Icon(val key: String, val label: String, val alias: String, val bg: List<Long>, val fg: Int)
+    /** [price] : prix en flammes dans la boutique (0 : gratuite). */
+    class Icon(val key: String, val label: String, val alias: String, val bg: List<Long>, val fg: Int, val price: Int = 0)
     val ALL = listOf(
-        Icon("default", "Braise", "IconDefault", listOf(0xFF1A1240, 0xFF07081A), R.drawable.ic_launcher_foreground),
-        Icon("dark", "Nuit", "IconDark", listOf(0xFF000000, 0xFF000000), R.drawable.ic_launcher_foreground),
-        Icon("light", "Clair", "IconLight", listOf(0xFFFFFFFF, 0xFFE6E8FF), R.drawable.ic_launcher_foreground),
-        Icon("mono", "Monochrome", "IconMono", listOf(0xFF1A1240, 0xFF07081A), R.drawable.ic_launcher_monochrome),
-        Icon("ocean", "Océan", "IconOcean", listOf(0xFF0B2A5C, 0xFF050B1E), R.drawable.ic_launcher_foreground_ocean),
-        Icon("halloween", "Halloween", "IconHalloween", listOf(0xFF2A0E3D, 0xFF120414), R.drawable.ic_launcher_foreground_halloween),
-        Icon("noel", "Noël", "IconNoel", listOf(0xFF0B4D26, 0xFF03180B), R.drawable.ic_launcher_foreground_noel),
+        Icon("default", "Braise", "IconDefault", listOf(0xFF241552, 0xFF07081A), R.drawable.ic_launcher_foreground),
+        Icon("dark", "Nuit", "IconDark", listOf(0xFF14101F, 0xFF000000), R.drawable.ic_launcher_foreground),
+        Icon("light", "Clair", "IconLight", listOf(0xFFFFFFFF, 0xFFE3E6FF), R.drawable.ic_launcher_foreground),
+        Icon("mono", "Monochrome", "IconMono", listOf(0xFF26283A, 0xFF0B0C14), R.drawable.ic_launcher_foreground_mono),
+        Icon("ocean", "Océan", "IconOcean", listOf(0xFF0E3A78, 0xFF030A1C), R.drawable.ic_launcher_foreground_ocean, 300),
+        Icon("halloween", "Halloween", "IconHalloween", listOf(0xFF3A1466, 0xFF0B0418), R.drawable.ic_launcher_foreground_halloween, 500),
+        Icon("noel", "Noël", "IconNoel", listOf(0xFF145C32, 0xFF04170C), R.drawable.ic_launcher_foreground_noel, 500),
+        Icon("galaxy", "Galaxie", "IconGalaxy", listOf(0xFF2A1660, 0xFF03030F), R.drawable.ic_launcher_foreground_galaxy, 400),
+        Icon("gold", "Or", "IconGold", listOf(0xFF1E1608, 0xFF000000), R.drawable.ic_launcher_foreground_gold, 600),
+        Icon("sakura", "Sakura", "IconSakura", listOf(0xFF5A1E4E, 0xFF1C0A1F), R.drawable.ic_launcher_foreground_sakura, 400),
+        Icon("neon", "Néon", "IconNeon", listOf(0xFF0B0720, 0xFF2A0A3A), R.drawable.ic_launcher_foreground_neon, 500),
+        Icon("campfire", "Feu de camp", "IconCampfire", listOf(0xFF0D1640, 0xFFB8452A), R.drawable.ic_launcher_foreground_campfire, 400),
     )
 
     fun current(ctx: Context): String {
