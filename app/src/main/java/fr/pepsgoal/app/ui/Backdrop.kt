@@ -109,7 +109,7 @@ private fun FreeBg(kind: String) {
 private fun CustomBg(stamp: Long) {
     val ctx = LocalContext.current; val p = LocalPal.current
     val bmp = remember(stamp) { bgFile(ctx).takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-    if (bmp == null) { Blobs(); return }
+    if (bmp == null) { FreeBg("blob"); return }
     // Flou et assombrissement réglables (Paramètres › Apparence) ; par défaut, un léger voile aux couleurs du thème
     val raw = ctx.getSharedPreferences("pepsgoal.device", android.content.Context.MODE_PRIVATE)
     val blur = remember(stamp) { raw.getInt("bgBlur", 0) }; val dim = remember(stamp) { raw.getFloat("bgDim", -1f) }
