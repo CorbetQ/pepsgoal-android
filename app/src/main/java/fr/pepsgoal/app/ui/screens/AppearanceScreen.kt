@@ -191,11 +191,11 @@ private fun <T> SegFill(options: List<Pair<T, String>>, value: T, onChange: (T) 
 
 /** Carrousel horizontal avec aimantation sur les tuiles. */
 @Composable
-private fun <T> Carousel(list: List<T>, start: Int = 0, item: @Composable (T) -> Unit) {
+private fun <T> Carousel(list: List<T>, start: Int = 0, cell: @Composable (T) -> Unit) {
     val state = rememberLazyListState(initialFirstVisibleItemIndex = start.coerceAtLeast(0))
     LazyRow(Modifier.fillMaxWidth(), state = state, flingBehavior = rememberSnapFlingBehavior(state), horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(end = 4.dp)) {
-        items(list) { item(it) }
+        items(list) { cell(it) }
     }
 }
 
