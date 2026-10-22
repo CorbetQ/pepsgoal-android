@@ -6,6 +6,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -194,6 +195,10 @@ private fun BadgeFs(ui: AppState, c: Celebration.Badge) {
 }
 
 /* ------------------------------------------------------------------ récaps */
+/** Couleur du texte d'une diapositive : encre sombre sur fond clair, blanc sur fond sombre. */
+private val LocalRecapInk = staticCompositionLocalOf { INK }
+private fun lum(c: Color) = .2126f * c.red + .7152f * c.green + .0722f * c.blue
+
 @Composable
 private fun RecapFs(ui: AppState, f: Fs.Recap) {
     val p = LocalPal.current
@@ -205,32 +210,90 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     var word by remember(f) { mutableStateOf<String?>(null) }
     LaunchedEffect(f) { word = fr.pepsgoal.app.ai.CoachExtras.recapWord(ctx, f.st) }
-    Box(Modifier.fillMaxSize().background(Brush.linearGradient(s.bg.map(::hex))).pointerInput(f) { detectTapGestures { o -> step(if (o.x < size.width * .3f) -1 else 1) } }) {
+    val cols = s.bg.map(::hex)
+    val ink = if (cols.map(::lum).average() < .5) Color.White else INK
+    Box(Modifier.fillMaxSize().background(Brush.linearGradient(cols)).pointerInput(f) { detectTapGestures { o -> step(if (o.x < size.width * .3f) -1 else 1) } }) {
+        // Profondeur : voile sombre en bas, puis formes décoratives propres à la diapositive
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, .55f to Color.Transparent, 1f to Color.Black.copy(alpha = .22f))))
+        RecapDecor(cols, i)
         s.fx?.let { Floaters(it, i) }
         if (last) Confetti()
-        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            f.slides.indices.forEach { k -> Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(INK.copy(alpha = if (k <= i) .85f else .2f))) }
+        // Progression : segments fins et arrondis, le segment courant se remplit
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 64.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            f.slides.indices.forEach { k ->
+                val fill = remember(i) { Animatable(if (k < i || p.motion) 1f else 0f) }
+                LaunchedEffect(i) { if (k == i && !p.motion) fill.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
+                Box(Modifier.weight(1f).height(3.dp).clip(RoundedCornerShape(50)).background(ink.copy(alpha = .22f))) {
+                    if (k <= i) Box(Modifier.fillMaxHeight().fillMaxWidth(if (k < i) 1f else fill.value).clip(RoundedCornerShape(50)).background(ink.copy(alpha = .9f)))
+                }
+            }
         }
-        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 18.dp, end = 10.dp)) { IconBtn("x", "Fermer le récap", { ui.closeFs() }) }
-        AnimatedContent(i, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(0)) togetherWith fadeOut(tween(0)) else (slideInHorizontally { w -> w / 4 * dir } + fadeIn()) togetherWith fadeOut(tween(150)) }, label = "slide") { k ->
-            val sl = f.slides[k]
-            // Diapositive centrée, qui défile si son contenu (ex. « Le mot du coach ») dépasse l'écran
-            BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            val minH = maxHeight
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = minH).padding(horizontal = 28.dp, vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)) {
-                sl.parts.forEachIndexed { j, part -> Pop(j) { PartView(ui, f, part) { i = 0; f.i = 0 } } }
-                if (k == f.slides.lastIndex) word?.let { w -> Pop(sl.parts.size) {
-                    Column(Modifier.fillMaxWidth().aiGlow(18.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .5f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("sparkle", size = 16.dp, tint = INK); Text("Le mot du coach", color = INK, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) }
-                        Text(w, color = INK, fontSize = 15.sp)
+        // Fermer : discret, en verre
+        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 4.dp, end = 10.dp).size(40.dp).clip(CircleShape)
+            .background(ink.copy(alpha = .12f)).clickable { ui.closeFs() }, contentAlignment = Alignment.Center) { Pi("x", size = 18.dp, tint = ink) }
+        CompositionLocalProvider(LocalRecapInk provides ink) {
+            AnimatedContent(i, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(0)) togetherWith fadeOut(tween(0)) else (slideInHorizontally(tween(380, easing = FastOutSlowInEasing)) { w -> w / 3 * dir } + fadeIn(tween(300))) togetherWith (fadeOut(tween(160)) + slideOutHorizontally(tween(220)) { w -> -w / 6 * dir }) }, label = "slide") { k ->
+                val sl = f.slides[k]
+                // Diapositive centrée, qui défile si son contenu (ex. « Le mot du coach ») dépasse l'écran
+                BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+                    val minH = maxHeight
+                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = minH).padding(horizontal = 24.dp, vertical = 56.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
+                        sl.parts.forEachIndexed { j, part -> Pop(j) { PartView(ui, f, part) { i = 0; f.i = 0 } } }
+                        if (k == f.slides.lastIndex) word?.let { w -> Pop(sl.parts.size) { CoachWord(w) } }
                     }
-                } }
-            }
+                }
             }
         }
-        if (!last) Text("Touche l'écran pour avancer · ${i + 1}/${f.slides.size}", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp), color = INK.copy(alpha = .6f), fontSize = 12.sp)
+        if (!last) Text("Touche l'écran pour avancer", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(14.dp), color = ink.copy(alpha = .55f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
+
+/** Formes décoratives de la diapositive : deux halos qui dérivent lentement et des rayons qui tournent. */
+@Composable
+private fun RecapDecor(cols: List<Color>, key: Int) {
+    val p = LocalPal.current
+    val inf = rememberInfiniteTransition(label = "decor$key")
+    val t by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 9000, easing = LinearEasing), RepeatMode.Reverse), label = "t")
+    val rot by inf.animateFloat(0f, 360f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 60000, easing = LinearEasing)), label = "rot")
+    val a = cols.first(); val b = cols.last()
+    // Variante selon la diapositive : position des halos et présence des rayons
+    val v = key % 3
+    Canvas(Modifier.fillMaxSize()) {
+        val w = size.width; val h = size.height
+        val c1 = Offset(w * (if (v == 1) .85f else .15f) + w * .08f * t, h * (.18f + .06f * t))
+        val c2 = Offset(w * (if (v == 2) .2f else .8f) - w * .06f * t, h * (.78f - .05f * t))
+        drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .34f), Color.Transparent), c1, w * .62f), w * .62f, c1)
+        drawCircle(Brush.radialGradient(listOf(b.copy(alpha = .55f), Color.Transparent), c2, w * .7f), w * .7f, c2)
+        if (v != 1) rotate(rot, Offset(w / 2, h * .42f)) {
+            for (r in 0 until 12) {
+                val ang = r * PI.toFloat() / 6
+                drawLine(Color.White.copy(alpha = .07f), Offset(w / 2, h * .42f), Offset(w / 2, h * .42f) + Offset(cos(ang), sin(ang)) * (h * .8f), w * .09f)
+            }
+        }
+        drawCircle(a.copy(alpha = .18f), w * .08f, Offset(w * .9f, h * .1f + 18f * t))
+        drawCircle(Color.White.copy(alpha = .12f), w * .05f, Offset(w * .08f, h * .62f - 14f * t))
+    }
+}
+
+/** « Le mot du coach » : carte en verre sobre, petite pastille sparkle. */
+@Composable
+private fun CoachWord(w: String) {
+    val ink = LocalRecapInk.current; val dark = ink == INK
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Color.White.copy(alpha = if (dark) .42f else .14f))
+        .border(1.dp, Color.White.copy(alpha = if (dark) .7f else .28f), RoundedCornerShape(24.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.size(26.dp).clip(CircleShape).background(ink.copy(alpha = .12f)), contentAlignment = Alignment.Center) { Pi("sparkle", size = 14.dp, tint = ink) }
+            Text("Le mot du coach", color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+        }
+        Text(w, color = ink, fontSize = 15.sp, lineHeight = 21.sp)
+    }
+}
+
+/** Tuile en verre des récaps (fond blanc translucide, coins 24 dp). */
+private fun Modifier.recapGlass(ink: Color) = this.clip(RoundedCornerShape(24.dp))
+    .background(Color.White.copy(alpha = if (ink == INK) .45f else .14f))
+    .border(1.dp, Color.White.copy(alpha = if (ink == INK) .7f else .25f), RoundedCornerShape(24.dp))
 
 @Composable
 private fun Floaters(e: String, key: Int) {
@@ -241,42 +304,61 @@ private fun Floaters(e: String, key: Int) {
     for (i in 0 until 9) {
         val dur = 7000 + (i * 3 % 6) * 1000
         val y by inf.animateFloat(1.1f, -.15f, infiniteRepeatable(tween(dur, easing = LinearEasing), initialStartOffset = StartOffset((i * 1700) % dur)), label = "y$i")
-        Box(Modifier.offset(((i * 11 + 4) % 96 * w / 100).dp, (y * h).dp).graphicsLayer { alpha = .35f; rotationZ = if (i % 2 == 1) 40f * y else -40f * y }) { Emoji(e, (18 + (i * 7) % 20).dp) }
+        Box(Modifier.offset(((i * 11 + 4) % 96 * w / 100).dp, (y * h).dp).graphicsLayer { alpha = .3f; rotationZ = if (i % 2 == 1) 40f * y else -40f * y }) { Emoji(e, (18 + (i * 7) % 20).dp) }
     }
 }
 
 @Composable
 private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit) {
+    val ink = LocalRecapInk.current
     when (part) {
-        is Part.Eyebrow -> Eyebrow(part.text, INK.copy(alpha = .75f))
-        is Part.Title -> Text(part.text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (part.big) 34.sp else 26.sp, color = INK, textAlign = TextAlign.Center, lineHeight = if (part.big) 40.sp else 31.sp)
-        is Part.Text -> Text(rich(part.text), color = INK, fontSize = 17.sp, textAlign = TextAlign.Center)
-        is Part.Joke -> Text(rich(part.text), Modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .4f)).padding(horizontal = 14.dp, vertical = 10.dp), color = INK, fontSize = 15.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
-        is Part.Big -> if (part.raw != null) Text(part.raw!!, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 72.sp, color = INK) else CountUp(part.value, part.prefix, part.suffix, 72, INK)
+        is Part.Eyebrow -> Text(part.text.uppercase(), Modifier.clip(RoundedCornerShape(50)).background(ink.copy(alpha = .1f)).padding(horizontal = 12.dp, vertical = 5.dp),
+            color = ink.copy(alpha = .85f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
+        is Part.Title -> Text(part.text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (part.big) 36.sp else 28.sp, color = ink, textAlign = TextAlign.Center, lineHeight = if (part.big) 42.sp else 33.sp)
+        is Part.Text -> Text(rich(part.text), color = ink.copy(alpha = .92f), fontSize = 17.sp, textAlign = TextAlign.Center, lineHeight = 24.sp)
+        is Part.Joke -> Text(rich(part.text), Modifier.recapGlass(ink).padding(horizontal = 16.dp, vertical = 12.dp), color = ink, fontSize = 15.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
+        // Chiffre héros : très grand, avec un léger halo
+        is Part.Big -> Box(contentAlignment = Alignment.Center) {
+            Box(Modifier.size(170.dp).background(Brush.radialGradient(listOf(Color.White.copy(alpha = if (ink == INK) .5f else .18f), Color.Transparent)), CircleShape))
+            if (part.raw != null) Text(part.raw!!, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 84.sp, color = ink, lineHeight = 88.sp)
+            else CountUp(part.value, part.prefix, part.suffix, 84, ink)
+        }
         is Part.Emoji -> { val motion = LocalPal.current.motion; val inf = rememberInfiniteTransition(label = "em"); val k by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "k")
-            Box(Modifier.graphicsLayer { if (!motion) { if (part.anim == "spin") rotationZ = k * 20 - 10 else translationY = -k * 18 } }) { Emoji(part.e, 84.dp) } }
+            Box(Modifier.size(132.dp).recapGlass(ink).graphicsLayer { if (!motion) { if (part.anim == "spin") rotationZ = k * 16 - 8 else translationY = -k * 10 } }, contentAlignment = Alignment.Center) { Emoji(part.e, 84.dp) } }
         is Part.Flame -> Flame((110 * part.scale.coerceIn(.5f, 1.6f)).dp)
-        is Part.Dots -> FlowRowCompat(gap = 4.dp) { part.days.forEach { on -> Box(Modifier.size(12.dp).clip(CircleShape).background(if (on) INK else INK.copy(alpha = .18f))) } }
+        is Part.Dots -> FlowRowCompat(Modifier.recapGlass(ink).padding(14.dp), gap = 5.dp) { part.days.forEach { on -> Box(Modifier.size(13.dp).clip(CircleShape).background(if (on) ink else ink.copy(alpha = .18f))) } }
         is Part.Week -> {
             val mx = maxOf(1, part.counts.maxOrNull() ?: 1)
-            Row(Modifier.height(130.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
-                part.counts.forEachIndexed { d, v -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.width(26.dp).height((100 * v / mx).coerceAtLeast(4).dp).clip(RoundedCornerShape(6.dp)).background(if (d == part.fav) INK else INK.copy(alpha = .3f)))
-                    Text(WD[d], color = INK, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp) } }
+            Row(Modifier.recapGlass(ink).padding(horizontal = 16.dp, vertical = 14.dp).height(150.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
+                part.counts.forEachIndexed { d, v -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (d == part.fav) Text("$v", color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                    Box(Modifier.width(24.dp).height((96 * v / mx).coerceAtLeast(5).dp).clip(RoundedCornerShape(8.dp)).background(if (d == part.fav) ink else ink.copy(alpha = .28f)))
+                    Text(WD[d], color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp) } }
             }
         }
-        is Part.Facts -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.forEach { Text(rich(it), Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .4f)).padding(12.dp), color = INK, fontSize = 15.sp) } }
-        is Part.Awards -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.forEach { (e, n, d) ->
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .45f)).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Emoji(e, 34.dp); Column { Text(n, color = INK, fontWeight = FontWeight.ExtraBold); Text(d, color = INK.copy(alpha = .75f), fontSize = 13.sp) } } } }
-        is Part.Cells -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { part.items.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { (v, l) ->
-            Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .45f)).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = INK); Text(l, color = INK, fontSize = 12.sp, textAlign = TextAlign.Center) } } } } }
-        is Part.FinalActions -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            PButton(if (ui.pg.socialOn()) "Partager mon récap" else "Copier mon récap", { ui.closeFs(); ui.open(Sheet.ShareHub(text = Recaps.shareText(f.st), period = f.p)) }, icon = "share", kind = "primary")
-            PButton("Revoir", restart); PButton("Fermer", { ui.closeFs() })
+        is Part.Facts -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.forEach { Text(rich(it), Modifier.fillMaxWidth().recapGlass(ink).padding(14.dp), color = ink, fontSize = 15.sp, lineHeight = 21.sp) } }
+        is Part.Awards -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.forEach { (e, n, d) ->
+            Row(Modifier.fillMaxWidth().recapGlass(ink).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(ink.copy(alpha = .1f)), contentAlignment = Alignment.Center) { Emoji(e, 30.dp) }
+                Column { Text(n, color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text(d, color = ink.copy(alpha = .75f), fontSize = 13.sp) } } } }
+        // Tuiles de chiffres : grille 2 × 2 en verre, valeur en grand
+        is Part.Cells -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            row.forEach { (v, l) ->
+                Column(Modifier.weight(1f).fillMaxHeight().recapGlass(ink).padding(horizontal = 14.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, color = ink, maxLines = 1)
+                    Text(l, color = ink.copy(alpha = .8f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
+        } } }
+        is Part.FinalActions -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            PButton(if (ui.pg.socialOn()) "Partager mon récap" else "Copier mon récap", { ui.closeFs(); ui.open(Sheet.ShareHub(text = Recaps.shareText(f.st), period = f.p)) }, Modifier.fillMaxWidth(), icon = "share", kind = "primary")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PButton("Revoir", restart, Modifier.weight(1f), icon = "repeat")
+                PButton("Fermer", { ui.closeFs() }, Modifier.weight(1f), icon = "x")
+            }
         }
-        is Part.CloseAction -> PButton("Fermer", { ui.closeFs() }, kind = "primary")
+        is Part.CloseAction -> PButton("Fermer", { ui.closeFs() }, Modifier.fillMaxWidth(), kind = "primary")
     }
 }
 

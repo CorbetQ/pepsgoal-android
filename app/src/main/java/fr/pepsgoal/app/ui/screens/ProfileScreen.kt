@@ -73,7 +73,11 @@ fun ProfileScreen(ui: AppState) {
                 }
                 Spacer(Modifier.height(16.dp))
                 Bar(lv.pct * 100)
-                Muted("${lv.pts} flammes${lv.next?.let { " · encore ${it - lv.pts} pour « ${lv.nextName} »" } ?: ""}", Modifier.padding(top = 6.dp), small = true)
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Muted("${lv.pts} flammes${lv.next?.let { " · encore ${it - lv.pts} pour « ${lv.nextName} »" } ?: ""}", Modifier.weight(1f), small = true)
+                    // Boutique : icônes et thèmes avec les flammes à dépenser
+                    PButton("${pg.wallet(u)} 🔥", { ui.push(Screen.Shop) }, icon = "star", small = true, kind = "ghost")
+                }
             }
         }
         item("stats") {

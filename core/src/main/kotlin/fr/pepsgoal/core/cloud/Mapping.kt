@@ -109,7 +109,7 @@ object Mapping {
     }
 
     /* ---------- réglages du compte ---------- */
-    private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "hardDays", "essentials", "flameSkin", "places", "rewards", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams")
+    private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "hardDays", "essentials", "flameSkin", "shop", "places", "rewards", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams")
     private val SETTING_KEYS = listOf("browser", "defaultVis", "bg", "accentCustom", "noSuggest", "weather", "wxCard", "glassBlur", "hideOngoing")
 
     private fun strArr(l: List<String>) = JsonArray(l.map(::JsonPrimitive))
@@ -124,6 +124,7 @@ object Mapping {
         extra["restDays"] = strArr(u.restDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
         extra["hardDays"] = strArr(u.hardDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
         extra["essentials"] = strArr(u.essentials); extra["flameSkin"] = JsonPrimitive(u.flameSkin)
+        extra["shop"] = buildJsonObject { put("owned", strArr(u.shopOwned)); put("spent", u.shopSpent) }
         extra["places"] = JSON.encodeToJsonElement(u.places)
         extra["rewards"] = JSON.encodeToJsonElement(u.rewards.filter { it.claimedAt == null || it.claimedAt!! > fr.pepsgoal.core.nowMs() - 400L * 86_400_000 })
         extra["vacations"] = strArr(u.vacations.filter { it.substringAfter('|') >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
@@ -171,6 +172,10 @@ object Mapping {
         strs("hardDays")?.let { u.hardDays = it }
         strs("essentials")?.let { u.essentials = it }
         x["flameSkin"]?.let { u.flameSkin = it.strOr("classic") }
+        (x["shop"] as? JsonObject)?.let { o ->
+            (o["owned"] as? JsonArray)?.let { a -> u.shopOwned = a.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.toMutableList() }
+            (o["spent"] as? JsonPrimitive)?.intOrNull?.let { u.shopSpent = it }
+        }
         (x["rewards"] as? JsonArray)?.let { u.rewards = try { JSON.decodeFromJsonElement<List<Reward>>(it).toMutableList() } catch (e: Exception) { u.rewards } }
         (x["places"] as? JsonArray)?.let { u.places = try { JSON.decodeFromJsonElement<List<SavedPlace>>(it).toMutableList() } catch (e: Exception) { u.places } }
         strs("milestones")?.let { u.milestones = it }

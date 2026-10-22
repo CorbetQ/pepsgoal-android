@@ -854,19 +854,24 @@ private fun AppIconCard(ui: AppState) {
         SectionTitle("Icône de l’application")
         Muted("L’icône change sur l’écran d’accueil d’Android après quelques secondes. Selon le lanceur, un raccourci déjà posé sur l’écran d’accueil peut devoir être ajouté à nouveau.", small = true)
         Spacer(Modifier.height(10.dp))
+        // Icônes gratuites et achetées ; les autres s'obtiennent dans la boutique (flammes)
+        val u = ui.pg.me()
         FlowRowCompat(gap = 10.dp) {
             fr.pepsgoal.app.sys.AppIcons.ALL.forEach { ic ->
-                val on = cur == ic.key
+                val on = cur == ic.key; val owned = ui.pg.owns("icon:${ic.key}", ic.price, u)
                 Column(Modifier.width(64.dp).clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = "Icône ${ic.label}") {
-                    fr.pepsgoal.app.sys.AppIcons.set(ctx, ic.key); cur = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette")
+                    if (owned) { fr.pepsgoal.app.sys.AppIcons.set(ctx, ic.key); cur = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") }
+                    else ui.push(Screen.Shop)
                 }.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(ic.bg.map { Color(it) })).border(if (on) 3.dp else 1.dp, if (on) p.flame else p.line, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(ic.fg), null, Modifier.size(86.dp), colorFilter = if (ic.key == "mono") androidx.compose.ui.graphics.ColorFilter.tint(Color.White) else null)
+                    Box {
+                        AppIconPreview(ic, 54.dp, on)
+                        if (!owned) Box(Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape).background(p.bg).border(1.dp, p.line, CircleShape), contentAlignment = Alignment.Center) { Text("🔒", fontSize = 10.sp) }
                     }
                     Text(ic.label, fontSize = 11.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 1)
                 }
             }
         }
+        PButton("Boutique · ${ui.pg.wallet(u)} 🔥", { ui.push(Screen.Shop) }, icon = "star", small = true, modifier = Modifier.padding(top = 10.dp))
         val season = fr.pepsgoal.app.sys.Season.now()
         SetRow("Couleurs de saison", "Halloween, fêtes de fin d’année (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${fr.pepsgoal.app.sys.Season.LABELS[it]}." } ?: ""}") {
             PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })

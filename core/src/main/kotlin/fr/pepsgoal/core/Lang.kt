@@ -11,7 +11,7 @@ object Lang {
     val plural: Map<String, Pair<String, String>> = mapOf(
         "ami en commun" to ("mutual friend" to "mutual friends"), "ami" to ("friend" to "friends"),
         "autre badge à découvrir" to ("other badge to discover" to "other badges to discover"), "clé de conversation" to ("conversation key" to "conversation keys"),
-        "commentaire" to ("comment" to "comments"), "compte" to ("account" to "accounts"), "deadline bouclée" to ("deadline met" to "deadlines met"),
+        "commentaire" to ("comment" to "comments"), "réaction" to ("reaction" to "reactions"), "compte" to ("account" to "accounts"), "deadline bouclée" to ("deadline met" to "deadlines met"),
         "défi à plusieurs réussi" to ("group challenge won" to "group challenges won"), "encouragement reçu" to ("cheer received" to "cheers received"),
         "fichier" to ("file" to "files"), "fois" to ("time" to "times"), "gel de série utilisé" to ("streak freeze used" to "streak freezes used"),
         "gel de série" to ("streak freeze" to "streak freezes"), "gel" to ("freeze" to "freezes"), "high five" to ("high five" to "high fives"),
