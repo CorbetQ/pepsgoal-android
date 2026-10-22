@@ -206,7 +206,7 @@ fun GoalQrSheet(ui: AppState, id: String) {
     }
 }
 
-private fun android.graphics.Bitmap.asImageBitmapCompat() = androidx.compose.ui.graphics.asImageBitmap(this)
+private fun android.graphics.Bitmap.asImageBitmapCompat() = asImageBitmap()
 
 @Composable
 fun ImportGoalSheet(ui: AppState, link: String) {
