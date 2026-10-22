@@ -109,7 +109,7 @@ object Mapping {
     }
 
     /* ---------- réglages du compte ---------- */
-    private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams")
+    private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "hardDays", "essentials", "flameSkin", "places", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams")
     private val SETTING_KEYS = listOf("browser", "defaultVis", "bg", "accentCustom", "noSuggest", "weather", "wxCard", "glassBlur", "hideOngoing")
 
     private fun strArr(l: List<String>) = JsonArray(l.map(::JsonPrimitive))
@@ -122,6 +122,9 @@ object Mapping {
         extra["goalGroupOf"] = JsonObject(u.goalGroupOf.mapValues { JsonPrimitive(it.value) })
         extra["frozenDays"] = strArr(u.frozenDays); extra["milestones"] = strArr(u.milestones)
         extra["restDays"] = strArr(u.restDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
+        extra["hardDays"] = strArr(u.hardDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
+        extra["essentials"] = strArr(u.essentials); extra["flameSkin"] = JsonPrimitive(u.flameSkin)
+        extra["places"] = JSON.encodeToJsonElement(u.places)
         extra["vacations"] = strArr(u.vacations.filter { it.substringAfter('|') >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
         u.badges?.let { extra["badges"] = strArr(it) } ?: extra.remove("badges")
         u.badgeFams?.let { extra["badgeFams"] = strArr(it) } ?: extra.remove("badgeFams")
@@ -164,6 +167,10 @@ object Mapping {
         strs("frozenDays")?.let { u.frozenDays = it }
         strs("restDays")?.let { u.restDays = it }
         strs("vacations")?.let { u.vacations = it }
+        strs("hardDays")?.let { u.hardDays = it }
+        strs("essentials")?.let { u.essentials = it }
+        x["flameSkin"]?.let { u.flameSkin = it.strOr("classic") }
+        (x["places"] as? JsonArray)?.let { u.places = try { JSON.decodeFromJsonElement<List<SavedPlace>>(it).toMutableList() } catch (e: Exception) { u.places } }
         strs("milestones")?.let { u.milestones = it }
         if (x.containsKey("badges")) u.badges = strs("badges")
         if (x.containsKey("badgeFams")) u.badgeFams = strs("badgeFams")

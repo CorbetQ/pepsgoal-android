@@ -2,6 +2,8 @@ package fr.pepsgoal.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -80,6 +82,7 @@ fun ProfileScreen(ui: AppState) {
         item("recap") { RecapCard(ui) }
         item("gel") { GelCard(ui, u, false) }
         item("stories") { StoryArchiveCard(ui, u) }
+        item("flames") { FlameSkinsCard(ui, u) }
         item("badges") { BadgesCard(ui, u) }
     }
 }
@@ -290,6 +293,34 @@ fun BadgeScreen(ui: AppState, key: String) {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Flammes de collection : débloquées par la meilleure série, choisies d'un geste. */
+@Composable
+private fun FlameSkinsCard(ui: AppState, u: fr.pepsgoal.core.model.User) {
+    val p = LocalPal.current; val pg = ui.pg
+    val best = remember(ui.rev) { pg.bestStreak(u.id) }
+    Glass {
+        CardHead("Flammes de collection")
+        Muted("Ta meilleure série débloque de nouvelles couleurs de flamme : $best ${if (best > 1) "jours" else "jour"} pour l’instant.", small = true)
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FLAME_SKINS.forEach { sk ->
+                val open = best >= sk.min; val on = u.flameSkin == sk.key || (sk.key == "classic" && FLAME_SKINS.none { it.key == u.flameSkin })
+                Column(Modifier.width(84.dp).clip(RoundedCornerShape(18.dp)).background(if (on) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .04f))
+                    .border(if (on) 2.dp else 1.dp, if (on) p.flame else p.line, RoundedCornerShape(18.dp))
+                    .clickable(enabled = open) { u.flameSkin = sk.key; pg.store.commit(); ui.toast("Flamme « ${sk.name} » choisie.", "flame") }
+                    .padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Flame(40.dp, dim = !open, colors = sk.colors?.map(::hex) ?: listOf(p.pink, p.flame, p.flame2))
+                        if (!open) Pi("lock", size = 16.dp, tint = p.ink2)
+                    }
+                    Text(sk.name, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(if (open) (if (on) "Choisie" else "Débloquée") else "${sk.min} j", fontSize = 11.sp, color = p.ink2)
                 }
             }
         }

@@ -33,6 +33,7 @@ internal val SET_WORDS = mapOf(
     "reminders" to "rappel notification heure live updates rappels intelligents",
     "account" to "compte mot de passe deconnexion nom email profil",
     "weather" to "meteo ville ciel pluie temperature",
+    "places" to "emplacement lieu carte maison travail adresse position geolocalisation",
     "privacy" to "social confidentialite visibilite stories amis bloquer",
     "ai" to "ia intelligence artificielle coach memoire modele",
     "health" to "sante pas sommeil poids eau health connect sport distance",

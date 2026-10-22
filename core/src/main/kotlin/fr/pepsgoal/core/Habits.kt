@@ -119,3 +119,82 @@ fun duoOk(g: Goal) = g.type in DUO_TYPES && !(g.type == "routine" && g.mode != "
 
 /** Flamme commune : jours prévus consécutifs validés par les deux (aujourd'hui en attente ne casse rien). */
 fun Pg.duoStreak(g: Goal, peerDays: Set<String>): Int = dayStreak(g, { hasCheck(g.id, it) && it in peerDays }, { scheduled(g, it) })
+
+/* ---------------------------------------------------------------- Journée difficile */
+
+/** Jours où un objectif ne compte pas : repos, vacances, et journées difficiles s'il n'est pas essentiel. */
+fun Pg.goalRest(g: Goal): Set<String> {
+    val u = userById(g.userId) ?: return emptySet()
+    val base = restSet(g.userId)
+    return if (u.hardDays.isEmpty() || g.id in u.essentials) base else base + u.hardDays
+}
+const val HARD_PER_MONTH = 4
+const val ESSENTIALS_MAX = 3
+fun Pg.isHardDay(date: String = today()) = me()?.hardDays?.contains(date) == true
+
+/** Active (ou retire) la journée difficile d'aujourd'hui. Renvoie un message d'erreur, ou null. */
+fun Pg.toggleHardDay(): String? {
+    val u = me() ?: return null; val t = today()
+    if (u.hardDays.remove(t)) { store.commit(); hooks.liveChanged(); return null }
+    if (u.essentials.none { goalById(it)?.let { g -> !isClosedGoal(g) } == true }) return "Choisis d’abord tes objectifs essentiels."
+    if (u.hardDays.count { it.startsWith(t.substring(0, 7)) } >= HARD_PER_MONTH) return "Déjà $HARD_PER_MONTH journées difficiles ce mois-ci."
+    u.hardDays.add(t); store.commit(); hooks.liveChanged(); return null
+}
+fun Pg.toggleEssential(id: String): String? {
+    val u = me() ?: return null
+    if (u.essentials.remove(id)) { store.commit(); return null }
+    u.essentials.removeAll { goalById(it)?.let { g -> isClosedGoal(g) } != false }
+    if (u.essentials.size >= ESSENTIALS_MAX) return "$ESSENTIALS_MAX essentiels au plus."
+    u.essentials.add(id); store.commit(); return null
+}
+
+/* ---------------------------------------------------------------- Compteur d'économies */
+
+/** Coût d'une unité évitée (€) et temps (min) ; base : unités par jour avant l'objectif. */
+var Goal.saveCost: Double get() = num("saveCost", 0.0); set(v) = set("saveCost", v)
+var Goal.saveMin: Double get() = num("saveMin", 0.0); set(v) = set("saveMin", v)
+var Goal.saveBase: Double get() = num("saveBase", 0.0); set(v) = set("saveBase", v)
+val SAVING_TYPES = setOf("abstinence", "limit")
+
+class Savings(val units: Double, val money: Double, val minutes: Double, val days: Int)
+
+/** Unités évitées depuis le début : jours sans écart × base (abstinence), ou base − consommé chaque jour (limite). */
+fun Pg.savings(g: Goal): Savings? {
+    if (g.type !in SAVING_TYPES || g.saveBase <= 0) return null
+    val start = parseYmd(if (g.type == "abstinence") g.since.ifEmpty { ymd(g.createdAt) } else ymd(g.createdAt))
+    val days = maxOf(0, daysBetween(start, todayDate()).toInt())
+    val units = when (g.type) {
+        "abstinence" -> {
+            // Les jours d'écart ne comptent pas comme évités
+            val rel = db.checkins.count { it.goalId == g.id && it.kind == "relapse" && it.date >= ymd(start) }
+            maxOf(0, days - rel) * g.saveBase
+        }
+        else -> {
+            val used = db.checkins.filter { it.goalId == g.id && it.kind == "use" && it.date >= ymd(start) && it.date < today() }.sumOf { it.value }
+            maxOf(0.0, days * g.saveBase - used)
+        }
+    }
+    return Savings(units, units * g.saveCost, units * g.saveMin, days)
+}
+
+/* ---------------------------------------------------------------- Statistiques d'un objectif */
+
+class GoalStats(val rate30: Double?, val rate90: Double?, val bestWd: Int?, val hour: Int?, val longest: Int, val total: Int)
+
+/** Taux de réussite sur 30 et 90 jours (jours prévus), meilleur jour, heure habituelle, plus longue série. */
+fun Pg.goalStats(g: Goal): GoalStats {
+    val me = meId(); val done = db.checkins.filter { it.goalId == g.id && it.userId == me && isWin(it) }
+    val doneDays = done.map { it.date }.toSet()
+    val created = ymd(g.createdAt); val rest = goalRest(g)
+    fun rate(n: Int): Double? {
+        var due = 0; var ok = 0
+        for (i in 1..n) { val d = todayDate().minusDays(i.toLong()); val k = ymd(d); if (k < created) break; if (k in rest || !scheduled(g, d)) continue; due++; if (k in doneDays) ok++ }
+        return if (due >= 3) ok.toDouble() / due else null
+    }
+    val byWd = doneDays.groupingBy { wdIdx(parseYmd(it)) }.eachCount()
+    val hours = done.filter { it.at > 0 }.map { localDateTime(it.at).hour }
+    val hour = hours.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+    var longest = 0; var run = 0; var prev: String? = null
+    for (d in doneDays.sorted()) { run = if (prev != null && ymd(parseYmd(prev).plusDays(1)) == d) run + 1 else 1; longest = maxOf(longest, run); prev = d }
+    return GoalStats(rate(30), rate(90), byWd.maxByOrNull { it.value }?.key?.takeIf { doneDays.size >= 5 }, hour?.takeIf { hours.size >= 5 }, longest, doneDays.size)
+}

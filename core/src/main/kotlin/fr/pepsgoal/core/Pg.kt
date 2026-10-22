@@ -219,7 +219,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
 
     /** Jours consécutifs réussis ; le jour « en attente » ne casse pas la série. */
     fun dayStreak(g: Goal, isOk: (String) -> Boolean, isSched: (LocalDate) -> Boolean = { true }, pendKey: String = today(), from: LocalDate = todayDate()): Int {
-        val start = ymd(g.createdAt); var d = from; var n = 0; val rest = restSet(g.userId)
+        val start = ymd(g.createdAt); var d = from; var n = 0; val rest = goalRest(g)
         for (i in 0 until 800) {
             val k = ymd(d); if (k < start) break
             if (isSched(d)) { if (isOk(k)) n++ else if (k != pendKey && k !in rest) break }
@@ -230,7 +230,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
 
     fun goalStreak(g: Goal): Int = when (g.type) {
         "routine" -> if (g.mode == "days") {
-            val start = ymd(g.createdAt); val t = today(); var d = todayDate(); var n = 0; val rs = restSet(g.userId)
+            val start = ymd(g.createdAt); val t = today(); var d = todayDate(); var n = 0; val rs = goalRest(g)
             for (i in 0 until 800) {
                 val k = ymd(d); if (k < start) break
                 if (g.days.contains(wdIdx(d))) { if (hasCheck(g.id, k)) n++ else if (k != t && k !in rs) break }
@@ -372,6 +372,9 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
             }
         }
         ongoing.sortBy { if (it.type == "deadline") daysUntil(it.due) else 999L }
+        // Journée difficile : seuls les essentiels restent à faire (ceux déjà validés restent affichés)
+        val u = userById(id)
+        if (u != null && t in u.hardDays) return Plan(due.filter { it.g.id in u.essentials || it.done }, ongoing)
         return Plan(due, ongoing)
     }
 

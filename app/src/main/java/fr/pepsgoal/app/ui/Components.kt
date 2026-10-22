@@ -94,7 +94,7 @@ private const val FLAME_IN = "M12 21.6c-2 0-3.4-1.4-3.4-3.3 0-1.6 1-2.7 2-3.7.2 
 @Composable
 fun Flame(size: Dp, modifier: Modifier = Modifier, dim: Boolean = false, colors: List<Color>? = null) {
     val p = LocalPal.current
-    val cs = colors ?: listOf(p.pink, p.flame, p.flame2)
+    val cs = colors ?: LocalFlame.current ?: listOf(p.pink, p.flame, p.flame2)
     val outer = remember { PathParser().parsePathString(FLAME_OUT).toPath() }
     val inner = remember { PathParser().parsePathString(FLAME_IN).toPath() }
     Canvas(modifier.size(size)) {
@@ -139,6 +139,18 @@ fun Emoji(e: String, size: Dp, modifier: Modifier = Modifier, colorFilter: Color
 /* ------------------------------------------------------------------ cartes, boutons, puces */
 /** Source du flou des panneaux en verre (null : pas de flou, ex. dans une fenêtre du bas). */
 val LocalHaze = staticCompositionLocalOf<dev.chrisbanes.haze.HazeState?> { null }
+
+/** Flammes de collection : de nouvelles couleurs se débloquent avec la meilleure série (classique = couleurs du thème). */
+class FlameSkin(val key: String, val name: String, val min: Int, val colors: List<String>?)
+val FLAME_SKINS = listOf(
+    FlameSkin("classic", "Classique", 0, null),
+    FlameSkin("ocean", "Océan", 30, listOf("#1E4DFF", "#22B8FF", "#9BF0FF")),
+    FlameSkin("jade", "Jade", 60, listOf("#047857", "#22C55E", "#BBF7D0")),
+    FlameSkin("amethyst", "Améthyste", 100, listOf("#6D28D9", "#C026D3", "#F5D0FE")),
+    FlameSkin("gold", "Or", 365, listOf("#B45309", "#F59E0B", "#FFF1A8"))
+)
+/** Couleurs de la flamme choisie (null : couleurs du thème). */
+val LocalFlame = staticCompositionLocalOf<List<Color>?> { null }
 /** Contenu d'une fenêtre du bas : les cartes y ont un fond plein (sinon leur ombre transparaît en trait flou). */
 val LocalInSheet = staticCompositionLocalOf { false }
 

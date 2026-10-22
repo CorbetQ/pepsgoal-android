@@ -42,6 +42,7 @@ import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.Goal
+import fr.pepsgoal.core.model.unit
 import kotlinx.coroutines.launch
 
 /* Blocs de la fiche d'un objectif : sous-tâches, enchaînement, preuves, duo et créneau d'agenda. */
@@ -287,4 +288,74 @@ fun OptionRow(icon: String, c1: Color, c2: Color, title: String, sub: String?, o
             Column(Modifier.fillMaxWidth().padding(start = 52.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = body)
         }
     }
+}
+
+/* ---------------------------------------------------------------- Compteur d'économies */
+
+private fun money(v: Double) = String.format(java.util.Locale.FRANCE, if (v >= 100) "%.0f €" else "%.2f €", v)
+private fun duration(min: Double): String { val m = Math.round(min); val h = m / 60; val d = h / 24
+    return when { d >= 2 -> "$d j ${h % 24} h"; h >= 1 -> "$h h ${(m % 60).toString().padStart(2, '0')}"; else -> "$m min" } }
+
+/** Ce que l'objectif a déjà fait économiser : argent, unités évitées, temps. */
+@Composable
+fun SavingsCard(ui: AppState, g: Goal) {
+    val p = LocalPal.current; val sv = ui.pg.savings(g) ?: return
+    SectionTitle("Économies")
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOfNotNull(
+            if (g.saveCost > 0) Triple(money(sv.money), "économisés", p.type("routine").c) else null,
+            Triple(fmtNum(Math.round(sv.units * 10) / 10.0), "${g.unit.ifBlank { "unités" }} évité${if (sv.units > 1) "s" else ""}", p.type("abstinence").c),
+            if (g.saveMin > 0) Triple(duration(sv.minutes), "de temps gagné", p.type("duration").c) else null
+        ).forEach { (v, l, c) ->
+            Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(18.dp)).background(Brush.verticalGradient(listOf(c.copy(alpha = .28f), c.copy(alpha = .12f)))).padding(12.dp)) {
+                Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
+                Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+    if (sv.days >= 7 && g.saveCost > 0) Muted("Soit environ ${money(sv.money / sv.days * 365)} par an à ce rythme.", small = true)
+}
+
+/** Réglage du compteur : consommation habituelle avant l'objectif, coût et temps par unité. */
+@Composable
+fun SavingsRow(ui: AppState, g: Goal, divider: Boolean = true) {
+    val p = LocalPal.current; val pg = ui.pg
+    if (g.type !in SAVING_TYPES) return
+    var open by remember { mutableStateOf(false) }
+    var base by remember { mutableStateOf(if (g.saveBase > 0) fmtNum(g.saveBase) else "") }
+    var cost by remember { mutableStateOf(if (g.saveCost > 0) fmtNum(g.saveCost) else "") }
+    var mins by remember { mutableStateOf(if (g.saveMin > 0) fmtNum(g.saveMin) else "") }
+    val num = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)
+    fun d(s: String) = s.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
+    OptionRow("trend", p.type("routine").c, p.type("objective").c, "Compteur d’économies",
+        if (g.saveBase > 0) "${fmtNum(g.saveBase)} ${g.unit.ifBlank { "unités" }}/jour avant${if (g.saveCost > 0) " · ${money(g.saveCost)} l’unité" else ""}" else "Argent et temps gagnés en t’en passant", open, { open = !open }, divider) {
+        Field(base, { base = it }, "Avant, par jour", placeholder = "Ex. 10 cigarettes, 2 sodas…", keyboard = num, max = 8)
+        Field(cost, { cost = it }, "Coût d’une unité (€)", placeholder = "Ex. 0,60", keyboard = num, max = 8)
+        Field(mins, { mins = it }, "Temps d’une unité (min, facultatif)", placeholder = "Ex. 7", keyboard = num, max = 6)
+        FlowRowCompat(gap = 6.dp) {
+            PButton("Enregistrer", {
+                if (d(base) <= 0) return@PButton ui.toast("Indique ta consommation habituelle par jour.", "x")
+                g.saveBase = d(base); g.saveCost = d(cost); g.saveMin = d(mins); pg.store.commit(); open = false
+                ui.toast("Compteur d’économies activé.", "trend")
+            }, icon = "check", small = true, kind = "primary")
+            if (g.saveBase > 0) PButton("Retirer", { g.saveBase = 0.0; g.saveCost = 0.0; g.saveMin = 0.0; pg.store.commit(); open = false }, small = true, kind = "ghost")
+        }
+    }
+}
+
+/* ---------------------------------------------------------------- Statistiques d'un objectif */
+
+@Composable
+fun GoalStatsBlock(ui: AppState, g: Goal) {
+    val pg = ui.pg
+    if (!pg.hasCalendar(g.type) || g.type in setOf("objective", "monthly")) return
+    val st = remember(ui.rev, g.id) { pg.goalStats(g) }
+    if (st.total < 3) return
+    SectionTitle("Statistiques")
+    fun pct(v: Double?) = v?.let { "${Math.round(it * 100)} %" } ?: "—"
+    StatGrid(listOf(
+        pct(st.rate30) to "réussite sur 30 jours", pct(st.rate90) to "réussite sur 90 jours",
+        (st.bestWd?.let { cap(WD_LONG[it]) } ?: "—") to "meilleur jour", (st.hour?.let { "${it} h" } ?: "—") to "heure habituelle",
+        "${st.longest} j" to "plus longue série", "${st.total}" to "jours validés"
+    ))
 }

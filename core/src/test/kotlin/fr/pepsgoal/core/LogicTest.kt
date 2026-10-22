@@ -187,4 +187,21 @@ class LogicTest {
         val f = Insights.findings(rates, mapOf("sleep" to sleep))
         assertTrue(f.first().text.contains("90 %") && f.first().text.contains("40 %"))
     }
+
+    @Test fun hardDaySavingsStats() {
+        val a = goal("routine") { mode = "days"; days = (0..6).toList() }
+        val b = goal("routine") { mode = "days"; days = (0..6).toList() }
+        for (i in 1..3) { pg.addCheck(a, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong()))); pg.addCheck(b, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong()))) }
+        assertTrue(pg.toggleHardDay() != null) // pas d'essentiel choisi
+        assertEquals(null, pg.toggleEssential(a.id))
+        assertEquals(null, pg.toggleHardDay())
+        assertEquals(listOf(a.id), pg.todayPlan().due.map { it.g.id })
+        at(2026, 10, 22)
+        // Hier (journée difficile) : b non validé mais sa série tient ; a, essentiel, la perd
+        assertEquals(3, pg.goalStreak(b)); assertEquals(0, pg.goalStreak(a))
+        val c = goal("abstinence", ago = 10) { since = ymd(todayDate().minusDays(10)); saveBase = 10.0; saveCost = .5 }
+        val sv = pg.savings(c)!!
+        assertEquals(100.0, sv.units); assertEquals(50.0, sv.money)
+        assertEquals(3, pg.goalStats(b).longest)
+    }
 }

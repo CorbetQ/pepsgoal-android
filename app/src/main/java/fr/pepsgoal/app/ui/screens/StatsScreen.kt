@@ -213,7 +213,7 @@ private fun InsightsCard(ui: AppState) {
                 for (d in rates.keys) try { H.value(ctx, k, parseYmd(d))?.let { m[d] = it } } catch (e: Exception) {}
                 if (m.isNotEmpty()) values[k] = m
             }
-            Insights.findings(rates, values).take(4)
+            Insights.findings(rates, values, fr.pepsgoal.app.data.Journal.tagDays(ctx)).take(5)
         }
         insightsCache = today() to (found ?: emptyList())
     }
