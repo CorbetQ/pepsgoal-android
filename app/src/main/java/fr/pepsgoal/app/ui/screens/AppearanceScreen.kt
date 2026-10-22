@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -159,9 +160,9 @@ private fun PreviewLine(k: String, v: String) {
 
 /** En-tête de section : pastille d'icône, titre et sous-titre facultatif. */
 @Composable
-private fun Head(icon: String, title: String, sub: String? = null, right: @Composable RowScope.() -> Unit = {}) {
+private fun Head(icon: String, title: String, sub: String? = null, modifier: Modifier = Modifier.fillMaxWidth(), right: @Composable RowScope.() -> Unit = {}) {
     val p = LocalPal.current
-    Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(modifier.padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         IconTile(icon, p.flame, p.pink, 36.dp, 12.dp)
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
@@ -297,7 +298,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
             ui.toast("Arrière-plan personnalisé appliqué.", "image")
         }
     }
-    val launch = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+    val openPicker = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
     val weather = s.theme == "weather"
     // Tuiles : fonds gratuits (rendus en vrai, figés), fonds illustrés possédés, image perso, boutique
     val free = BGS.filter { it.first != "custom" }
@@ -318,7 +319,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
                         val b = SHOP_BGS.first { "s:${it.key}" == k }
                         Tile(b.name, s.bg == k, 86.dp, 132.dp, { if (!weather) { ui.pg.applyBg(b); ui.themeTick++ } }) { SceneBg(b.key, Modifier.fillMaxSize(), still = true) }
                     }
-                    k == "custom" -> Tile(if (has) "Mon image" else "Ma photo", s.bg == "custom" && has, 86.dp, 132.dp, { if (weather) Unit else if (has) { s.bg = "custom"; commit(ui) } else launch() }) {
+                    k == "custom" -> Tile(if (has) "Mon image" else "Ma photo", s.bg == "custom" && has, 86.dp, 132.dp, { if (!weather) { if (has) { s.bg = "custom"; commit(ui) } else openPicker() } }) {
                         if (has) AsyncImage(ImageRequest.Builder(ctx).data(file).memoryCacheKey("bg${ui.prefs.bgStamp}").crossfade(true).build(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         else Box(Modifier.fillMaxSize().background(p.ink.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Pi("plus", size = 26.dp, tint = p.ink2) }
                     }
@@ -333,7 +334,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
         // Image personnalisée : changer, retirer, flou, assombrissement et couleurs extraites
         if (has) {
             SetRow("Mon image", "Une photo à toi, gardée sur cet appareil.") {
-                PButton("Changer", { launch() }, icon = "image", small = true)
+                PButton("Changer", { openPicker() }, icon = "image", small = true)
                 PButton("Retirer", { file.delete(); ui.prefs.bgPalette = emptyList(); ui.prefs.bgStamp = nowMs(); if (s.bg == "custom") s.bg = "blob"; commit(ui); ui.toast("Image d’arrière-plan retirée.", "image") }, kind = "ghost", small = true)
             }
             if (s.bg == "custom") {
@@ -447,7 +448,7 @@ private fun AdvancedSection(ui: AppState, u: User) {
     val off = ui.prefs.transp || ui.prefs.contrast
     Glass(Modifier.animateContentSize()) {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClickLabel = if (open) "Replier" else "Déplier") { open = !open }, verticalAlignment = Alignment.CenterVertically) {
-            Head("gear", "Réglages avancés", "Verre givré, carte « En cours »")
+            Head("gear", "Réglages avancés", "Verre givré, carte « En cours »", Modifier.weight(1f))
             Pi("chevronleft", Modifier.rotate(180f + rot), size = 18.dp, tint = p.ink2)
         }
         if (open) {

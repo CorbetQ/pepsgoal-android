@@ -178,7 +178,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
     val (k1, k2) = SET_COLORS[c[0]] ?: ("routine" to "duration")
     ScreenFrame(ui, c[1], "Paramètres", { ui.screens[ui.screens.lastIndex] = Screen.Settings() }, icon = c[3], color = p.type(k1).c, color2 = p.type(k2).c) {
         when (c[0]) {
-            "appearance" -> item("b") { Appearance(ui, u) }
+            "appearance" -> item("b") { AppearancePage(ui, u) }
             "reminders" -> item("b") { RemindersSettings(ui, u) }
             "account" -> item("b") { AccountSettings(ui, u) }
             "weather" -> item("b") { WeatherSettings(ui, u) }
@@ -196,159 +196,6 @@ fun SettingsScreen(ui: AppState, cat: String?) {
 }
 
 private fun save(ui: AppState) { ui.pg.store.commit() }
-
-/* ------------------------------------------------------------------ Apparence */
-@Composable
-private fun Appearance(ui: AppState, u: User) {
-    val p = LocalPal.current; val s = u.settings; val ctx = LocalContext.current
-    val dynOk = Build.VERSION.SDK_INT >= 31
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // Langue de l'interface : celle du téléphone, ou forcée
-        Glass {
-            var lang by remember { mutableStateOf(ui.prefs.raw.getString("lang", "auto") ?: "auto") }
-            SectionTitle("Langue · Language")
-            Seg(listOf("auto" to "Auto", "fr" to "Français", "en" to "English"), lang, { lang = it; ui.prefs.raw.edit().putString("lang", it).apply(); I18n.apply(ctx, it); ui.themeTick++; ui.bump() })
-            Muted("« Auto » suit la langue du téléphone. L’anglais traduit l’interface ; tes contenus (objectifs, messages, journal) restent tels que tu les as écrits.", Modifier.padding(top = 8.dp), small = true)
-        }
-        Glass {
-            SetRow("Couleurs Material You", if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface : panneaux, boutons, flammes, navigation, et couleurs des types harmonisées." else "Nécessite Android 12 ou plus récent.") {
-                PSwitch(ui.prefs.materialYou && dynOk, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = dynOk)
-            }
-            if (ui.prefs.materialYou && dynOk) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-                    listOf(p.flame2, p.flame, p.pink, p.glassStrong, p.bg).forEach { Box(Modifier.size(26.dp).clip(CircleShape).background(it).border(1.dp, p.line, CircleShape)) }
-                }
-                Muted("Réglage propre à cet appareil. La couleur d’accent ci-dessous reste enregistrée pour tes autres appareils.", small = true)
-            }
-        }
-        Glass {
-            SectionTitle("Thème")
-            Muted("Clair, sombre, OLED (noir pur), Météo (ciel en direct) ou selon ton appareil", small = true)
-            Spacer(Modifier.height(8.dp))
-            FlowRowCompat(gap = 6.dp) { THEMES.forEach { (k, l) -> FChip(l, s.theme == k, { s.theme = k; save(ui); if (k == "weather" && s.weather == null) ui.toast("Choisis ta ville dans Paramètres › Météo pour un ciel en direct.", "cloud") }) } }
-            SetRow("Carte « En cours » sur l’accueil", "Deadlines, projets, objectifs chiffrés et défis en cours, sous « À valider aujourd’hui »") {
-                PSwitch(!s.hideOngoing, { s.hideOngoing = !it; save(ui); ui.toast(if (it) "Carte « En cours » affichée sur l’accueil." else "Carte « En cours » masquée.", "list") })
-            }
-            SectionTitle("Flou du verre givré")
-            Muted(if (ui.prefs.transp || ui.prefs.contrast) "Sans effet : la transparence est désactivée dans Accessibilité." else "Intensité du flou de l’arrière-plan derrière les panneaux", small = true)
-            Spacer(Modifier.height(8.dp))
-            FlowRowCompat(gap = 6.dp) { BLURS.forEach { (k, l) -> FChip(l, s.glassBlur == k, { s.glassBlur = k; save(ui); ui.toast("Flou du verre : ${l.lowercase()}.", "palette") }) } }
-            Spacer(Modifier.height(14.dp))
-            SectionTitle("Opacité du verre givré")
-            Muted(if (ui.prefs.transp || ui.prefs.contrast) "Sans effet : la transparence est désactivée dans Accessibilité." else "« Faible » laisse voir l’arrière-plan, « Fort » rend les panneaux presque opaques. Réglage propre à cet appareil.", small = true)
-            Spacer(Modifier.height(8.dp))
-            FlowRowCompat(gap = 6.dp) {
-                listOf("low" to "Faible", "mid" to "Moyen", "high" to "Fort").forEach { (k, l) ->
-                    FChip(l, ui.prefs.glassOpacity == k, { ui.prefs.glassOpacity = k; ui.themeTick++; ui.toast("Opacité du verre : ${l.lowercase()}.", "palette") })
-                }
-            }
-        }
-        AppIconCard(ui)
-        Glass(Modifier.alpha(if (ui.prefs.materialYou && dynOk) .55f else 1f)) {
-            SectionTitle("Couleur d'accent")
-            Muted("${if (ui.prefs.materialYou && dynOk) "Remplacée par Material You sur cet appareil · " else ""}${if (validAccent(s.accentCustom)) "Tirée de ton arrière-plan" else (ACCENTS.getOrNull(s.accent) ?: ACCENTS[0]).name} · flammes, boutons et anneau de progression", small = true)
-            Spacer(Modifier.height(10.dp))
-            FlowRowCompat(gap = 8.dp) {
-                ACCENTS.forEachIndexed { i, a ->
-                    val on = s.accent == i && !validAccent(s.accentCustom)
-                    Box(Modifier.size(38.dp).clip(CircleShape).background(accentBrush(i)).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, CircleShape).clickable(onClickLabel = a.name) { s.accent = i; s.accentCustom = null; save(ui) })
-                }
-                if (validAccent(s.accentCustom)) Box(Modifier.size(38.dp).clip(CircleShape).background(Brush.linearGradient(s.accentCustom!!.map(::hex))).border(3.dp, p.ink, CircleShape))
-            }
-        }
-        BackgroundSettings(ui, u)
-        Glass {
-            SetRow("Icône de profil", "Photo, emoji ou pictogramme") { Av(u, 44.dp); PButton("Changer", { ui.open(Sheet.Avatar) }, icon = "image", small = true) }
-        }
-    }
-}
-
-@Composable
-private fun BackgroundSettings(ui: AppState, u: User) {
-    val p = LocalPal.current; val s = u.settings; val ctx = LocalContext.current
-    val file = bgFile(ctx); val has = remember(ui.prefs.bgStamp, ui.rev) { file.exists() }
-    val cur = if (s.bg == "custom" && !has) "blob" else if (BGS.any { it.first == s.bg }) s.bg else "blob"
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        ui.scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                val b = Media.decode(ctx, uri, 1920) ?: return@withContext null
-                file.writeBytes(Media.jpeg(b, 82)); Media.palette(b)
-            }
-            if (ok == null) { ui.toast("Impossible de lire cette image. Essaie un fichier JPG ou PNG.", "image"); return@launch }
-            ui.prefs.bgPalette = ok; ui.prefs.bgStamp = nowMs(); s.bg = "custom"; save(ui); ui.themeTick++
-            ui.toast("Arrière-plan personnalisé appliqué.", "image")
-        }
-    }
-    Glass {
-        SectionTitle("Arrière-plan")
-        val scene = SHOP_BGS.firstOrNull { "s:${it.key}" == s.bg }
-        Muted("${scene?.name ?: BGS.first { it.first == cur }.second} · derrière toute l’application", small = true)
-        if (s.theme == "weather") Note("Le thème Météo affiche le ciel en direct : change de thème pour choisir un arrière-plan.", "cloud", Modifier.padding(top = 8.dp))
-        Spacer(Modifier.height(10.dp))
-        FlowRowCompat(Modifier.alpha(if (s.theme == "weather") .5f else 1f), gap = 8.dp) {
-            BGS.forEach { (k, l) ->
-                Column(Modifier.width(76.dp).clickable(enabled = s.theme != "weather") { if (k == "custom" && !has) pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) else { s.bg = k; save(ui) } },
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(Modifier.size(76.dp, 56.dp).clip(RoundedCornerShape(14.dp)).background(bgPreview(k, p)).border(if (cur == k && scene == null) 3.dp else 1.dp, if (cur == k && scene == null) p.ink else p.line, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                        if (k == "custom" && has) AsyncImage(ImageRequest.Builder(ctx).data(file).memoryCacheKey("bg${ui.prefs.bgStamp}").crossfade(true).build(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        else if (k == "custom") Pi("image")
-                    }
-                    Text(l, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-        // Fonds illustrés de la boutique : ceux déjà achetés, et l'accès à la boutique
-        val mine = SHOP_BGS.filter { ui.pg.owns("bg:${it.key}", it.price, u) }
-        Text("Fonds illustrés", Modifier.padding(top = 12.dp), fontWeight = FontWeight.Bold)
-        if (mine.isNotEmpty()) FlowRowCompat(Modifier.padding(top = 6.dp), gap = 8.dp) {
-            mine.forEach { b ->
-                val on = s.bg == "s:${b.key}"
-                Column(Modifier.width(76.dp).clickable { ui.pg.applyBg(b); ui.themeTick++ }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(Modifier.size(76.dp, 56.dp).clip(RoundedCornerShape(14.dp)).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, RoundedCornerShape(14.dp))) { SceneBg(b.key, Modifier.fillMaxSize(), still = true) }
-                    Text(b.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                }
-            }
-        }
-        PButton("${if (mine.isEmpty()) "Découvrir" else "Plus de fonds"} dans la boutique", { ui.push(Screen.Shop) }, icon = "star", small = true, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
-        SetRow("Image personnalisée", "Une photo à toi en fond d’écran, gardée sur cet appareil.") {
-            PButton(if (has) "Changer" else "Choisir", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image", small = true)
-            if (has) PButton("Retirer", { file.delete(); ui.prefs.bgPalette = emptyList(); ui.prefs.bgStamp = nowMs(); if (s.bg == "custom") s.bg = "blob"; save(ui); ui.toast("Image d’arrière-plan retirée.", "image") }, kind = "ghost", small = true)
-        }
-        // Réglages de l'image : flou et assombrissement (pour garder les cartes lisibles)
-        if (has && cur == "custom") {
-            var blur by remember { mutableIntStateOf(ui.prefs.raw.getInt("bgBlur", 0)) }
-            var dim by remember { mutableFloatStateOf(ui.prefs.raw.getFloat("bgDim", -1f)) }
-            Text("Flou de l’image", Modifier.padding(top = 10.dp), fontWeight = FontWeight.Bold)
-            Seg(listOf(0 to "Aucun", 8 to "Léger", 18 to "Moyen", 32 to "Fort"), blur, { blur = it; ui.prefs.raw.edit().putInt("bgBlur", it).apply(); ui.prefs.bgStamp = nowMs() })
-            if (android.os.Build.VERSION.SDK_INT < 31) Muted("Le flou demande Android 12 ou plus récent.", small = true)
-            Text("Assombrissement", Modifier.padding(top = 10.dp), fontWeight = FontWeight.Bold)
-            Seg(listOf(-1f to "Auto", 0f to "Aucun", .3f to "Léger", .5f to "Moyen", .7f to "Fort"), dim, { dim = it; ui.prefs.raw.edit().putFloat("bgDim", it).apply(); ui.prefs.bgStamp = nowMs() })
-        }
-        val pal = ui.prefs.bgPalette
-        if (has && pal.isNotEmpty()) {
-            SetRow("Couleurs de ton arrière-plan", "Extraites de ton image : touche-en une pour en faire ta couleur d’accent.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                pal.forEach { c ->
-                    val on = validAccent(s.accentCustom) && Media.accentFrom(c)[1] == s.accentCustom!![1]
-                    Box(Modifier.size(36.dp).clip(CircleShape).background(hex(c)).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, CircleShape)
-                        .clickable(onClickLabel = "Utiliser la couleur $c") { s.accentCustom = Media.accentFrom(c); save(ui); ui.toast("Couleur d’accent tirée de ton arrière-plan.", "palette") })
-                }
-            }
-        }
-    }
-}
-
-private fun bgPreview(k: String, p: fr.pepsgoal.app.ui.theme.Pal): Brush = when (k) {
-    "aurora" -> Brush.verticalGradient(listOf(p.bg, p.blobs[2].copy(alpha = .6f), p.blobs[3].copy(alpha = .5f)))
-    "waves" -> Brush.verticalGradient(listOf(p.bg, p.blobs[0].copy(alpha = .55f)))
-    "stars" -> Brush.radialGradient(listOf(p.ink.copy(alpha = .15f), p.bg))
-    "mesh" -> Brush.linearGradient(listOf(p.blobs[0].copy(alpha = .7f), p.blobs[1].copy(alpha = .6f), p.blobs[2].copy(alpha = .6f)))
-    "grid" -> Brush.linearGradient(listOf(p.bg, p.ink.copy(alpha = .08f), p.bg))
-    "plain" -> Brush.linearGradient(listOf(p.bg, p.bg))
-    "custom" -> Brush.linearGradient(listOf(p.glassStrong, p.glass))
-    else -> Brush.radialGradient(listOf(p.blobs[0].copy(alpha = .8f), p.blobs[1].copy(alpha = .4f), p.bg))
-}
 
 /* ------------------------------------------------------------------ Rappels */
 @Composable
@@ -856,41 +703,6 @@ fun ExportRow(ui: AppState) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PButton("CSV", { go(false) }, icon = "list", small = true, enabled = !busy)
         PButton("Bilan PDF", { go(true) }, icon = "book", small = true, enabled = !busy)
-    }
-}
-
-/** Paramètres › Apparence : icône de l'application et couleurs de saison. */
-@Composable
-private fun AppIconCard(ui: AppState) {
-    val ctx = LocalContext.current; val p = LocalPal.current
-    var cur by remember { mutableStateOf(fr.pepsgoal.app.sys.AppIcons.current(ctx)) }
-    LaunchedEffect(Unit) { keepCurrentIcon(ui, ctx) }
-    Glass {
-        SectionTitle("Icône de l’application")
-        Muted("L’icône change sur l’écran d’accueil d’Android après quelques secondes. Selon le lanceur, un raccourci déjà posé sur l’écran d’accueil peut devoir être ajouté à nouveau.", small = true)
-        Spacer(Modifier.height(10.dp))
-        // Icônes gratuites et achetées ; les autres s'obtiennent dans la boutique (flammes)
-        val u = ui.pg.me()
-        FlowRowCompat(gap = 10.dp) {
-            fr.pepsgoal.app.sys.AppIcons.ALL.forEach { ic ->
-                val on = cur == ic.key; val owned = ui.pg.owns("icon:${ic.key}", ic.price, u)
-                Column(Modifier.width(64.dp).clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = "Icône ${ic.label}") {
-                    if (owned) { fr.pepsgoal.app.sys.AppIcons.set(ctx, ic.key); cur = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") }
-                    else ui.push(Screen.Shop)
-                }.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box {
-                        AppIconPreview(ic, 54.dp, on)
-                        if (!owned) Box(Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape).background(p.bg).border(1.dp, p.line, CircleShape), contentAlignment = Alignment.Center) { Text("🔒", fontSize = 10.sp) }
-                    }
-                    Text(ic.label, fontSize = 11.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 1)
-                }
-            }
-        }
-        PButton("Boutique · ${ui.pg.wallet(u)} 🔥", { ui.push(Screen.Shop) }, icon = "star", small = true, modifier = Modifier.padding(top = 10.dp))
-        val season = fr.pepsgoal.app.sys.Season.now()
-        SetRow("Couleurs de saison", "Halloween, fêtes de fin d’année (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${fr.pepsgoal.app.sys.Season.LABELS[it]}." } ?: ""}") {
-            PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
-        }
     }
 }
 
