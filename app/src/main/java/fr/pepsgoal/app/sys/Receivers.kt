@@ -34,6 +34,8 @@ class ActionReceiver : BroadcastReceiver() {
                     else -> {}
                 }
                 if (nid != 0 && !intent.getBooleanExtra("keep", false)) Notifier.cancel(ctx, nid)
+                // Notification du matin : elle se met à jour (case cochée)
+                if (intent.getBooleanExtra("morning", false)) Notifier.morning(ctx.peps)
                 LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
             }
             CHEER -> {

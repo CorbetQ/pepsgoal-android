@@ -29,7 +29,7 @@ jobs:
       - name: Tests de la logique (module core)
         run: ./gradlew --no-daemon :core:test
       - name: Application Android
-        run: ./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleGithubRelease :wear:assembleRelease
       # AAB pour le Play Store : signés avec la clé d'envoi (upload key) si elle est fournie en secrets
       # (PLAY_UPLOAD_KEYSTORE_B64, PLAY_UPLOAD_KEYSTORE_PASSWORD, PLAY_UPLOAD_KEY_ALIAS, PLAY_UPLOAD_KEY_PASSWORD),
       # sinon avec la clé de test du dépôt. Les APK, eux, gardent la clé de test : ils s'installent par-dessus les précédents.
@@ -47,13 +47,13 @@ jobs:
           else
             echo "PLAY_KEY=test" >> "$GITHUB_ENV"
           fi
-          ./gradlew --no-daemon :app:bundleRelease :wear:bundleRelease
+          ./gradlew --no-daemon :app:bundlePlayRelease :wear:bundleRelease
           rm -f "$RUNNER_TEMP/upload.jks"
       - name: Nom des fichiers
         run: |
-          cp app/build/outputs/apk/release/app-release.apk "PepsGoal-${VERSION}.apk"
+          cp app/build/outputs/apk/github/release/app-github-release.apk "PepsGoal-${VERSION}.apk"
           cp wear/build/outputs/apk/release/wear-release.apk "PepsGoal-Wear-${VERSION}.apk"
-          cp app/build/outputs/bundle/release/app-release.aab "PepsGoal-${VERSION}.aab"
+          cp app/build/outputs/bundle/playRelease/app-play-release.aab "PepsGoal-${VERSION}.aab"
           cp wear/build/outputs/bundle/release/wear-release.aab "PepsGoal-Wear-${VERSION}.aab"
       - name: Notes de version
         run: |
@@ -65,9 +65,9 @@ jobs:
           body = "PepsGoal pour Android, application native (Kotlin, Jetpack Compose).\n\n" + "\n".join("- " + i for i in items)
           body += "\n\nAPK optimisé (version release, identifiant `fr.pepsgoal.app`), signé avec la clé de test du dépôt : les prochaines versions s'installeront par-dessus."
           if os.environ.get("PLAY_KEY") == "upload":
-              body += "\n\n`.aab` : bundles pour la Play Console (téléphone et Wear OS), signés avec la clé d'envoi."
+              body += "\n\n`.aab` : bundles pour la Play Console (téléphone et Wear OS), variante Play Store (mises à jour par Google Play, sans auto-mise à jour), signés avec la clé d'envoi."
           else:
-              body += "\n\n`.aab` : bundles pour la Play Console (téléphone et Wear OS), signés avec la clé de test : configure la clé d'envoi dans les secrets du dépôt avant de les envoyer sur le Play Store."
+              body += "\n\n`.aab` : bundles pour la Play Console (téléphone et Wear OS), variante Play Store (mises à jour par Google Play, sans auto-mise à jour), signés avec la clé de test : configure la clé d'envoi dans les secrets du dépôt avant de les envoyer sur le Play Store."
           body += "\n\n`PepsGoal-Wear` : application pour montre Wear OS (Wear OS 3 et plus), à installer sur la montre (par exemple avec `adb install` en débogage Wi-Fi) ; elle se synchronise avec l'application du téléphone."
           open("release-notes.md", "w").write(body)
           PY

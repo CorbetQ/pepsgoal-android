@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.sheets
 
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +24,8 @@ import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
+import fr.pepsgoal.app.peps
+import kotlinx.serialization.json.jsonPrimitive
 
 /* ---------------------------------------------------------------- Options de la fiche */
 
@@ -159,5 +162,104 @@ fun RewardSheet(ui: AppState, id: String?) {
             else u.rewards.add(Reward(uid(), title.trim(), emoji, goal, target, nowMs()))
             pg.store.commit(); pg.checkRewards(); ui.close(); ui.toast("Récompense enregistrée : tiens bon !", "star")
         }, icon = "check", kind = "primary")
+    }
+}
+
+/** Version mini : le libellé de la version réduite, proposée à côté de « Valider ». */
+@Composable
+fun MiniRow(ui: AppState, g: Goal, divider: Boolean = true) {
+    val p = LocalPal.current; val pg = ui.pg
+    if (g.type !in MINI_TYPES) return
+    var open by remember { mutableStateOf(false) }
+    var label by remember { mutableStateOf(g.miniLabel ?: "") }
+    OptionRow("down", p.type("abstinence").c, p.type("routine").c, "Version mini", g.miniLabel?.let { "« $it » les jours difficiles · série gardée, moitié des flammes" } ?: "Une version réduite pour les jours sans énergie", open, { open = !open }, divider) {
+        Field(label, { label = it }, "Ma version mini", placeholder = "1 page, 5 minutes, 10 pompes…", max = 40)
+        FlowRowCompat(gap = 6.dp) {
+            PButton("Enregistrer", { g.miniLabel = label.trim().ifEmpty { null }; pg.store.commit(); open = false }, icon = "check", small = true, kind = "primary")
+            if (g.miniLabel != null) PButton("Retirer", { g.miniLabel = null; label = ""; pg.store.commit(); open = false }, small = true, kind = "ghost")
+        }
+    }
+}
+
+/* ---------------------------------------------------------------- Partage par QR code et lien */
+
+@Composable
+fun GoalQrSheet(ui: AppState, id: String) {
+    val ctx = LocalContext.current; val p = LocalPal.current; val g = ui.pg.goalById(id) ?: run { LaunchedEffect(Unit) { ui.close() }; return }
+    val link = remember(g.id) { fr.pepsgoal.app.sys.GoalLink.link(g) }
+    val bmp = remember(link) { fr.pepsgoal.app.sys.GoalLink.qr(link) }
+    SheetHead(ui, "Partager l’objectif")
+    Muted("Ton ami scanne ce code depuis PepsGoal (onglet Objectifs › Scanner) pour créer sa propre copie de « ${g.title} ». Ton historique n’est jamais partagé.", small = true)
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Column(Modifier.clip(RoundedCornerShape(24.dp)).background(androidx.compose.ui.graphics.Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            androidx.compose.foundation.Image(bmp.asImageBitmapCompat(), "Code QR de ${g.title}", Modifier.size(240.dp))
+            Text("${g.icon} ${g.title}", color = androidx.compose.ui.graphics.Color(0xFF10102A), fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+    SheetFoot {
+        PButton("Image", { fr.pepsgoal.app.sys.Exports.shareImage(ctx, bmp, "pepsgoal-objectif") }, icon = "image")
+        PButton("Envoyer le lien", {
+            val i = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+                .putExtra(android.content.Intent.EXTRA_TEXT, tr("Fais cet objectif avec moi sur PepsGoal") + " : ${g.icon} ${g.title}\n$link")
+            ctx.startActivity(android.content.Intent.createChooser(i, tr("Partager l’objectif")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        }, icon = "share", kind = "primary")
+    }
+}
+
+private fun android.graphics.Bitmap.asImageBitmapCompat() = asImageBitmap()
+
+@Composable
+fun ImportGoalSheet(ui: AppState, link: String) {
+    val p = LocalPal.current; val app = LocalContext.current.peps
+    val o = remember(link) { fr.pepsgoal.app.sys.GoalLink.decode(link) }
+    SheetHead(ui, "Objectif reçu")
+    if (o == null) { Muted("Ce lien ou ce code n’est pas un objectif PepsGoal.", small = true); return }
+    val type = o["y"]?.jsonPrimitive?.content ?: "routine"
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.type(type).c.copy(alpha = .2f)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Emoji(o["i"]?.jsonPrimitive?.content ?: "🎯", 46.dp)
+        Column { Text(o["t"]?.jsonPrimitive?.content ?: "", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp); TypeChip(type) }
+    }
+    Muted("Une copie est ajoutée à tes objectifs, avec les mêmes réglages : tu pourras les modifier ensuite.", small = true)
+    SheetFoot {
+        PButton("Annuler", { ui.close() }, kind = "ghost")
+        PButton("Ajouter", {
+            val g = fr.pepsgoal.app.sys.GoalLink.create(app, o)
+            if (g == null) ui.toast("Ce type d’objectif ne peut pas être copié.", "x") else { ui.open(Sheet.Goal(g.id)); ui.toast("« ${g.title} » ajouté à tes objectifs.", "check") }
+        }, icon = "plus", kind = "primary")
+    }
+}
+
+/** Lecture d'un code QR d'objectif avec le scanner de Google (aucune permission caméra demandée). */
+fun scanGoal(ui: AppState, ctx: android.content.Context) {
+    val opts = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder().setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE).build()
+    com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(ctx, opts).startScan()
+        .addOnSuccessListener { b -> val raw = b.rawValue ?: ""; if (fr.pepsgoal.app.sys.GoalLink.decode(raw) != null) ui.open(Sheet.ImportGoal(raw)) else ui.toast("Ce code n’est pas un objectif PepsGoal.", "x") }
+        .addOnFailureListener { ui.toast("Scanner indisponible sur ce téléphone.", "x") }
+}
+
+/* ---------------------------------------------------------------- Tag NFC */
+
+@Composable
+fun NfcRow(ui: AppState, g: Goal, divider: Boolean = true) {
+    val p = LocalPal.current; val ctx = LocalContext.current; val pg = ui.pg
+    if (g.type !in setOf("routine", "abstinence", "timed", "period", "challenge", "limit") || !fr.pepsgoal.app.sys.NfcTags.available(ctx)) return
+    var waiting by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) { onDispose { if (waiting) fr.pepsgoal.app.sys.NfcTags.cancel(ctx) } }
+    OptionRow("bolt", p.type("timed").c, p.type("objective").c, "Tag NFC", if (g.bool("nfc")) "Pose ton téléphone sur le tag pour valider" else "Valider en touchant un autocollant NFC", open, { open = !open }, divider) {
+        if (!fr.pepsgoal.app.sys.NfcTags.enabled(ctx)) Muted("Active le NFC dans les réglages du téléphone.", small = true)
+        if (waiting) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("📲", fontSize = 26.sp); Text("Approche le tag du dos du téléphone…", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+            PButton("Annuler", { fr.pepsgoal.app.sys.NfcTags.cancel(ctx); waiting = false }, small = true, kind = "ghost")
+        } else {
+            Muted("Colle un autocollant NFC là où tu fais l’habitude (brosse à dents, tapis de yoga…). Une fois associé, le toucher avec le téléphone valide l’objectif, même application fermée.", small = true)
+            PButton(if (g.bool("nfc")) "Associer un autre tag" else "Associer un tag", {
+                waiting = true
+                fr.pepsgoal.app.sys.NfcTags.pair(ctx, g.id) { err ->
+                    waiting = false
+                    if (err != null) ui.toast(err, "x") else { g.set("nfc", true); pg.store.commit(); open = false; ui.toast("Tag associé à « ${g.title} » ✓", "check") }
+                }
+            }, icon = "bolt", small = true, kind = "primary")
+        }
     }
 }

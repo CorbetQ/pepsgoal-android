@@ -97,6 +97,12 @@ object Exports {
         return f
     }
 
+    /** Partage d'une image générée (année en pixels, code QR…). */
+    fun shareImage(ctx: Context, bmp: android.graphics.Bitmap, name: String) {
+        val f = File(dir(ctx), "$name.png"); f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        share(ctx, listOf(f), "image/png")
+    }
+
     /** Partage (ou enregistrement via le sélecteur d'Android) des fichiers exportés. */
     fun share(ctx: Context, files: List<File>, mime: String) {
         if (files.isEmpty()) return

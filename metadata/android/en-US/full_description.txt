@@ -1,0 +1,19 @@
+PepsGoal helps you stick to your goals, one day at a time.
+
+🔥 Streaks and flames
+Check off your goals every day and watch your streak grow. Streak freezes, rest days and vacations: one slip doesn't ruin everything.
+
+🎯 Every kind of goal
+Daily habits, numeric targets, durations, limits not to exceed, steps, chains… and a mini version of a habit for tough days.
+
+📊 Clear statistics
+Week, month, year in pixels, mood correlations, recaps you can share.
+
+🤝 With your friends
+Duos, weekly leagues, community challenges and end-to-end encrypted messaging. Share a goal by link or QR code.
+
+📱 Built for Android
+Widgets (today, my week…), interactive morning notification, Live Updates, Quick Settings tiles, Google Assistant, NFC tag check-in, Wear OS, Health Connect, tablets and foldables.
+
+🔒 Your privacy first
+No-account mode: your data stays on your device. No ads. Free software (MIT license).

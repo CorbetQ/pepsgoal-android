@@ -938,7 +938,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         if (vac != null) once("vac" + vac.first) { notify(u.id, "Mode vacances jusqu’au ${fmtDate(vac.second)} : tes séries sont en pause et les rappels coupés. Bonnes vacances !", "reminder", view = "today") }
         else if (rest) once("rest") { notify(u.id, "Jour de repos : ta série est protégée aujourd’hui. Profite, sans culpabiliser.", "reminder", view = "today") }
         if (!rest && s.morning.on && h >= s.morning.time && plan.due.isNotEmpty()) once("morning") {
-            notify(u.id, "Rappel du jour : ${pl(plan.due.size, "validation prévue", "validations prévues")}. ${if (st.n > 0) "Ta série de ${pl(st.n, "jour", "jours")} t'attend." else "Allume ta flamme !"}", "reminder", view = "today")
+            notify(u.id, "Rappel du jour : ${pl(plan.due.size, "validation prévue", "validations prévues")}. ${if (st.n > 0) "Ta série de ${pl(st.n, "jour", "jours")} t'attend." else "Allume ta flamme !"}", "reminder", view = "morning")
         }
         if (!rest && s.evening.on && h >= s.evening.time && pending > 0) once("evening") {
             notify(u.id, "Il te reste ${pl(pending, "validation", "validations")} avant minuit${if (st.n > 0 && !st.lit) " pour garder ta série de ${pl(st.n, "jour", "jours")}" else ""}.", "reminder", view = "today")

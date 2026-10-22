@@ -92,11 +92,14 @@ object FluentEmoji {
 /** Texte de l'application : identique au texte Material, avec les emojis remplacés par les Fluent Emoji. */
 @Composable
 fun Text(
-    text: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified, fontSize: TextUnit = TextUnit.Unspecified, fontStyle: FontStyle? = null,
+    text0: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified, fontSize: TextUnit = TextUnit.Unspecified, fontStyle: FontStyle? = null,
     fontWeight: FontWeight? = null, fontFamily: FontFamily? = null, letterSpacing: TextUnit = TextUnit.Unspecified, textDecoration: TextDecoration? = null,
     textAlign: TextAlign? = null, lineHeight: TextUnit = TextUnit.Unspecified, overflow: TextOverflow = TextOverflow.Clip, softWrap: Boolean = true,
     maxLines: Int = Int.MAX_VALUE, minLines: Int = 1, onTextLayout: ((TextLayoutResult) -> Unit)? = null, style: TextStyle = LocalTextStyle.current
 ) {
+    // Interface en anglais : traduction à l'affichage (I18n.rev relu pour suivre un changement de langue)
+    val lang = I18n.rev
+    val text = remember(text0, lang) { I18n.tr(text0) }
     val r = remember(text) { FluentEmoji.convert(AnnotatedString(text)) }
     if (r == null) androidx.compose.material3.Text(text = text, modifier = modifier, color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight,
         fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow,

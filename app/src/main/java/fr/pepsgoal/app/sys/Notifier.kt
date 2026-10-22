@@ -30,6 +30,8 @@ import fr.pepsgoal.core.ACCENTS
 import fr.pepsgoal.core.cloud.Msg
 import fr.pepsgoal.core.cloud.str
 import fr.pepsgoal.core.first
+import fr.pepsgoal.core.pl
+import fr.pepsgoal.core.steps
 import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.Notif
 import fr.pepsgoal.core.model.Post
@@ -66,7 +68,8 @@ object Notifier {
     }
 
     /** Notification simple (rappels intelligents, mode Focus…), avec un éventuel bouton « Valider ». */
-    fun simple(ctx: Context, id: Int, ch: String, title: String, text: String, tab: String = "today", goalId: String? = null) {
+    fun simple(ctx: Context, id: Int, ch: String, title0: String, text0: String, tab: String = "today", goalId: String? = null) {
+        val title = fr.pepsgoal.app.ui.I18n.tr(title0); val text = fr.pepsgoal.app.ui.I18n.tr(text0)
         val b = base(ctx, ch).setContentTitle(title).setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open(ctx, id) { putExtra(MainActivity.EXTRA_TAB, tab); goalId?.let { putExtra(MainActivity.EXTRA_GOAL, it) } })
         if (goalId != null) b.addAction(R.drawable.ic_notif, "Valider", action(ctx, id, ActionReceiver.VALIDATE) { putExtra("goal", goalId); putExtra("nid", id) })
@@ -149,7 +152,38 @@ object Notifier {
         if (list.size > 1) post(app, 8, base(app, CH_SOCIAL).setGroup("pg.posts").setGroupSummary(true).setContentTitle("Nouvelles publications").setStyle(NotificationCompat.InboxStyle()).build())
     }
 
+    /**
+     * Notification du matin interactive : la liste du jour, chaque objectif validable d'un geste depuis la notification
+     * (elle se met à jour à chaque validation).
+     */
+    fun morning(app: PepsApp) {
+        val pg = app.pg; val u = pg.me() ?: return
+        val due = pg.todayPlan(u.id).due
+        if (due.isEmpty()) return
+        val tr = { s: String -> fr.pepsgoal.app.ui.I18n.tr(s) }
+        val id = 4401; val left = due.count { !it.done }
+        val big = android.widget.RemoteViews(app.packageName, R.layout.notif_morning)
+        due.sortedBy { it.done }.take(6).forEachIndexed { i, x ->
+            val row = android.widget.RemoteViews(app.packageName, R.layout.notif_row)
+            row.setTextViewText(R.id.title, "${x.g.icon} ${x.g.title}")
+            row.setTextViewText(R.id.check, if (x.done) "✓" else "○")
+            val oneTap = x.g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit") && x.g.steps.isEmpty()
+            val pi = if (oneTap) action(app, id * 10 + i, ActionReceiver.VALIDATE) { putExtra("goal", x.g.id); putExtra("nid", id); putExtra("keep", true); putExtra("morning", true) }
+                else open(app, id * 10 + i) { putExtra(MainActivity.EXTRA_GOAL, x.g.id) }
+            row.setOnClickPendingIntent(R.id.check, pi)
+            big.addView(R.id.rows, row)
+        }
+        val st = pg.globalStreak(u.id)
+        val title = if (left == 0) tr("Tout est validé, bravo !") else tr("Ta journée") + " · ${due.size - left}/${due.size}"
+        val text = if (st.n > 0) tr("Ta série de ${pl(st.n, "jour", "jours")} t'attend.") else tr("Allume ta flamme !")
+        val b = base(app, CH_REMIND).setContentTitle(title).setContentText(text).setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomBigContentView(big).setOnlyAlertOnce(true).setGroup("pg.reminders").setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_TAB, "today") })
+        post(app, id, b.build())
+    }
+
     private fun show(app: PepsApp, n: Notif) {
+        if (n.view == "morning") { morning(app); return }
         val pg = app.pg
         val ch = when (n.type) { "reminder", "period", "deadline" -> CH_REMIND; "official", "mod" -> CH_OFFICIAL; "friend", "like", "comment", "story", "mention", "group" -> CH_SOCIAL; else -> CH_GOALS }
         val id = n.id.hashCode()
@@ -157,7 +191,8 @@ object Notifier {
             "reminder" -> "Rappel"; "period" -> "C’est l’heure"; "deadline" -> "Deadline"; "badge" -> "Bravo !"; "freeze" -> "Gel de série"; "verify" -> "Binôme"
             "friend" -> "Amis"; "like" -> "Encouragement"; "comment" -> "Commentaire"; "story" -> "Story"; "official" -> "PepsGoal Officiel"; "mod" -> "Modération"; else -> "PepsGoal"
         }
-        val b = base(app, ch).setContentTitle(title).setContentText(n.text).setStyle(NotificationCompat.BigTextStyle().bigText(n.text)).setWhen(n.at).setShowWhen(true)
+        val tt = fr.pepsgoal.app.ui.I18n.tr(title); val body = fr.pepsgoal.app.ui.I18n.tr(n.text)
+        val b = base(app, ch).setContentTitle(tt).setContentText(body).setStyle(NotificationCompat.BigTextStyle().bigText(body)).setWhen(n.at).setShowWhen(true)
             .setCategory(when (ch) { CH_REMIND -> NotificationCompat.CATEGORY_REMINDER; CH_SOCIAL -> NotificationCompat.CATEGORY_SOCIAL; else -> NotificationCompat.CATEGORY_STATUS })
             .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_NOTIF, n.id); n.goalId?.let { putExtra(MainActivity.EXTRA_GOAL, it) }; putExtra(MainActivity.EXTRA_TAB, n.view ?: if (ch == CH_SOCIAL) "feed" else "today") })
         if (ch == CH_REMIND) b.setGroup("pg.reminders")

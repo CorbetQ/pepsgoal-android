@@ -18,7 +18,8 @@ object Clock {
 }
 
 const val DAY_MS = 86_400_000L
-val FR: Locale = Locale.FRENCH
+/** Langue des dates (français, ou anglais quand l'interface est en anglais). */
+val FR: Locale get() = if (Lang.en) Locale.ENGLISH else Locale.FRENCH
 
 fun nowMs() = Clock.now()
 fun nowDateTime(): LocalDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(nowMs()), Clock.zone())
@@ -41,13 +42,14 @@ fun weekStart(d: LocalDate): LocalDate = d.minusDays(wdIdx(d).toLong())
 fun daysUntil(s: String): Long = ChronoUnit.DAYS.between(todayDate(), parseYmd(s))
 fun daysBetween(a: LocalDate, b: LocalDate): Long = ChronoUnit.DAYS.between(a, b)
 
-val WD = listOf("L", "M", "M", "J", "V", "S", "D")
-val WD_SHORT = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
-val WD_LONG = listOf("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
+val WD get() = if (Lang.en) listOf("M", "T", "W", "T", "F", "S", "S") else listOf("L", "M", "M", "J", "V", "S", "D")
+val WD_SHORT get() = if (Lang.en) listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun") else listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
+val WD_LONG get() = if (Lang.en) listOf("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday") else listOf("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
 
 fun pad(n: Int) = n.toString().padStart(2, '0')
 fun pl(n: Number, one: String, many: String): String {
     val v = n.toDouble()
+    if (Lang.en) Lang.plural[one]?.let { (o, m) -> return "${fmtNum(v)} ${if (v == 1.0) o else m}" }
     return "${fmtNum(v)} ${if (v > 1) many else one}"
 }
 fun cap(s: String) = if (s.isEmpty()) s else s.substring(0, 1).uppercase(FR) + s.substring(1)
@@ -80,7 +82,7 @@ fun nowHM(): String { val t = nowDateTime(); return "${pad(t.hour)}:${pad(t.minu
 fun hm2(ms: Long): String { val t = localDateTime(ms); return "${t.hour} h ${pad(t.minute)}" }
 fun fmtDT(ms: Long): String {
     val t = localDateTime(ms)
-    return "${t.dayOfWeek.getDisplayName(TextStyle.SHORT, FR)} ${t.dayOfMonth} ${t.month.getDisplayName(TextStyle.FULL, FR)} à ${pad(t.hour)}:${pad(t.minute)}"
+    return "${t.dayOfWeek.getDisplayName(TextStyle.SHORT, FR)} ${t.dayOfMonth} ${t.month.getDisplayName(TextStyle.FULL, FR)} ${if (Lang.en) "at" else "à"} ${pad(t.hour)}:${pad(t.minute)}"
 }
 
 fun addHM(hm: String, n: Int): String {

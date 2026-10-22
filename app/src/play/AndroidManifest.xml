@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Version Play Store : pas d'installation d'APK par l'application (mises à jour par Google Play), et alarmes exactes
+     demandées à l'utilisateur (SCHEDULE_EXACT_ALARM) au lieu de USE_EXACT_ALARM, réservée aux réveils et agendas. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:remove="android:maxSdkVersion" />
+</manifest>

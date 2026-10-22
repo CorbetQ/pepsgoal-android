@@ -48,6 +48,8 @@ class PepsApp : Application() {
         super.onCreate()
         instance = this
         prefs = DevicePrefs(this)
+        // Langue de l'interface (Paramètres › Apparence) : français, anglais, ou celle du téléphone
+        fr.pepsgoal.app.ui.I18n.apply(this, prefs.raw.getString("lang", "auto") ?: "auto")
         fr.pepsgoal.app.ui.FluentEmoji.load(this)
         secrets = KeystoreSecrets(this)
         store = Store(FileDb(this))
@@ -94,6 +96,7 @@ class PepsApp : Application() {
 
     private fun onBackground() {
         Reminders.reschedule(this)
+        fr.pepsgoal.app.sys.AssistantShortcuts.sync(this)
         LiveUpdates.refresh(this)
         WidgetUpdater.update(this)
         Poller.schedule(this)

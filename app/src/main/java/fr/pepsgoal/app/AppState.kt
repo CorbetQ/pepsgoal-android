@@ -61,6 +61,10 @@ sealed class Sheet {
     class Miss(val id: String, val date: String) : Sheet()
     /** Nouvelle récompense personnelle (ou modification). */
     class Reward(val id: String? = null) : Sheet()
+    /** Code QR et lien d'un objectif à partager. */
+    class GoalQr(val id: String) : Sheet()
+    /** Objectif reçu par lien ou code QR, à ajouter. */
+    class ImportGoal(val link: String) : Sheet()
 }
 
 /** Plein écran : célébrations, récaps, stories. */
