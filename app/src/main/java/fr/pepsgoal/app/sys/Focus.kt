@@ -16,6 +16,7 @@ import fr.pepsgoal.app.MainActivity
 import fr.pepsgoal.app.R
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.core.*
+import fr.pepsgoal.core.model.target
 
 /**
  * Mode Focus (Pomodoro) : une session de concentration chronométrée, affichée en direct dans la barre d'état, avec
@@ -97,7 +98,7 @@ class ValidateTile : TileService() {
         val t = qsTile ?: return
         val pg = peps.pg; val u = pg.me()
         val plan = u?.let { pg.todayPlan(it.id) }
-        val next = plan?.due?.firstOrNull { !it.done }
+        val next = plan?.let { nextOf(it) }
         t.state = if (next != null) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         t.label = if (plan == null) "PepsGoal" else "${plan.due.count { it.done }}/${plan.due.size} validés"
         if (Build.VERSION.SDK_INT >= 29) t.subtitle = next?.let { "${it.g.icon} ${it.g.title}" } ?: "Tout est fait"
@@ -106,7 +107,7 @@ class ValidateTile : TileService() {
 
     override fun onClick() {
         val pg = peps.pg; val u = pg.me() ?: return openApp()
-        val next = pg.todayPlan(u.id).due.firstOrNull { !it.done } ?: return openApp()
+        val next = nextOf(pg.todayPlan(u.id)) ?: return openApp()
         when (pg.validate(next.g.id)) {
             is Pg.VResult.Done -> { LiveUpdates.refresh(this); WidgetUpdater.update(this) }
             else -> openApp(next.g.id)
@@ -114,10 +115,55 @@ class ValidateTile : TileService() {
         refresh()
     }
 
+    /** Objectif suivant, en priorité ceux qui se valident d'un geste (sans quantité ni sous-tâches). */
+    private fun nextOf(plan: fr.pepsgoal.core.Plan): fr.pepsgoal.core.DueItem? {
+        val todo = plan.due.filter { !it.done }
+        return todo.firstOrNull { it.g.type in ONE_TAP && it.g.steps.isEmpty() } ?: todo.firstOrNull()
+    }
+
     private fun openApp(goal: String? = null) {
         val i = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).apply { goal?.let { putExtra(MainActivity.EXTRA_PROGRESS, it) } }
         if (Build.VERSION.SDK_INT >= 34) startActivityAndCollapse(PendingIntent.getActivity(this, 41, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
         else @Suppress("DEPRECATION") startActivityAndCollapse(i)
+    }
+
+    companion object {
+        val ONE_TAP = setOf("routine", "abstinence", "timed", "period", "challenge", "limit")
+        /** Rafraîchit les tuiles après une validation faite ailleurs. */
+        fun refreshAll(ctx: android.content.Context) {
+            for (c in listOf(ValidateTile::class.java, CapTile::class.java)) try { TileService.requestListeningState(ctx, android.content.ComponentName(ctx, c)) } catch (e: Exception) {}
+        }
+    }
+}
+
+/** Tuile « Cap quotidien » : ajoute la quantité la plus courante au cap du jour (pas, verres d'eau…). */
+class CapTile : TileService() {
+    override fun onStartListening() { refresh() }
+
+    private fun cap(): fr.pepsgoal.core.model.Goal? {
+        val pg = peps.pg; val u = pg.me() ?: return null
+        val caps = pg.myGoals(u.id).filter { it.type == "cap" && !pg.isClosedGoal(it) && it.userId == u.id }
+        return caps.firstOrNull { pg.isFav(it) && pg.capDay(it) < it.target } ?: caps.firstOrNull { pg.capDay(it) < it.target } ?: caps.firstOrNull()
+    }
+
+    private fun refresh() {
+        val t = qsTile ?: return; val pg = peps.pg; val g = cap()
+        t.state = if (g != null && pg.capDay(g) < g.target) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+        t.label = g?.let { "${it.icon} ${fmtNum(pg.capDay(it))}/${fmtNum(it.target)}" } ?: "Cap quotidien"
+        if (Build.VERSION.SDK_INT >= 29) t.subtitle = g?.let { "+${fmtNum(pg.capQuick(it).firstOrNull() ?: 1.0)}${pg.unitSfx(it)}" } ?: "Aucun cap"
+        t.updateTile()
+    }
+
+    override fun onClick() {
+        val pg = peps.pg; val g = cap()
+        if (g == null) {
+            val i = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (Build.VERSION.SDK_INT >= 34) startActivityAndCollapse(PendingIntent.getActivity(this, 42, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            else @Suppress("DEPRECATION") startActivityAndCollapse(i)
+            return
+        }
+        pg.capAdd(g, pg.capQuick(g).firstOrNull() ?: 1.0, silent = true)
+        LiveUpdates.refresh(this); WidgetUpdater.update(this); refresh()
     }
 }
 

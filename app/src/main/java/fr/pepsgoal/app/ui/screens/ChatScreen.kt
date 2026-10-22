@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Sheet
+import fr.pepsgoal.app.peps
 import fr.pepsgoal.app.sys.Notifier
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
@@ -381,6 +382,7 @@ private fun MessageRow(
                     }
                     b.strN("t")?.takeIf { it.isNotEmpty() }?.let { Text(it, Modifier.padding(top = 6.dp)) }
                 }
+                kind == "duo" -> DuoInvite(ui, m, b, mine)
                 else -> MsgText(ui, b, members)
             }
             Text("${if (b?.get("x") != null && !gone) "⏳ " else ""}${if (editedText != null && !gone) "modifié · " else ""}${hm(m.at)}", Modifier.align(Alignment.End).padding(top = 2.dp, end = if (kind == "photo") 6.dp else 0.dp), fontSize = 11.sp, color = p.ink3)
@@ -670,6 +672,35 @@ private fun VoiceRecorderBar(onCancel: () -> Unit, onSend: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             IconBtn("trash", "Annuler l’enregistrement", onCancel, size = 46.dp, tint = p.danger)
             PButton("Envoyer le vocal", onSend, Modifier.weight(1f), icon = "send", kind = "primary")
+        }
+    }
+}
+
+/** Invitation à un objectif en duo : l'ami la rejoint d'un geste, une copie de l'objectif est créée chez lui. */
+@Composable
+private fun DuoInvite(ui: AppState, m: Message, b: JsonObject, mine: Boolean) {
+    val p = LocalPal.current; val pg = ui.pg; val app = LocalContext.current.peps
+    val sg = b.obj("g"); val type = sg.str("type").takeIf { it in TYPES } ?: "routine"; val tc = p.type(type); val id = b.str("id")
+    val local = pg.db.goals.firstOrNull { it.duoId == id && it.userId == pg.meId() }
+    var busy by remember { mutableStateOf(false) }
+    Column(Modifier.clip(RoundedCornerShape(14.dp)).background(tc.c.copy(alpha = .2f)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("🤝 Objectif en duo", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = tc.ink)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Emoji(sg.str("icon", "🎯"), 30.dp)
+            Column { Text(sg.str("title", "Objectif"), fontWeight = FontWeight.ExtraBold); Text(TYPES.getValue(type).label, fontSize = 12.sp, color = tc.ink) }
+        }
+        when {
+            mine -> Muted(if (local != null && fr.pepsgoal.app.sys.Duo.state(app, local) == fr.pepsgoal.app.sys.Duo.State.JOINED) "Invitation acceptée : votre flamme commune est lancée." else "Une flamme commune, qui ne brûle que si vous validez tous les deux.", small = true)
+            local != null -> PButton("Ouvrir l’objectif", { ui.open(Sheet.Goal(local.id)) }, icon = "target", small = true)
+            else -> PButton(if (busy) "…" else "Rejoindre le duo", {
+                if (busy) return@PButton
+                busy = true
+                ui.scope.launch {
+                    val g = try { fr.pepsgoal.app.sys.Duo.join(app, m.from, b) } catch (e: Exception) { null }
+                    busy = false
+                    if (g != null) { ui.toast("Duo lancé : « ${g.title} » est dans tes objectifs.", "users"); ui.open(Sheet.Goal(g.id)) } else ui.toast("Impossible de rejoindre ce duo.", "x")
+                }
+            }, icon = "users", small = true, kind = "primary", enabled = !busy)
         }
     }
 }

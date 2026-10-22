@@ -49,6 +49,7 @@ fun StatsScreen(ui: AppState) {
             ))
         }
         item("health") { HealthStatsCard(ui) }
+        item("insights") { InsightsCard(ui) }
         item("export") { Glass { ExportRow(ui) } }
         // Carte de chaleur des 53 dernières semaines
         item("heat") {
@@ -186,6 +187,50 @@ private fun HealthStatsCard(ui: AppState) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Résultat des corrélations, gardé pour la journée (le calcul lit 60 jours de Santé). */
+private var insightsCache: Pair<String, List<Insights.Finding>>? = null
+
+/** Corrélations : sommeil, pas, sport, humeur et jour de la semaine face à la réussite du jour. */
+@Composable
+private fun InsightsCard(ui: AppState) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current; val p = LocalPal.current; val pg = ui.pg
+    var found by remember { mutableStateOf(insightsCache?.takeIf { it.first == today() }?.second) }
+    LaunchedEffect(Unit) {
+        if (found != null) return@LaunchedEffect
+        // Taux calculés sur le fil principal (la base n'est pas partagée entre fils), le reste en arrière-plan
+        val rates = Insights.dayRates(pg, 60)
+        found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val values = HashMap<String, Map<String, Double>>()
+            values["mood"] = fr.pepsgoal.app.data.Journal.all(ctx).associate { it.date to it.mood.toDouble() }
+            val H = fr.pepsgoal.app.sys.Health
+            if (H.available(ctx) && H.granted(ctx).isNotEmpty()) for (k in listOf("sleep", "steps", "exercise")) {
+                val m = HashMap<String, Double>()
+                for (d in rates.keys) try { H.value(ctx, k, parseYmd(d))?.let { m[d] = it } } catch (e: Exception) {}
+                if (m.isNotEmpty()) values[k] = m
+            }
+            Insights.findings(rates, values).take(4)
+        }
+        insightsCache = today() to (found ?: emptyList())
+    }
+    Glass {
+        CardHead("Ce qui t’aide à réussir")
+        val f = found
+        when {
+            f == null -> Muted("Analyse de tes 60 derniers jours…", small = true)
+            f.isEmpty() -> Muted("Pas encore de tendance nette. Continue à valider, à noter ton humeur et, si tu veux, relie Health Connect : les liens avec ton sommeil, tes pas et ton sport apparaîtront ici.", small = true)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                f.forEach { x ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        IconTile(x.icon, if (x.diff >= 0) p.ok else p.flame2, if (x.diff >= 0) p.type("routine").c else p.pink, 36.dp, 12.dp)
+                        Text(x.text, Modifier.weight(1f), fontSize = 14.sp)
+                    }
+                }
+                Muted("Des tendances, pas des certitudes : calculées sur tes données, sur ce téléphone.", small = true)
             }
         }
     }

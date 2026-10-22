@@ -109,7 +109,7 @@ object Mapping {
     }
 
     /* ---------- réglages du compte ---------- */
-    private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams")
+    private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams")
     private val SETTING_KEYS = listOf("browser", "defaultVis", "bg", "accentCustom", "noSuggest", "weather", "wxCard", "glassBlur", "hideOngoing")
 
     private fun strArr(l: List<String>) = JsonArray(l.map(::JsonPrimitive))
@@ -122,6 +122,7 @@ object Mapping {
         extra["goalGroupOf"] = JsonObject(u.goalGroupOf.mapValues { JsonPrimitive(it.value) })
         extra["frozenDays"] = strArr(u.frozenDays); extra["milestones"] = strArr(u.milestones)
         extra["restDays"] = strArr(u.restDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
+        extra["vacations"] = strArr(u.vacations.filter { it.substringAfter('|') >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
         u.badges?.let { extra["badges"] = strArr(it) } ?: extra.remove("badges")
         u.badgeFams?.let { extra["badgeFams"] = strArr(it) } ?: extra.remove("badgeFams")
         extra["perfectDays"] = strArr(u.perfectDays); extra["favGoals"] = strArr(u.favGoals); extra["hiddenSuggest"] = strArr(u.hiddenSuggest)
@@ -162,6 +163,7 @@ object Mapping {
         (x["goalGroupOf"] as? JsonObject)?.let { o -> u.goalGroupOf = o.mapValues { it.value.strOr("") }.filterValues { it.isNotEmpty() }.toMutableMap() }
         strs("frozenDays")?.let { u.frozenDays = it }
         strs("restDays")?.let { u.restDays = it }
+        strs("vacations")?.let { u.vacations = it }
         strs("milestones")?.let { u.milestones = it }
         if (x.containsKey("badges")) u.badges = strs("badges")
         if (x.containsKey("badgeFams")) u.badgeFams = strs("badgeFams")

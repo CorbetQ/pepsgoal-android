@@ -521,7 +521,14 @@ fun GoalSheet(ui: AppState, id: String) {
         if (g.note.isNotEmpty()) Info("Pourquoi") { Text(g.note) }
     }
     GoalDetail(ui, g, own)
-    if (own && !g.archived && !pg.isClosedGoal(g)) GeoRow(ui, g)
+    if (g.type in STEP_TYPES && !pg.isClosedGoal(g)) StepsBlock(ui, g, own)
+    ProofsBlock(ui, g, own)
+    if (own && !g.archived && !pg.isClosedGoal(g)) {
+        ChainRow(ui, g)
+        DuoRow(ui, g)
+        AgendaRow(ui, g)
+        GeoRow(ui, g)
+    }
     if (g.type == "objective") Bar(minOf(100.0, pg.objProgress(g) / g.target * 100), color = tc.c)
     if (g.type != "deadline" && pg.hasCalendar(g.type)) { SectionTitle("5 dernières semaines"); GoalCalendar(pg, g) }
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {

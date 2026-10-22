@@ -16,6 +16,7 @@ import fr.pepsgoal.core.RecapStats
 import fr.pepsgoal.core.Slide
 import fr.pepsgoal.core.cloud.ApiError
 import fr.pepsgoal.core.model.Notif
+import fr.pepsgoal.core.model.Goal
 import fr.pepsgoal.core.nowMs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -178,7 +179,12 @@ class AppState(private val app: PepsApp) : Hooks {
     }
 
     override fun liveChanged() {
-        LiveUpdates.refresh(app); WidgetUpdater.update(app)
+        LiveUpdates.refresh(app); WidgetUpdater.update(app); fr.pepsgoal.app.sys.Duo.syncSoon(app); fr.pepsgoal.app.sys.ValidateTile.refreshAll(app)
+    }
+
+    override fun chained(prev: Goal, next: Goal) {
+        if (app.foreground) toast("Ensuite : ${next.icon} ${next.title}", "repeat", "Valider") { fr.pepsgoal.app.ui.doValidate(this, next.id) }
+        fr.pepsgoal.app.sys.Chain.schedule(app, prev.id, next.id)
     }
 
     /* ---------- navigation ---------- */
