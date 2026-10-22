@@ -344,7 +344,9 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
     val p = LocalPal.current; val h = LocalHaze.current
     val tint = if (strong) p.glassStrong else p.glass
     if (LocalInSheet.current) return this.clip(shape).background(p.bg).background(tint)
-    if (h == null || p.transp || p.contrast || p.oled) return this.clip(shape).background(tint)
+    // Sans flou (pages secondaires, contraste) : fond plein sous la teinte, sinon l'ombre portée de la carte se voit
+    // à travers le verre et dessine un rectangle plus clair à l'intérieur
+    if (h == null || p.transp || p.contrast || p.oled) return this.clip(shape).then(if (p.transp || p.oled) Modifier else Modifier.background(p.bg)).background(tint)
     return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.6f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
         // Flou calculé sur une image réduite de moitié : même rendu, bien moins de travail pour le GPU
         inputScale = HazeInputScale.Fixed(.5f)
@@ -382,7 +384,7 @@ fun CardHead(title: String, modifier: Modifier = Modifier, right: @Composable Ro
 fun Count(n: Any) = Text("$n", fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink2)
 
 @Composable
-fun Eyebrow(text: String, color: Color = LocalPal.current.ink2) = Text(text.uppercase(), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = color)
+fun Eyebrow(text: String, color: Color = LocalPal.current.ink2) = Text(tr(text).uppercase(), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = color)
 
 @Composable
 fun Muted(text: String, modifier: Modifier = Modifier, small: Boolean = false, center: Boolean = false, maxLines: Int = Int.MAX_VALUE) =
@@ -671,7 +673,9 @@ fun FlowRowCompat(modifier: Modifier = Modifier, gap: Dp = 4.dp, content: @Compo
 @Composable
 fun FitText(text: String, modifier: Modifier = Modifier, size: Int = 14, min: Int = 8, color: Color = Color.Unspecified, weight: FontWeight = FontWeight.Bold, family: androidx.compose.ui.text.font.FontFamily? = null) {
     val c = if (color == Color.Unspecified) LocalContentColor.current else color
-    androidx.compose.foundation.text.BasicText(text, modifier, style = LocalTextStyle.current.copy(color = c, fontSize = size.sp, fontWeight = weight, fontFamily = family ?: LocalTextStyle.current.fontFamily),
+    val lang = I18n.rev
+    val shown = remember(text, lang) { tr(text) }
+    androidx.compose.foundation.text.BasicText(shown, modifier, style = LocalTextStyle.current.copy(color = c, fontSize = size.sp, fontWeight = weight, fontFamily = family ?: LocalTextStyle.current.fontFamily),
         maxLines = 1, softWrap = false, autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(min.sp, size.sp, 0.5.sp))
 }
 

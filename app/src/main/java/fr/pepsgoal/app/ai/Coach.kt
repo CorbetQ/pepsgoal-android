@@ -16,7 +16,7 @@ import java.time.LocalTime
 object Coach {
     private const val ROLE = "Tu es le coach bienveillant de PepsGoal, une application de suivi d’objectifs et d’habitudes. Tu réponds toujours en français, très brièvement."
 
-    private fun memory(ctx: Context) = AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }
+    private fun memory(ctx: Context) = whoIs(ctx) + AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }
 
     /* ------------------------------------------------------------------ créer un objectif */
 
@@ -221,11 +221,11 @@ object CoachExtras {
         val key = "${st.p}|${st.r.s}|${st.r.e}|${st.n}"
         recapCache[key]?.let { return it }
         val per = when (st.p) { "week" -> "la semaine"; "month" -> "le mois"; else -> "l’année" }
-        val prompt = """$ROLE${AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }}
+        val prompt = """$ROLE${whoIs(ctx)}${AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }}
 Bilan de $per : ${st.n} validations (période précédente : ${st.prevN}), ${st.days.size} jours actifs sur ${st.r.days}, meilleure série ${st.best} jours, ${st.perfect} journées parfaites${st.top?.let { ", objectif le plus suivi : « ${it.first.title} » (${it.second} fois)" } ?: ""}, moment préféré : ${st.slot}, profil : ${st.persona.n}.
 Écris un message personnel de 2 à 3 phrases : félicite précisément, puis donne une piste concrète pour la suite. Sans titre ni liste.
 """
-        val out = LocalAi.generate(ctx, prompt, 120)?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.take(400)?.takeIf { it.length > 20 } ?: return null
+        val out = LocalAi.generate(ctx, prompt, 120)?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.let { fixName(ctx, it) }?.take(400)?.takeIf { it.length > 20 } ?: return null
         recapCache[key] = out
         AiMemory.add(ctx, "tip", "Récap de $per : ${st.n} validations, profil ${st.persona.n}.")
         return out
@@ -248,7 +248,7 @@ Bilan de $per : ${st.n} validations (période précédente : ${st.prevN}), ${st.
         val pg = app.pg; val u = pg.me() ?: return null
         val mine = pg.myGoals(u.id).filter { !it.archived }.take(8).joinToString(", ") { it.title }
         val list = cands.take(8).mapIndexed { i, (_, name, info) -> "${i + 1}. $name ($info)" }.joinToString("\n")
-        val prompt = """$ROLE${AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }}
+        val prompt = """$ROLE${whoIs(ctx)}${AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }}
 Objectifs de l’utilisateur : ${mine.ifEmpty { "aucun" }}.
 Personnes suggérées comme amis :
 $list
@@ -264,4 +264,19 @@ Classe-les de la plus pertinente à la moins pertinente pour se motiver ensemble
         app.prefs.aiFriendPicks = (listOf(key) + picks.map { "${it.userId}|${it.reason.replace('\n', ' ')}" }).joinToString("\n")
         return picks
     }
+}
+
+/** Prénom de l'utilisateur pour le coach (premier mot du nom affiché), ou null s'il n'en a pas. */
+fun firstName(ctx: Context): String? = ctx.peps.pg.me()?.name?.trim()?.substringBefore(' ')?.takeIf { it.isNotBlank() && !it.equals("PepsGoal", true) }
+
+/** Consigne : à qui parle le coach (sans quoi le modèle prend souvent le nom de l'application pour celui de l'utilisateur). */
+fun whoIs(ctx: Context): String = firstName(ctx)?.let { "\nL’utilisateur s’appelle $it : tutoie-le et appelle-le par son prénom, $it. PepsGoal est le nom de l’application, pas le sien. Ne signe pas ton message.\n" }
+    ?: "\nTutoie l’utilisateur, sans l’appeler par un nom (PepsGoal est le nom de l’application, pas le sien). Ne signe pas ton message.\n"
+
+/** Filet de sécurité : « Cher PepsGoal » → le vrai prénom ; signature finale retirée. */
+fun fixName(ctx: Context, s: String): String {
+    val n = firstName(ctx)
+    var r = s.replace(Regex("(?i)\\b(cher|chère|salut|bonjour|bravo|hello|hi|dear)\\s+PepsGoal\\b")) { m -> if (n != null) "${m.groupValues[1]} $n" else m.groupValues[1] }
+    if (n != null) r = r.replace(Regex("^PepsGoal\\s*,"), "$n,")
+    return r.replace(Regex("(?<=[.!?])\\s*(Bises|Amicalement|Cordialement|À bientôt|Love)?[,.]?\\s*(ton|ta|your)\\s+coach[^.!?]{0,30}[.!]?\\s*$", RegexOption.IGNORE_CASE), "").trim()
 }

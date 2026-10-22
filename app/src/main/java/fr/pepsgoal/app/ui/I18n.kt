@@ -40,7 +40,7 @@ object I18n {
     private fun load(ctx: Context) {
         try {
             val o = Json.parseToJsonElement(ctx.assets.open("i18n/en.json").bufferedReader().readText()).jsonObject
-            exact = (o["exact"] as JsonObject).mapValues { it.value.jsonPrimitive.content }
+            exact = (o["exact"] as JsonObject).mapValues { it.value.jsonPrimitive.content }; upperIndex = null
             val words = HashMap<String, MutableList<T>>(); val lo = mutableListOf<T>()
             for (e in (o["tmpl"] as JsonArray)) {
                 val (fr, en) = e.jsonArray.map { it.jsonPrimitive.content }
@@ -62,9 +62,43 @@ object I18n {
     fun tr(s: String): String {
         if (!Lang.en || s.isBlank()) return s
         synchronized(cache) { cache[s] }?.let { return it }
-        val r = exact[s] ?: exact[s.trim()]?.let { s.replace(s.trim(), it) } ?: template(s) ?: s
+        val r = exact[s] ?: exact[s.trim()]?.let { s.replace(s.trim(), it) } ?: template(s) ?: prefixed(s) ?: upper(s) ?: parts(s) ?: s
         synchronized(cache) { cache[s] = r }
         return r
+    }
+
+    /** « 🧘 Bien-être », « • Groupe » : emoji ou symbole devant un texte connu. */
+    private val PREFIX = Regex("^([^\\p{L}\\p{N}«]+)(\\p{L}.*)$", RegexOption.DOT_MATCHES_ALL)
+    private fun prefixed(s: String): String? {
+        val m = PREFIX.find(s) ?: return null
+        val rest = m.groupValues[2]
+        val t = exact[rest] ?: template(rest) ?: return null
+        return m.groupValues[1] + t
+    }
+
+    /** Texte assemblé : « Lun, Mer · 7 séances d’affilée » → chaque morceau traduit séparément ; « 7 séances » → nombre + texte. */
+    private val NUM = Regex("^([0-9][0-9 .,+%/×−-]*)\\s(\\p{L}.*)$", RegexOption.DOT_MATCHES_ALL)
+    private fun parts(s: String): String? {
+        if (s.contains(" · ")) {
+            val segs = s.split(" · ")
+            val out = segs.map { tr(it) }
+            return if (out != segs) out.joinToString(" · ") else null
+        }
+        val m = NUM.find(s) ?: return null
+        val rest = m.groupValues[2]
+        val t = exact[rest] ?: template(rest) ?: return null
+        return m.groupValues[1] + " " + t
+    }
+
+    /** Texte déjà mis en majuscules (« NIVEAU 5 ») : on cherche sa version normale. */
+    private var upperIndex: Map<String, String>? = null
+    private fun upper(s: String): String? {
+        if (s.length > 80 || s != s.uppercase() || s == s.lowercase()) return null
+        val idx = upperIndex ?: exact.entries.associate { it.key.uppercase() to it.value }.also { upperIndex = it }
+        idx[s]?.let { return it.uppercase() }
+        // Gabarit : le premier mot sert d'appui (« NIVEAU 5 » → « Niveau 5 »)
+        val cap = s.lowercase().replaceFirstChar { it.titlecase() }
+        return template(cap)?.uppercase()
     }
 
     private fun template(s: String, depth: Int = 0): String? {

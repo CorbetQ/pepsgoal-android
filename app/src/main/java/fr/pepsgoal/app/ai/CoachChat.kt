@@ -50,7 +50,7 @@ object CoachChat {
         val hist = all(ctx) + ChatMsg(System.currentTimeMillis(), "user", text.trim().take(600))
         save(ctx, hist)
         val turns = hist.takeLast(8).joinToString("\n") { (if (it.role == "user") "Utilisateur : " else "Coach : ") + it.text }
-        val mem = AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }
+        val mem = whoIs(ctx) + AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }
         val prompt = """Tu es le coach bienveillant de PepsGoal, une application de suivi d’objectifs et d’habitudes. Tu tutoies, tu réponds en français, de façon concrète et courte (5 phrases maximum).$mem
 Situation actuelle :
 ${situation(ctx, health)}
@@ -58,7 +58,7 @@ Si l’utilisateur veut créer un objectif, ajoute à la fin une ligne exactemen
 Conversation :
 $turns
 Coach :"""
-        val out = LocalAi.generate(ctx, prompt, 260)?.trim()?.removePrefix("Coach :")?.trim()
+        val out = LocalAi.generate(ctx, prompt, 260)?.trim()?.removePrefix("Coach :")?.trim()?.let { fixName(ctx, it) }
         val reply = out?.takeIf { it.isNotBlank() } ?: "Je n’arrive pas à répondre pour le moment. Vérifie que le coach IA est bien installé et activé dans Paramètres › Assistant IA."
         val lines = reply.lines()
         val goalLine = lines.lastOrNull { it.trim().startsWith("OBJECTIF", ignoreCase = true) }?.substringAfter(':')?.trim()
