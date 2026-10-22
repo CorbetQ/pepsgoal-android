@@ -156,6 +156,7 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val a = pg.userById(post.userId) ?: return
     val liked = post.likes.contains(u.id); val adm = pg.isAdmin(u); val pend = post.status == "pending"
     var photo by remember { mutableStateOf(false) }
+    var picker by remember { mutableStateOf(false) }
     Glass(border = if (pend) p.type("limit").c else null) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.weight(1f).clickable { ui.open(Sheet.User(a.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -182,15 +183,33 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
                 if (photo) PhotoViewer(url) { photo = false }
             }
             post.goalId?.let { GoalAttach(ui, pg.goalById(it)) }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CheerButton(liked, post.likes.size) {
-                    if (pg.socialBlocked("d'encourager")) return@CheerButton
-                    if (!liked && !p.motion) ui.sparks(1)
-                    ui.run { ui.cloud.toggleLike(post) }
+            val mine = if (liked) post.reactions[u.id] ?: "fire" else null
+            val react = { k: String ->
+                if (!pg.socialBlocked("d'encourager")) {
+                    if (mine == null && !p.motion) ui.sparks(1)
+                    picker = false
+                    ui.run { ui.cloud.react(post, k) }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CheerButton(liked, post.likes.size, reactionEmoji(mine).takeIf { mine != null && mine != "fire" }) { react(mine ?: "fire") }
+                // Autres réactions : 💪 👏 🎉
+                IconBtn("smile", "Choisir une réaction", { picker = !picker }, plain = true, size = 38.dp)
+                // Qui a réagi : résumé des réactions, ouvre la liste
+                val sum = reactionSummary(post)
+                if (sum.isNotEmpty()) Row(Modifier.clip(CircleShape).clickable { ui.open(Sheet.Likers(post.id)) }.padding(horizontal = 6.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    sum.take(3).forEach { (e, _) -> Text(e, fontSize = 15.sp) }
                 }
                 // Ouvre la page dédiée aux commentaires
                 val nc = post.comments.count { !pg.isBlockedPair(it.userId, u.id) }
                 if (!pend && !inPage) PButton(if (nc > 0) "$nc" else "Commenter", { ui.push(Screen.Comments(post.id)) }, icon = "comment", small = true)
+            }
+            if (picker) FlowRowCompat(gap = 6.dp) {
+                val cur = if (post.likes.contains(u.id)) post.reactions[u.id] ?: "fire" else null
+                REACTIONS.forEach { (k, e) -> FChip(e, cur == k, {
+                    if (!pg.socialBlocked("d'encourager")) { if (cur == null && !p.motion) ui.sparks(1); picker = false; ui.run { ui.cloud.react(post, k) } }
+                }) }
             }
             // Réponses rapides sous la réussite d'un ami : encouragement et commentaire en un geste
             if (!pend && post.userId != u.id && (post.goalId != null || post.kind != "manual") && pg.canComment(u, post) && post.comments.none { it.userId == u.id } && pg.store.online)
@@ -218,7 +237,7 @@ fun modDeletePost(ui: AppState, post: Post) {
 }
 
 @Composable
-fun CheerButton(on: Boolean, n: Int, onClick: () -> Unit) {
+fun CheerButton(on: Boolean, n: Int, emoji: String? = null, onClick: () -> Unit) {
     val p = LocalPal.current
     // Rebond uniquement quand on encourage (pas à l'affichage d'une publication déjà encouragée)
     val pop = remember { Animatable(1f) }
@@ -232,7 +251,7 @@ fun CheerButton(on: Boolean, n: Int, onClick: () -> Unit) {
         .background(if (on) p.flame.copy(alpha = .22f) else p.ink.copy(alpha = .06f)).border(1.dp, if (on) p.flame.copy(alpha = .45f) else ctlEdge(p), CircleShape)
         .springClick(inter, label = "Encourager", onClick = onClick).padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Flame(18.dp, dim = !on); Text("$n", fontWeight = FontWeight.ExtraBold); Text("Encourager", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        if (emoji != null) Text(emoji, fontSize = 16.sp) else Flame(18.dp, dim = !on); Text("$n", fontWeight = FontWeight.ExtraBold); Text("Encourager", fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }
 

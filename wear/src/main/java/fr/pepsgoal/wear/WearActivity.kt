@@ -3,11 +3,16 @@ package fr.pepsgoal.wear
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,8 +40,13 @@ class WearActivity : ComponentActivity() {
         var note by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(Unit) { Today.load(ctx); Today.send(ctx, "/pepsgoal/refresh") }
         val listState = rememberScalingLazyListState()
+        // Couronne (ou lunette) rotative : fait défiler la liste ; l'objectif amené au centre se valide d'une touche
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { focus.requestFocus() }
         Scaffold(timeText = { TimeText() }, positionIndicator = { PositionIndicator(listState) }) {
-            ScalingLazyColumn(Modifier.fillMaxSize(), state = listState, horizontalAlignment = Alignment.CenterHorizontally) {
+            ScalingLazyColumn(Modifier.fillMaxSize()
+                .onRotaryScrollEvent { e -> scope.launch { listState.scrollBy(e.verticalScrollPixels) }; true }
+                .focusRequester(focus).focusable(), state = listState, horizontalAlignment = Alignment.CenterHorizontally) {
                 val d = day
                 item {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {

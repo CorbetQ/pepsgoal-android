@@ -97,6 +97,98 @@ object Exports {
         return f
     }
 
+    /**
+     * Livre de l'année (PDF, A4) : couverture, chiffres clés, validations mois par mois, objectifs phares,
+     * année en pixels, plus beaux jours du journal et quelques photos de preuve.
+     */
+    fun yearBook(ctx: Context, year: Int = todayDate().year): File? {
+        val pg = ctx.peps.pg; val u = pg.me() ?: return null
+        val doc = PdfDocument(); val W = 595; val H = 842; val M = 48f
+        var n = 1; var page = doc.startPage(PdfDocument.PageInfo.Builder(W, H, n).create()); var cv = page.canvas; var y = M
+        val flame = Color.rgb(255, 74, 18); val inkC = Color.rgb(16, 16, 42)
+        val title = Paint().apply { color = inkC; textSize = 30f; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+        val h2 = Paint().apply { color = flame; textSize = 16f; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+        val body = Paint().apply { color = Color.rgb(40, 42, 80); textSize = 11f; isAntiAlias = true }
+        val muted = Paint(body).apply { color = Color.rgb(110, 112, 150); textSize = 9.5f }
+        fun newPage() { doc.finishPage(page); n++; page = doc.startPage(PdfDocument.PageInfo.Builder(W, H, n).create()); cv = page.canvas; y = M }
+        fun need(h: Float) { if (y + h > H - M) newPage() }
+        fun line(t: String, p: Paint = body, dy: Float = 16f) { need(dy); cv.drawText(t.take(95), M, y, p); y += dy }
+        val from = "$year-01-01"; val to = "$year-12-31"
+        val wins = pg.userCheckins(u.id).filter { pg.isWin(it) && it.kind != "skip" && it.date in from..to }
+        // Couverture
+        cv.drawRect(0f, 0f, W.toFloat(), H.toFloat(), Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, W.toFloat(), H.toFloat(), intArrayOf(Color.rgb(255, 176, 0), flame, Color.rgb(255, 45, 135)), null, android.graphics.Shader.TileMode.CLAMP) })
+        val cover = Paint(title).apply { color = inkC; textSize = 46f; textAlign = Paint.Align.CENTER }
+        cv.drawText("Mon année $year", W / 2f, H / 2f - 40f, cover)
+        cover.textSize = 20f; cover.typeface = Typeface.DEFAULT
+        cv.drawText(u.name, W / 2f, H / 2f + 4f, cover)
+        cv.drawText("${wins.size} validations · ${wins.map { it.date }.distinct().size} jours actifs", W / 2f, H / 2f + 36f, cover)
+        cover.textSize = 13f; cv.drawText("PepsGoal", W / 2f, H - 60f, cover)
+        newPage()
+        // Chiffres clés
+        line("Chiffres clés", h2, 24f)
+        val rates = Insights.dayRates(pg, daysBetween(java.time.LocalDate.of(year, 1, 1), todayDate()).toInt() + 1).filterKeys { it in from..to }
+        line("Validations : ${wins.size} · jours actifs : ${wins.map { it.date }.distinct().size} · journées parfaites : ${rates.values.count { it >= 1.0 }}")
+        line("Meilleure série : ${pl(pg.bestStreak(u.id), "jour", "jours")} · série actuelle : ${pl(pg.globalStreak(u.id).n, "jour", "jours")}")
+        line("Flammes gagnées : ${wins.sumOf { it.pts }}", dy = 26f)
+        // Mois par mois
+        line("Mois par mois", h2, 24f)
+        val perMonth = (1..12).map { m -> wins.count { it.date.substring(5, 7).toInt() == m } }
+        val mx = (perMonth.maxOrNull() ?: 0).coerceAtLeast(1)
+        need(150f)
+        val bw = (W - 2 * M) / 12f; val base = y + 110f
+        val bar = Paint().apply { color = flame }; val lbl = Paint(muted).apply { textAlign = Paint.Align.CENTER }
+        perMonth.forEachIndexed { i, v ->
+            val hh = 100f * v / mx
+            cv.drawRoundRect(M + i * bw + 6f, base - hh, M + (i + 1) * bw - 6f, base, 4f, 4f, bar)
+            cv.drawText(listOf("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")[i], M + (i + .5f) * bw, base + 14f, lbl)
+            if (v > 0) cv.drawText("$v", M + (i + .5f) * bw, base - hh - 4f, lbl)
+        }
+        y = base + 34f
+        // Objectifs phares
+        line("Objectifs phares", h2, 24f)
+        wins.groupingBy { it.goalId }.eachCount().entries.sortedByDescending { it.value }.take(8).forEach { (gid, c) ->
+            pg.goalById(gid)?.let { g -> line("${g.title.take(60)} — ${pl(c, "validation", "validations")}") }
+        }
+        y += 10f
+        // Année en pixels
+        line("Année en pixels", h2, 24f)
+        need(31 * 9f + 20f)
+        val cw = (W - 2 * M) / 12f; val ch = 9f; val top = y
+        for (m in 1..12) {
+            val len = java.time.LocalDate.of(year, m, 1).lengthOfMonth()
+            for (d in 1..len) {
+                val k = ymd(java.time.LocalDate.of(year, m, d)); val r = rates[k]
+                val col = when { k > today() -> Color.rgb(246, 246, 252); r == null -> Color.rgb(236, 238, 255); r >= 1.0 -> Color.rgb(46, 194, 126); r >= .5 -> Color.rgb(255, 176, 0); r > 0 -> Color.rgb(255, 107, 94); else -> Color.rgb(226, 228, 245) }
+                cv.drawRect(M + (m - 1) * cw + 2f, top + (d - 1) * ch + 1f, M + m * cw - 2f, top + d * ch - 1f, Paint().apply { color = col })
+            }
+        }
+        y = top + 31 * ch + 20f
+        // Journal : les meilleurs jours avec un mot
+        val best = Journal.all(ctx).filter { it.date in from..to && it.text.isNotBlank() }.sortedWith(compareByDescending<fr.pepsgoal.app.data.JournalEntry> { it.mood }.thenBy { it.date }).take(10).sortedBy { it.date }
+        if (best.isNotEmpty()) {
+            line("Plus beaux jours du journal", h2, 24f)
+            best.forEach { e -> line(fmtDate(e.date), muted, 13f); e.text.replace('\n', ' ').chunked(90).take(3).forEach { line(it) }; y += 4f }
+        }
+        // Photos de preuve (6 au plus)
+        val photos = fr.pepsgoal.app.data.Proofs.all(ctx).filter { it.date in from..to }.mapNotNull { pr -> fr.pepsgoal.app.data.Proofs.photoFile(ctx, pr)?.let { pr to it } }.sortedBy { it.first.date }
+        if (photos.isNotEmpty()) {
+            newPage(); line("En images", h2, 24f)
+            val pw = (W - 2 * M - 20f) / 3f; val ph = pw * 1.25f
+            photos.let { l -> if (l.size > 6) l.indices.map { l[it * (l.size - 1) / 5] }.distinct().take(6) else l }.forEachIndexed { i, (pr, f) ->
+                val o = android.graphics.BitmapFactory.Options().apply { inSampleSize = 4 }
+                val b = android.graphics.BitmapFactory.decodeFile(f.path, o) ?: return@forEachIndexed
+                val x = M + (i % 3) * (pw + 10f); val yy = y + (i / 3) * (ph + 30f)
+                cv.drawBitmap(b, null, android.graphics.RectF(x, yy, x + pw, yy + ph), Paint(Paint.FILTER_BITMAP_FLAG))
+                cv.drawText(fmtDate(pr.date), x, yy + ph + 14f, muted)
+            }
+        }
+        cv.drawText("Généré par PepsGoal $APP_VERSION", M, H - M + 10f, muted)
+        doc.finishPage(page)
+        val f = File(dir(ctx), "pepsgoal-livre-$year.pdf")
+        f.outputStream().use { doc.writeTo(it) }; doc.close()
+        return f
+    }
+
     /** Partage d'une image générée (année en pixels, code QR…). */
     fun shareImage(ctx: Context, bmp: android.graphics.Bitmap, name: String) {
         val f = File(dir(ctx), "$name.png"); f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }

@@ -371,7 +371,8 @@ private fun TopBar(ui: AppState) {
                     // Titre entier : sa taille s'adapte à la place laissée par les boutons
                     FitText(NAV_TITLES[t] ?: "PepsGoal", size = 24, min = 14, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
                 }
-                if (!ui.pg.store.online) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { Pi("cloudoff", size = 14.dp, tint = p.ink2); Muted("Hors ligne", small = true) }
+                // Hors ligne : modifications en attente d'envoi (touchée : explication)
+                if (!ui.pg.store.online) fr.pepsgoal.app.ui.sheets.OfflineChip(ui)
             }
             val bump = remember { Animatable(1f) }
             LaunchedEffect(st.n) { if (!p.motion) { bump.snapTo(1.35f); bump.animateTo(1f, spring(dampingRatio = .4f)) } }

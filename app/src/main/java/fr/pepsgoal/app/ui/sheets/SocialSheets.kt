@@ -140,6 +140,7 @@ fun NotifsSheet(ui: AppState) {
             when {
                 n.goalId != null && pg.goalById(n.goalId) != null -> ui.sheet = Sheet.Goal(n.goalId!!)
                 n.view == "profile" -> ui.nav("profile")
+                n.view == "evening" -> ui.open(Sheet.Evening)
                 n.view == "feed" || n.type in setOf("like", "comment") -> if (pg.socialOn()) ui.nav("feed")
                 n.type == "friend" -> if (pg.socialOn()) ui.nav("friends")
                 n.type == "story" -> if (pg.socialOn()) ui.nav("feed")
@@ -194,6 +195,11 @@ fun ShareHubSheet(ui: AppState, m: Sheet.ShareHub) {
     Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Opt("comment", "Message", if (social) "À un ami ou à un groupe, chiffré" else off, social, Modifier.weight(1f).fillMaxHeight()) { ui.sheet = Sheet.ShareHub(m.goalId, m.text, m.period, "msg") }
         Opt("ext", "Externe", "Autres applications de ton téléphone", true, Modifier.weight(1f).fillMaxHeight()) { shareExternal(ctx, text) }
+    }
+    // Stories Instagram et WhatsApp : image verticale de la progression (ou de la série)
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Opt("image", "Instagram", "Image verticale pour ta story", true, Modifier.weight(1f).fillMaxHeight()) { fr.pepsgoal.app.sys.StoryShare.send(ctx, fr.pepsgoal.app.sys.StoryShare.INSTAGRAM, g, text) }
+        Opt("send", "WhatsApp", "Image et texte, en statut ou à un contact", true, Modifier.weight(1f).fillMaxHeight()) { fr.pepsgoal.app.sys.StoryShare.send(ctx, fr.pepsgoal.app.sys.StoryShare.WHATSAPP, g, text) }
     }
 }
 

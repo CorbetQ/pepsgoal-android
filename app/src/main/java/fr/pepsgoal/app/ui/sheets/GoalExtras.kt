@@ -91,7 +91,13 @@ fun ChainRow(ui: AppState, g: Goal, divider: Boolean = true) {
         FlowRowCompat(gap = 6.dp) {
             cands.forEach { c -> FChip("${c.icon} ${c.title.take(24)}", c.id == g.after, { g.after = c.id; pg.store.commit(); open = false; ui.toast("Enchaîné après « ${c.title} ».", "repeat") }) }
         }
-        if (prev != null) PButton("Retirer l’enchaînement", { g.after = null; pg.store.commit(); open = false }, small = true, kind = "ghost")
+        if (prev != null) {
+            Muted("Rappel si tu ne l’as pas encore fait :", small = true)
+            FlowRowCompat(gap = 6.dp) {
+                CHAIN_DELAYS.forEach { d -> FChip(if (d == 0) "Tout de suite" else "Après $d min", g.afterDelay == d, { g.afterDelay = d; pg.store.commit() }) }
+            }
+            PButton("Retirer l’enchaînement", { g.after = null; pg.store.commit(); open = false }, small = true, kind = "ghost")
+        }
     }
 }
 
@@ -110,6 +116,7 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
     var big by remember { mutableStateOf<Proof?>(null) }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { u -> if (u != null) photo = u }
     SectionTitle(if (list.isEmpty()) "Preuve du jour" else "Preuves · ${list.size}")
+    ProofStory(list)
     if (list.isEmpty() && !editing) Muted("Garde une trace de ta réussite : une photo ou quelques mots, gardés sur ton téléphone.", small = true)
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         // Tuile d'ajout de la preuve du jour

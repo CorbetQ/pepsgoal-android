@@ -53,7 +53,12 @@ fun EveningSheet(ui: AppState) {
         pg.myGoals(u.id).filter { !pg.isClosedGoal(it) && (pg.scheduled(it, tomorrow) || (it.type == "routine" && it.mode == "count") || (it.type == "deadline" && it.due == ymd(tomorrow))) }
     }
     SheetHead(ui, "Bilan du soir")
-    Muted(cap(weekdayLongDate(todayDate())) + " · $done/${plan.due.size} validés", small = true)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Muted(cap(weekdayLongDate(todayDate())) + " · $done/${plan.due.size} validés", Modifier.weight(1f), small = true)
+        // Le coach lit le bilan à voix haute (synthèse vocale du téléphone)
+        PButton("Écouter", { fr.pepsgoal.app.sys.Speaker.say(ctx, fr.pepsgoal.app.sys.Speaker.eveningText(ctx)) }, icon = "music", small = true, kind = "ghost")
+    }
+    DisposableEffect(Unit) { onDispose { fr.pepsgoal.app.sys.Speaker.stop() } }
     // 1. Ce qu'il reste
     SectionTitle(if (left.isEmpty()) "Journée bouclée" else "Il te reste ${pl(left.size, "objectif", "objectifs")}")
     if (left.isEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Flame(30.dp); Text(if (plan.due.isEmpty()) "Rien n’était prévu aujourd’hui." else "Tout est validé, bravo !", fontWeight = FontWeight.Bold) }

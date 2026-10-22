@@ -27,7 +27,7 @@ import kotlinx.serialization.json.*
 object GoalLink {
     /** Clés propres à une copie (historique, état du jour, liens personnels) : jamais partagées. */
     private val PRIVATE = setOf("milestones", "monthsDone", "weeksDone", "stepsDay", "stepsDone", "after", "targetHit", "winner", "failDay",
-        "communityId", "communityEnd", "communityStart", "duo", "duoPeer", "duoPeerDays", "missWhy", "skipDays", "autoPlace", "remindAt")
+        "communityId", "communityEnd", "communityStart", "duo", "duoPeer", "duoPeerDays", "missWhy", "skipDays", "autoPlace", "remindAt", "trialDays", "trialStart", "trialDone", "after", "afterDelay")
 
     fun link(g: Goal): String {
         val o = buildJsonObject {

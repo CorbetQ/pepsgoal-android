@@ -128,6 +128,12 @@ class MainActivity : ComponentActivity() {
                 return
             }
         }
+        // Notification du bilan du soir : la fenêtre du bilan, lue à voix haute avec « Écouter le bilan »
+        if (i.getBooleanExtra("evening", false)) {
+            i.removeExtra("evening"); ui.nav("today"); ui.open(Sheet.Evening)
+            if (i.getBooleanExtra("speak", false)) { i.removeExtra("speak"); fr.pepsgoal.app.sys.Speaker.say(this, fr.pepsgoal.app.sys.Speaker.eveningText(this)) }
+            return
+        }
         i.getStringExtra(EXTRA_SETTINGS)?.let { cat -> i.removeExtra(EXTRA_SETTINGS); ui.push(Screen.Settings(cat)); return }
         i.getStringExtra(EXTRA_CHAT)?.let { key ->
             if (!pg.socialOn()) return@let

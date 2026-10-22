@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 class ActionReceiver : BroadcastReceiver() {
     companion object {
         const val VALIDATE = "fr.pepsgoal.app.VALIDATE"; const val CONFIRM = "fr.pepsgoal.app.CONFIRM"; const val REPLY = "fr.pepsgoal.app.REPLY"
-        const val CHEER = "fr.pepsgoal.app.CHEER"
+        const val CHEER = "fr.pepsgoal.app.CHEER"; const val PROGRESS = "fr.pepsgoal.app.PROGRESS"
         const val READ = "fr.pepsgoal.app.READ"; const val TIMER = "fr.pepsgoal.app.TIMER"; const val DISMISS_LIVE = "fr.pepsgoal.app.DISMISS_LIVE"
     }
 
@@ -36,6 +36,18 @@ class ActionReceiver : BroadcastReceiver() {
                 if (nid != 0 && !intent.getBooleanExtra("keep", false)) Notifier.cancel(ctx, nid)
                 // Notification du matin : elle se met à jour (case cochée)
                 if (intent.getBooleanExtra("morning", false)) Notifier.morning(ctx.peps)
+                LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
+            }
+            PROGRESS -> {
+                val id = intent.getStringExtra("goal") ?: return
+                val g = pg.goalById(id) ?: return
+                val raw = RemoteInput.getResultsFromIntent(intent)?.getCharSequence(Notifier.KEY_VALUE)?.toString()?.trim().orEmpty()
+                val v = pg.parseProgress(g, raw)
+                if (raw.isEmpty() || v.isNaN() || v <= 0) {
+                    // Valeur illisible : la fiche de saisie s'ouvre dans l'application
+                    ctx.startActivity(Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(MainActivity.EXTRA_PROGRESS, id))
+                } else pg.addProgress(id, v)
+                if (nid != 0) Notifier.cancel(ctx, nid)
                 LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
             }
             CHEER -> {

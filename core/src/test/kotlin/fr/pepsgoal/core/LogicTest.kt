@@ -232,4 +232,17 @@ class LogicTest {
         assertTrue(pg.isMiniDone(g)); assertEquals(3, pg.goalStreak(g))
         pg.validate(g.id); assertTrue(!pg.hasCheck(g.id, today()))
     }
+
+    @Test fun trialAndTitles() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        pg.startTrial(g, 7)
+        val st = pg.trialState(g)!!
+        assertEquals(7, st.total); assertEquals(0, st.idx); assertEquals(0, st.done)
+        pg.validate(g.id)
+        assertEquals(1, pg.trialState(g)!!.done)
+        assertTrue(sameGoalTitle("Courir 30 minutes", "courir 30 minutes le matin"))
+        assertTrue(!sameGoalTitle("Courir 30 minutes", "Lire 20 pages"))
+        assertEquals(null, pg.usualTime(g))
+        assertEquals(1, pg.hourHeat().sumOf { it.sum() })
+    }
 }

@@ -24,9 +24,17 @@ suspend fun Cloud.unblock(userId: String) { api.delete("/v1/users/$userId/block"
 /* ---------- feed ---------- */
 suspend fun Cloud.toggleLike(p: Post) {
     val u = meId(); val liked = p.likes.contains(u)
-    if (liked) p.likes.remove(u) else p.likes.add(u)
+    if (liked) { p.likes.remove(u); p.reactions.remove(u) } else { p.likes.add(u); p.reactions[u] = "fire" }
     store.changed()
     try { if (liked) api.delete("/v1/posts/${p.id}/like") else api.post("/v1/posts/${p.id}/like") } catch (e: ApiError) { scheduleSocial(); throw e }
+}
+/** Réagit à une publication (🔥 💪 👏 🎉) ; la même réaction une seconde fois retire l'encouragement. */
+suspend fun Cloud.react(p: Post, kind: String) {
+    val u = meId(); val cur = if (p.likes.contains(u)) p.reactions[u] ?: "fire" else null
+    if (cur == kind) { p.likes.remove(u); p.reactions.remove(u) } else { if (!p.likes.contains(u)) p.likes.add(u); p.reactions[u] = kind }
+    store.changed()
+    try { if (cur == kind) api.delete("/v1/posts/${p.id}/like") else api.post("/v1/posts/${p.id}/like", buildJsonObject { put("reaction", kind) }) }
+    catch (e: ApiError) { scheduleSocial(); throw e }
 }
 suspend fun Cloud.deletePost(id: String) { db.posts.removeAll { it.id == id }; store.rawSave(); api.delete("/v1/posts/$id"); scheduleSocial(150) }
 suspend fun Cloud.vote(p: Post, oid: String) {

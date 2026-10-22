@@ -216,7 +216,9 @@ class Post(
     var poll: Poll? = null,
     var status: String? = null,
     var commentsLocked: Boolean = false,
-    var mod: Boolean = false
+    var mod: Boolean = false,
+    /** Réaction de chaque personne qui a encouragé (identifiant → « fire », « muscle », « clap » ou « party »). */
+    var reactions: MutableMap<String, String> = mutableMapOf()
 )
 
 @Serializable
