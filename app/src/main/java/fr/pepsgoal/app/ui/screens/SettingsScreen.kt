@@ -282,14 +282,15 @@ private fun BackgroundSettings(ui: AppState, u: User) {
     }
     Glass {
         SectionTitle("Arrière-plan")
-        Muted("${BGS.first { it.first == cur }.second} · derrière toute l’application", small = true)
+        val scene = SHOP_BGS.firstOrNull { "s:${it.key}" == s.bg }
+        Muted("${scene?.name ?: BGS.first { it.first == cur }.second} · derrière toute l’application", small = true)
         if (s.theme == "weather") Note("Le thème Météo affiche le ciel en direct : change de thème pour choisir un arrière-plan.", "cloud", Modifier.padding(top = 8.dp))
         Spacer(Modifier.height(10.dp))
         FlowRowCompat(Modifier.alpha(if (s.theme == "weather") .5f else 1f), gap = 8.dp) {
             BGS.forEach { (k, l) ->
                 Column(Modifier.width(76.dp).clickable(enabled = s.theme != "weather") { if (k == "custom" && !has) pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) else { s.bg = k; save(ui) } },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(Modifier.size(76.dp, 56.dp).clip(RoundedCornerShape(14.dp)).background(bgPreview(k, p)).border(if (cur == k) 3.dp else 1.dp, if (cur == k) p.ink else p.line, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(76.dp, 56.dp).clip(RoundedCornerShape(14.dp)).background(bgPreview(k, p)).border(if (cur == k && scene == null) 3.dp else 1.dp, if (cur == k && scene == null) p.ink else p.line, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                         if (k == "custom" && has) AsyncImage(ImageRequest.Builder(ctx).data(file).memoryCacheKey("bg${ui.prefs.bgStamp}").crossfade(true).build(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         else if (k == "custom") Pi("image")
                     }
@@ -297,6 +298,19 @@ private fun BackgroundSettings(ui: AppState, u: User) {
                 }
             }
         }
+        // Fonds illustrés de la boutique : ceux déjà achetés, et l'accès à la boutique
+        val mine = SHOP_BGS.filter { ui.pg.owns("bg:${it.key}", it.price, u) }
+        Text("Fonds illustrés", Modifier.padding(top = 12.dp), fontWeight = FontWeight.Bold)
+        if (mine.isNotEmpty()) FlowRowCompat(Modifier.padding(top = 6.dp), gap = 8.dp) {
+            mine.forEach { b ->
+                val on = s.bg == "s:${b.key}"
+                Column(Modifier.width(76.dp).clickable { ui.pg.applyBg(b); ui.themeTick++ }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box(Modifier.size(76.dp, 56.dp).clip(RoundedCornerShape(14.dp)).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, RoundedCornerShape(14.dp))) { SceneBg(b.key, Modifier.fillMaxSize()) }
+                    Text(b.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+            }
+        }
+        PButton("${if (mine.isEmpty()) "Découvrir" else "Plus de fonds"} dans la boutique", { ui.push(Screen.Shop) }, icon = "star", small = true, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
         SetRow("Image personnalisée", "Une photo à toi en fond d’écran, gardée sur cet appareil.") {
             PButton(if (has) "Changer" else "Choisir", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image", small = true)
             if (has) PButton("Retirer", { file.delete(); ui.prefs.bgPalette = emptyList(); ui.prefs.bgStamp = nowMs(); if (s.bg == "custom") s.bg = "blob"; save(ui); ui.toast("Image d’arrière-plan retirée.", "image") }, kind = "ghost", small = true)
