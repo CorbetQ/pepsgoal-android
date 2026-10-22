@@ -123,7 +123,7 @@ fun seasonNext(season: String, from: java.time.LocalDate = todayDate()): java.ti
 fun Pg.buyable(key: String, price: Int, season: String?): Boolean = owns(key, price) || season == null || seasonWindow(season) != null
 
 /** Flammes disponibles à dépenser. */
-fun Pg.wallet(u: User? = me()): Int = if (u == null) 0 else maxOf(0, points(u.id) - u.shopSpent)
+fun Pg.wallet(u: User? = me()): Int = if (u == null) 0 else maxOf(0, points(u.id) + u.shopBonus - u.shopSpent)
 
 fun Pg.owns(key: String, price: Int, u: User? = me()): Boolean = price <= 0 || (u?.shopOwned?.contains(key) == true)
 
