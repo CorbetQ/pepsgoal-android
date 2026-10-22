@@ -24,6 +24,7 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.core.*
+import fr.pepsgoal.core.cloud.str
 
 /** Mots-clés supplémentaires des catégories de réglages (la recherche trouve « vibration » dans Accessibilité…). */
 private val SET_WORDS = mapOf(
@@ -99,7 +100,7 @@ fun SearchScreen(ui: AppState, initial: String) {
                 }
             }
             // Messages (déchiffrés sur cet appareil)
-            val msgs = pg.db.messages.asReversed().asSequence().mapNotNull { m -> Social.preview(ui, m).takeIf { hit(it) }?.let { m to it } }.take(12).toList()
+            val msgs = pg.db.messages.asReversed().asSequence().filter { Social.body(ui, it)?.str("k") !in fr.pepsgoal.core.cloud.Msg.SILENT && it.id !in ui.prefs.hiddenMsgs }.mapNotNull { m -> Social.preview(ui, m).takeIf { hit(it) }?.let { m to it } }.take(12).toList()
             if (msgs.isNotEmpty()) item("msgs") {
                 Glass(pad = 10.dp) {
                     Box(Modifier.padding(6.dp)) { CardHead("Messages") { Count(msgs.size) } }

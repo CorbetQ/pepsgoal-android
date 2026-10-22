@@ -79,7 +79,7 @@ fun HealthSettings(ui: AppState) {
                 }
             }
             // Nouveau lien
-            val candidates = pg.myGoals(u.id).filter { !pg.isClosedGoal(it) && it.type in setOf("routine", "challenge", "timed", "abstinence") && links.none { l -> l.goalId == it.id } }
+            val candidates = pg.myGoals(u.id).filter { !pg.isClosedGoal(it) && it.type in setOf("cap", "routine", "challenge", "timed", "abstinence") && links.none { l -> l.goalId == it.id } }
             if (candidates.isNotEmpty()) {
                 var goal by remember { mutableStateOf<String?>(null) }; var metric by remember { mutableStateOf("steps") }; var thr by remember { mutableStateOf("") }
                 val m = Health.metric(metric)!!

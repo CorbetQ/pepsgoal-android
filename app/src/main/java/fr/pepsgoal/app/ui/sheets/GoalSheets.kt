@@ -28,6 +28,9 @@ import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import kotlinx.coroutines.launch
 
 private val NUM = KeyboardOptions(keyboardType = KeyboardType.Decimal)
 
@@ -54,15 +57,76 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     val social = pg.socialOn(u)
     val today0 = today(); val in7 = ymd(todayDate().plusDays(7))
 
-    SheetHead(ui, if (g0 != null) "Modifier" else "Nouvel objectif")
-    // Types
-    if (g0 != null) TypeTile(type, true, Modifier.fillMaxWidth()) {}
-    else TYPE_GROUPS.forEach { (lab, ks) ->
-        val list = ks.filter { !(it in SOCIAL_TYPES && !social) }
-        if (list.isNotEmpty()) {
-            Eyebrow(lab)
-            list.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { k -> TypeTile(k, k == type, Modifier.weight(1f).fillMaxHeight()) { type = k; d.type = k; err = null } }; if (row.size == 1) Spacer(Modifier.weight(1f)) } }
+    val ctx = androidx.compose.ui.platform.LocalContext.current; val scope = rememberCoroutineScope()
+    val editing = g0 != null
+    // Assistant en étapes : méthode (coach ou à la main), puis demande au coach ou type + réglages, puis résumé
+    var fromAi by remember { mutableStateOf(!editing && s.preTitle != null) }
+    var byAi by remember { mutableStateOf(s.preTitle != null) }
+    var step by remember { mutableStateOf(when { editing -> "values"; s.preTitle != null && s.preType != null -> "summary"; s.preType != null -> "values"; else -> "mode" }) }
+    var ask by remember { mutableStateOf("") }; var thinking by remember { mutableStateOf(false) }
+    if (editing && t["health"] == null) fr.pepsgoal.app.sys.Health.links(ctx).firstOrNull { it.goalId == g0!!.id }?.let { t["health"] = it.metric }
+    val steps = when { editing -> listOf("values" to "Réglages", "summary" to "Résumé"); fromAi -> listOf("mode" to "Méthode", "ai" to "Ta demande", "summary" to "Résumé"); else -> listOf("mode" to "Méthode", "type" to "Type", "values" to "Réglages", "summary" to "Résumé") }
+    val go = { k: String -> err = null; step = k }
+
+    SheetHead(ui, if (editing) "Modifier l’objectif" else "Nouvel objectif")
+    StepBar(steps, step)
+    if (step == "mode") {
+        Muted("Comment veux-tu créer ton objectif ?")
+        val aiOn = fr.pepsgoal.app.ai.LocalAi.on(ctx, ui.prefs.aiCreate)
+        ModeCard("sparkle", "Avec le coach", if (aiOn) "Décris ton objectif en une phrase : le coach IA choisit le type, l’intitulé, l’emoji et les valeurs." else "Décris ton objectif en une phrase : PepsGoal le comprend et prépare tout (installe le coach IA dans Paramètres pour des propositions plus fines).", true) { fromAi = true; go("ai") }
+        ModeCard("edit", "Manuellement", "Choisis le type d’objectif, puis règle toi-même l’intitulé, l’emoji et les valeurs.", false) { fromAi = false; go("type") }
+        SheetFoot { PButton("Annuler", { ui.close() }, kind = "ghost") }
+    }
+    if (step == "ai") {
+        Field(ask, { ask = it }, "Ton objectif en une phrase", placeholder = "Ex. Faire 10 000 pas par jour", singleLine = false, minLines = 2, max = 200)
+        FlowRowCompat(gap = 6.dp) { listOf("Faire 10 000 pas par jour", "Courir 3 fois par semaine", "Lire 12 livres cette année", "Arrêter le sucre", "Méditer 10 minutes par jour").forEach { ex -> FChip(ex, false, { ask = ex }) } }
+        if (thinking) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pi("sparkle", size = 16.dp, tint = p.flame); Muted("Le coach prépare ton objectif…", Modifier.alpha(fr.pepsgoal.app.ui.screens.thinkingAlpha()), small = true)
         }
+        Err(err)
+        SheetFoot {
+            PButton("Retour", { go("mode") }, kind = "ghost", icon = "chevronleft")
+            PButton("Créer avec le coach", {
+                val q = ask.trim()
+                if (q.length < 4) { err = "Décris ton objectif en quelques mots."; return@PButton }
+                if (thinking) return@PButton
+                thinking = true; err = null
+                scope.launch {
+                    val dr = try { fr.pepsgoal.app.ai.Coach.createGoal(ctx, q) } catch (e: Exception) { fr.pepsgoal.app.ai.Coach.rules(q) }
+                    type = dr.type; d.type = dr.type; title = dr.title; icon = dr.icon; t.clear(); t.putAll(dr.fields); byAi = dr.byAi
+                    thinking = false; step = "summary"
+                }
+            }, icon = "sparkle", kind = "primary", enabled = !thinking)
+        }
+    }
+    if (step == "type") {
+        Muted("Quel genre d’objectif ?")
+        TYPE_GROUPS.forEach { (lab, ks) ->
+            val list = ks.filter { !(it in SOCIAL_TYPES && !social) }
+            if (list.isNotEmpty()) {
+                Eyebrow(lab)
+                list.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { k -> TypeTile(k, k == type, Modifier.weight(1f).fillMaxHeight()) { type = k; d.type = k; go("values") } }; if (row.size == 1) Spacer(Modifier.weight(1f)) } }
+            }
+        }
+        SheetFoot { PButton("Retour", { go("mode") }, kind = "ghost", icon = "chevronleft"); PButton("Continuer", { go("values") }, kind = "primary") }
+    }
+    if (step == "summary") {
+        val (g, e) = buildGoal(ui, u, g0, type, title, icon, note, vis, t, members, buddy, bVerify, bMiss)
+        if (fromAi) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Pi("sparkle", size = 16.dp, tint = p.flame)
+            Muted(if (byAi) "Voici ce que le coach a préparé à partir de ta demande." else "Voici ce que PepsGoal a compris de ta demande.", small = true)
+        } else Muted("Vérifie ton objectif avant de ${if (editing) "l’enregistrer" else "le créer"}.", small = true)
+        if (g != null) GoalSummary(ui, u, g, grp, t["health"])
+        Err(err ?: e)
+        SheetFoot {
+            PButton("Modifier", { fromAi = false; go("values") }, icon = "edit", kind = "ghost")
+            PButton(if (editing) "Enregistrer" else "Valider et créer", { err = submitGoal(ui, u, g0, type, title, icon, note, vis, t, members, buddy, bVerify, bMiss, grp) }, icon = "check", kind = "primary", enabled = e == null)
+        }
+    }
+    if (step == "values") {
+    if (editing) TypeTile(type, true, Modifier.fillMaxWidth()) {}
+    else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TypeChip(type); Spacer(Modifier.weight(1f)); PButton("Changer de type", { go("type") }, kind = "ghost", small = true)
     }
     Field(title, { title = it }, "Intitulé", placeholder = "Ex. Courir 30 minutes", max = 80)
     SetRow("Icône") {
@@ -103,6 +167,24 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
             }
             Seg(listOf("day" to "Par jour", "week" to "Par semaine"), txt("period") { g0?.period ?: "day" }, { t["period"] = it })
             Muted("Note chaque consommation avec « +1 », puis valide ta journée si tu es resté sous la limite.", small = true)
+        }
+        "cap" -> {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Field(txt("target") { num(g0?.targetOrNull ?: 10000.0) }, { t["target"] = it }, "Cap par jour", Modifier.weight(1f), keyboard = NUM, max = 12)
+                Field(txt("unit") { g0?.unit ?: "pas" }, { t["unit"] = it }, "Unité", Modifier.weight(1f), placeholder = "pas, L d'eau, pages…", max = 20)
+            }
+            Muted("Ajoute ta quantité au fil de la journée : l’objectif se valide tout seul dès que le cap est atteint, et la série compte les jours réussis.", small = true)
+            if (fr.pepsgoal.app.sys.Health.available(ctx)) {
+                SectionTitle("Remplir avec Santé (optionnel)")
+                val h = t["health"].orEmpty()
+                FlowRowCompat(gap = 6.dp) {
+                    FChip("Non, à la main", h.isEmpty(), { t["health"] = "" })
+                    fr.pepsgoal.app.sys.Health.METRICS.filter { it.kind == "num" && it.op == ">=" && it.key != "sleep" }.forEach { m ->
+                        FChip("${m.emoji} ${m.label}", h == m.key, { t["health"] = m.key; if (t["unit"].isNullOrBlank() || t["unit"] == "pas" || fr.pepsgoal.app.sys.Health.METRICS.any { x -> x.unit == t["unit"] }) t["unit"] = m.unit })
+                    }
+                }
+                if (h.isNotEmpty()) Muted("La mesure du jour lue par Health Connect remplit le compteur (accès à autoriser dans Paramètres › Santé).", small = true)
+            }
         }
         "duration" -> {
             Field(txt("minutes") { num(g0?.minutes ?: 30.0) }, { t["minutes"] = it }, "Minutes par jour", keyboard = NUM, max = 5)
@@ -198,11 +280,79 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     }
     Err(err)
     SheetFoot {
-        PButton("Annuler", { ui.close() }, kind = "ghost")
-        PButton(if (g0 != null) "Enregistrer" else "Créer", {
-            err = submitGoal(ui, u, g0, type, title, icon, note, vis, t, members, buddy, bVerify, bMiss, grp)
+        if (editing) PButton("Annuler", { ui.close() }, kind = "ghost") else PButton("Retour", { go("type") }, kind = "ghost", icon = "chevronleft")
+        PButton("Voir le résumé", {
+            err = buildGoal(ui, u, g0, type, title, icon, note, vis, t, members, buddy, bVerify, bMiss).second
+            if (err == null) step = "summary"
         }, kind = "primary")
     }
+    }
+}
+
+/** Indicateur d'étapes de l'assistant de création. */
+@Composable
+private fun StepBar(steps: List<Pair<String, String>>, cur: String) {
+    val p = LocalPal.current; val i = steps.indexOfFirst { it.first == cur }.coerceAtLeast(0)
+    Column(Modifier.semantics(mergeDescendants = true) { contentDescription = "Étape ${i + 1} sur ${steps.size} : ${steps[i].second}" }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            steps.forEachIndexed { k, _ -> Box(Modifier.weight(1f).height(5.dp).clip(CircleShape).background(if (k <= i) p.flame else p.ink.copy(alpha = .12f))) }
+        }
+        Text("Étape ${i + 1}/${steps.size} · ${steps[i].second}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+    }
+}
+
+/** Grande carte de choix (coach ou création manuelle). */
+@Composable
+private fun ModeCard(icon: String, title: String, desc: String, ai: Boolean, onClick: () -> Unit) {
+    val p = LocalPal.current
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Row(Modifier.fillMaxWidth().bounce(inter, .97f).then(if (ai && !p.easy) Modifier.aiGlow(20.dp) else Modifier).clip(RoundedCornerShape(20.dp))
+        .background(if (ai) p.flame.copy(alpha = .12f) else p.ink.copy(alpha = .05f)).border(1.dp, if (ai) p.flame.copy(alpha = .5f) else p.line, RoundedCornerShape(20.dp))
+        .springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        IconTile(icon, if (ai) p.type("program").c else p.type("routine").c, if (ai) p.type("measure").c else p.type("objective").c, 48.dp, 16.dp)
+        Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp); Muted(desc, small = true) }
+        Text("›", color = p.ink3, fontSize = 24.sp)
+    }
+}
+
+/** Résumé de l'objectif avant sa création. */
+@Composable
+private fun GoalSummary(ui: AppState, u: User, g: Goal, grp: String?, health: String?) {
+    val p = LocalPal.current; val pg = ui.pg; val tc = p.type(g.type)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(tc.c.copy(alpha = .16f)).border(1.dp, tc.c.copy(alpha = .5f), RoundedCornerShape(22.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GoalIcon(g, 54.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(g.title, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp); TypeChip(g.type) }
+        }
+        val lines = buildList {
+            add("target" to summaryLine(pg, g))
+            add("eye" to "Visible : ${VIS[g.visibility]?.first?.lowercase() ?: g.visibility}")
+            g.buddy?.let { b -> add("shield" to "Binôme : ${pg.userById(b)?.name ?: "un ami"}${if (g.buddyVerify) ", qui confirme tes validations" else ""}") }
+            g.members?.filter { it != u.id }?.takeIf { it.isNotEmpty() }?.let { m -> add("users" to "Avec ${m.mapNotNull { pg.userById(it)?.let { x -> first(x.name) } }.joinToString(", ")}") }
+            u.goalGroups.firstOrNull { it.id == grp }?.let { add("folder" to "Groupe : ${it.icon} ${it.name}") }
+            health?.takeIf { it.isNotEmpty() }?.let { h -> fr.pepsgoal.app.sys.Health.metric(h)?.let { add("heart" to "Rempli automatiquement avec Santé : ${it.label.lowercase()}") } }
+            if (g.note.isNotBlank()) add("star" to "« ${g.note} »")
+        }
+        lines.forEach { (ic, l) -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Pi(ic, size = 16.dp, tint = tc.ink); Text(l, fontSize = 14.sp) } }
+    }
+}
+
+/** Phrase qui décrit le fonctionnement de l'objectif. */
+private fun summaryLine(pg: Pg, g: Goal): String = when (g.type) {
+    "cap" -> "Chaque jour, atteindre ${fmtNum(g.target)}${pg.unitSfx(g)} : la journée se valide dès que le cap est atteint."
+    "objective" -> "Atteindre ${fmtNum(g.target)}${pg.unitSfx(g)} au total${if (g.endDate.isNotEmpty()) " d’ici le ${fmtDate(g.endDate)}" else ""}."
+    "monthly" -> "${fmtNum(g.target)}${pg.unitSfx(g)} chaque mois${if (g.cumulate) ", avec un total cumulé" else ""}."
+    "deadline" -> "À terminer avant le ${fmtDate(g.due)}."
+    "routine" -> if (g.mode == "days") "À faire ${pg.daysLabel(g.days)}." else "${g.perWeek} fois par semaine, les jours que tu veux."
+    "abstinence" -> "Tenir sans, jour après jour, depuis le ${fmtDate(g.since)}."
+    "limit" -> "Pas plus de ${fmtNum(g.max)}${pg.unitSfx(g)} par ${if (g.period == "week") "semaine" else "jour"}."
+    "duration" -> "${fmtNum(g.minutes)} minutes par jour, avec le minuteur."
+    "challenge" -> "${g.length} jours d’affilée à partir du ${fmtDate(g.start)}."
+    "program" -> "${fmtNum(g.base)}${pg.unitSfx(g)} la première semaine, puis +${fmtNum(g.step)} chaque semaine pendant ${g.weeks} semaines."
+    "project" -> "${pl(g.tasks.size, "étape", "étapes")} à cocher${if (g.due.isNotEmpty()) " avant le ${fmtDate(g.due)}" else ""}."
+    else -> pg.metaLine(g)
 }
 
 private fun dayList(s: String?): List<Int>? = s?.let { if (it.isEmpty()) emptyList() else it.split(",").mapNotNull { x -> x.toIntOrNull() } }
@@ -212,7 +362,32 @@ private fun numOf(s: String?): Double = s?.trim()?.replace(',', '.')?.toDoubleOr
 private fun submitGoal(ui: AppState, u: User, g0: Goal?, type: String, title0: String, icon: String, note: String, vis: String, t: Map<String, String>,
                        members: List<String>, buddy: String?, bVerify: Boolean, bMiss: Boolean, grp: String?): String? {
     val pg = ui.pg; val title = title0.trim()
-    if (title.isEmpty()) return "Donne un intitulé à ton objectif."
+    val (g, e) = buildGoal(ui, u, g0, type, title0, icon, note, vis, t, members, buddy, bVerify, bMiss)
+    if (e != null || g == null) return e
+    if (type !in SOCIAL_TYPES && buddy != null && buddy != g0?.buddy) pg.notify(buddy, "${u.name} compte sur toi comme binôme pour « $title ».", "verify")
+    // Cap quotidien relié à Santé : la mesure du jour remplit la quantité
+    if (type == "cap") {
+        val ctx = fr.pepsgoal.app.PepsApp.instance; val h = t["health"].orEmpty()
+        val links = fr.pepsgoal.app.sys.Health.links(ctx).filter { it.goalId != g.id } + (if (h.isNotEmpty()) listOf(fr.pepsgoal.app.sys.Health.Link(g.id, h, g.target, ">=")) else emptyList())
+        fr.pepsgoal.app.sys.Health.saveLinks(ctx, links)
+        if (h.isNotEmpty()) ui.scope.launch { fr.pepsgoal.app.sys.Health.sync(ctx, force = true); ui.bump() }
+    }
+    return saveGoal(ui, u, g0, g, type, title, grp)
+}
+
+/** Construit l'objectif à partir du formulaire, sans l'enregistrer (résumé, vérification). */
+private fun buildGoal(ui: AppState, u: User, g0: Goal?, type: String, title0: String, icon: String, note: String, vis: String, t: Map<String, String>,
+                      members: List<String>, buddy: String?, bVerify: Boolean, bMiss: Boolean): Pair<Goal?, String?> {
+    val (g, e) = buildGoal0(ui, u, g0, type, title0, icon, note, vis, t, members)
+    if (g != null && type !in SOCIAL_TYPES) { g.buddy = buddy; g.buddyVerify = buddy != null && bVerify; g.buddyMiss = buddy != null && bMiss }
+    return g to e
+}
+
+private fun buildGoal0(ui: AppState, u: User, g0: Goal?, type: String, title0: String, icon: String, note: String, vis: String, t: Map<String, String>,
+                       members: List<String>): Pair<Goal?, String?> {
+    val pg = ui.pg; val title = title0.trim()
+    fun bad(m: String) = null to m
+    if (title.isEmpty()) return bad("Donne un intitulé à ton objectif.")
     val g = Goal(g0?.id ?: uid(), g0?.userId ?: u.id, type, title, icon, note.trim(), vis, g0?.createdAt ?: nowMs())
     g.data = g0?.let { LinkedHashMap(it.data) } ?: linkedMapOf()
     if (g0 == null) { g.milestones = emptyList(); g.monthsDone = emptyList(); g.days = emptyList(); g.perWeek = 3 }
@@ -220,66 +395,71 @@ private fun submitGoal(ui: AppState, u: User, g0: Goal?, type: String, title0: S
     when (type) {
         "monthly", "objective" -> {
             g.target = numOf(v("target", fmtNum(g0?.targetOrNull ?: if (type == "monthly") 20.0 else 10.0))); g.unit = v("unit", g0?.unit ?: "").trim()
-            if (!(g.target > 0)) return if (type == "monthly") "La cible mensuelle doit être un nombre supérieur à zéro." else "La cible doit être un nombre supérieur à zéro."
+            if (!(g.target > 0)) return bad(if (type == "monthly") "La cible mensuelle doit être un nombre supérieur à zéro." else "La cible doit être un nombre supérieur à zéro.")
             if (type == "monthly") g.cumulate = v("cumulate", if (g0 == null || g0.cumulate) "1" else "") == "1" else g.endDate = v("endDate", g0?.endDate ?: "")
         }
-        "deadline" -> { g.due = v("due", g0?.due?.ifEmpty { null } ?: ymd(todayDate().plusDays(7))); if (g.due.isEmpty()) return "Choisis une date limite." }
+        "deadline" -> { g.due = v("due", g0?.due?.ifEmpty { null } ?: ymd(todayDate().plusDays(7))); if (g.due.isEmpty()) return bad("Choisis une date limite.") }
         "routine" -> {
             g.mode = v("mode", g0?.mode ?: "days"); g.days = dayList(t["days"]) ?: g0?.days ?: listOf(0, 2, 4); g.perWeek = numOf(v("perWeek", "${g0?.perWeek ?: 3}")).let { if (it.isNaN()) 0 else it.toInt() }
-            if (g.mode == "days" && g.days.isEmpty()) return "Choisis au moins un jour de la semaine."
-            if (g.mode == "count" && g.perWeek !in 1..7) return "Choisis entre 1 et 7 fois par semaine."
+            if (g.mode == "days" && g.days.isEmpty()) return bad("Choisis au moins un jour de la semaine.")
+            if (g.mode == "count" && g.perWeek !in 1..7) return bad("Choisis entre 1 et 7 fois par semaine.")
         }
         "abstinence" -> g.since = v("since", g0?.since?.ifEmpty { null } ?: today())
         "limit" -> {
             val raw = v("max", fmtNum(g0?.max ?: 2.0)); g.max = numOf(raw); g.unit = v("unit", g0?.unit ?: "").trim().ifEmpty { "unités" }; g.period = v("period", g0?.period ?: "day")
-            if (raw.isBlank() || !(g.max >= 0)) return "Indique la limite à ne pas dépasser."
+            if (raw.isBlank() || !(g.max >= 0)) return bad("Indique la limite à ne pas dépasser.")
         }
-        "duration" -> { g.minutes = numOf(v("minutes", fmtNum(g0?.minutes ?: 30.0))); if (!(g.minutes > 0)) return "Indique une durée quotidienne en minutes." }
+        "cap" -> {
+            g.target = numOf(v("target", fmtNum(g0?.targetOrNull ?: 10000.0))); g.unit = v("unit", g0?.unit ?: "pas").trim()
+            if (!(g.target > 0)) return bad("Le cap quotidien doit être un nombre supérieur à zéro.")
+        }
+        "duration" -> { g.minutes = numOf(v("minutes", fmtNum(g0?.minutes ?: 30.0))); if (!(g.minutes > 0)) return bad("Indique une durée quotidienne en minutes.") }
         "measure" -> {
             g.timeFmt = v("timeFmt", if (g0?.timeFmt == true) "1" else "") == "1"; g.unit = v("unit", g0?.unit ?: "").trim(); g.dir = v("dir", g0?.dir ?: "down")
             val tr = v("mtarget", g0?.targetOrNull?.let { pg.measureFmt(g0, it) } ?: "").trim()
             if (tr.isEmpty()) g.data["target"] = kotlinx.serialization.json.JsonNull
-            else { val x = pg.parseProgress(g, tr); if (!(x > 0)) return if (g.timeFmt) "Cible invalide : écris un temps comme 50:00." else "La cible doit être un nombre."; g.target = x }
-            if (!g.timeFmt && g.unit.isEmpty()) return "Indique une unité (kg, mots/min…), ou coche « valeur en temps »."
+            else { val x = pg.parseProgress(g, tr); if (!(x > 0)) return bad(if (g.timeFmt) "Cible invalide : écris un temps comme 50:00." else "La cible doit être un nombre."); g.target = x }
+            if (!g.timeFmt && g.unit.isEmpty()) return bad("Indique une unité (kg, mots/min…), ou coche « valeur en temps ».")
         }
-        "timed" -> { g.mode = v("tmode", g0?.mode ?: "before"); g.time = v("time", g0?.time ?: "07:00"); g.days = dayList(t["tdays"]) ?: g0?.days ?: (0..6).toList(); if (g.days.isEmpty()) return "Choisis au moins un jour." }
+        "timed" -> { g.mode = v("tmode", g0?.mode ?: "before"); g.time = v("time", g0?.time ?: "07:00"); g.days = dayList(t["tdays"]) ?: g0?.days ?: (0..6).toList(); if (g.days.isEmpty()) return bad("Choisis au moins un jour.") }
         "project" -> {
             g.due = v("due", g0?.due ?: "")
-            if (g0 == null) { g.tasks = v("tasks", "").split("\n").map { it.trim() }.filter { it.isNotEmpty() }.take(60).map { Task(uid(), it, false) }; if (g.tasks.isEmpty()) return "Ajoute au moins une étape (une par ligne)." }
+            if (g0 == null) { g.tasks = v("tasks", "").split("\n").map { it.trim() }.filter { it.isNotEmpty() }.take(60).map { Task(uid(), it, false) }; if (g.tasks.isEmpty()) return bad("Ajoute au moins une étape (une par ligne).") }
         }
         "challenge" -> {
             g.length = numOf(v("length", "${g0?.length ?: 30}")).let { if (it.isNaN()) 0 else Math.round(it).toInt() }; g.start = v("start", g0?.start?.ifEmpty { null } ?: today())
-            if (g.length !in 2..365) return "La durée doit être comprise entre 2 et 365 jours."
+            if (g.length !in 2..365) return bad("La durée doit être comprise entre 2 et 365 jours.")
         }
         "program" -> {
             g.base = numOf(v("base", fmtNum(g0?.base ?: 60.0))); g.step = numOf(v("step", fmtNum(g0?.step ?: 15.0))).let { if (it.isNaN()) 0.0 else it }
             g.unit = v("unit", g0?.unit ?: "min").trim().ifEmpty { "unités" }; g.weeks = numOf(v("weeks", "${g0?.weeks ?: 8}")).let { if (it.isNaN()) 0 else Math.round(it).toInt() }; g.start = v("start", g0?.start?.ifEmpty { null } ?: today())
-            if (!(g.base > 0)) return "La cible de la semaine 1 doit être supérieure à zéro."
-            if (g.weeks !in 2..52) return "Choisis entre 2 et 52 semaines."
+            if (!(g.base > 0)) return bad("La cible de la semaine 1 doit être supérieure à zéro.")
+            if (g.weeks !in 2..52) return bad("Choisis entre 2 et 52 semaines.")
         }
         "group" -> {
             g.target = numOf(v("target", fmtNum(g0?.targetOrNull ?: 500.0))); g.unit = v("unit", g0?.unit ?: "km").trim().ifEmpty { "unités" }; g.endDate = v("endDate", g0?.endDate ?: "")
             g.members = (listOf(g0?.userId ?: u.id) + (g0?.members ?: emptyList()) + members).distinct().toMutableList()
-            if (!(g.target > 0)) return "Le total commun doit être supérieur à zéro."
-            if (g.members!!.size < 2) return "Choisis au moins un ami pour former le groupe."
+            if (!(g.target > 0)) return bad("Le total commun doit être supérieur à zéro.")
+            if (g.members!!.size < 2) return bad("Choisis au moins un ami pour former le groupe.")
         }
         "duel" -> {
             g.unit = v("unit", g0?.unit ?: "pompes").trim().ifEmpty { "points" }; g.endDate = v("endDate", g0?.endDate?.ifEmpty { null } ?: ymd(todayDate().plusDays(7)))
-            if (g0 == null) { val o = members.firstOrNull() ?: return "Choisis un adversaire parmi tes amis."; g.members = mutableListOf(u.id, o) } else g.members = g0.members
-            if (g.endDate.isEmpty() || g.endDate < today()) return "Choisis une date de fin à partir d’aujourd’hui."
+            if (g0 == null) { val o = members.firstOrNull() ?: return bad("Choisis un adversaire parmi tes amis."); g.members = mutableListOf(u.id, o) } else g.members = g0.members
+            if (g.endDate.isEmpty() || g.endDate < today()) return bad("Choisis une date de fin à partir d’aujourd’hui.")
         }
         "period" -> {
             g.freq = if (v("freq", g0?.freq ?: "week") == "month") "month" else "week"
             g.days = dayList(t["pdays"]) ?: g0?.days?.takeIf { g0.freq == "week" } ?: listOf(0, 2, 4); g.mdays = dayList(t["pmdays"]) ?: g0?.mdays ?: listOf(1)
             g.start = v("pstart", g0?.start?.ifEmpty { null } ?: "18:00"); g.end = v("pend", g0?.end?.ifEmpty { null } ?: "19:00")
-            if (if (g.freq == "week") g.days.isEmpty() else g.mdays.isEmpty()) return if (g.freq == "week") "Choisis au moins un jour de la semaine." else "Choisis au moins un jour du mois."
-            if (g.end <= g.start) return "L’heure de fin doit être après l’heure de début."
+            if (if (g.freq == "week") g.days.isEmpty() else g.mdays.isEmpty()) return bad(if (g.freq == "week") "Choisis au moins un jour de la semaine." else "Choisis au moins un jour du mois.")
+            if (g.end <= g.start) return bad("L’heure de fin doit être après l’heure de début.")
         }
     }
-    if (type !in SOCIAL_TYPES) {
-        g.buddy = buddy; g.buddyVerify = buddy != null && bVerify; g.buddyMiss = buddy != null && bMiss
-        if (buddy != null && buddy != g0?.buddy) pg.notify(buddy, "${u.name} compte sur toi comme binôme pour « $title ».", "verify")
-    }
+    return g to null
+}
+
+private fun saveGoal(ui: AppState, u: User, g0: Goal?, g: Goal, type: String, title: String, grp: String?): String? {
+    val pg = ui.pg
     if (g0 != null) {
         pg.setGoalGroup(u, g0.id, grp)
         g0.title = g.title; g0.icon = g.icon; g0.note = g.note; g0.visibility = g.visibility; g0.data = g.data
@@ -373,6 +553,7 @@ private fun GoalActions(ui: AppState, g: Goal, doneToday: Boolean, running: Bool
         "limit" -> { PButton("Noter 1 ${g.unit}", { pg.limitAdd(id) }, icon = "plus"); PButton("Retirer 1", { pg.limitSub(id) }, kind = "ghost"); vbtn("Valider ma journée") }
         "duration" -> { PButton(if (running) "Mettre en pause" else "Démarrer le minuteur", { pg.toggleTimer(g) }, icon = if (running) "pause" else "play", kind = "primary"); PButton("Ajouter des minutes", { ui.open(Sheet.Progress(id)) }, icon = "plus") }
         "measure" -> PButton("Nouvelle mesure", { doValidate(ui, id) }, icon = "plus", kind = "primary")
+        "cap" -> PButton("Ajouter", { ui.open(Sheet.Progress(id)) }, icon = "plus", kind = "primary")
         "timed" -> { val k = pg.timedDate(g); if (g.days.contains(wdIdx(parseYmd(k)))) PButton(if (pg.hasCheck(id, k)) "Annuler la validation" else if (g.mode == "notafter") "J'ai tenu hier soir" else "Valider aujourd'hui", { doValidate(ui, id) }, icon = "check", kind = if (pg.hasCheck(id, k)) "normal" else "primary") }
         "challenge" -> if (g.failedAt != null || g.completedAt != null) PButton(if (g.failedAt != null) "Recommencer à partir d'aujourd'hui" else "Relancer un nouveau challenge", { pg.challengeRestart(id) }, icon = "repeat", kind = "primary") else if (pg.challengeDay(g) >= 1) vbtn("Valider le jour")
         "program" -> if (g.completedAt == null) PButton("Ajouter un progrès", { doValidate(ui, id) }, icon = "plus", kind = "primary")
@@ -397,6 +578,17 @@ private fun GoalDetail(ui: AppState, g: Goal, own: Boolean) {
             SectionTitle("7 derniers jours")
             for (i in 6 downTo 0) { val k = ymd(todayDate().minusDays(i.toLong())); val v = pg.sumKind(g, "use") { it.date == k }
                 ProgLine(WD_SHORT[wdIdx(parseYmd(k))], v / maxOf(g.max, 1.0) * 100, "${fmtNum(v)}/${fmtNum(g.max)}", tc.c, cur = i == 0, over = g.period == "day" && v > g.max) }
+        }
+        "cap" -> {
+            val v = pg.capDay(g)
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(fmtNum(v), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 40.sp, color = tc.ink)
+                Muted("sur ${fmtNum(g.target)}${pg.unitSfx(g)} aujourd'hui")
+                Bar(minOf(100.0, v / g.target * 100), color = tc.c)
+            }
+            SectionTitle("7 derniers jours")
+            for (i in 6 downTo 0) { val k = ymd(todayDate().minusDays(i.toLong())); val x = pg.capDay(g, k)
+                ProgLine(WD_SHORT[wdIdx(parseYmd(k))], x / g.target * 100, "${fmtNum(x)}/${fmtNum(g.target)}", tc.c, cur = i == 0, hit = x >= g.target) }
         }
         "duration" -> {
             val m = pg.durationLiveMins(g)

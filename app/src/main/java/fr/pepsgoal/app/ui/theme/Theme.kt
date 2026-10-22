@@ -77,12 +77,13 @@ internal val TYPE_LIGHT = mapOf(
     "abstinence" to ("#A98BFF" to "#5530CF"), "monthly" to ("#FFD23F" to "#7A4E00"), "limit" to ("#FF8A3D" to "#A33D00"),
     "duration" to ("#2EF2B0" to "#00704F"), "project" to ("#4D9BFF" to "#0B4FC2"), "measure" to ("#FF7AD9" to "#A3007A"),
     "group" to ("#7CFF6B" to "#1F7A10"), "duel" to ("#FF5A5A" to "#B3121F"), "challenge" to ("#FFB000" to "#8A5300"),
-    "program" to ("#7C8CFF" to "#2F3FBF"), "timed" to ("#E3B98A" to "#7A4B12"), "period" to ("#7DD3FC" to "#035C8A")
+    "program" to ("#7C8CFF" to "#2F3FBF"), "timed" to ("#E3B98A" to "#7A4B12"), "period" to ("#7DD3FC" to "#035C8A"),
+    "cap" to ("#00D1B2" to "#006B5B")
 )
 private val TYPE_DARK_INK = mapOf(
     "objective" to "#5FE0FF", "deadline" to "#FF7DBB", "routine" to "#C6FF5C", "abstinence" to "#BFA8FF", "monthly" to "#FFE07A",
     "limit" to "#FFB07A", "duration" to "#5FF5C4", "project" to "#8CBDFF", "measure" to "#FF9FE4", "group" to "#9DFF90",
-    "duel" to "#FF8A8A", "challenge" to "#FFC94D", "program" to "#A9B3FF", "timed" to "#F0CFA6", "period" to "#9DDCFF"
+    "duel" to "#FF8A8A", "challenge" to "#FFC94D", "program" to "#A9B3FF", "timed" to "#F0CFA6", "period" to "#9DDCFF", "cap" to "#4FE8CF"
 )
 // Modes daltoniens : palettes distinguables (bleu / orange / gris, sans opposition rouge-vert ou bleu-jaune selon le cas)
 private val CVD = mapOf(

@@ -163,6 +163,8 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
         "duration" -> { val m = pg.durationLiveMins(g).also { now.hashCode() }; meta = "${fmtClock(m * 60)} / ${fmtNum(g.minutes)} min"; bar = m / g.minutes * 100
             right = { CheckButton(done && !running, just, if (running) "Mettre en pause : ${g.title}" else "Démarrer le minuteur : ${g.title}", tc.c, icon = if (running) "pause" else if (done) "check" else "play", running = running) { pg.toggleTimer(g) } } }
         "measure" -> { meta = "Dernière : ${pg.measureStat(g).v}"; right = { MiniBtn("+ Mesure", tc.c) { doValidate(ui, g.id) } } }
+        "cap" -> { val v = pg.capDay(g); meta = "${fmtNum(v)} / ${fmtNum(g.target)}${pg.unitSfx(g)} aujourd’hui"; bar = minOf(100.0, v / g.target * 100)
+            right = { MiniBtn(if (done) "+ Encore" else "+ Ajouter", tc.c) { doValidate(ui, g.id) } } }
         "timed" -> { val w = pg.timedWindow(g); meta = w.txt; urgent = !w.open && !done
             right = { CheckButton(done, just, if (g.mode == "notafter") "J'ai tenu hier soir" else "Valider", tc.c, !w.open && !done) { doValidate(ui, g.id) } } }
         "period" -> { val w = pg.periodWindow(g); meta = w.txt; urgent = !w.open && !done
@@ -190,7 +192,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
     var w by remember { mutableIntStateOf(1) }
     var armed by remember { mutableIntStateOf(0) }
     val th = w * .26f
-    val rightLabel = if (g.type == "duration") (if (running) "Pause" else "Minuteur") else if (done && g.type in setOf("routine", "abstinence", "limit", "timed", "challenge")) "Annuler" else "Valider"
+    val rightLabel = if (g.type == "duration") (if (running) "Pause" else "Minuteur") else if (done && g.type in setOf("routine", "abstinence", "limit", "timed", "challenge")) "Annuler" else if (g.type == "cap") "Ajouter" else "Valider"
     val drag = androidx.compose.foundation.gestures.rememberDraggableState { d ->
         dx = (dx + d).coerceIn(-w * .45f, w * .45f)
         val a = when { dx > th -> 1; dx < -th -> -1; else -> 0 }
@@ -320,7 +322,7 @@ fun GoalCard(ui: AppState, g: Goal, modifier: Modifier = Modifier) {
         if (g.type == "monthly" && g.cumulate) Muted("Cumul : ${fmtNum(pg.objProgress(g))} ${g.unit} · ${pl(pg.goalStreak(g), "mois réussi d’affilée", "mois réussis d’affilée")}", small = true)
         Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Muted(pg.metaLine(g), Modifier.weight(1f), small = true, maxLines = 2)
-            if (g.type in setOf("routine", "abstinence", "limit", "duration", "timed", "period", "challenge")) Last7(pg, g)
+            if (g.type in setOf("routine", "abstinence", "limit", "duration", "cap", "timed", "period", "challenge")) Last7(pg, g)
         }
     }
 }

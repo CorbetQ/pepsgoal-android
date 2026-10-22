@@ -23,17 +23,19 @@ object Coach {
     /** Brouillon d'objectif proposé par l'IA, à vérifier dans le formulaire avant l'enregistrement. */
     class Draft(val type: String, val title: String, val icon: String, val fields: Map<String, String>, val byAi: Boolean)
 
-    private val TYPES = setOf("routine", "objective", "abstinence", "limit", "duration", "deadline", "challenge")
+    private val TYPES = setOf("routine", "objective", "cap", "abstinence", "limit", "duration", "deadline", "challenge")
 
     suspend fun createGoal(ctx: Context, request: String): Draft {
         val prompt = """$ROLE${memory(ctx)}
 Transforme la demande en UN objectif PepsGoal. Réponds uniquement par une ligne au format TYPE|TITRE|EMOJI|PARAMETRE
-TYPE parmi : routine, objective, abstinence, limit, duration, deadline, challenge.
-PARAMETRE : routine = jours (lun,mer,ven) ou nombre de fois par semaine (3x) ; objective = cible et unité (12 livres) ; limit = maximum et unité (2 cafés) ; duration = minutes par jour (20) ; deadline = date AAAA-MM-JJ ; challenge = nombre de jours (30) ; abstinence = rien.
+TYPE parmi : routine, objective, cap, abstinence, limit, duration, deadline, challenge.
+PARAMETRE : routine = jours (lun,mer,ven) ou nombre de fois par semaine (3x) ; objective = cible et unité (12 livres) ; cap = seuil quotidien et unité (10000 pas) ; limit = maximum et unité (2 cafés) ; duration = minutes par jour (20) ; deadline = date AAAA-MM-JJ ; challenge = nombre de jours (30) ; abstinence = rien.
 Demande : courir trois fois par semaine
 routine|Courir 30 minutes|🏃|3x
 Demande : lire 12 livres cette année
 objective|Lire 12 livres|📚|12 livres
+Demande : faire 10 000 pas par jour
+cap|10 000 pas par jour|👟|10000 pas
 Demande : arrêter de fumer
 abstinence|Arrêter la cigarette|🚭|
 Demande : ${request.trim().take(200)}
@@ -55,7 +57,8 @@ Demande : ${request.trim().take(200)}
 
     private val DAYS = listOf("lun", "mar", "mer", "jeu", "ven", "sam", "dim")
 
-    private fun fieldsFor(type: String, param: String, request: String): Map<String, String> {
+    private fun fieldsFor(type: String, param0: String, request: String): Map<String, String> {
+        val param = param0.replace(Regex("(\\d)[\\s\u202f\u00a0.](?=\\d{3}\\b)"), "$1").replace(Regex("(\\d+)\\s?k\\b")) { "${it.groupValues[1]}000" }
         val num = Regex("(\\d+(?:[.,]\\d+)?)").find(param)?.value?.replace(',', '.')
         val unit = param.replace(Regex("^\\s*\\d+(?:[.,]\\d+)?\\s*"), "").trim().take(20)
         return when (type) {
@@ -66,7 +69,7 @@ Demande : ${request.trim().take(200)}
                     per != null -> mapOf("mode" to "count", "perWeek" to per)
                     else -> mapOf("mode" to "days", "days" to "0,1,2,3,4,5,6") }
             }
-            "objective" -> buildMap { num?.let { put("target", it) }; if (unit.isNotEmpty()) put("unit", unit) }
+            "objective", "cap" -> buildMap { num?.let { put("target", it) }; if (unit.isNotEmpty()) put("unit", unit) }
             "limit" -> buildMap { num?.let { put("max", it) }; if (unit.isNotEmpty()) put("unit", unit); put("period", if (param.contains("semaine")) "week" else "day") }
             "duration" -> mapOf("minutes" to (num ?: "20"))
             "challenge" -> mapOf("length" to (num ?: "30"))
@@ -77,11 +80,13 @@ Demande : ${request.trim().take(200)}
 
     /** Version sans IA : mots-clés de la demande. */
     fun rules(request: String): Draft {
-        val r = request.lowercase()
+        // « 10 000 pas », « 10k pas » → « 10000 pas »
+        val r = request.lowercase().replace(Regex("(\\d)[\\s\u202f\u00a0.](?=\\d{3}\\b)"), "$1").replace(Regex("(\\d+)\\s?k\\b")) { "${it.groupValues[1]}000" }
         val type = when {
             Regex("arr[êe]ter|sans |plus de |ne plus|stop").containsMatchIn(r) -> "abstinence"
             Regex("max|moins de|limiter|pas plus").containsMatchIn(r) -> "limit"
             Regex("minutes? par jour|\\bmin\\b par jour").containsMatchIn(r) -> "duration"
+            Regex("\\d[\\d\\s.,]*\\s*(pas|litres?|l\\b|km|kcal|calories|étages|verres|pages)\\b.*(par jour|chaque jour|quotidien)").containsMatchIn(r) -> "cap"
             Regex("avant le|d'ici|d’ici|terminer|finir").containsMatchIn(r) -> "deadline"
             Regex("défi|challenge|jours de suite|jours d'affilée").containsMatchIn(r) -> "challenge"
             Regex("\\d+\\s*(livres|km|kilos|kg|€|euros|pages|séances)").containsMatchIn(r) && !r.contains("par semaine") -> "objective"

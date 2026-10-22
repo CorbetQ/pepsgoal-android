@@ -1,7 +1,7 @@
 package fr.pepsgoal.core
 
 /** Valeurs fixes de l'application (identiques à la version web : apps/web-legacy/pepsgoal.html). */
-const val APP_VERSION = "3.3.1"
+const val APP_VERSION = "3.4.0"
 const val FREEZE_EVERY = 10
 const val TUTO_GELS = 5
 const val MONTH_BONUS = 60
@@ -19,6 +19,7 @@ val TYPES: Map<String, TypeInfo> = listOf(
     TypeInfo("monthly", "Mensuel", "Un score à atteindre chaque mois, remis à zéro le 1er", 15, "month"),
     TypeInfo("limit", "Limite", "Ne pas dépasser X par jour ou par semaine", 8, "gauge"),
     TypeInfo("duration", "Durée", "Du temps à cumuler, avec minuteur intégré", 12, "timer"),
+    TypeInfo("cap", "Cap quotidien", "Un seuil à atteindre chaque jour (10 000 pas, 2 L d’eau…)", 12, "bolt"),
     TypeInfo("measure", "Mesure", "Une valeur à améliorer, suivie en courbe", 10, "trend"),
     TypeInfo("timed", "Horaire", "Réussi seulement avant ou après une heure", 10, "clock"),
     TypeInfo("project", "Projet", "Une checklist d’étapes avec avancement", 10, "list"),
@@ -33,7 +34,7 @@ fun typeInfo(t: String): TypeInfo = TYPES[t] ?: TYPES.getValue("routine")
 
 val TYPE_GROUPS = listOf(
     "Essentiels" to listOf("routine", "period", "objective", "deadline", "abstinence", "monthly"),
-    "Doser et mesurer" to listOf("limit", "duration", "measure", "timed"),
+    "Doser et mesurer" to listOf("cap", "limit", "duration", "measure", "timed"),
     "Formats" to listOf("project", "challenge", "program"),
     "À plusieurs" to listOf("group", "duel")
 )

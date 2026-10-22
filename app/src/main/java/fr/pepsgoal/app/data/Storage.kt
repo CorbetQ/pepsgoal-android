@@ -147,6 +147,11 @@ class DevicePrefs(context: Context) {
     var homeCards: List<String> get() = (p.getString("homeCards", "") ?: "").split(",").filter { it.isNotBlank() }; set(v) = p.edit().putString("homeCards", v.joinToString(",")).apply()
     /** Objectifs reportés à demain : « date|id,id ». */
     var snoozed get() = p.getString("snoozed", "") ?: ""; set(v) = p.edit().putString("snoozed", v).apply()
+    /** Messages masqués sur cet appareil (« supprimer pour moi »). */
+    var hiddenMsgs: Set<String> get() = p.getStringSet("hiddenMsgs", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("hiddenMsgs", v.toList().takeLast(2000).toSet()).apply()
+    /** Couleur choisie pour chaque conversation : lignes « clé=index d'accent ». */
+    var chatColors: Map<String, Int> get() = (p.getString("chatColors", "") ?: "").lines().mapNotNull { l -> l.split('=').takeIf { it.size == 2 }?.let { it[0] to (it[1].toIntOrNull() ?: return@mapNotNull null) } }.toMap()
+        set(v) = p.edit().putString("chatColors", v.entries.joinToString("\n") { "${it.key}=${it.value}" }).apply()
     var swipeHint get() = p.getBoolean("swipeHint", false); set(v) = p.edit().putBoolean("swipeHint", v).apply()
     fun a11yCount() = listOf(contrast, cvd.isNotEmpty(), mono, motion, transp, easy, oneHand, textScale != 1f).count { it }
 }
