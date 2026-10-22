@@ -64,7 +64,7 @@ fun SearchScreen(ui: AppState, initial: String) {
     ScreenFrame(ui, "Recherche", "Retour", { ui.back() }, icon = "search", color = p.type("objective").c, color2 = p.type("project").c) {
         item("field") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(q, { q = it }, "Rechercher", Modifier.weight(1f).focusRequester(focus), placeholder = "Objectif, ami, message, réglage…", max = 80)
+                Field(q, { q = it }, "", Modifier.weight(1f).focusRequester(focus), placeholder = "Objectif, ami, message, réglage…", max = 80, icon = "search")
                 IconBtn("mic", "Dicter la recherche", dictate, size = 50.dp)
             }
         }

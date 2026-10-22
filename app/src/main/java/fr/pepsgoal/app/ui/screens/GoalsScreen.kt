@@ -82,7 +82,7 @@ fun GoalsScreen(ui: AppState) {
         // Recherche, affichage et tri
         item("tools") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(query, { query = it }, "Rechercher un objectif", Modifier.weight(1f), max = 60)
+                Field(query, { query = it }, "", Modifier.weight(1f), placeholder = "Rechercher un objectif", max = 60, icon = "search")
                 IconBtn(if (compact) "list" else "grip", if (compact) "Afficher en cartes" else "Afficher en liste", { compact = !compact; ui.prefs.goalView = if (compact) "list" else "cards" }, size = 46.dp)
             }
         }

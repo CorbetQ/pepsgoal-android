@@ -69,7 +69,7 @@ fun CoachChatScreen(ui: AppState) {
                 if (busy) item("busy") { Muted("Le coach écrit…", Modifier.alpha(pulse).padding(start = 6.dp)) }
             }
             Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp).clip(RoundedCornerShape(26.dp)).background(p.glassStrong).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(input, { input = it }, "Écris au coach…", Modifier.weight(1f), max = 600, singleLine = false)
+                Field(input, { input = it }, "", Modifier.weight(1f), placeholder = "Écris au coach…", max = 600, singleLine = false, icon = "sparkle")
                 IconBtn("send", "Envoyer", { send(input) }, size = 46.dp, tint = p.flame)
             }
         }

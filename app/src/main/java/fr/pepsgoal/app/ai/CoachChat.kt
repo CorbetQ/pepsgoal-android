@@ -26,7 +26,7 @@ object CoachChat {
     private val json = Json { ignoreUnknownKeys = true }
     var rev by mutableStateOf(0)
 
-    fun all(ctx: Context): List<ChatMsg> = try { json.decodeFromString(ListSerializer(ChatMsg.serializer()), file(ctx).readText()) } catch (e: Exception) { emptyList() }
+    fun all(ctx: Context): List<ChatMsg> = try { json.decodeFromString(ListSerializer(ChatMsg.serializer()), file(ctx).readText()).map { m -> fixMojibake(m.text).let { if (it == m.text) m else ChatMsg(m.at, m.role, it, m.goal) } } } catch (e: Exception) { emptyList() }
     private fun save(ctx: Context, l: List<ChatMsg>) { file(ctx).parentFile?.mkdirs(); file(ctx).writeText(json.encodeToString(ListSerializer(ChatMsg.serializer()), l.takeLast(80))); rev++ }
     fun clear(ctx: Context) { file(ctx).delete(); rev++ }
 
