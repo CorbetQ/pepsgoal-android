@@ -53,6 +53,25 @@ class LogicTest {
         assertEquals(3, pg.globalStreak("me").n)
     }
 
+    @Test fun dailyCap() {
+        val g = goal("cap") { target = 10000.0; unit = "pas" }
+        pg.addCheck(g, "done", 1.0, 12, ymd(todayDate().minusDays(1)))
+        assertEquals(1, pg.todayPlan().due.size)
+        assertTrue(pg.validate(g.id) is Pg.VResult.AskProgress)
+        pg.addProgress(g.id, 6000.0)
+        assertEquals(false, pg.hasCheck(g.id, today()))
+        pg.addProgress(g.id, 4500.0)
+        assertTrue(pg.hasCheck(g.id, today()))
+        assertEquals(2, pg.goalStreak(g))
+        pg.capSet(g, 8000.0) // nouvelle lecture Santé plus basse : la validation du jour tombe
+        assertEquals(false, pg.hasCheck(g.id, today()))
+        assertEquals(8000.0, pg.capDay(g))
+        // Le serveur le voit comme un objectif chiffré marqué « cap », relu comme un cap quotidien
+        val sg = Mapping.toServerGoal(g)
+        assertEquals("objective", sg["type"].toString().trim('"'))
+        assertEquals("cap", Mapping.fromServerGoal(sg).type)
+    }
+
     @Test fun objectiveCompletes() {
         val g = goal("objective") { target = 3.0; unit = "livres" }
         pg.addProgress(g.id, 2.0); pg.addProgress(g.id, 1.0)

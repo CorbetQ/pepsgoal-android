@@ -29,6 +29,8 @@ object Mapping {
         d["unit"] = JsonPrimitive(clamp(d["unit"].strOr(""), 20))
         when (g.type) {
             "routine" -> { d["mode"] = JsonPrimitive(if (d["mode"].strOr("") == "count") "count" else "days"); d["days"] = JsonArray(d["days"].intList(0, 6).map(::num)); d["perWeek"] = num(d["perWeek"].numOr(3.0).let { Math.round(it).toInt() }.coerceIn(1, 7)) }
+            // Cap quotidien : enregistré par le serveur comme un objectif chiffré marqué « cap »
+            "cap" -> { d["target"] = num(maxOf(0.0001, d["target"].numOr(1.0))); d["endDate"] = JsonPrimitive(""); d["cap"] = JsonPrimitive(true) }
             "objective", "monthly", "group" -> {
                 d["target"] = num(maxOf(0.0001, d["target"].numOr(1.0)))
                 if (g.type != "monthly") d["endDate"] = JsonPrimitive(d["endDate"].strOr("").takeIf(::dayOk) ?: "")
@@ -67,7 +69,7 @@ object Mapping {
     }
 
     fun toServerGoal(g: Goal): JsonObject = buildJsonObject {
-        put("id", g.id); put("ownerId", g.userId); put("type", g.type)
+        put("id", g.id); put("ownerId", g.userId); put("type", if (g.type == "cap") "objective" else g.type)
         put("title", clamp(g.title, 80).ifBlank { "Objectif" }); put("icon", clamp(g.icon, 16).ifEmpty { "🎯" }); put("note", clamp(g.note, 240))
         put("visibility", if (g.visibility in setOf("private", "friends", "public")) g.visibility else "friends"); put("groupId", JsonNull); put("archived", g.archived)
         put("completedAt", isoOf(g.completedAt)?.let(::JsonPrimitive) ?: JsonNull); put("failedAt", isoOf(g.failedAt)?.let(::JsonPrimitive) ?: JsonNull)
@@ -78,8 +80,9 @@ object Mapping {
     }
 
     fun fromServerGoal(sg: JsonObject): Goal {
-        val type = sg["type"].strOr("routine"); val owner = sg["ownerId"].strOr("")
         val data = LinkedHashMap<String, JsonElement>((sg["data"] as? JsonObject) ?: emptyMap())
+        val raw = sg["type"].strOr("routine"); val owner = sg["ownerId"].strOr("")
+        val type = if (raw == "objective" && (data["cap"] as? JsonPrimitive)?.booleanOrNull == true) "cap" else raw
         val g = Goal(sg["id"].strOr(uid()), owner, type, sg["title"].strOr("Objectif"), sg["icon"].strOr("🎯"), sg["note"].strOr(""), sg["visibility"].strOr("friends"),
             msOf(sg["createdAt"].strOr("")) ?: nowMs(), (sg["archived"] as? JsonPrimitive)?.booleanOrNull ?: false,
             msOf((sg["completedAt"] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content), msOf((sg["failedAt"] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content),

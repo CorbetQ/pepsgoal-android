@@ -113,7 +113,7 @@ fun AiCreateCard(ui: AppState) {
                         val d = Coach.createGoal(ctx, q)
                         creating = false; ask = ""
                         ui.open(Sheet.GoalForm(preType = d.type, preTitle = d.title, preIcon = d.icon, preFields = d.fields))
-                        ui.toast(if (d.byAi) "Proposition du coach : vérifie puis enregistre." else "Brouillon prêt : vérifie puis enregistre.", "sparkle")
+                        Unit
                     }
                 }
             }, size = 48.dp, tint = p.flame)

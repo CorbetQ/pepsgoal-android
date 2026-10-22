@@ -155,6 +155,18 @@ object Health {
         val due = pg.todayPlan(u.id).due.associate { it.g.id to it.done }
         var n = 0
         for (l in links) {
+            // Cap quotidien : la mesure du jour devient la quantité du jour (sans jamais faire baisser une saisie à la main)
+            val cg = pg.goalById(l.goalId)
+            if (cg?.type == "cap") {
+                val v = value(ctx, l.metric) ?: continue
+                val was = due[cg.id] == true
+                if (v > pg.capDay(cg) + 1e-6) pg.capSet(cg, v)
+                if (!was && pg.hasCheck(cg.id, today())) {
+                    n++
+                    if (!app.foreground) Notifier.simple(ctx, "health|${cg.id}".hashCode(), Notifier.CH_GOALS, "✓ ${cg.icon} ${cg.title}", "Cap atteint grâce à Santé : ${format(l.metric, v)}.", tab = "today")
+                }
+                continue
+            }
             if (due[l.goalId] != false) continue // pas prévu aujourd'hui, ou déjà validé
             val v = value(ctx, l.metric) ?: continue
             // Une valeur nulle ne valide jamais un seuil « au plus » (absence de données)

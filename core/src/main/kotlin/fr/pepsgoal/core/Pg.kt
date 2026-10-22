@@ -232,7 +232,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
             for ((i, k) in ms.withIndex()) { if (monthProgress(g, k) >= g.target) n++ else if (i > 0) break }
             n
         }
-        "limit", "duration" -> dayStreak(g, { hasCheck(g.id, it) })
+        "limit", "duration", "cap" -> dayStreak(g, { hasCheck(g.id, it) })
         "timed" -> { val na = g.mode == "notafter"; dayStreak(g, { hasCheck(g.id, it) }, { g.days.contains(wdIdx(it)) }, if (na) yday() else today(), if (na) todayDate().minusDays(1) else todayDate()) }
         "challenge" -> challengeDone(g)
         "program" -> g.weeksDone.size
@@ -242,15 +242,15 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
 
     fun scheduled(g: Goal, d: LocalDate): Boolean = when (g.type) {
         "routine" -> g.mode == "days" && g.days.contains(wdIdx(d))
-        "abstinence", "limit", "duration" -> true
+        "abstinence", "limit", "duration", "cap" -> true
         "timed" -> g.days.contains(wdIdx(d))
         "challenge" -> { val k = ymd(d); k >= g.start && k < ymd(parseYmd(g.start).plusDays(g.length.toLong())) }
         "period" -> periodOn(g, d)
         else -> false
     }
     /** Le type affiche un calendrier des 5 dernières semaines. */
-    fun hasCalendar(type: String) = type in setOf("routine", "abstinence", "objective", "monthly", "limit", "duration", "timed", "period")
-    fun daily(type: String) = type in setOf("limit", "duration", "timed", "challenge", "period")
+    fun hasCalendar(type: String) = type in setOf("routine", "abstinence", "objective", "monthly", "limit", "duration", "cap", "timed", "period")
+    fun daily(type: String) = type in setOf("limit", "duration", "cap", "timed", "challenge", "period")
 
     fun dueText(due: String): String {
         val n = daysUntil(due)
@@ -278,6 +278,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         "deadline" -> if (g.completedAt != null) "Terminé le ${fmtDate(ymd(g.completedAt!!))}" else dueText(g.due)
         "limit" -> "${fmtNum(g.max)} ${g.unit} max par ${if (g.period == "week") "semaine" else "jour"}"
         "duration" -> "${fmtNum(g.minutes)} min par jour"
+        "cap" -> "${fmtNum(g.target)}${unitSfx(g)} par jour"
         "measure" -> { val b = measureBest(g); "${if (g.dir == "down") "Plus bas = mieux" else "Plus haut = mieux"}${g.targetOrNull?.let { " · cible ${measureFmt(g, it)}${if (g.timeFmt) "" else " " + g.unit}" } ?: ""}${b?.let { " · record ${measureFmt(g, it)}" } ?: ""}" }
         "timed" -> "${TIMED_LBL[g.mode]} ${g.time} · ${daysLabel(g.days)}"
         "project" -> { val (d, n) = projectCounts(g); "$d/$n étapes${if (g.due.isNotEmpty() && g.completedAt == null) " · " + dueText(g.due) else ""}" }
@@ -303,6 +304,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
             "deadline" -> if (g.completedAt != null) Stat("Fait", "") else { val n = daysUntil(g.due); if (n < 0) Stat("${-n}", "jours de retard") else Stat("$n", if (n > 1) "jours restants" else "jour restant") }
             "limit" -> Stat("$s", if (s > 1) "jours sous la limite" else "jour sous la limite")
             "duration" -> Stat("$s", if (s > 1) "jours réussis" else "jour réussi")
+            "cap" -> Stat("$s", if (s > 1) "jours au-dessus du cap" else "jour au-dessus du cap")
             "measure" -> measureStat(g)
             "timed" -> Stat("$s", if (s > 1) "jours dans les temps" else "jour dans les temps")
             "project" -> { val (d, n) = projectCounts(g); Stat("${if (n > 0) Math.round(d * 100.0 / n) else 0}%", "accompli") }
@@ -321,6 +323,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         "monthly" -> monthProgress(g) / g.target * 100
         "limit" -> limitUsed(g) / maxOf(g.max, 1.0) * 100
         "duration" -> durationLiveMins(g) / g.minutes * 100
+        "cap" -> capDay(g) / g.target * 100
         "project" -> projectCounts(g).let { (d, n) -> if (n > 0) d * 100.0 / n else 0.0 }
         "challenge" -> challengeDone(g) * 100.0 / g.length
         "program" -> { val w = programWeek(g).coerceIn(1, g.weeks); programSum(g, w) / programTarget(g, w) * 100 }
@@ -339,7 +342,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
                 }
                 "abstinence" -> if (g.since <= t) due.add(DueItem(g, hasCheck(g.id, t)))
                 "objective", "monthly", "deadline" -> if (g.completedAt == null) ongoing.add(g)
-                "limit", "duration" -> due.add(DueItem(g, hasCheck(g.id, t)))
+                "limit", "duration", "cap" -> due.add(DueItem(g, hasCheck(g.id, t)))
                 "measure" -> ongoing.add(g)
                 "timed" -> { val k = timedDate(g); if (g.days.contains(wdIdx(parseYmd(k))) && k >= ymd(g.createdAt)) due.add(DueItem(g, hasCheck(g.id, k))) }
                 "project" -> if (g.completedAt == null) ongoing.add(g)
@@ -390,7 +393,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         val u = me() ?: return; val st = globalStreak(u.id)
         if (!wasLit) hooks.toast(if (st.n > 1) "Flamme allumée : ${pl(st.n, "jour", "jours")} de série !" else "Flamme allumée ! Ta série commence.", "flame")
         val n = goalStreak(g)
-        if (n in MILESTONES && !g.milestones.contains(n) && g.type in setOf("routine", "abstinence", "limit", "duration", "timed", "period")) {
+        if (n in MILESTONES && !g.milestones.contains(n) && g.type in setOf("routine", "abstinence", "limit", "duration", "cap", "timed", "period")) {
             g.milestones = g.milestones + n
             val unit = statBig(g).l
             notify(u.id, "Palier débloqué : $n $unit pour « ${g.title} ».", "badge", g.id)
@@ -482,6 +485,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
     }
 
     fun progressInfo(g: Goal): ProgressInfo = when (g.type) {
+        "cap" -> ProgressInfo("Ajouter", "${fmtNum(capDay(g))} / ${fmtNum(g.target)}${unitSfx(g)} aujourd'hui", "Quantité${if (g.unit.isNotEmpty()) " (${g.unit})" else ""}", capQuick(g))
         "duration" -> ProgressInfo("Ajouter des minutes", "${fmtClock(durationMins(g) * 60)} / ${fmtNum(g.minutes)} min aujourd'hui", "Minutes", listOf(5.0, 10.0, 15.0, 30.0), quickAbsolute = true)
         "measure" -> { val p = measurePts(g); val last = p.lastOrNull()?.value
             ProgressInfo("Nouvelle mesure", if (last != null) "dernière mesure ${measureFmt(g, last)}${unitSfx(g)}" else "première mesure",
@@ -508,6 +512,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         val g = goalById(id) ?: return; val u = me() ?: return
         when (g.type) {
             "duration" -> { addTimeMinutes(g, value, false); return }
+            "cap" -> { capAdd(g, value); return }
             "measure" -> { measureProgress(g, value); return }
             "program" -> { programProgress(g, value); return }
             "group" -> { groupProgress(g, value); return }
@@ -613,6 +618,40 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         val t = runningTimer() ?: return
         val g = goalById(t.goalId) ?: return
         if (!hasCheck(g.id, today()) && durationLiveMins(g) >= g.minutes) stopTimer(false)
+    }
+
+    /* ---------------------------------------------------------------- Cap quotidien */
+    /** Quantité saisie aujourd'hui (ou le jour [k]) pour un cap quotidien. */
+    fun capDay(g: Goal, k: String = today()) = sumKind(g, "progress", meId()) { it.date == k }
+    /** Raccourcis de saisie proportionnés au cap (10 000 pas → 1 000, 2 500, 5 000…). */
+    fun capQuick(g: Goal): List<Double> {
+        val t = g.target
+        val base = listOf(.1, .25, .5).map { x -> val v = t * x; val mag = Math.pow(10.0, Math.floor(Math.log10(maxOf(v, 1.0)))); Math.max(1.0, Math.round(v / mag) * mag) }
+        return (base + t).distinct()
+    }
+    fun capAdd(g: Goal, value: Double, silent: Boolean = false) {
+        val lit = wasLit()
+        addCheck(g, "progress", value, 0)
+        capCheck(g, lit, silent)
+    }
+    /** Fixe la quantité du jour à [value] (lecture Santé) : ajoute ou retire la différence. */
+    fun capSet(g: Goal, value: Double) {
+        val d = value - capDay(g)
+        if (Math.abs(d) < 1e-6) return
+        val lit = wasLit()
+        addCheck(g, "progress", d, 0)
+        capCheck(g, lit, true)
+    }
+    private fun capCheck(g: Goal, lit: Boolean, silent: Boolean) {
+        val v = capDay(g); val ex = todayDone(g)
+        if (ex == null && v >= g.target) {
+            addCheck(g, "done", 1.0, typeInfo("cap").pts); justDone = g.id
+            store.commit(); afterValidation(g, typeInfo("cap").pts, lit)
+            hooks.toast("Cap atteint : ${fmtNum(g.target)}${unitSfx(g)} pour « ${g.title} » !", "bolt"); store.commit(); checkPerfect(); return
+        }
+        if (ex != null && v < g.target) { db.checkins.remove(ex); db.checkins = db.checkins.toMutableList() }
+        store.commit(); if (!silent) hooks.toast("${fmtNum(v)} / ${fmtNum(g.target)}${unitSfx(g)} aujourd'hui", "bolt")
+        hooks.liveChanged()
     }
 
     /* ---------------------------------------------------------------- Mesure */

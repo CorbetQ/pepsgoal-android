@@ -77,6 +77,19 @@ object Social {
         return map
     }
 
+    /** Modifications d'une conversation : dernier texte de chaque message, envoyé par son auteur. */
+    fun edits(ui: AppState, list: List<Message>): Map<String, String> {
+        val from = list.associate { it.id to it.from }; val out = HashMap<String, String>()
+        for (m in list) { val b = body(ui, m) ?: continue; if (b.str("k") == "edit" && from[b.str("p")] == m.from && b.str("t").isNotBlank()) out[b.str("p")] = b.str("t") }
+        return out
+    }
+
+    /** Messages supprimés pour tout le monde par leur auteur. */
+    fun deleted(ui: AppState, list: List<Message>): Set<String> {
+        val from = list.associate { it.id to it.from }
+        return list.mapNotNull { m -> body(ui, m)?.takeIf { it.str("k") == "del" && from[it.str("p")] == m.from }?.str("p") }.toSet()
+    }
+
     /** Votes d'un sondage de la messagerie : dernier vote de chaque participant. */
     fun pollVotes(ui: AppState, poll: Message, list: List<Message>): Map<String, List<String>> {
         val by = LinkedHashMap<String, List<String>>()
