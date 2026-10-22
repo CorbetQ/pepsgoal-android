@@ -79,7 +79,7 @@ fun ShopScreen(ui: AppState) {
         }
         item("tabs") {
             Row(Modifier.fillMaxWidth().clip(CircleShape).background(p.ink.copy(alpha = .06f)).padding(4.dp)) {
-                listOf("icons" to "Icônes", "themes" to "Thèmes").forEach { (k, l) ->
+                listOf("icons" to "Icônes", "themes" to "Thèmes", "bgs" to "Fonds").forEach { (k, l) ->
                     Box(Modifier.weight(1f).clip(CircleShape).background(if (tab == k) p.glassStrong else Color.Transparent).clickable { tab = k }.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
                         Text(l, fontWeight = if (tab == k) FontWeight.ExtraBold else FontWeight.Bold, color = if (tab == k) p.ink else p.ink2)
                     }
@@ -102,7 +102,7 @@ fun ShopScreen(ui: AppState) {
                 }
             }
         }
-        else SHOP_THEMES.sortedBy { t -> val ss = t.season; when { ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.forEach { t ->
+        else if (tab == "themes") SHOP_THEMES.sortedBy { t -> val ss = t.season; when { ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.forEach { t ->
             item("th:${t.key}") {
                 val owned = pg.owns("theme:${t.key}", t.price, u)
                 val on = u.settings.accentCustom == t.colors && u.settings.bg == t.bg
@@ -125,10 +125,35 @@ fun ShopScreen(ui: AppState) {
                 }
             }
         }
+        // Arrière-plans illustrés : aperçu animé, deux par ligne ; saison en cours d'abord
+        if (tab == "bgs") SHOP_BGS.sortedBy { b -> val ss = b.season; when { ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.chunked(2).forEachIndexed { row, pair ->
+            item("bg$row") {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    pair.forEach { b ->
+                        val owned = pg.owns("bg:${b.key}", b.price, u); val on = u.settings.bg == "s:${b.key}"
+                        Glass(Modifier.weight(1f), pad = 0.dp, border = if (on) p.flame else null, onClick = { purchase("bg:${b.key}", b.name, b.price, b.season) { pg.applyBg(b); ui.themeTick++; ui.toast("Fond « ${b.name} » appliqué.", "image") } }) {
+                            Box(Modifier.fillMaxWidth().aspectRatio(.62f).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(Brush.verticalGradient(b.sky.map(::hex)))) {
+                                SceneBg(b.key, Modifier.fillMaxSize(), still = true)
+                            }
+                            Column(Modifier.padding(12.dp)) {
+                                Text(b.name, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                                Muted(b.desc, small = true, maxLines = 2)
+                                b.season?.let { SeasonTag(it, owned) }
+                                PriceTag(owned, on, b.price, wallet, pg.buyable("bg:${b.key}", b.price, b.season))
+                            }
+                        }
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+        if (tab == "bgs" && u.settings.bg.startsWith("s:")) item("bgoff") {
+            Glass { SetRow("Revenir à un fond gratuit", "Blob, Aurore, Vagues, Constellation… dans Paramètres › Apparence.") { PButton("Blob", { u.settings.bg = "blob"; pg.store.commit(); ui.themeTick++ }, small = true, kind = "ghost") } }
+        }
         if (tab == "themes" && u.settings.fx.isNotEmpty()) item("fx") {
             Glass { SetRow("Effet animé : ${FX_LABELS[u.settings.fx] ?: u.settings.fx}", "Il s’ajoute à l’arrière-plan de ton thème.") { PButton("Retirer", { u.settings.fx = ""; pg.store.commit(); ui.themeTick++ }, small = true, kind = "ghost") } }
         }
-        item("note") { Muted("Les icônes et thèmes achetés restent à toi sur tous tes appareils (avec un compte). Les couleurs de saison restent gratuites.", Modifier.padding(horizontal = 4.dp), small = true) }
+        item("note") { Muted("Les icônes, thèmes et fonds achetés restent à toi sur tous tes appareils (avec un compte). Les couleurs de saison restent gratuites.", Modifier.padding(horizontal = 4.dp), small = true) }
     }
 }
 

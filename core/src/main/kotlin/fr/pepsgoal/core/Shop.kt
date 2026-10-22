@@ -42,6 +42,47 @@ val SHOP_THEMES = listOf(
     ShopTheme("t-autumn", "Automne", "Feuilles rousses qui tombent", listOf("#FFC36B", "#E2711D", "#8B3A1E"), "mesh", 400, fx = "leaves", season = "autumn"),
 )
 
+/* ---------------------------------------------------------------- Arrière-plans illustrés */
+
+/**
+ * Arrière-plan illustré de la boutique : une scène animée en douceur (réglage « bg » = « s:<clé> »).
+ * [sky] : couleurs indicatives (haut → bas) pour l'aperçu en liste et le repli si l'animation est coupée.
+ */
+class ShopBg(val key: String, val name: String, val desc: String, val price: Int, val sky: List<String>, val dark: Boolean = false, val season: String? = null)
+
+val SHOP_BGS = listOf(
+    ShopBg("nebula", "Nébuleuse", "Nuages cosmiques et étoiles filantes", 500, listOf("#0B0628", "#3B1D6E", "#C14BA8"), dark = true),
+    ShopBg("deepsea", "Fonds marins", "Rayons de lumière, bulles et poissons", 500, listOf("#0C5C8A", "#063A5C", "#021829"), dark = true),
+    ShopBg("mountains", "Montagnes", "Sommets en couches au lever du jour", 400, listOf("#FFD7A8", "#F59E8B", "#6C5B9E")),
+    ShopBg("citynight", "Ville la nuit", "Gratte-ciel, fenêtres allumées et lune", 500, listOf("#0A0F2C", "#1E2A5A", "#3D2B6B"), dark = true),
+    ShopBg("tram", "Ville et tramway", "Un tramway glisse devant les façades", 500, listOf("#BFE3FF", "#E9F2FF", "#F6E8D8")),
+    ShopBg("mistforest", "Forêt brumeuse", "Sapins en couches dans la brume", 400, listOf("#DDE8E0", "#9DB8A7", "#36574A")),
+    ShopBg("dunes", "Dunes", "Désert doré au soleil couchant", 400, listOf("#FFB07A", "#F28C5B", "#C9663F")),
+    ShopBg("sakura", "Cerisiers", "Branches en fleurs et pétales", 500, listOf("#FFE6EF", "#FFC9DD", "#F6A6C1")),
+    ShopBg("magma", "Magma", "Roche sombre et rivières de lave", 600, listOf("#1A0A08", "#4A1308", "#FF5A1F"), dark = true),
+    ShopBg("coderain", "Pluie de code", "Caractères verts qui tombent", 400, listOf("#000A04", "#001F0E", "#003B1C"), dark = true),
+    ShopBg("borealis", "Aurore boréale", "Voiles verts et violets sur la toundra", 600, listOf("#020B1A", "#08263A", "#0E3B3A"), dark = true),
+    ShopBg("rainwindow", "Pluie sur la vitre", "Gouttes qui glissent, lumières floues", 400, listOf("#2A3142", "#3E4A63", "#5A6B88"), dark = true),
+    ShopBg("planet", "Planète", "Géante aux anneaux et lunes", 600, listOf("#05030F", "#140A2E", "#2A1554"), dark = true),
+    ShopBg("lagoon", "Lagon", "Plage, palmiers et eau turquoise", 400, listOf("#7FD8FF", "#BFF3F0", "#F7E3B5")),
+    // Éditions limitées de saison
+    ShopBg("haunted", "Manoir hanté", "Pleine lune, chauves-souris et citrouilles", 500, listOf("#120A24", "#2C1550", "#4A1F3A"), dark = true, season = "halloween"),
+    ShopBg("snowvillage", "Village enneigé", "Maisons illuminées sous la neige", 500, listOf("#1B2A4A", "#3B4F7A", "#DCE6F5"), dark = true, season = "noel"),
+    ShopBg("fireworks", "Feux d’artifice", "Gerbes colorées au-dessus de la ville", 500, listOf("#05061A", "#10153A", "#241A4A"), dark = true, season = "newyear"),
+    ShopBg("snowpeak", "Montagne d’hiver", "Sommets enneigés et ciel givré", 400, listOf("#DDEBFF", "#A9C6EE", "#F4F8FF"), season = "winter"),
+    ShopBg("heartsky", "Ciel de cœurs", "Nuages roses et cœurs qui s’envolent", 400, listOf("#FFD6E6", "#FFB3CF", "#E9A6FF"), season = "love"),
+    ShopBg("eggmeadow", "Prairie de Pâques", "Œufs cachés dans l’herbe fleurie", 400, listOf("#CFF1FF", "#E8FFD6", "#A6DE7A"), season = "easter"),
+    ShopBg("flowerfield", "Champ fleuri", "Collines vertes et fleurs des champs", 400, listOf("#BFE8FF", "#E6FFD9", "#8ED16B"), season = "spring"),
+    ShopBg("summerbeach", "Plage d’été", "Soleil, vagues et parasols", 400, listOf("#FFE7A3", "#7FD8FF", "#F5D79E"), season = "summer"),
+    ShopBg("autumnwood", "Bois d’automne", "Arbres roux et feuilles qui tombent", 400, listOf("#FFE1B3", "#F2A65A", "#9C4A1E"), season = "autumn"),
+)
+
+/** Applique un arrière-plan illustré (acheté ou gratuit). */
+fun Pg.applyBg(b: ShopBg) {
+    val u = me() ?: return
+    u.settings.bg = "s:${b.key}"; store.commit()
+}
+
 /* ---------------------------------------------------------------- Saisons de la boutique */
 
 val SEASON_LABELS = mapOf("halloween" to "Halloween 🎃", "noel" to "Noël 🎄", "newyear" to "Nouvel An 🎆", "winter" to "Hiver ❄️", "love" to "Saint-Valentin 💕",
@@ -90,7 +131,8 @@ fun Pg.owns(key: String, price: Int, u: User? = me()): Boolean = price <= 0 || (
 fun Pg.buy(key: String, price: Int): String? {
     val u = me() ?: return "Connecte-toi pour acheter."
     if (owns(key, price, u)) return null
-    SHOP_THEMES.firstOrNull { "theme:${it.key}" == key }?.season?.let { if (seasonWindow(it) == null) return "Édition limitée : elle revient pendant sa saison." }
+    (SHOP_THEMES.firstOrNull { "theme:${it.key}" == key }?.season ?: SHOP_BGS.firstOrNull { "bg:${it.key}" == key }?.season)
+        ?.let { if (seasonWindow(it) == null) return "Édition limitée : elle revient pendant sa saison." }
     val w = wallet(u)
     if (w < price) return "Il te manque ${price - w} flammes. Valide tes objectifs pour en gagner !"
     u.shopOwned = (u.shopOwned + key).toMutableList(); u.shopSpent += price
