@@ -325,4 +325,15 @@ class LogicTest {
         for (t in SHOP_THEMES.filter { it.bg.startsWith("s:") }) assertTrue(SHOP_BGS.any { "s:${it.key}" == t.bg }, t.key)
         assertEquals("s:tunnel", SHOP_THEMES.first { it.key == "tunnel" }.bg); assertEquals("Loire", SHOP_THEMES.first { it.key == "loire" }.name)
     }
+
+    @Test fun wrappedYearRetrospective() {
+        assertTrue(Recaps.wrappedOpen(java.time.LocalDate.of(2026, 12, 20))); assertTrue(Recaps.wrappedOpen(java.time.LocalDate.of(2027, 1, 5)))
+        assertEquals(false, Recaps.wrappedOpen(java.time.LocalDate.of(2026, 10, 23)))
+        val jan = Recaps.wrappedRange(java.time.LocalDate.of(2027, 1, 5)); assertEquals("2026-01-01", jan.s); assertEquals("2026-12-31", jan.e); assertTrue(jan.past)
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        for (i in 0 until 40) pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        val (sl, st) = Recaps.wrapped(pg, "me")
+        assertTrue(st.n >= 20); assertTrue(sl.any { s -> s.parts.any { it is Part.Months } })
+        val x = Recaps.yearExtras(pg, "me", st.r); assertEquals(g.id, x.podium.first().first.id); assertEquals(12, x.months.size)
+    }
 }

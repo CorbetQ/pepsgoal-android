@@ -263,6 +263,15 @@ private fun Shell(ui: AppState) {
     val badges = mapOf("friends" to pg.db.friendships.count { it.to == u.id && it.status == "pending" } + Social.unreadMsgs(ui), "mod" to if (pg.isAdmin(u)) Mod.count(ui) else 0)
     var topH by remember { mutableIntStateOf(0) }; var botH by remember { mutableIntStateOf(0) }
     val haze = LocalHaze.current
+    // Bouton « + » : s'efface en glissant quand on descend dans la page (il ne cache plus le contenu), revient dès qu'on remonte
+    var fabShown by remember { mutableStateOf(true) }
+    LaunchedEffect(ui.tab) { fabShown = true }
+    val fabConn = remember { object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+        override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+            if (consumed.y < -6f) fabShown = false else if (consumed.y > 6f || available.y > 0f) fabShown = true
+            return Offset.Zero
+        }
+    } }
     Box(Modifier.fillMaxSize()) {
         // Grand écran (tablette, pliable ouvert) : la fiche d'un objectif s'ouvre à côté de la liste, et la colonne
         // de contenu reste à une largeur confortable
@@ -270,7 +279,7 @@ private fun Shell(ui: AppState) {
         val side = (ui.sheet as? Sheet.Goal)?.takeIf { wide && ui.screens.isEmpty() && ui.fs == null }
         // Contenu des onglets : il défile sous les barres en verre (niveau 1 du flou)
         CompositionLocalProvider(LocalBars provides PaddingValues(top = with(d) { topH.toDp() }, bottom = with(d) { botH.toDp() })) {
-            Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier), contentAlignment = Alignment.TopCenter) {
+            Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).nestedScroll(fabConn).then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier), contentAlignment = Alignment.TopCenter) {
                 Box(Modifier.fillMaxHeight().then(if (wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth())) {
                 remember(ui.tab) { Stagger.reset() }
                 AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion || !Perf.flags.rich) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .86f, stiffness = 460f), initialScale = .965f) + slideInVertically(spring(dampingRatio = .88f, stiffness = 460f)) { it / 28 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.015f)) }, label = "tab") { tab ->
@@ -301,9 +310,13 @@ private fun Shell(ui: AppState) {
         EdgeFrost(Modifier.align(Alignment.BottomCenter), top = false, cover = with(d) { botH.toDp() })
         Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topH = it.height }) { TopBar(ui) }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) { BottomNav(ui, nav, badges) }
+        val fabK by animateFloatAsState(if (fabShown) 1f else 0f, if (p.motion) snap() else spring(dampingRatio = .8f, stiffness = 420f), label = "fab")
         val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = with(d) { botH.toDp() } + 14.dp)
-        if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabMod) { ui.open(Sheet.GoalForm()) }
-        else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabMod) { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }
+            .graphicsLayer { alpha = fabK; translationX = (1f - fabK) * 110.dp.toPx(); val sc = .7f + .3f * fabK; scaleX = sc; scaleY = sc }
+        if (fabK > .02f) {
+            if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabMod) { ui.open(Sheet.GoalForm()) }
+            else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabMod) { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }
+        }
     }
 }
 
@@ -419,6 +432,7 @@ private fun TopBar(ui: AppState) {
                 }
                 // Hors ligne : modifications en attente d'envoi (touchée : explication)
                 if (!ui.pg.store.online) fr.pepsgoal.app.ui.sheets.OfflineChip(ui)
+                fr.pepsgoal.app.ui.sheets.SyncedChip(ui)
             }
             val bump = remember { Animatable(1f) }
             LaunchedEffect(st.n) { if (!p.motion) { bump.snapTo(1.35f); bump.animateTo(1f, spring(dampingRatio = .4f)) } }
@@ -433,7 +447,6 @@ private fun TopBar(ui: AppState) {
             RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 21.dp, tint = p.ink) }
             RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 21.dp, tint = p.ink) }
         }
-        if (!ui.pg.store.online) Note(if (ui.cloud.forceOffline && pg.store.acct) "**Mode hors ligne activé.** Tes objectifs restent disponibles ; tes modifications partiront quand tu repasseras en ligne." else "**Hors ligne.** Tes objectifs restent disponibles sur cet appareil ; les fonctions sociales reviennent avec la connexion.", "cloudoff")
         if (pg.db.sandbox) Note("**Mode démonstration.** Données d’exemple : rien n’est enregistré. Déconnecte-toi pour revenir à ton profil.", "star")
         val now = pg.maintNow(); val next = pg.maintNext()
         if (now != null) Note("**Maintenance en cours**${now.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[now.mode]}${if (now.message.isNotEmpty()) ". ${now.message}" else ""}${if (pg.isAdmin(u)) " (en tant qu’admin, tu n’es pas bloqué)" else ""}", "gauge")

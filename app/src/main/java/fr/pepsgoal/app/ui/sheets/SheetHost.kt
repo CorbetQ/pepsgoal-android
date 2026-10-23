@@ -106,6 +106,7 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.StoryNew -> StoryNewSheet(ui, s)
         is Sheet.Export -> ExportSheet(ui, s.json)
         is Sheet.Notes -> NotesSheet(ui)
+        is Sheet.Pending -> PendingSheet(ui)
         is Sheet.GroupNew -> GroupNewSheet(ui)
         is Sheet.GroupInfo -> GroupInfoSheet(ui, s.gid)
         is Sheet.DeleteAccount -> DeleteAccountSheet(ui)

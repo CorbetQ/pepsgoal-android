@@ -385,6 +385,16 @@ private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit)
                     Text(WD[d], color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp) } }
             }
         }
+        // Rétrospective : validations des 12 mois, le meilleur mis en avant
+        is Part.Months -> {
+            val mx = maxOf(1, part.counts.maxOrNull() ?: 1)
+            Row(Modifier.fillMaxWidth().recapGlass(ink).padding(horizontal = 12.dp, vertical = 14.dp).height(160.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                part.counts.forEachIndexed { m, v -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (m == part.best) Text("$v", color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                    Box(Modifier.width(16.dp).height((104 * v / mx).coerceAtLeast(4).dp).clip(RoundedCornerShape(6.dp)).background(if (m == part.best) ink else ink.copy(alpha = .28f)))
+                    Text(Recaps.MONTHS_SHORT[m], color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp) } }
+            }
+        }
         is Part.Facts -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.forEach { Text(rich(it), Modifier.fillMaxWidth().recapGlass(ink).padding(14.dp), color = ink, fontSize = 15.sp, lineHeight = 21.sp) } }
         is Part.Awards -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.forEach { (e, n, d) ->
             Row(Modifier.fillMaxWidth().recapGlass(ink).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -402,6 +412,9 @@ private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit)
         } } }
         is Part.FinalActions -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             PButton(if (ui.pg.socialOn()) "Partager mon récap" else "Copier mon récap", { ui.closeFs(); ui.open(Sheet.ShareHub(text = Recaps.shareText(f.st), period = f.p)) }, Modifier.fillMaxWidth(), icon = "share", kind = "primary")
+            // Année : image prête à partager (format story), avec les chiffres clés, les mois et le podium
+            if (f.p == "year") { val ctx = androidx.compose.ui.platform.LocalContext.current
+                PButton("Partager en image", { fr.pepsgoal.app.sys.WrappedImage.share(ctx, ui.pg, f.st) }, Modifier.fillMaxWidth(), icon = "image") }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PButton("Revoir", restart, Modifier.weight(1f), icon = "repeat")
                 PButton("Fermer", { ui.closeFs() }, Modifier.weight(1f), icon = "x")

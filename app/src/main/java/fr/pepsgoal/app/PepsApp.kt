@@ -72,6 +72,7 @@ class PepsApp : Application() {
             }
             override fun incomingMessages(fresh: List<Message>) { Notifier.messages(this@PepsApp, fresh); fr.pepsgoal.app.sys.Duo.syncSoon(this@PepsApp) }
             override fun newPosts(fresh: List<Post>) { if (!foreground) Notifier.posts(this@PepsApp, fresh) }
+            override fun synced(pushed: Int) { if (ui.wasOffline) { ui.wasOffline = false; ui.syncedN = pushed; ui.syncedAt = System.currentTimeMillis() } }
         }
         store.onChange = { ui.bump() }
         store.onSaved = { cloud.scheduleSync() }

@@ -461,6 +461,9 @@ private fun EffectsSection(ui: AppState, u: User) {
         SetRow("Couleurs de saison", "Halloween, fêtes (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${Season.LABELS[it]}." } ?: ""}") {
             PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
         }
+        SetRow("Fonds à l’heure réelle", "Les fonds illustrés suivent la journée : aube rose, plein jour, crépuscule et nuit (la Loire s’illumine, le phare s’allume le soir).") {
+            PSwitch(ui.prefs.bgClock, { ui.prefs.bgClock = it; ui.themeTick++ })
+        }
         Text(tr("Effet animé"), Modifier.padding(top = 8.dp, bottom = 6.dp), fontWeight = FontWeight.Bold)
         if (avail.isEmpty()) Muted("Neige, pétales, braises… arrivent avec les thèmes de la boutique.", small = true)
         else FlowRowCompat(gap = 6.dp) {

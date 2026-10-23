@@ -30,6 +30,7 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 import fr.pepsgoal.core.SHOP_BGS
+import fr.pepsgoal.app.peps
 
 /*
  * Arrière-plans illustrés de la boutique (réglage « bg » = « s:<clé> ») et fonds gratuits (Backdrop.kt) : des scènes
@@ -48,18 +49,59 @@ fun SceneBg(key: String, modifier: Modifier = Modifier, still: Boolean = false) 
     if (still) { StillCanvas("scene:$key", modifier.fillMaxSize(), placeholder) { scene(key, .3f) }; return }
     // Fond animé : dessiné hors du fil principal, au rythme plafonné par les réglages de performance
     val phase = bgPhaseState(SCENE_DUR[key] ?: 40000, SCENE_FPS[key] ?: 12)
-    OffscreenCanvas("scene:$key", phase, modifier.fillMaxSize(), placeholder = placeholder) { t -> scene(key, t) }
+    // Heure réelle (réglage « Suivre l'heure ») : la scène change d'éclairage au fil de la journée, redessinée au quart d'heure
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val follow = ctx.peps.prefs.bgClock
+    val hour = androidx.compose.runtime.produceState(nowHour()) { while (true) { kotlinx.coroutines.delay(60_000); value = nowHour() } }
+    val h = if (follow) hour.value else null
+    OffscreenCanvas("scene:$key:${h?.let { (it * 4).toInt() }}", phase, modifier.fillMaxSize(), placeholder = placeholder) { t -> scene(key, t, h) }
 }
 
-/** Une image de la scène [key] à la phase [t] (fonction pure de la taille : dessinable hors écran). */
-private fun DrawScope.scene(key: String, t: Float) {
+/** Heure locale en heures décimales (14,5 = 14 h 30). */
+private fun nowHour(): Float { val n = java.time.LocalTime.now(); return n.hour + n.minute / 60f }
+
+/**
+ * Moment de la journée à l'heure [h] : poids de la nuit, de l'aube, du jour et du crépuscule (somme 1), et course du
+ * soleil [sun] (0 au lever, 1 au coucher). Lever et coucher suivent la saison (heures légales en France).
+ */
+private class Tod(val night: Float, val dawn: Float, val day: Float, val dusk: Float, val sun: Float) {
+    val light get() = day + (dawn + dusk) * .6f
+}
+private fun tod(h: Float, doy: Int = java.time.LocalDate.now().dayOfYear): Tod {
+    val k = cos((doy - 172) / 365f * TAU)
+    val sr = 7.25f - 1.25f * k; val ss = 19.75f + 2.1f * k
+    fun bump(c: Float, w: Float) = (1f - abs(h - c) / w).coerceIn(0f, 1f)
+    var dawn = bump(sr, 1.3f); var dusk = bump(ss, 1.3f)
+    var day = sm(sr, sr + 1.3f, h) * (1f - sm(ss - 1.3f, ss, h))
+    var night = (1f - sm(sr - 1.3f, sr, h)) + sm(ss, ss + 1.3f, h)
+    val n = dawn + dusk + day + night; dawn /= n; dusk /= n; day /= n; night /= n
+    return Tod(night, dawn, day, dusk, ((h - sr) / (ss - sr)).coerceIn(0f, 1f))
+}
+/** Éclairage générique d'une scène de jour selon l'heure : bleu nuit, rose de l'aube, orangé du crépuscule. */
+private fun DrawScope.grade(d: Tod) {
+    val H = size.height
+    if (d.dawn > .01f) drawRect(vg(0f, H, 0f to c("#7F8FE0", .2f * d.dawn), .6f to c("#FFB0C0", .2f * d.dawn), 1f to c("#FFD0B0", .06f * d.dawn)))
+    if (d.dusk > .01f) drawRect(vg(0f, H, 0f to c("#5A2E8A", .28f * d.dusk), .55f to c("#FF7A3A", .24f * d.dusk), 1f to c("#FFB070", .1f * d.dusk)))
+    if (d.night > .01f) { drawRect(c("#1A2550"), alpha = .7f * d.night, blendMode = BlendMode.Multiply); drawRect(c("#0A1030", .22f * d.night)) }
+}
+/** Couleur pondérée par le moment de la journée (jour, aube, crépuscule, nuit). */
+private fun Tod.col(day: String, dawn: String, dusk: String, night: String): Color {
+    val cs = listOf(c(day) to this.day, c(dawn) to this.dawn, c(dusk) to this.dusk, c(night) to this.night)
+    return Color(cs.sumOf { (x, w) -> (x.red * w).toDouble() }.toFloat(), cs.sumOf { (x, w) -> (x.green * w).toDouble() }.toFloat(), cs.sumOf { (x, w) -> (x.blue * w).toDouble() }.toFloat())
+}
+/** Scènes qui gèrent elles-mêmes l'heure (au lieu du voile générique). */
+private val OWN_TOD = setOf("loire", "lighthouse")
+
+/** Une image de la scène [key] à la phase [t] ; [h] : heure réelle (null : éclairage d'origine, aperçus). */
+internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
+    val td = h?.let { tod(it) }
     when (key) {
         "nebula" -> nebula(t); "deepsea" -> deepsea(t); "mountains" -> mountains(t); "citynight" -> citynight(t); "tram" -> tram(t)
         "mistforest" -> mistforest(t); "dunes" -> dunes(t); "sakura" -> sakura(t); "magma" -> magma(t); "coderain" -> coderain(t)
         "borealis" -> borealis(t); "rainwindow" -> rainwindow(t); "planet" -> planet(t); "lagoon" -> lagoon(t); "haunted" -> haunted(t)
         "snowvillage" -> snowvillage(t); "fireworks" -> fireworks(t); "snowpeak" -> snowpeak(t); "heartsky" -> heartsky(t)
         "eggmeadow" -> eggmeadow(t); "flowerfield" -> flowerfield(t); "summerbeach" -> summerbeach(t); "autumnwood" -> autumnwood(t)
-        "tunnel" -> tunnel(t); "loire" -> loire(t); "lighthouse" -> lighthouse(t); "vineyard" -> vineyard(t); "balloons" -> balloons(t); "jellyfish" -> jellyfish(t)
+        "tunnel" -> tunnel(t); "loire" -> loire(t, td); "lighthouse" -> lighthouse(t, td); "vineyard" -> vineyard(t); "balloons" -> balloons(t); "jellyfish" -> jellyfish(t)
         "bamboo" -> bamboo(t); "nighttrain" -> nighttrain(t); "rooftops" -> rooftops(t); "canyon" -> canyon(t)
         "savanna" -> savanna(t); "lanterns" -> lanterns(t); "icefield" -> icefield(t)
         else -> {
@@ -67,7 +109,9 @@ private fun DrawScope.scene(key: String, t: Float) {
             drawRect(Brush.verticalGradient(sky.map { c(it) }))
         }
     }
-    finish(SHOP_BGS.firstOrNull { it.key == key }?.dark ?: true, if (key == "tram") .6f else 1f)
+    val dark = SHOP_BGS.firstOrNull { it.key == key }?.dark ?: true
+    if (td != null && !dark && key !in OWN_TOD) grade(td)
+    finish(dark || (td?.night ?: 0f) > .5f, if (key == "tram") .6f else 1f)
 }
 
 /** Durée d'un cycle d'animation par scène (ms) : les scènes à mouvement visible (poissons, pluie) tournent plus vite. */
@@ -2170,7 +2214,7 @@ private fun DrawScope.tunnel(t: Float) {
 /* ------------------------------------------------------------------ Loire : bords de Loire en Anjou, fin d'après-midi */
 
 /** Village de tuffeau et château (Saumur) sur la rive d'en face, posé sur la ligne [y]. */
-private fun DrawScope.loireTown(y: Float, a: Float) {
+private fun DrawScope.loireTown(y: Float, a: Float, lightsOnly: Boolean = false) {
     val W = size.width; val S = min(W, size.height); val u = S / 100f
     val tuf = c("#F4EBDD", a); val tufSh = c("#D9C9B0", a); val slate = c("#5E6E86", a); val slateLit = c("#8A9AB4", a); val win = c("#6A5A48", a)
     // Maisons : murs de tuffeau, toits d'ardoise à deux pans, quelques lucarnes
@@ -2179,12 +2223,22 @@ private fun DrawScope.loireTown(y: Float, a: Float) {
     while (x < W * .98f) {
         val w = u * (5f + r() * 5f); val h = u * (3.2f + r() * 2.5f); val rh = u * (2.4f + r() * 1.6f)
         if (x > W * .52f && x < W * .86f) { x += w; continue }
-        rect(x, y - h, w, h, tuf); rect(x + w * .62f, y - h, w * .38f, h, tufSh)
-        fill(poly(x - u * .3f, y - h, x + w * .5f, y - h - rh, x + w + u * .3f, y - h), slate)
-        fill(poly(x - u * .3f, y - h, x + w * .5f, y - h - rh, x + w * .5f, y - h), slateLit)
-        for (k in 0 until (w / (u * 2.4f)).toInt()) rect(x + u * (1f + k * 2.4f), y - h * .65f, u * .8f, u * 1.1f, win)
-        if (r() < .4f) rect(x + w * .7f, y - h - rh * .7f, u * .6f, rh * .5f, tufSh)
+        if (!lightsOnly) {
+            rect(x, y - h, w, h, tuf); rect(x + w * .62f, y - h, w * .38f, h, tufSh)
+            fill(poly(x - u * .3f, y - h, x + w * .5f, y - h - rh, x + w + u * .3f, y - h), slate)
+            fill(poly(x - u * .3f, y - h, x + w * .5f, y - h - rh, x + w * .5f, y - h), slateLit)
+        }
+        // La nuit : fenêtres allumées (une sur deux environ), avec leur halo
+        for (k in 0 until (w / (u * 2.4f)).toInt()) { val wx = x + u * (1f + k * 2.4f); val wy = y - h * .65f
+            if (!lightsOnly) rect(wx, wy, u * .8f, u * 1.1f, win) else if ((k + (x / u).toInt()) % 2 == 0) { rect(wx, wy, u * .8f, u * 1.1f, c("#FFD27A", a)); glow(wx + u * .4f, wy + u * .5f, u * 2.5f, c("#FFB04A", .35f * a), BlendMode.Screen) } }
+        if (r() < .4f && !lightsOnly) rect(x + w * .7f, y - h - rh * .7f, u * .6f, rh * .5f, tufSh)
         x += w + u * (.2f + r() * 1.2f)
+    }
+    if (lightsOnly) {
+        // Château illuminé (projecteurs sur le tuffeau)
+        val cx = W * .69f; glow(cx, y - u * 12f, u * 22f, c("#FFD9A0", .3f * a), BlendMode.Screen)
+        for (k in 0 until 6) rect(cx - u * 26f * .38f + k * u * 26f * .15f, y - u * 4f - u * 13f * .62f, u * 1.1f, u * 2f, c("#FFD27A", a))
+        return
     }
     // Église et son clocher d'ardoise
     val ex = W * .3f; rect(ex - u * 3f, y - u * 9f, u * 6f, u * 9f, tuf); fill(poly(ex - u * 3.6f, y - u * 9f, ex, y - u * 22f, ex + u * 3.6f, y - u * 9f), slate)
@@ -2206,14 +2260,20 @@ private fun DrawScope.loireTown(y: Float, a: Float) {
     }
 }
 
-private fun DrawScope.loire(t: Float) {
+private fun DrawScope.loire(t: Float, d: Tod? = null) {
     val W = size.width; val H = size.height; val S = min(W, H); val u = S / 100f
     val bank = H * .47f; val near = H * .8f
-    // Ciel de fin d'après-midi : bleu doux vers pêche à l'horizon
-    sky(0f to c("#5E93CF"), .35f to c("#9DC0E4"), .72f to c("#F2D3B6"), 1f to c("#FCE4C2"), y1 = bank)
-    val sx = W * .8f; val sy = H * .33f
-    glow(sx, sy, S * 1.1f, c("#FFD9A0", .45f), BlendMode.Screen); glow(sx, sy, S * .22f, c("#FFF2D6", .9f), BlendMode.Screen); disc(sx, sy, S * .04f, c("#FFF8EA"))
-    for (i in 0 until 4) { val dx = ((t * (.6f + i * .15f) + i * .27f) % 1.3f - .15f) * W * 1.1f; softCloud(dx, H * (.08f + i * .07f), W * (.5f + i * .08f), c("#FFFFFF", .5f - i * .06f), c("#FFF1DE", .45f), 40 + i) }
+    // Ciel : fin d'après-midi par défaut ; à l'heure réelle, aube rose, jour bleu, crépuscule orangé ou nuit
+    if (d == null) sky(0f to c("#5E93CF"), .35f to c("#9DC0E4"), .72f to c("#F2D3B6"), 1f to c("#FCE4C2"), y1 = bank)
+    else sky(0f to d.col("#3F86D6", "#6A7FC0", "#3A4A8A", "#070C22"), .35f to d.col("#8EC0EC", "#C9A8D0", "#B87A9A", "#142048"),
+        .72f to d.col("#D6E8F6", "#FFC9B0", "#FFB07A", "#24345E"), 1f to d.col("#EAF2F8", "#FFE2C8", "#FFD49A", "#33446C"), y1 = bank)
+    val sun = d?.sun ?: .88f; val sunA = if (d == null) 1f else (1f - d.night).coerceIn(0f, 1f)
+    val sx = W * (.12f + .76f * sun); val sy = if (d == null) H * .33f else bank - H * .04f - (bank - H * .14f) * sin(sun * 3.1416f)
+    val warm = if (d == null) 1f else (d.dawn + d.dusk + .4f * d.day)
+    if (sunA > .01f) {
+        glow(sx, sy, S * 1.1f, mix(c("#FFF4DA"), c("#FFD9A0"), warm).a(.45f * sunA), BlendMode.Screen); glow(sx, sy, S * .22f, c("#FFF2D6", .9f * sunA), BlendMode.Screen); disc(sx, sy, S * .04f, c("#FFF8EA", sunA))
+    }
+    for (i in 0 until 4) { val dx = ((t * (.6f + i * .15f) + i * .27f) % 1.3f - .15f) * W * 1.1f; softCloud(dx, H * (.08f + i * .07f), W * (.5f + i * .08f), c("#FFFFFF", (.5f - i * .06f) * (1f - .8f * (d?.night ?: 0f))), c("#FFF1DE", .45f * (1f - .8f * (d?.night ?: 0f))), 40 + i) }
     // Coteaux au loin, puis coteau de vignes
     val nz = Nz(21)
     ridgeFill(ridgePts(bank - H * .03f, H * .045f, 80) { x -> .5f + .5f * nz.at(x * 4f, 3) }, vg(bank - H * .08f, bank, 0f to c("#A9AACB"), 1f to c("#C9BFC9")), bank)
@@ -2229,13 +2289,15 @@ private fun DrawScope.loire(t: Float) {
     canopy(10, 9, u * 1.6f, u * 3f, c("#5E7A4A"), c("#93AE6A"), false, { town + u * .5f }, W * .5f, W)
     // La Loire : large, claire, reflets du ciel
     rect(0f, town, W, near - town + u * 4f, c("#9CC0DE"))
-    drawRect(vg(town, near, 0f to c("#F2DCC2"), .25f to c("#BFD3E6"), 1f to c("#6F9CC8")), topLeft = Offset(0f, town), size = Size(W, near - town + u * 4f))
+    if (d == null) drawRect(vg(town, near, 0f to c("#F2DCC2"), .25f to c("#BFD3E6"), 1f to c("#6F9CC8")), topLeft = Offset(0f, town), size = Size(W, near - town + u * 4f))
+    else drawRect(vg(town, near, 0f to d.col("#DCEAF6", "#F2D2C8", "#F7C9A0", "#2A3A60"), .25f to d.col("#B4D2EC", "#C8C0DA", "#C49AB0", "#1C2A50"), 1f to d.col("#3F7DC0", "#6F8FC8", "#4A5E9A", "#0A1430")), topLeft = Offset(0f, town), size = Size(W, near - town + u * 4f))
     // Reflet du village (inversé, étiré, adouci)
     clipRect(0f, town, W, near) { scale(1f, -.7f, Offset(0f, town)) { loireTown(town, .28f) } }
     mist(town + u * 1.5f, u * 5f, c("#FFF1DE", .45f))
-    // Chemin de lumière du soleil : paillettes qui scintillent
+    // Chemin de lumière du soleil (ou de la lune) : paillettes qui scintillent
     val r = Mul(5)
-    for (i in 0 until 90) { val v = r(); val y = town + (near - town) * (.05f + v * .9f); val spread = W * (.04f + v * .22f); val x = sx + (r() - .5f) * 2f * spread
+    val gx = if (d != null && d.night > .5f) W * .25f else sx
+    for (i in 0 until 90) { val v = r(); val y = town + (near - town) * (.05f + v * .9f); val spread = W * (.04f + v * .22f); val x = gx + (r() - .5f) * 2f * spread
         val tw = .5f + .5f * sin(t * TAU * 6 + i * 1.7f); val len = u * (1f + v * 4f); line(x - len, y, x + len, y, max(1f, u * (.15f + v * .3f)), c("#FFF6E2", (.25f + .55f * tw) * (1f - v * .5f))) }
     // Rides sur l'eau
     for (i in 0 until 40) { val v = r(); val y = town + (near - town) * (.1f + v * .9f); val x = ((r() + t * (.2f + v * .3f)) % 1f) * W; val len = u * (2f + v * 9f)
@@ -2289,17 +2351,41 @@ private fun DrawScope.loire(t: Float) {
     for ((px, ph) in listOf(.04f to .5f, .14f to .44f)) { val base = near + H * .03f; val top = base - H * ph
         rect(W * px - u * .5f, top + H * ph * .3f, u * 1f, H * ph * .7f, c("#4A4034"))
         crown(W * px, top + H * ph * .38f, u * (5f + ph * 4f), H * ph * .4f, (px * 100).toInt(), c("#9DBA6A"), c("#5E7E3E"), c("#2E4424"), -.6f, -.8f) }
+    if (d == null) return
+    // Lumière de l'heure : voile du crépuscule ou de l'aube, puis la nuit (lune, étoiles, fenêtres et château illuminés)
+    if (d.dusk > .01f) drawRect(vg(0f, H, 0f to c("#5A2E8A", .18f * d.dusk), .5f to c("#FF7A3A", .16f * d.dusk), 1f to c("#FFB070", .06f * d.dusk)))
+    if (d.dawn > .01f) drawRect(vg(0f, H, 0f to c("#7F8FE0", .12f * d.dawn), .5f to c("#FFB0C0", .14f * d.dawn), 1f to Color.Transparent))
+    if (d.night > .01f) {
+        val n = d.night
+        drawRect(vg(bank - H * .16f, bank - H * .04f, 0f to c("#1A2550", 0f), 1f to c("#1A2550", .82f * n)), topLeft = Offset(0f, bank - H * .16f), size = Size(W, H), blendMode = BlendMode.Multiply)
+        starField(52, 160, bank - H * .1f, c("#FFFFFF", .85f * n), t, 3)
+        val mx = W * .25f; val my = H * .12f
+        glow(mx, my, S * .55f, c("#BFD6FF", .25f * n), BlendMode.Screen); disc(mx, my, S * .045f, c("#F4F7FF", n)); disc(mx + S * .016f, my - S * .01f, S * .04f, c("#D6E0F2", .45f * n))
+        loireTown(town, n, lightsOnly = true)
+        clipRect(0f, town, W, near) { scale(1f, -.7f, Offset(0f, town)) { loireTown(town, .35f * n, lightsOnly = true) } }
+        // Réverbères le long de la levée
+        for (k in 0 until 6) { val lx = W * (.1f + k * .17f); val ly2 = near + H * .045f - (lx / W) * H * .01f
+            line(lx, ly2, lx, ly2 - u * 6f, max(1f, u * .3f), c("#1A1A22", n)); disc(lx, ly2 - u * 6f, u * .6f, c("#FFE2A0", n)); glow(lx, ly2 - u * 5.5f, u * 7f, c("#FFC46A", .35f * n), BlendMode.Screen) }
+    }
 }
 
 /* ------------------------------------------------------------------ Phare dans la nuit */
-private fun DrawScope.lighthouse(t: Float) {
+private fun DrawScope.lighthouse(t: Float, d: Tod? = null) {
     val W = size.width; val H = size.height; val S = min(W, H); val u = S / 100f
     val hz = H * .58f
-    sky(0f to c("#060B1E"), .55f to c("#15244A"), 1f to c("#2E4670"), y1 = hz)
-    starField(61, 220, hz * .9f, c("#FFFFFF", .85f), t, 5)
-    val mx = W * .22f; val my = H * .14f; glow(mx, my, S * .5f, c("#BFD6FF", .25f), BlendMode.Screen); disc(mx, my, S * .05f, c("#F4F7FF")); disc(mx + S * .018f, my - S * .01f, S * .045f, c("#D6E0F2", .5f))
-    // Mer : houle sombre, reflets de lune
-    drawRect(vg(hz, H, 0f to c("#1E3358"), 1f to c("#050A18")), topLeft = Offset(0f, hz), size = Size(W, H - hz))
+    // Nuit par défaut ; à l'heure réelle, ciel et mer de jour, d'aube ou de crépuscule, et phare allumé seulement le soir et la nuit
+    val night = d?.night ?: 1f; val lamp = if (d == null) 1f else (d.night + .7f * d.dusk + .4f * d.dawn).coerceIn(0f, 1f)
+    if (d == null) sky(0f to c("#060B1E"), .55f to c("#15244A"), 1f to c("#2E4670"), y1 = hz)
+    else sky(0f to d.col("#3E7FCC", "#5A6AB0", "#2A2A6A", "#060B1E"), .55f to d.col("#8EC0EC", "#E0A8C0", "#D0708A", "#15244A"), 1f to d.col("#DCEBF7", "#FFD0B0", "#FFA070", "#2E4670"), y1 = hz)
+    if (night > .01f) starField(61, 220, hz * .9f, c("#FFFFFF", .85f * night), t, 5)
+    val mx = W * .22f; val my = H * .14f
+    if (night > .01f) { glow(mx, my, S * .5f, c("#BFD6FF", .25f * night), BlendMode.Screen); disc(mx, my, S * .05f, c("#F4F7FF", night)); disc(mx + S * .018f, my - S * .01f, S * .045f, c("#D6E0F2", .5f * night)) }
+    if (d != null && night < .99f) { val sx = W * (.15f + .7f * d.sun); val sy = hz - (hz - H * .1f) * sin(d.sun * 3.1416f) - H * .01f; val a = 1f - night
+        glow(sx, sy, S * .9f, c("#FFE8C0", .5f * a), BlendMode.Screen); disc(sx, sy, S * .045f, c("#FFF8E6", a))
+        for (i in 0 until 2) softCloud(((t * .5f + i * .5f) % 1.3f - .15f) * W * 1.1f, H * (.12f + i * .1f), W * .6f, c("#FFFFFF", .5f * a), c("#FFFFFF", .4f * a), 30 + i) }
+    // Mer : houle, reflets de lune (ou de soleil)
+    if (d == null) drawRect(vg(hz, H, 0f to c("#1E3358"), 1f to c("#050A18")), topLeft = Offset(0f, hz), size = Size(W, H - hz))
+    else drawRect(vg(hz, H, 0f to d.col("#5E9CD0", "#8A8AC0", "#8A5A8A", "#1E3358"), 1f to d.col("#1E4A80", "#2A3A6A", "#2A2050", "#050A18")), topLeft = Offset(0f, hz), size = Size(W, H - hz))
     val r = Mul(3)
     for (i in 0 until 120) { val v = r(); val y = hz + (H - hz) * v * v; val x = ((r() + t * (.05f + v * .1f)) % 1f) * W; val len = u * (1f + v * 8f)
         line(x, y, x + len, y, max(1f, u * (.15f + v * .3f)), c("#9FB7E0", .12f + v * .18f)) }
@@ -2320,12 +2406,14 @@ private fun DrawScope.lighthouse(t: Float) {
         fill(poly(px - w0 / 2, y0, px + w0 / 2, y0, px + w1 / 2, y1, px - w1 / 2, y1), if (k % 2 == 0) c("#E9EDF4") else c("#C8323A"))
         fill(poly(px + w0 * .1f, y0, px + w0 / 2, y0, px + w1 / 2, y1, px + w1 * .1f, y1), c("#000000", .25f)) }
     val lt = pb - ph; rect(px - wt * .7f, lt - u * 1f, wt * 1.4f, u * 1f, c("#20242E"))
-    rect(px - wt * .45f, lt - u * 5f, wt * .9f, u * 4f, c("#FFE9A8")); fill(poly(px - wt * .6f, lt - u * 5f, px, lt - u * 9f, px + wt * .6f, lt - u * 5f), c("#20242E"))
+    rect(px - wt * .45f, lt - u * 5f, wt * .9f, u * 4f, mix(c("#8A9AB4"), c("#FFE9A8"), lamp)); fill(poly(px - wt * .6f, lt - u * 5f, px, lt - u * 9f, px + wt * .6f, lt - u * 5f), c("#20242E"))
     // Faisceau tournant
     val ang = t * TAU * 3f; val bx = px; val by = lt - u * 3f; val dir = cos(ang); val len = W * 1.3f * abs(dir) + u * 10f
     val spread = H * .05f
-    fill(poly(bx, by - u, bx + dir * len, by - spread, bx + dir * len, by + spread, bx, by + u), lg(bx, by, bx + dir * len, by, 0f to c("#FFF2C2", .55f * abs(dir)), 1f to c("#FFF2C2", 0f)))
-    glow(bx, by, S * .35f, c("#FFE9A8", .5f), BlendMode.Screen); glow(bx, by, S * .08f, c("#FFFFFF", .9f), BlendMode.Screen)
+    if (lamp > .01f) {
+        fill(poly(bx, by - u, bx + dir * len, by - spread, bx + dir * len, by + spread, bx, by + u), lg(bx, by, bx + dir * len, by, 0f to c("#FFF2C2", .55f * abs(dir) * lamp), 1f to c("#FFF2C2", 0f)))
+        glow(bx, by, S * .35f, c("#FFE9A8", .5f * lamp), BlendMode.Screen); glow(bx, by, S * .08f, c("#FFFFFF", .9f * lamp), BlendMode.Screen)
+    }
     // Écume au pied de la falaise
 }
 

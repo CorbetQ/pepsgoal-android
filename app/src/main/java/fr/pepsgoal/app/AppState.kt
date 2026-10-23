@@ -47,6 +47,8 @@ sealed class Sheet {
     class StoryNew(val kind: String = "progress", val period: String = "week", val goalId: String? = null) : Sheet()
     class Export(val json: String) : Sheet()
     object Notes : Sheet()
+    /** Modifications locales en attente d'envoi (hors ligne). */
+    object Pending : Sheet()
     object GroupNew : Sheet()
     class GroupInfo(val gid: String) : Sheet()
     object DeleteAccount : Sheet()
@@ -147,6 +149,11 @@ class AppState(val app: PepsApp) : Hooks {
     /** Effet visuel d'une surprise en cours (confettis, poissons…), relancé à chaque [eggTick]. */
     var eggFx by mutableStateOf<String?>(null)
     var eggTick by mutableIntStateOf(0)
+    /** Dernier envoi réussi de modifications locales (animation « Synchronisé » sous le titre). */
+    var syncedAt by mutableLongStateOf(0L)
+    var syncedN by mutableIntStateOf(0)
+    /** Passé hors ligne depuis le dernier envoi : le prochain envoi réussi est célébré (« Synchronisé »). */
+    var wasOffline = false
     private var bumpJob: Job? = null
 
     val pg get() = app.pg
@@ -158,6 +165,7 @@ class AppState(val app: PepsApp) : Hooks {
 
     fun onlineChanged(online: Boolean) {
         if (!online) {
+            wasOffline = true
             if (tab == "feed" || tab == "friends") tab = "today"
             if (sheet is Sheet.Compose || sheet is Sheet.StoryNew || sheet is Sheet.User || sheet is Sheet.Report || sheet is Sheet.ShareHub) sheet = null
             screens.removeAll { it is Screen.Chat }

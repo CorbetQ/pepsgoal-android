@@ -16,6 +16,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +36,7 @@ import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /* ------------------------------------------------------------------ Qui a réagi */
 
@@ -196,9 +199,80 @@ fun OfflineChip(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg
     if (pg.store.online) return
     val n = remember(ui.rev) { if (pg.store.acct) ui.cloud.pendingCount() else 0 }
-    Row(Modifier.clip(CircleShape).clickable { ui.toast(if (n > 0) "Hors ligne : ${pl(n, "modification", "modifications")} en attente, envoyées dès le retour du réseau." else "Hors ligne : tout est enregistré sur le téléphone.", "cloudoff") }
+    Row(Modifier.clip(CircleShape).clickable(onClickLabel = "Voir les modifications en attente") { ui.open(Sheet.Pending) }
         .padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Pi("cloudoff", size = 14.dp, tint = p.ink2)
         Muted(if (n > 0) "Hors ligne · $n en attente" else "Hors ligne", small = true)
     }
+}
+
+/** « Synchronisé » : apparaît quelques secondes sous le titre quand les modifications faites hors ligne sont parties. */
+@Composable
+fun SyncedChip(ui: AppState) {
+    val p = LocalPal.current
+    var show by remember { mutableStateOf(false) }
+    val at = ui.syncedAt
+    LaunchedEffect(at) { if (at > 0 && System.currentTimeMillis() - at < 5000) { show = true; delay(3600); show = false } }
+    androidx.compose.animation.AnimatedVisibility(show && ui.pg.store.online, enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(), exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()) {
+        val pop = remember { androidx.compose.animation.core.Animatable(0f) }
+        LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .4f, stiffness = 500f)) }
+        Row(Modifier.clip(CircleShape).clickable { ui.open(Sheet.Pending) }.padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(Modifier.size(16.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -90f }.clip(CircleShape).background(p.ok), contentAlignment = Alignment.Center) { Pi("check", size = 11.dp, tint = Color.White) }
+            Text(if (ui.syncedN > 1) "Synchronisé · ${ui.syncedN} envoyées" else "Synchronisé", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ok)
+        }
+    }
+}
+
+/** Modifications faites hors ligne, en attente d'envoi, et bouton pour les envoyer tout de suite. */
+@Composable
+fun PendingSheet(ui: AppState) {
+    val p = LocalPal.current; val pg = ui.pg; val cloud = ui.cloud
+    val list = remember(ui.rev) { cloud.pendingList() }
+    var busy by remember { mutableStateOf(false) }
+    SheetHead(ui, "Modifications en attente")
+    if (!pg.store.acct) { Note("Sans compte, tout est enregistré sur ce téléphone : rien n’attend d’être envoyé.", "lock"); return }
+    // État de la connexion et action possible
+    Glass(strong = true, pad = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconTile(if (pg.store.online) "cloud" else "cloudoff", if (pg.store.online) p.ok else p.ink3, if (pg.store.online) p.type("objective").c else p.ink2, 42.dp, 14.dp)
+            Column(Modifier.weight(1f)) {
+                Text(when { cloud.forceOffline -> "Mode hors ligne activé"; !pg.store.online -> "Pas de connexion au serveur"; list.isEmpty() -> "Tout est synchronisé"; else -> "En ligne" }, fontWeight = FontWeight.ExtraBold)
+                Muted(when {
+                    list.isEmpty() -> cloud.lastSync?.let { "Dernier envoi ${ago(it)}." } ?: "Rien n’attend d’être envoyé."
+                    !pg.store.online -> "${pl(list.size, "modification partira", "modifications partiront")} dès le retour du réseau."
+                    else -> "${pl(list.size, "modification", "modifications")} à envoyer."
+                }, small = true)
+            }
+        }
+        if (list.isNotEmpty() || cloud.forceOffline) {
+            Spacer(Modifier.height(12.dp))
+            val scope = rememberCoroutineScope()
+            when {
+                cloud.forceOffline -> PButton("Repasser en ligne", { cloud.forceOffline = false; ui.bump(); scope.launch { busy = true; try { cloud.syncNow() } finally { busy = false; ui.bump() } } }, Modifier.fillMaxWidth(), icon = "cloud", kind = "primary")
+                !pg.store.online -> PButton("Réessayer la connexion", { cloud.pingSoon(); ui.toast("Nouvelle tentative de connexion…", "cloud") }, Modifier.fillMaxWidth(), icon = "repeat")
+                else -> PButton(if (busy) "Envoi…" else "Envoyer maintenant", { if (!busy) scope.launch { busy = true; try { cloud.syncNow() } finally { busy = false; ui.bump() }
+                    if (cloud.syncError.isEmpty()) { Feedback.success(); ui.toast("Tout est synchronisé.", "check") } else ui.toast("Envoi impossible : ${cloud.syncError}", "x") } }, Modifier.fillMaxWidth(), icon = "send", kind = "primary", enabled = !busy)
+            }
+        }
+    }
+    if (list.isEmpty()) { Empty("Tout est à jour", "Tes objectifs, validations et réglages sont déjà sur le serveur.", icon = "cloud"); return }
+    // Liste, regroupée : objectifs, validations, réglages
+    for ((kind, title) in listOf("goal" to "Objectifs", "checkin" to "Validations", "settings" to "Réglages")) {
+        val items = list.filter { it.kind == kind }; if (items.isEmpty()) continue
+        Eyebrow("$title · ${items.size}")
+        Glass(pad = 6.dp) {
+            items.take(60).forEach { it0 ->
+                val (col, ic) = when (it0.action) { "new" -> p.ok to "plus"; "delete" -> p.danger to "trash"; else -> p.flame to "edit" }
+                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(col.copy(alpha = .16f)), contentAlignment = Alignment.Center) { Pi(if (kind == "checkin" && it0.action == "new") "check" else if (kind == "settings") "gear" else ic, size = 16.dp, tint = fr.pepsgoal.app.ui.theme.readable(col, p.glass, 3f)) }
+                    Column(Modifier.weight(1f)) {
+                        Text(it0.label, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Muted(it0.sub, small = true, maxLines = 1)
+                    }
+                }
+            }
+            if (items.size > 60) Muted("… et ${items.size - 60} autres", Modifier.padding(8.dp), small = true)
+        }
+    }
+    Note("Les modifications restent enregistrées sur ce téléphone, même si tu fermes l’application. Elles partent automatiquement dès que la connexion revient.", "lock")
 }

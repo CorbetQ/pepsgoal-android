@@ -17,6 +17,8 @@ sealed class Part {
     class Facts(val items: List<String>) : Part()
     class Awards(val items: List<Triple<String, String, String>>) : Part()
     class Cells(val items: List<Pair<String, String>>) : Part()
+    /** Validations par mois (rétrospective de l'année), [best] : mois le plus fort. */
+    class Months(val counts: List<Int>, val best: Int) : Part()
     object FinalActions : Part()
     object CloseAction : Part()
 }
@@ -35,7 +37,29 @@ class RecapStats(
     val posts: Int, val cheers: Int, val prevN: Int, val prevRate: Double, val rate0: Double, val persona: Persona
 )
 
+/** Compléments de l'année : validations par mois et podium des objectifs. */
+class YearExtras(val months: List<Int>, val bestMonth: Int, val podium: List<Pair<Goal, Int>>, val goalsDone: Int)
+
 object Recaps {
+    val MONTHS_SHORT = listOf("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
+    val MONTHS_LONG = listOf("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre")
+
+    /** Rétrospective (« PepsGoal Wrapped ») : proposée du 15 décembre au 10 janvier. */
+    fun wrappedOpen(ref: LocalDate = todayDate()) = (ref.monthValue == 12 && ref.dayOfMonth >= 15) || (ref.monthValue == 1 && ref.dayOfMonth <= 10)
+    /** Année de la rétrospective : l'année écoulée en janvier, l'année en cours en décembre. */
+    fun wrappedRange(ref: LocalDate = todayDate()): RecapRange {
+        val y = if (ref.monthValue == 1) ref.year - 1 else ref.year
+        val s = LocalDate.of(y, 1, 1); val e = if (ref.year > y) LocalDate.of(y, 12, 31) else ref
+        return RecapRange(ymd(s), ymd(e), (daysBetween(s, e) + 1).toInt(), ref.year > y)
+    }
+    fun yearExtras(pg: Pg, id: String, r: RecapRange): YearExtras {
+        val ok = pg.db.checkins.filter { it.userId == id && pg.isWin(it) && it.date >= r.s && it.date <= r.e }
+        val months = MutableList(12) { 0 }; ok.forEach { months[parseYmd(it.date).monthValue - 1]++ }
+        val podium = ok.groupingBy { it.goalId }.eachCount().entries.mapNotNull { e -> pg.goalById(e.key)?.let { it to e.value } }.sortedByDescending { it.second }.take(3)
+        val done = pg.db.goals.count { it.userId == id && it.completedAt != null && ymd(it.completedAt!!) >= r.s && ymd(it.completedAt!!) <= r.e }
+        return YearExtras(months, months.indexOf(months.max()), podium, done)
+    }
+
     val PERIOD_WORD = mapOf("week" to "de la semaine", "month" to "du mois", "year" to "de l'année")
     val PERIOD_NOUN = mapOf("week" to "semaine", "month" to "mois", "year" to "année")
     val SLOT_LABEL = mapOf("matin" to "le matin", "midi" to "à midi", "aprem" to "l'après-midi", "soir" to "le soir", "nuit" to "la nuit")
@@ -150,13 +174,17 @@ object Recaps {
 
     fun shareText(st: RecapStats) = "Mon récap ${PERIOD_WORD[st.p]} sur PepsGoal : ${pl(st.n, "validation", "validations")}, ${st.pts} flammes, meilleure série de ${pl(st.best, "jour", "jours")}, ${st.reg} % de régularité. Profil : ${st.persona.n} ${st.persona.e}"
 
-    fun slides(pg: Pg, id: String, p: String): Pair<List<Slide>, RecapStats> {
-        val r = range(p); val st = stats(pg, id, p, r); val (tt, sub) = title(p, r); val out = mutableListOf<Slide>()
+    /** Rétrospective de l'année (fin décembre, début janvier). */
+    fun wrapped(pg: Pg, id: String, ref: LocalDate = todayDate()) = slides(pg, id, "year", wrappedRange(ref), wrapped = true)
+
+    fun slides(pg: Pg, id: String, p: String, r0: RecapRange? = null, wrapped: Boolean = false): Pair<List<Slide>, RecapStats> {
+        val r = r0 ?: range(p); val st = stats(pg, id, p, r); val (tt0, sub) = title(p, r); val out = mutableListOf<Slide>()
+        val tt = if (wrapped) "PepsGoal Wrapped ${parseYmd(r.s).year}" else tt0
         val rnd = seeded("$id|$p|${r.s}"); fun <T> pick(a: List<T>) = a[(rnd() * a.size).toInt().coerceAtMost(a.size - 1)]
         fun add(parts: List<Part>, fx: String?, cls: String = "") { out.add(Slide(SBG[out.size % SBG.size], fx, cls, parts)) }
         val noun = PERIOD_NOUN[p]!!
         val prevCmp = mapOf("week" to "à la semaine précédente", "month" to "au mois précédent", "year" to "à l'année précédente")[p]!!
-        add(listOf(Part.Eyebrow("Récap PepsGoal${if (r.past) " · bilan complet" else ""}"), Part.Flame(1f), Part.Title(tt), Part.Text("$sub."),
+        add(listOf(Part.Eyebrow(if (wrapped) "Ta rétrospective de l’année" else "Récap PepsGoal${if (r.past) " · bilan complet" else ""}"), Part.Flame(1f), Part.Title(tt), Part.Text("$sub."),
             Part.Joke(pick(listOf("Attache ta ceinture, on rembobine.", "Prépare le pop-corn 🍿, c’est l’heure du bilan.", "Roulement de tambour… 🥁", "On a compté pour toi. Promis, sans tricher.", "Installe-toi, ce récap est garanti sans pub.")))), "✨", "intro")
         if (st.n == 0) {
             add(listOf(Part.Emoji("🌱"), Part.Title("Tout reste à écrire"), Part.Text("Aucune validation sur cette période${if (r.past) "" else " pour l’instant"}."),
@@ -218,6 +246,17 @@ object Recaps {
         if (cells.isNotEmpty()) { if (cells.size % 2 == 1) cells.add("${st.days.size}" to if (st.days.size > 1) "jours actifs" else "jour actif"); add(listOf(Part.Eyebrow("En chiffres"), Part.Title("Ce que tu as construit"), Part.Cells(cells)), "🧮") }
         if (pg.socialOn() && (st.posts > 0 || st.cheers > 0)) add(listOf(Part.Eyebrow("Côté tribu"), Part.Big(st.cheers), Part.Text("${if (st.cheers > 1) "encouragements reçus" else "encouragement reçu"} sur ${pl(st.posts, "publication", "publications")}."),
             Part.Joke(pick(listOf("Ta tribu croit en toi. Et elle a raison.", "Ton fan-club s’agrandit.", "Les applaudissements sont de bon cœur, on a vérifié.")))), "💖")
+        if (p == "year") {
+            val x = yearExtras(pg, id, r)
+            if (x.months.count { it > 0 } >= 2) add(listOf(Part.Eyebrow("Ton année mois par mois"), Part.Title("Ton meilleur mois : ${MONTHS_LONG[x.bestMonth]}"), Part.Months(x.months, x.bestMonth),
+                Part.Text("${pl(x.months[x.bestMonth], "validation", "validations")} en ${MONTHS_LONG[x.bestMonth]}."),
+                Part.Joke(pick(listOf("Ce mois-là, tu étais en feu. Littéralement.", "Si ton année était un film, ce serait la scène culte.", "Note pour l’an prochain : refaire exactement pareil.")))), "📆")
+            if (x.podium.isNotEmpty()) {
+                val medals = listOf("🥇", "🥈", "🥉")
+                add(listOf(Part.Eyebrow("Le podium de l’année"), Part.Title("Tes objectifs phares"), Part.Awards(x.podium.mapIndexed { i, (g, n) -> Triple(medals[i], "${g.icon} ${g.title}", pl(n, "validation", "validations")) }),
+                    Part.Joke(if (x.goalsDone > 0) "Et ${pl(x.goalsDone, "cap atteint", "caps atteints")} en route. Rien que ça." else pick(listOf("Une équipe qui gagne, on n’y touche pas.", "Ils montent sur le podium, toi tu montes en niveau.")))), "🏅")
+            }
+        }
         val aw = mutableListOf<Triple<String, String, String>>()
         st.bestDay?.let { (dd, nn) -> if (nn >= 2) aw.add(Triple("🏋️", "Jour de gloire", "${cap(weekdayLongDate(parseYmd(dd)))} : $nn validations")) }
         st.early?.let { if (localDateTime(it).hour < 7) aw.add(Triple("🐓", "Prix du coq", "Validation à ${hm2(it)}")) }
