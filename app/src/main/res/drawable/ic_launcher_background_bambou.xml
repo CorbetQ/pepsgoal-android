@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Bambou » : arrière-plan -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="108" android:endY="108">
+            <item android:offset="0" android:color="#FFE6F4D8" />
+            <item android:offset="1" android:color="#FF9FD08A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M26.0,14h0.0a3.0,3.0 0 0 1 3.0,3.0v90.0a3.0,3.0 0 0 1 -3.0,3.0h-0.0a3.0,3.0 0 0 1 -3.0,-3.0v-90.0a3.0,3.0 0 0 1 3.0,-3.0Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="23.0" android:startY="0" android:endX="29.0" android:endY="0">
+            <item android:offset="0" android:color="#FFBFE0A6" />
+            <item android:offset="1" android:color="#FF8FC07A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M23.5,32h5a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-5a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1Z" android:fillColor="#FF2E5A2A" />
+    <path android:pathData="M23.5,52h5a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-5a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1Z" android:fillColor="#FF2E5A2A" />
+    <path android:pathData="M23.5,72h5a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-5a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1Z" android:fillColor="#FF2E5A2A" />
+    <path android:pathData="M88.0,14h0.0a3.0,3.0 0 0 1 3.0,3.0v90.0a3.0,3.0 0 0 1 -3.0,3.0h-0.0a3.0,3.0 0 0 1 -3.0,-3.0v-90.0a3.0,3.0 0 0 1 3.0,-3.0Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="85.0" android:startY="0" android:endX="91.0" android:endY="0">
+            <item android:offset="0" android:color="#FFBFE0A6" />
+            <item android:offset="1" android:color="#FF8FC07A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M85.5,32h5a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-5a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1Z" android:fillColor="#FF2E5A2A" />
+    <path android:pathData="M85.5,52h5a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-5a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1Z" android:fillColor="#FF2E5A2A" />
+    <path android:pathData="M85.5,72h5a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-5a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1Z" android:fillColor="#FF2E5A2A" />
+</vector>

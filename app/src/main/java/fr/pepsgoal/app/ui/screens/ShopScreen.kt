@@ -113,11 +113,14 @@ fun ShopScreen(ui: AppState) {
                 val on = u.settings.accentCustom == t.colors && u.settings.bg == t.bg
                 Glass(pad = 0.dp, onClick = { purchase("theme:${t.key}", t.name, t.price, t.season) { pg.applyTheme(t); ui.themeTick++; ui.toast("Thème « ${t.name} » appliqué.", "palette") } }) {
                     // Aperçu : dégradé des trois couleurs et motif de l'arrière-plan
-                    Box(Modifier.fillMaxWidth().height(96.dp).background(Brush.linearGradient(t.colors.map(::hex)))) {
+                    // Thème spécial avec paysage illustré : l'aperçu montre la scène elle-même
+                    val scene = t.bg.startsWith("s:")
+                    Box(Modifier.fillMaxWidth().height(if (scene) 150.dp else 96.dp).background(Brush.linearGradient(t.colors.map(::hex)))) {
+                        if (scene) SceneBg(t.bg.removePrefix("s:"), Modifier.fillMaxSize(), still = true)
                         Row(Modifier.align(Alignment.BottomStart).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             t.colors.forEach { c -> Box(Modifier.size(22.dp).clip(CircleShape).background(hex(c)).border(2.dp, Color.White.copy(alpha = .8f), CircleShape)) }
                         }
-                        Text((BGS.firstOrNull { it.first == t.bg }?.second ?: "") + (FX_LABELS[t.fx]?.let { " · $it" } ?: ""), Modifier.align(Alignment.TopEnd).padding(10.dp).clip(CircleShape).background(Color.Black.copy(alpha = .25f)).padding(horizontal = 10.dp, vertical = 4.dp),
+                        Text((BGS.firstOrNull { it.first == t.bg }?.second ?: SHOP_BGS.firstOrNull { "s:${it.key}" == t.bg }?.let { "Paysage spécial" } ?: "") + (FX_LABELS[t.fx]?.let { " · $it" } ?: ""), Modifier.align(Alignment.TopEnd).padding(10.dp).clip(CircleShape).background(Color.Black.copy(alpha = .25f)).padding(horizontal = 10.dp, vertical = 4.dp),
                             color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
