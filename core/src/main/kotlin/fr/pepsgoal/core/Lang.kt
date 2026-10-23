@@ -10,7 +10,7 @@ object Lang {
     /** Pluriels de [pl] : mot français au singulier → (singulier, pluriel) anglais. */
     val plural: Map<String, Pair<String, String>> = mapOf(
         "ami en commun" to ("mutual friend" to "mutual friends"), "ami" to ("friend" to "friends"),
-        "flamme t’est rendue" to ("flame given back" to "flames given back"), "ami a" to ("friend has" to "friends have"),
+        "flamme t’est rendue" to ("flame given back" to "flames given back"), "compte bloqué" to ("blocked account" to "blocked accounts"), "objectif relié" to ("linked goal" to "linked goals"), "souvenir" to ("memory" to "memories"), "emplacement" to ("place" to "places"), "ami a" to ("friend has" to "friends have"),
         "autre badge à découvrir" to ("other badge to discover" to "other badges to discover"), "clé de conversation" to ("conversation key" to "conversation keys"),
         "version mini validée" to ("mini version done" to "mini versions done"), "défi de N jours réussi" to ("N-day challenge completed" to "N-day challenges completed"), "objectif créé" to ("goal created" to "goals created"), "réaction donnée" to ("reaction given" to "reactions given"), "commentaire écrit" to ("comment written" to "comments written"), "article de la boutique" to ("shop item" to "shop items"), "commentaire" to ("comment" to "comments"), "réaction" to ("reaction" to "reactions"), "compte" to ("account" to "accounts"), "deadline bouclée" to ("deadline met" to "deadlines met"),
         "défi à plusieurs réussi" to ("group challenge won" to "group challenges won"), "encouragement reçu" to ("cheer received" to "cheers received"),

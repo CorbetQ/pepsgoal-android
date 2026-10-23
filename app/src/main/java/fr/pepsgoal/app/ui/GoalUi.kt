@@ -219,38 +219,18 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     // Balayage : vers la droite pour valider (ou annuler), vers la gauche pour les actions rapides
     val swipe = ui.prefs.swipe
-    var dx by remember { mutableFloatStateOf(0f) }
-    var w by remember { mutableIntStateOf(1) }
-    var armed by remember { mutableIntStateOf(0) }
-    val th = w * .26f
+    val sw = rememberSwipe()
     val rightLabel = if (g.type == "duration") (if (running) "Pause" else "Minuteur") else if (done && g.type in setOf("routine", "abstinence", "limit", "timed", "challenge")) "Annuler" else if (g.type == "cap") "Ajouter" else "Valider"
-    val drag = androidx.compose.foundation.gestures.rememberDraggableState { d ->
-        dx = (dx + d).coerceIn(-w * .45f, w * .45f)
-        val a = when { dx > th -> 1; dx < -th -> -1; else -> 0 }
-        if (a != armed) { armed = a; if (a != 0) Feedback.tick() }
-    }
     val status = when { running -> "minuteur en cours"; done -> "validé aujourd’hui"; urgent -> "à faire, urgent"; else -> "à faire" }
-    Box(Modifier.fillMaxWidth().onSizeChanged { w = it.width.coerceAtLeast(1) }) {
-        if (dx != 0f) {
-            val toRight = dx > 0; val k = (kotlin.math.abs(dx) / th).coerceIn(0f, 1f)
-            val bg = if (toRight) p.ok else p.focus
-            Row(Modifier.matchParentSize().clip(RoundedCornerShape(18.dp)).background(bg.copy(alpha = .12f + .28f * k)).padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = if (toRight) Arrangement.Start else Arrangement.End) {
-                Row(Modifier.scale(.85f + .25f * k), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Pi(if (toRight) (if (rightLabel == "Annuler") "x" else if (g.type == "duration") "play" else "check") else "list", size = 22.dp, tint = readable(bg))
-                    Text(if (toRight) rightLabel else "Actions", fontWeight = FontWeight.ExtraBold, color = readable(bg))
-                }
-            }
-        }
+    val rowShape = RoundedCornerShape(18.dp)
+    Box(Modifier.fillMaxWidth()) {
+        SwipeReveal(sw, rowShape, right = SwipeAction(if (rightLabel == "Annuler") "x" else if (g.type == "duration") "play" else "check", rightLabel, if (rightLabel == "Annuler") p.ink2 else p.ok),
+            left = SwipeAction("list", "Actions", p.focus), modifier = Modifier.matchParentSize())
         Row(
-            Modifier.offset { androidx.compose.ui.unit.IntOffset(dx.toInt(), 0) }
-                .then(if (swipe) Modifier.draggable(drag, androidx.compose.foundation.gestures.Orientation.Horizontal, onDragStopped = {
-                    val a = armed; armed = 0
-                    when (a) { 1 -> doValidate(ui, g.id); -1 -> ui.open(Sheet.Quick(g.id)) }
-                    androidx.compose.animation.core.animate(dx, 0f, animationSpec = spring(dampingRatio = .62f, stiffness = 520f)) { v, _ -> dx = v }
-                }) else Modifier)
-                .bounce(inter, .97f).fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                .background(if (done) tc.c.copy(alpha = .14f) else if (dx != 0f) p.glassStrong else Color.Transparent)
+            Modifier.swipeable(sw, left = true, right = true, enabled = swipe) { dir -> if (dir > 0) doValidate(ui, g.id) else ui.open(Sheet.Quick(g.id)) }
+                .swipeTilt(sw)
+                .bounce(inter, .97f).fillMaxWidth().clip(rowShape)
+                .background(if (done) tc.c.copy(alpha = .14f) else if (sw.dx != 0f) p.glassStrong else Color.Transparent)
                 .springClick(inter, label = "Ouvrir les détails") { ui.open(Sheet.Goal(g.id)) }
                 .semantics {
                     stateDescription = status
@@ -330,7 +310,12 @@ fun Last7(pg: Pg, g: Goal) {
 @Composable
 fun GoalCard(ui: AppState, g: Goal, modifier: Modifier = Modifier) {
     val p = LocalPal.current; val pg = ui.pg; val tc = p.type(g.type); val s = pg.statBig(g)
-    Glass(modifier, pad = 16.dp, onClick = { ui.open(Sheet.Goal(g.id)) }) {
+    // Balayage, comme dans « À valider » : vers la droite pour valider, vers la gauche pour les actions rapides
+    val sw = rememberSwipe(); val shape = RoundedCornerShape(24.dp)
+    val canDo = g.userId == pg.meId() && !g.archived && !pg.isClosedGoal(g)
+    Box(modifier) {
+    SwipeReveal(sw, shape, right = if (canDo) SwipeAction("check", "Valider", p.ok) else null, left = SwipeAction("list", "Actions", p.focus), modifier = Modifier.matchParentSize())
+    Glass(Modifier.swipeable(sw, left = true, right = canDo, enabled = ui.prefs.swipe) { dir -> if (dir > 0) doValidate(ui, g.id) else ui.open(Sheet.Quick(g.id)) }.swipeTilt(sw), pad = 16.dp, onClick = { ui.open(Sheet.Goal(g.id)) }) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             GoalIcon(g, 46.dp)
             Column(Modifier.weight(1f)) {
@@ -355,6 +340,7 @@ fun GoalCard(ui: AppState, g: Goal, modifier: Modifier = Modifier) {
             Muted(pg.metaLine(g), Modifier.weight(1f), small = true, maxLines = 2)
             if (g.type in setOf("routine", "abstinence", "limit", "duration", "cap", "timed", "period", "challenge")) Last7(pg, g)
         }
+    }
     }
 }
 

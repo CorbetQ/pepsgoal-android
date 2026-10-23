@@ -59,6 +59,7 @@ import fr.pepsgoal.core.cloud.*
 import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.User
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.contentDescription
@@ -338,8 +339,21 @@ private fun MessageRow(
     val kind = if (gone) "gone" else b?.str("k") ?: "text"
     val canAct = !m.official && b != null && !pg.isBanned(pg.me()) && !gone
     val mentioned = b?.strs("mn")?.contains(me) == true
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (selected) p.flame.copy(alpha = .16f) else Color.Transparent)
-        .semantics { this.selected = selected }, horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
+    // Glisser un message vers la droite pour y répondre (icône qui apparaît sous le doigt, clic net au seuil)
+    val sw = rememberSwipe()
+    Box(Modifier.fillMaxWidth()) {
+    if (sw.dx > 0f) {
+        val k = sw.progress(.2f); val armed = sw.armed != 0
+        val pop by androidx.compose.animation.core.animateFloatAsState(if (armed) 1.12f else .55f + .4f * k, androidx.compose.animation.core.spring(dampingRatio = .45f, stiffness = 600f), label = "replyPop")
+        Box(Modifier.align(Alignment.CenterStart).padding(start = 6.dp).size(34.dp).graphicsLayer { scaleX = pop; scaleY = pop; alpha = (k * 1.4f).coerceAtMost(1f) }
+            .clip(CircleShape).background(if (armed) p.flame else p.glassStrong), contentAlignment = Alignment.Center) {
+            Pi("reply", size = 18.dp, tint = if (armed) p.onAccent else p.ink)
+        }
+    }
+    Column(Modifier.fillMaxWidth().swipeable(sw, left = false, right = true, threshold = .2f, enabled = canAct && !selecting) { onReply() }
+        .clip(RoundedCornerShape(16.dp)).background(if (selected) p.flame.copy(alpha = .16f) else Color.Transparent)
+        .semantics { this.selected = selected; customActions = if (canAct && !selecting) listOf(androidx.compose.ui.semantics.CustomAccessibilityAction("Répondre") { onReply(); true }) else emptyList() },
+        horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
         who?.let { Text(it, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 10.dp, top = 6.dp)) }
         val shape = RoundedCornerShape(20.dp, 20.dp, if (mine) 6.dp else 20.dp, if (mine) 20.dp else 6.dp)
         // Bulles en relief : ombre douce, dégradé (les miennes aux couleurs de PepsGoal), reflet en haut ; arrivée à ressort
@@ -403,6 +417,7 @@ private fun MessageRow(
             if (more) FlowRowCompat(Modifier.widthIn(max = 300.dp), gap = 2.dp) { MORE_REACTS.forEach { e -> Box(Modifier.size(36.dp).clip(CircleShape).clickable { onReact(e) }, contentAlignment = Alignment.Center) { Emoji(e, 22.dp) } } }
             PButton("Répondre", onReply, icon = "reply", kind = "ghost", small = true)
         }
+    }
     }
 }
 

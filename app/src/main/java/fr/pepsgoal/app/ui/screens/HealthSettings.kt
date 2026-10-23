@@ -35,17 +35,13 @@ fun HealthSettings(ui: AppState) {
     val perm = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { refresh() }
     LaunchedEffect(Unit) { refresh() }
     val ok = granted.containsAll(Health.PERMS)
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        CatHero("health", "Health Connect · " + when { !available -> "non disponible sur ce téléphone"; ok -> "connecté"; else -> "autorisations à accorder" }, chips = {
+            Chip(if (available && ok) "Connecté" else "Non relié", if (available && ok) "check" else "x", if (available && ok) p.ok else p.ink3)
+            if (links.isNotEmpty()) Chip(pl(links.size, "objectif relié", "objectifs reliés"), "link", p.type("duration").c)
+        })
         Glass {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IconTile("heart", p.type("deadline").c, p.type("duration").c, 46.dp, 15.dp)
-                Column(Modifier.weight(1f)) {
-                    Text("Health Connect", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
-                    Muted(when { !available -> "Non disponible sur ce téléphone"; ok -> "Connecté"; else -> "Autorisations à accorder" }, small = true)
-                }
-                if (available && ok) Chip("OK", "check", p.ok)
-            }
-            Muted("Relie un objectif à une mesure (pas, distances, sport, sommeil, heure de coucher ou de réveil, poids, calories, étages, eau) : il se valide tout seul dès que le seuil du jour est atteint. Les valeurs alimentent aussi tes statistiques et le coach. Les données restent sur ton téléphone.", Modifier.padding(top = 10.dp), small = true)
+            Muted("Relie un objectif à une mesure (pas, distances, sport, sommeil, heure de coucher ou de réveil, poids, calories, étages, eau) : il se valide tout seul dès que le seuil du jour est atteint. Les valeurs alimentent aussi tes statistiques et le coach. Les données restent sur ton téléphone.", small = true)
             Spacer(Modifier.height(10.dp))
             when {
                 !available -> PButton(if (Health.needsInstall(ctx)) "Mettre à jour Health Connect" else "Installer Health Connect", {

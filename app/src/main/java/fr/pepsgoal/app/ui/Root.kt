@@ -312,8 +312,20 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
     var refreshing by remember { mutableStateOf(false) }
     val st = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
     val spin = slowPhaseState(900, 20)
+    // Vibrations progressives en tirant, clic net au seuil (lu hors composition : aucun coût de recomposition)
+    LaunchedEffect(st) {
+        var step = 0; var armed = false
+        snapshotFlow { st.distanceFraction }.collect { f ->
+            if (refreshing) return@collect
+            val sNow = (f.coerceIn(0f, 1f) * 4).toInt()
+            if (sNow > step && sNow < 4) fr.pepsgoal.app.ui.Feedback.ramp(f)
+            step = sNow
+            val a = f >= 1f
+            if (a != armed) { armed = a; if (a) fr.pepsgoal.app.ui.Feedback.armed() else fr.pepsgoal.app.ui.Feedback.disarmed() }
+        }
+    }
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(refreshing, {
-        refreshing = true; fr.pepsgoal.app.ui.Feedback.tick()
+        refreshing = true; fr.pepsgoal.app.ui.Feedback.commit()
         ui.scope.launch {
             try {
                 if (ui.pg.store.acct && ui.pg.store.online) { ui.cloud.syncNow(); ui.cloud.refreshSocial() }

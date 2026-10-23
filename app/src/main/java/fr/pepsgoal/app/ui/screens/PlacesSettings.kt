@@ -53,9 +53,12 @@ fun PlacesSettings(ui: AppState) {
     val pg = ui.pg; val u = pg.me() ?: return; val p = LocalPal.current
     var editing by remember { mutableStateOf<SavedPlace?>(null) }
     var adding by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         if (editing != null || adding) PlaceEditor(ui, editing) { editing = null; adding = false }
         else {
+            CatHero("places", if (u.places.isEmpty()) "Maison, travail, salle de sport… pour les rappels par lieu" else u.places.take(3).joinToString(" · ") { "${it.icon} ${it.name}" }, chips = {
+                Chip(fr.pepsgoal.core.pl(u.places.size, "emplacement", "emplacements"), "pin", p.type("measure").c)
+            })
             Glass {
                 CardHead("Mes emplacements") { PButton("Ajouter", { adding = true }, icon = "plus", small = true, kind = "primary") }
                 if (u.places.isEmpty()) Empty("Aucun emplacement", "Enregistre ta maison, ton travail ou ta salle de sport : tu les retrouveras d’un geste pour les rappels par lieu.", icon = "pin")

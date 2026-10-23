@@ -26,6 +26,7 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** Cartes de l'accueil, dans l'ordre par défaut : clé → (nom, description, icône). */
@@ -65,7 +66,11 @@ fun HomeSettings(ui: AppState) {
     var dragging by remember { mutableStateOf<String?>(null) }
     var dragY by remember { mutableFloatStateOf(0f) }
     var rowH by remember { mutableIntStateOf(1) }
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        CatHero("home", "${list.count { it.second }} cartes affichées sur ${list.size}, dans l’ordre de ton choix", chips = {
+            Chip("Ordre personnalisé", "grip", p.type("routine").c)
+            list.firstOrNull { it.second }?.let { (k, _) -> Chip("En haut : ${HOME_CARDS[k]?.first ?: k}", HOME_CARDS[k]?.third ?: "sun", p.type("objective").c) }
+        })
         Glass {
             CardHead("Cartes de l’accueil") { Count(list.count { it.second }) }
             Muted("Fais glisser la poignée pour changer l’ordre. L’interrupteur affiche ou masque la carte.", Modifier.padding(bottom = 10.dp), small = true)
@@ -117,34 +122,38 @@ fun HomeSettings(ui: AppState) {
 @Composable
 fun ComfortSettings(ui: AppState) {
     ui.themeTick
-    val pr = ui.prefs; val upd = { ui.themeTick++ }
-    Glass {
-        SectionTitle("Lecture")
-        SetRow("Mode Lecture facile", "Mots simples, état des objectifs écrit en toutes lettres (« À faire », « Fait »), texte un peu plus grand, messages affichés plus longtemps, sans effets de verre ni animations.") {
-            PSwitch(pr.easy, { pr.easy = it; upd(); ui.toast(if (it) "Lecture facile activée." else "Lecture facile désactivée.", "eye") })
+    val pr = ui.prefs; val upd = { ui.themeTick++ }; val p = LocalPal.current
+    val scope = rememberCoroutineScope()
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        SetGroup("Lecture") {
+            SetToggle("Mode Lecture facile", "Mots simples, état des objectifs écrit en toutes lettres, texte un peu plus grand, messages affichés plus longtemps, sans effets de verre ni animations.", "book", p.type("duration").c,
+                pr.easy, { pr.easy = it; upd(); ui.toast(if (it) "Lecture facile activée." else "Lecture facile désactivée.", "eye") })
+            Column {
+                SetItem("Taille du texte", "${(pr.textScale * 100).roundToInt()} % de la taille choisie dans Android", "text", p.type("objective").c)
+                FlowRowCompat(Modifier.padding(start = 60.dp, end = 12.dp, bottom = 12.dp), gap = 6.dp) {
+                    listOf(.85f to "Petit", 1f to "Normal", 1.15f to "Grand", 1.3f to "Très grand", 1.5f to "Maximum").forEach { (v, l) -> FChip(l, abs(pr.textScale - v) < .01f, { pr.textScale = v; upd() }) }
+                }
+            }
+            Column {
+                SetItem("Densité de l’affichage", "Compact : plus de contenu à l’écran. Large : tout est plus grand et plus facile à toucher.", "grip", p.type("project").c)
+                Box(Modifier.padding(start = 60.dp, end = 12.dp, bottom = 12.dp)) { Seg(listOf("compact" to "Compact", "normal" to "Normal", "large" to "Large"), pr.density, { pr.density = it; upd() }) }
+            }
         }
-        SetRow("Taille du texte", "${(pr.textScale * 100).roundToInt()} % de la taille choisie dans Android")
-        FlowRowCompat(gap = 6.dp) {
-            listOf(.85f to "Petit", 1f to "Normal", 1.15f to "Grand", 1.3f to "Très grand", 1.5f to "Maximum").forEach { (v, l) -> FChip(l, abs(pr.textScale - v) < .01f, { pr.textScale = v; upd() }) }
+        SetGroup("Gestes et prise en main") {
+            SetToggle("Mode une main", "Le bouton retour et les actions des pages passent en bas. En haut d’une liste, tire l’écran vers le bas pour amener le haut sous ton pouce.", "hand", p.type("routine").c, pr.oneHand, { pr.oneHand = it; upd() })
+            SetToggle("Gestes de balayage", "Balaie un objectif vers la droite pour le valider, vers la gauche pour les actions rapides ; balaie un message vers la droite pour y répondre.", "repeat", p.type("challenge").c, pr.swipe, { pr.swipe = it; upd() })
         }
-        SetRow("Densité de l’affichage", "Compact : plus de contenu à l’écran. Large : tout est plus grand et plus facile à toucher.")
-        Seg(listOf("compact" to "Compact", "normal" to "Normal", "large" to "Large"), pr.density, { pr.density = it; upd() })
-    }
-    Glass {
-        SectionTitle("Gestes et prise en main")
-        SetRow("Mode une main", "Le bouton retour et les actions des pages passent en bas. En haut d’une liste, tire l’écran vers le bas pour amener le haut sous ton pouce.") {
-            PSwitch(pr.oneHand, { pr.oneHand = it; upd() })
-        }
-        SetRow("Gestes de balayage", "Dans « À valider aujourd’hui » : balaie un objectif vers la droite pour le valider, vers la gauche pour les actions rapides (favori, Focus, reporter à demain).") {
-            PSwitch(pr.swipe, { pr.swipe = it; upd() })
-        }
-    }
-    Glass {
-        SectionTitle("Vibrations et sons")
-        SetRow("Vibrations", "Un léger retour à chaque appui, plus marqué quand tu valides.")
-        Seg(listOf("off" to "Aucune", "light" to "Légères", "strong" to "Fortes"), pr.haptics, { pr.haptics = it; upd(); Feedback.success() })
-        SetRow("Sons", "Petit carillon à la validation, note grave quand tu annules.") {
-            PSwitch(pr.sounds, { pr.sounds = it; upd(); if (it) Feedback.success() })
+        SetGroup("Vibrations et sons", note = "Pendant un geste, les vibrations se renforcent à mesure que tu approches du seuil, puis un clic net confirme l’action.") {
+            Column {
+                SetItem("Vibrations", "Un léger retour à chaque appui, plus marqué quand tu valides.", "bolt", p.flame) {
+                    PButton("Essayer", {
+                        // Démonstration : crans progressifs, seuil, puis action déclenchée
+                        scope.launch { for (k in listOf(.25f, .5f, .75f)) { Feedback.ramp(k); kotlinx.coroutines.delay(110) }; Feedback.armed(); kotlinx.coroutines.delay(320); Feedback.commit() }
+                    }, small = true, enabled = pr.haptics != "off")
+                }
+                Box(Modifier.padding(start = 60.dp, end = 12.dp, bottom = 12.dp)) { Seg(listOf("off" to "Aucune", "light" to "Légères", "strong" to "Fortes"), pr.haptics, { pr.haptics = it; upd(); Feedback.success() }) }
+            }
+            SetToggle("Sons", "Petit carillon à la validation, note grave quand tu annules.", "music", p.type("period").c, pr.sounds, { pr.sounds = it; upd(); if (it) Feedback.success() })
         }
     }
 }
