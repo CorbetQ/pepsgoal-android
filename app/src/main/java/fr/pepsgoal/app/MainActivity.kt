@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -40,6 +41,30 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.LaunchedEffect(meId) { if (meId != null) askNotifications() }
         }
         if (savedInstanceState == null) handle(intent)
+    }
+
+    /** Capture d'écran pendant une conversation (Android 14 et plus) : les membres en sont informés dans la conversation. */
+    private var lastShot = 0L
+    private val shotCb: Any? = if (Build.VERSION.SDK_INT >= 34) android.app.Activity.ScreenCaptureCallback { onScreenshot() } else null
+
+    private fun onScreenshot() {
+        val key = fr.pepsgoal.app.ui.screens.ChatState.key ?: return
+        if (System.currentTimeMillis() - lastShot < 10_000) return
+        lastShot = System.currentTimeMillis()
+        val chat = key.removePrefix("g:").takeIf { key.startsWith("g:") }; val to = key.removePrefix("u:").takeIf { key.startsWith("u:") }
+        peps.scope.launch {
+            try { peps.cloud.e2e.deliver(chat, to, kotlinx.serialization.json.buildJsonObject { put("k", kotlinx.serialization.json.JsonPrimitive("shot")); put("t", kotlinx.serialization.json.JsonPrimitive("📸 a pris une capture d’écran")) }) } catch (e: Exception) {}
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (Build.VERSION.SDK_INT >= 34) registerScreenCaptureCallback(mainExecutor, shotCb as android.app.Activity.ScreenCaptureCallback)
+    }
+
+    override fun onStop() {
+        if (Build.VERSION.SDK_INT >= 34) unregisterScreenCaptureCallback(shotCb as android.app.Activity.ScreenCaptureCallback)
+        super.onStop()
     }
 
     override fun onResume() {

@@ -175,6 +175,8 @@ class DevicePrefs(context: Context) {
     var homeLayout get() = p.getString("homeLayout", "comfy") ?: "comfy"; set(v) = p.edit().putString("homeLayout", v).apply()
     /** Fond qui réagit : lueur selon l'avancement du jour, confettis les journées parfaites. */
     var bgReactive get() = p.getBoolean("bgReactive", true); set(v) = p.edit().putBoolean("bgReactive", v).apply()
+    /** Pluie, neige, orage ou brouillard par-dessus le fond quand il fait ce temps-là dehors (ville de la météo). */
+    var bgWeather get() = p.getBoolean("bgWeather", true); set(v) = p.edit().putBoolean("bgWeather", v).apply()
     /** Flamme personnalisée : forme et effet animé. */
     var flameShape get() = p.getString("flameShape", "classic") ?: "classic"; set(v) = p.edit().putString("flameShape", v).apply()
     var flameFx get() = p.getString("flameFx", "none") ?: "none"; set(v) = p.edit().putString("flameFx", v).apply()
