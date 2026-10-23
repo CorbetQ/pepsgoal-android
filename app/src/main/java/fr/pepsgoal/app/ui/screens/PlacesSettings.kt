@@ -103,7 +103,7 @@ private fun PlaceEditor(ui: AppState, edit: SavedPlace?, done: () -> Unit) {
             if (fr.pepsgoal.app.sys.GeoReminders.hasFine(ctx)) perm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION))
             else perm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
         }
-        Box(Modifier.fillMaxWidth().height(320.dp).shadow(if (p.transp) 0.dp else 12.dp, RoundedCornerShape(24.dp), spotColor = p.flame.copy(alpha = .35f))
+        Box(Modifier.fillMaxWidth().height(320.dp).shadow((if (p.transp) 0.dp else 12.dp).ifShadows(), RoundedCornerShape(24.dp), spotColor = p.flame.copy(alpha = .35f))
             .clip(RoundedCornerShape(24.dp)).border(1.dp, p.line, RoundedCornerShape(24.dp))) {
             StyledMap(start, if (edit != null) 17.0 else 14.0, point, radius, icon, onTap = { point = it }, onReady = { map = it })
             // Commandes flottantes en verre : zoom et position
@@ -141,7 +141,7 @@ private fun PlaceEditor(ui: AppState, edit: SavedPlace?, done: () -> Unit) {
 private fun MapBtn(icon: String, desc: String, modifier: Modifier = Modifier, accent: Boolean = false, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Box(modifier.bounce(inter, .88f).size(42.dp).shadow(8.dp, RoundedCornerShape(50), spotColor = p.flame.copy(alpha = .4f)).clip(RoundedCornerShape(50))
+    Box(modifier.bounce(inter, .88f).size(42.dp).shadow(8.dp.ifShadows(), RoundedCornerShape(50), spotColor = p.flame.copy(alpha = .4f)).clip(RoundedCornerShape(50))
         .background(if (accent) androidx.compose.ui.graphics.Brush.linearGradient(listOf(p.flame2, p.flame, p.pink)) else androidx.compose.ui.graphics.SolidColor(p.glassStrong.copy(alpha = .95f)))
         .border(1.dp, if (accent) androidx.compose.ui.graphics.Color.White.copy(alpha = .5f) else p.line, RoundedCornerShape(50))
         .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center) {

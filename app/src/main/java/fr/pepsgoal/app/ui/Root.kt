@@ -40,6 +40,7 @@ import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.peps
+import fr.pepsgoal.app.sys.Perf
 import fr.pepsgoal.app.ui.screens.*
 import fr.pepsgoal.app.ui.sheets.SheetHost
 import fr.pepsgoal.app.ui.fullscreen.FullscreenHost
@@ -109,8 +110,16 @@ fun PepsRoot(ui: AppState) {
         }
         Box(Modifier.fillMaxSize().then(if (p.mono) Modifier.grayscale() else Modifier)
             .pointerInput(Unit) { awaitPointerEventScope { while (true) { val e = awaitPointerEvent(PointerEventPass.Initial); e.changes.firstOrNull()?.let { ui.touch = it.position } } } }) {
+            // Page secondaire ouverte (fond opaque) : une fois la transition finie, l'arrière-plan et l'accueil dessous
+            // sont masqués et leurs horloges s'arrêtent. Sinon chaque image du fond animé forcerait à recalculer tous
+            // les flous de l'accueil, invisible, pendant qu'on fait défiler la page du dessus
+            val covered = ui.screens.isNotEmpty()
+            val settled = remember { mutableStateOf(false) }
+            LaunchedEffect(covered) { if (covered) { kotlinx.coroutines.delay(700); settled.value = true } else settled.value = false }
+            val hidden = covered && settled.value
+            val hideLayer = Modifier.graphicsLayer { alpha = if (hidden) 0f else 1f }
             // Arrière-plan : source du flou des panneaux en verre (niveau 0)
-            Box(Modifier.fillMaxSize().hazeSource(haze, zIndex = 0f)) {
+            Box(Modifier.fillMaxSize().background(p.bg).hazeSource(haze, zIndex = 0f)) { Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                 // Changement d'arrière-plan ou de ciel (jour → crépuscule → nuit, pluie…) : fondu enchaîné
                 val kind = if (s?.theme == "weather") "sky" else s?.bg ?: "blob"
                 val sky = if (s?.theme == "weather") Weather.sky(wx?.data) else null
@@ -122,17 +131,19 @@ fun PepsRoot(ui: AppState) {
                     Backdrop(k[0] as String, skies[k], k[4] as Boolean, k[5] as Long, k[7] as String)
                 }
                 LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
-            }
+            } } }
             // Flamme de collection choisie (si elle est toujours débloquée par la meilleure série)
             val skinKey = u?.flameSkin ?: "classic"
             val flame = remember(skinKey, u?.id, rev) { FLAME_SKINS.firstOrNull { it.key == skinKey && it.colors != null && u != null && pg.bestStreak(u.id) >= it.min }?.colors?.map(::hex) }
             CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame) {
                 Reachable(ui) {
-                when {
-                    u == null -> AuthScreen(ui)
-                    pg.maintNow()?.mode == "full" && !pg.isAdmin(u) -> MaintenanceScreen(ui)
-                    else -> Shell(ui)
-                }
+                Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
+                    when {
+                        u == null -> AuthScreen(ui)
+                        pg.maintNow()?.mode == "full" && !pg.isAdmin(u) -> MaintenanceScreen(ui)
+                        else -> Shell(ui)
+                    }
+                } }
                 val top = ui.screens.lastOrNull()
                 // Transitions dans le sens de la navigation : on avance vers la droite, on revient vers la gauche
                 val depth = ui.screens.size; val prevDepth = remember { intArrayOf(depth) }
@@ -144,6 +155,8 @@ fun PepsRoot(ui: AppState) {
                     val sc = spring<Float>(dampingRatio = .9f, stiffness = 420f)
                     when {
                         p.motion -> fadeIn(tween(120)) togetherWith fadeOut(tween(90))
+                        // Transitions simples (Paramètres › Performance) : fondu court, sans glissement ni mise à l'échelle
+                        !Perf.flags.rich -> fadeIn(tween(160)) togetherWith fadeOut(tween(120))
                         forward -> (slideInHorizontally(sp) { it / 4 } + fadeIn(Motion.fadeIn(220)) + scaleIn(sc, initialScale = .97f)) togetherWith
                             (slideOutHorizontally(tween(260, easing = Motion.Emphasized)) { -it / 10 } + fadeOut(Motion.fadeOut(180)) + scaleOut(tween(260, easing = Motion.Emphasized), targetScale = .96f))
                         else -> (slideInHorizontally(sp) { -it / 10 } + fadeIn(Motion.fadeIn(200)) + scaleIn(sc, initialScale = .96f)) togetherWith
@@ -254,7 +267,7 @@ private fun Shell(ui: AppState) {
             Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier), contentAlignment = Alignment.TopCenter) {
                 Box(Modifier.fillMaxHeight().then(if (wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth())) {
                 remember(ui.tab) { Stagger.reset() }
-                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .86f, stiffness = 460f), initialScale = .965f) + slideInVertically(spring(dampingRatio = .88f, stiffness = 460f)) { it / 28 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.015f)) }, label = "tab") { tab ->
+                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion || !Perf.flags.rich) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .86f, stiffness = 460f), initialScale = .965f) + slideInVertically(spring(dampingRatio = .88f, stiffness = 460f)) { it / 28 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.015f)) }, label = "tab") { tab ->
                     // Tirer pour actualiser sur l'accueil, le feed et les amis
                     if (tab in setOf("today", "feed", "friends")) PullRefresh(ui, with(d) { topH.toDp() }) {
                         when (tab) { "feed" -> FeedScreen(ui); "friends" -> FriendsScreen(ui); else -> TodayScreen(ui) }
@@ -270,7 +283,7 @@ private fun Shell(ui: AppState) {
         }
         // Volet latéral de la fiche (grand écran)
         if (side != null) Box(Modifier.align(Alignment.TopEnd).padding(top = with(d) { topH.toDp() } + 8.dp, bottom = with(d) { botH.toDp() } + 8.dp, end = 12.dp).width(440.dp).fillMaxHeight()
-            .shadow(18.dp, RoundedCornerShape(28.dp)).clip(RoundedCornerShape(28.dp)).background(p.glassStrong.copy(alpha = 1f))) {
+            .shadow(18.dp.ifShadows(), RoundedCornerShape(28.dp)).clip(RoundedCornerShape(28.dp)).background(p.glassStrong.copy(alpha = 1f))) {
             CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true) {
                 Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     key(side.id) { fr.pepsgoal.app.ui.sheets.GoalSheet(ui, side.id) }
@@ -312,7 +325,7 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
         Box(Modifier.align(Alignment.TopCenter).padding(top = top + 6.dp).graphicsLayer {
             val f = if (refreshing) 1f else st.distanceFraction.coerceIn(0f, 1.3f)
             alpha = f.coerceAtMost(1f); translationY = (f - 1f) * 24.dp.toPx(); val sc = .6f + .4f * f.coerceAtMost(1f); scaleX = sc; scaleY = sc
-        }.size(46.dp).shadow(10.dp, CircleShape, spotColor = p.flame.copy(alpha = .5f)).clip(CircleShape).background(p.glassStrong.copy(alpha = 1f)), contentAlignment = Alignment.Center) {
+        }.size(46.dp).shadow(10.dp.ifShadows(), CircleShape, spotColor = p.flame.copy(alpha = .5f)).clip(CircleShape).background(p.glassStrong.copy(alpha = 1f)), contentAlignment = Alignment.Center) {
             Box(Modifier.graphicsLayer {
                 // Flamme qui vacille pendant le chargement
                 val w = if (refreshing) kotlin.math.sin(spin.value * 2f * kotlin.math.PI.toFloat()) else 0f
@@ -330,7 +343,7 @@ private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>,
     val idx = items.indexOfFirst { it.first == ui.tab }.coerceAtLeast(0)
     val shape = RoundedCornerShape(24.dp)
     Box(Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 10.dp).fillMaxWidth()
-        .shadow(if (p.oled || p.transp) 0.dp else 14.dp, shape, ambientColor = Color(0x6628186E), spotColor = Color(0x4428186E))
+        .shadow((if (p.oled || p.transp) 0.dp else 14.dp).ifShadows(), shape, ambientColor = Color(0x6628186E), spotColor = Color(0x4428186E))
         .glassBg(shape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, shape).padding(6.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val w = maxWidth / items.size
@@ -341,7 +354,7 @@ private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>,
             val lead = spring<Dp>(dampingRatio = .72f, stiffness = 620f); val lag = spring<Dp>(dampingRatio = .8f, stiffness = 260f)
             val l by animateDpAsState(w * idx, if (p.motion) snap() else if (right) lag else lead, label = "navL")
             val r by animateDpAsState(w * (idx + 1), if (p.motion) snap() else if (right) lead else lag, label = "navR")
-            Box(Modifier.offset(x = l).width((r - l).coerceAtLeast(w * .6f)).height(56.dp).shadow(if (p.transp) 0.dp else 6.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
+            Box(Modifier.offset(x = l).width((r - l).coerceAtLeast(w * .6f)).height(56.dp).shadow((if (p.transp) 0.dp else 6.dp).ifShadows(), RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
             Row(Modifier.fillMaxWidth()) {
                 items.forEachIndexed { i, (k, l0, ic) ->
                     // Lecture facile : libellés en mots courants
@@ -371,7 +384,7 @@ private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>,
 private fun Fab(desc: String, modifier: Modifier, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
-    Box(modifier.bounce(inter, .84f).size(58.dp).shadow(if (p.transp) 0.dp else 16.dp, CircleShape, ambientColor = p.flame, spotColor = p.flame).clip(CircleShape).background(p.accent)
+    Box(modifier.bounce(inter, .84f).size(58.dp).shadow((if (p.transp) 0.dp else 16.dp).ifShadows(), CircleShape, ambientColor = p.flame, spotColor = p.flame).clip(CircleShape).background(p.accent)
         .springClick(inter, label = desc, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) { Pi("plus", size = 28.dp, tint = p.onAccent) }
 }
 
@@ -393,7 +406,7 @@ private fun TopBar(ui: AppState) {
             LaunchedEffect(st.n) { if (!p.motion) { bump.snapTo(1.35f); bump.animateTo(1f, spring(dampingRatio = .4f)) } }
             val inter = remember { MutableInteractionSource() }
             val pill = RoundedCornerShape(50)
-            Row(Modifier.bounce(inter, .9f).height(46.dp).shadow(if (p.transp || p.oled) 0.dp else 10.dp, pill, ambientColor = Color(0x4428186E), spotColor = Color(0x3328186E))
+            Row(Modifier.bounce(inter, .9f).height(46.dp).shadow((if (p.transp || p.oled) 0.dp else 10.dp).ifShadows(), pill, ambientColor = Color(0x4428186E), spotColor = Color(0x3328186E))
                 .glassBg(pill, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, pill).springClick(inter, label = "Ouvrir le profil") { ui.nav("profile") }.semantics(mergeDescendants = true) { contentDescription = "Série de ${pl(st.n, "jour", "jours")}${if (u.freezes > 0) ", ${u.freezes} gel${if (u.freezes > 1) "s" else ""} de série" else ""}" }.padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(Modifier.graphicsLayer { scaleX = bump.value; scaleY = bump.value }, verticalAlignment = Alignment.CenterVertically) { Flame(22.dp); Text("${st.n}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp) }
@@ -416,7 +429,7 @@ private fun RoundGlass(desc: String, onClick: () -> Unit, badge: Int = 0, conten
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
     Box {
-        Box(Modifier.bounce(inter, .86f).size(46.dp).shadow(if (p.transp || p.oled) 0.dp else 12.dp, CircleShape, ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
+        Box(Modifier.bounce(inter, .86f).size(46.dp).shadow((if (p.transp || p.oled) 0.dp else 12.dp).ifShadows(), CircleShape, ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
             .glassBg(CircleShape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, CircleShape).springClick(inter, label = desc, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = if (badge > 0) "$desc, $badge non lus" else desc; role = Role.Button },
             contentAlignment = Alignment.Center, content = content)
@@ -461,7 +474,7 @@ private fun Toasts(ui: AppState) {
                     val left = remember { Animatable(1f) }
                     LaunchedEffect(Unit) { left.animateTo(0f, tween(if (t.action != null || p.easy) 5000 else 3600, easing = LinearEasing)) }
                     val shape = RoundedCornerShape(26.dp)
-                    Row(Modifier.shadow(if (p.transp) 0.dp else 14.dp, shape, ambientColor = Color(0x4428186E), spotColor = tint.copy(alpha = .45f)).clip(shape)
+                    Row(Modifier.shadow((if (p.transp) 0.dp else 14.dp).ifShadows(), shape, ambientColor = Color(0x4428186E), spotColor = tint.copy(alpha = .45f)).clip(shape)
                         .background(p.glassStrong.copy(alpha = 1f)).border(1.dp, tint.copy(alpha = .35f), shape)
                         .drawWithContent { drawContent(); drawRect(tint.copy(alpha = .85f), topLeft = Offset(0f, size.height - 3.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width * left.value, 3.dp.toPx())) }
                         .semantics { liveRegion = LiveRegionMode.Polite }
@@ -503,7 +516,8 @@ private fun Sparks(ui: AppState) {
         launch { label.animateTo(1f, spring(dampingRatio = .45f, stiffness = 380f)) }
         prog.animateTo(1f, tween(900, easing = LinearEasing)); if (ui.sparks === sp) ui.sparks = null
     }
-    val bits = remember(sp) { List(26) { SparkBit(Random.nextFloat() * 6.283f, 120f + Random.nextFloat() * 170f, 2.5f + Random.nextFloat() * 3.5f, it, Random.nextInt(3), Random.nextFloat() * 8f - 4f) } }
+    // Effets décoratifs coupés : seule l'onde et le « +N » restent ; sinon la gerbe suit le réglage des particules
+    val bits = remember(sp) { List(if (Perf.flags.fx) particles(26) else 0) { SparkBit(Random.nextFloat() * 6.283f, 120f + Random.nextFloat() * 170f, 2.5f + Random.nextFloat() * 3.5f, it, Random.nextInt(3), Random.nextFloat() * 8f - 4f) } }
     val cols = listOf(p.flame, p.flame2, p.pink, p.flame2, p.type("objective").c, p.type("routine").c)
     Box(Modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {

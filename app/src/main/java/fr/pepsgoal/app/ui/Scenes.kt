@@ -1,10 +1,7 @@
 package fr.pepsgoal.app.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -44,22 +41,30 @@ import fr.pepsgoal.core.SHOP_BGS
 /** Scène illustrée [key] en plein cadre ; [still] fige l'animation (aperçus de la boutique). */
 @Composable
 fun SceneBg(key: String, modifier: Modifier = Modifier, still: Boolean = false) {
-    val phase: State<Float> = if (still) remember { mutableFloatStateOf(.3f) } else slowPhaseState(SCENE_DUR[key] ?: 40000, SCENE_FPS[key] ?: 12)
-    Canvas(modifier.fillMaxSize()) {
-        val t = phase.value
-        when (key) {
-            "nebula" -> nebula(t); "deepsea" -> deepsea(t); "mountains" -> mountains(t); "citynight" -> citynight(t); "tram" -> tram(t)
-            "mistforest" -> mistforest(t); "dunes" -> dunes(t); "sakura" -> sakura(t); "magma" -> magma(t); "coderain" -> coderain(t)
-            "borealis" -> borealis(t); "rainwindow" -> rainwindow(t); "planet" -> planet(t); "lagoon" -> lagoon(t); "haunted" -> haunted(t)
-            "snowvillage" -> snowvillage(t); "fireworks" -> fireworks(t); "snowpeak" -> snowpeak(t); "heartsky" -> heartsky(t)
-            "eggmeadow" -> eggmeadow(t); "flowerfield" -> flowerfield(t); "summerbeach" -> summerbeach(t); "autumnwood" -> autumnwood(t)
-            else -> {
-                val sky = SHOP_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")
-                drawRect(Brush.verticalGradient(sky.map { c(it) }))
-            }
+    // Dégradé du ciel, affiché le temps du premier rendu hors écran
+    val sky = remember(key) { (SHOP_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")).map { c(it) } }
+    val placeholder: DrawScope.() -> Unit = { drawRect(Brush.verticalGradient(sky)) }
+    // Aperçu figé : rendu une seule fois, puis repris du cache à chaque défilement
+    if (still) { StillCanvas("scene:$key", modifier.fillMaxSize(), placeholder) { scene(key, .3f) }; return }
+    // Fond animé : dessiné hors du fil principal, au rythme plafonné par les réglages de performance
+    val phase = bgPhaseState(SCENE_DUR[key] ?: 40000, SCENE_FPS[key] ?: 12)
+    OffscreenCanvas("scene:$key", phase, modifier.fillMaxSize(), placeholder = placeholder) { t -> scene(key, t) }
+}
+
+/** Une image de la scène [key] à la phase [t] (fonction pure de la taille : dessinable hors écran). */
+private fun DrawScope.scene(key: String, t: Float) {
+    when (key) {
+        "nebula" -> nebula(t); "deepsea" -> deepsea(t); "mountains" -> mountains(t); "citynight" -> citynight(t); "tram" -> tram(t)
+        "mistforest" -> mistforest(t); "dunes" -> dunes(t); "sakura" -> sakura(t); "magma" -> magma(t); "coderain" -> coderain(t)
+        "borealis" -> borealis(t); "rainwindow" -> rainwindow(t); "planet" -> planet(t); "lagoon" -> lagoon(t); "haunted" -> haunted(t)
+        "snowvillage" -> snowvillage(t); "fireworks" -> fireworks(t); "snowpeak" -> snowpeak(t); "heartsky" -> heartsky(t)
+        "eggmeadow" -> eggmeadow(t); "flowerfield" -> flowerfield(t); "summerbeach" -> summerbeach(t); "autumnwood" -> autumnwood(t)
+        else -> {
+            val sky = SHOP_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")
+            drawRect(Brush.verticalGradient(sky.map { c(it) }))
         }
-        finish(SHOP_BGS.firstOrNull { it.key == key }?.dark ?: true, if (key == "tram") .6f else 1f)
     }
+    finish(SHOP_BGS.firstOrNull { it.key == key }?.dark ?: true, if (key == "tram") .6f else 1f)
 }
 
 /** Durée d'un cycle d'animation par scène (ms) : les scènes à mouvement visible (poissons, pluie) tournent plus vite. */

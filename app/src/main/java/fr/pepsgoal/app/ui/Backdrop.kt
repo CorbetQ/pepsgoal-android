@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import fr.pepsgoal.app.sys.Perf
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Pal
 import fr.pepsgoal.app.ui.theme.hex
@@ -30,6 +31,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -53,16 +55,27 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: 
                 Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = if (p.dark) .28f else .18f)))
             } else FreeBg("blob")
         }
-        if (snow || fx == "snow") SnowFx() else if (fx.isNotEmpty() && !p.motion) ThemeFx(fx)
+        // Effets décoratifs : coupés par Paramètres › Performance (ou le mode Économie)
+        if (Perf.flags.fx) { if (snow || fx == "snow") SnowFx() else if (fx.isNotEmpty() && !p.motion) ThemeFx(fx) }
     }
 }
 
 /**
- * Horloge des fonds animés (0 → 1 sur [dur] ms). Les fonds bougent lentement : quelques images par seconde
- * suffisent, et le verre givré des cartes n'a pas à être recalculé à chaque image (fluidité du défilement).
+ * Vrai quand le fond est entièrement caché (sous un écran opaque poussé par-dessus) : ses horloges s'arrêtent.
+ * Sinon chaque image du fond invaliderait la source du verre givré et forcerait le recalcul de tous les flous.
+ */
+val LocalBgPaused = compositionLocalOf { false }
+
+/** Nombre de particules à dessiner selon le réglage « particules » (au moins une). */
+fun particles(n: Int): Int = if (n <= 0) 0 else (n * Perf.flags.particles).roundToInt().coerceIn(1, n)
+
+/**
+ * Horloge des fonds (scènes, fonds gratuits, effets) : suit les réglages de performance (fond figé, plafond [cap]
+ * d'images par seconde) et s'arrête quand le fond est caché. Elle reprend là où elle s'était arrêtée.
  */
 @Composable
-private fun anim(dur: Int, fps: Int = 12): Float = slowPhase(dur, fps)
+fun bgPhaseState(dur: Int, fps: Int = 12, cap: Int = Perf.flags.bgFps): State<Float> =
+    slowPhaseState(dur, min(fps, cap.coerceAtLeast(1)), running = Perf.flags.bgAnim, initial = .3f)
 
 /**
  * Phase 0 → 1 sur [dur] ms, mise à jour [fps] fois par seconde seulement. Entre deux images, aucune demande de
@@ -72,16 +85,22 @@ private fun anim(dur: Int, fps: Int = 12): Float = slowPhase(dur, fps)
 @Composable
 fun slowPhase(dur: Int, fps: Int = 12, offset: Int = 0): Float = slowPhaseState(dur, fps, offset).value
 
-/** Même horloge, à lire dans la phase de dessin (graphicsLayer, drawWithContent) : pas de recomposition à chaque image. */
+/**
+ * Même horloge, à lire dans la phase de dessin (graphicsLayer, drawWithContent) : pas de recomposition à chaque image.
+ * [running] faux : l'horloge s'arrête (fond figé ou caché) puis reprend là où elle en était ; [initial] : phase de départ.
+ */
 @Composable
-fun slowPhaseState(dur: Int, fps: Int = 12, offset: Int = 0): State<Float> {
+fun slowPhaseState(dur: Int, fps: Int = 12, offset: Int = 0, running: Boolean = true, initial: Float = 0f): State<Float> {
     val p = LocalPal.current
-    val v = remember { mutableFloatStateOf(0f) }
-    if (p.motion) return v
+    // Temps écoulé (ms), gardé entre deux arrêts pour reprendre sans saut
+    val acc = remember { longArrayOf(offset + (initial * dur).toLong()) }
+    val v = remember { mutableFloatStateOf((acc[0] % dur) / dur.toFloat()) }
+    // Caché sous une page opaque (LocalBgPaused) : rien à animer
+    if (p.motion || !running || LocalBgPaused.current) return v
     LaunchedEffect(dur, fps) {
-        val step = 1000L / fps; var t0 = -1L
+        val step = 1000L / fps.coerceAtLeast(1); val base = acc[0]; var t0 = -1L
         while (isActive) {
-            withFrameNanos { n -> if (t0 < 0) t0 = n; v.floatValue = (((n - t0) / 1_000_000L + offset) % dur) / dur.toFloat() }
+            withFrameNanos { n -> if (t0 < 0) t0 = n; acc[0] = base + (n - t0) / 1_000_000L; v.floatValue = (acc[0] % dur) / dur.toFloat() }
             kotlinx.coroutines.delay(step)
         }
     }
@@ -100,7 +119,7 @@ private val FREE_DUR = mapOf("blob" to 26000, "aurora" to 18000, "waves" to 1400
 @Composable
 private fun FreeBg(kind: String) {
     val p = LocalPal.current
-    val t = slowPhaseState(FREE_DUR[kind] ?: 26000)
+    val t = bgPhaseState(FREE_DUR[kind] ?: 26000)
     val fp = remember(p.dark, p.bg, p.ink, p.blobs, p.blobAlpha) { FreePal(p.dark, p.bg, p.ink, p.blobs, p.al()) }
     Canvas(Modifier.fillMaxSize()) { freeBg(kind, fp, t.value) }
 }
@@ -108,12 +127,26 @@ private fun FreeBg(kind: String) {
 @Composable
 private fun CustomBg(stamp: Long) {
     val ctx = LocalContext.current; val p = LocalPal.current
-    val bmp = remember(stamp) { bgFile(ctx).takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
+    // Décodée hors du fil principal, réduite à la taille de l'écran (une photo de 12 Mpx pèserait près de 50 Mo)
+    val res by produceState<Pair<Boolean, ImageBitmap?>>(false to null, stamp) {
+        value = true to kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                bgFile(ctx).takeIf { it.exists() }?.let { f ->
+                    val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeFile(f.path, o)
+                    val dm = ctx.resources.displayMetrics; val want = max(dm.widthPixels, dm.heightPixels).coerceAtLeast(1)
+                    var sample = 1; while (max(o.outWidth, o.outHeight) / (sample * 2) >= want) sample *= 2
+                    BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
+                }
+            } catch (e: Exception) { null }
+        }
+    }
+    if (!res.first) return // décodage en cours : fond uni
+    val bmp = res.second
     if (bmp == null) { FreeBg("blob"); return }
     // Flou et assombrissement réglables (Paramètres › Apparence) ; par défaut, un léger voile aux couleurs du thème
     val raw = ctx.getSharedPreferences("pepsgoal.device", android.content.Context.MODE_PRIVATE)
     val blur = remember(stamp) { raw.getInt("bgBlur", 0) }; val dim = remember(stamp) { raw.getFloat("bgDim", -1f) }
-    Image(bmp, null, Modifier.fillMaxSize().then(if (blur > 0 && Build.VERSION.SDK_INT >= 31) Modifier.blur(blur.dp) else Modifier), contentScale = ContentScale.Crop)
+    Image(bmp, null, Modifier.fillMaxSize().then(if (blur > 0 && Build.VERSION.SDK_INT >= 31 && Perf.flags.blur) Modifier.blur(blur.dp) else Modifier), contentScale = ContentScale.Crop)
     Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = if (dim >= 0f) dim else if (p.dark) .45f else .3f)))
 }
 
@@ -121,8 +154,10 @@ private fun CustomBg(stamp: Long) {
 @Composable
 private fun ThemeFx(kind: String) {
     val rnd = remember(kind) { Random(kind.hashCode()) }
-    val parts = remember(kind) { List(if (kind == "stars") 60 else 34) { floatArrayOf(rnd.nextFloat(), rnd.nextFloat(), .6f + rnd.nextFloat() * .9f, .35f + rnd.nextFloat() * .5f, 10 + rnd.nextFloat() * 16, rnd.nextFloat() * 6.28f, rnd.nextInt(4).toFloat()) } }
-    val t = anim(30000, fps = 24)
+    val n = particles(if (kind == "stars") 60 else 34)
+    val parts = remember(kind, n) { List(n) { floatArrayOf(rnd.nextFloat(), rnd.nextFloat(), .6f + rnd.nextFloat() * .9f, .35f + rnd.nextFloat() * .5f, 10 + rnd.nextFloat() * 16, rnd.nextFloat() * 6.28f, rnd.nextInt(4).toFloat()) } }
+    // Horloge lue dans la phase de dessin : pas de recomposition à chaque image
+    val clock = bgPhaseState(30000, fps = 24, cap = Perf.flags.bgFps * 2)
     val cols = when (kind) {
         "petals" -> listOf(0xFFFFB7D5, 0xFFFF8FC7, 0xFFFFD6E8, 0xFFFFFFFF)
         "leaves" -> listOf(0xFFE2711D, 0xFFFFB347, 0xFFB5451B, 0xFFD9A441)
@@ -133,6 +168,7 @@ private fun ThemeFx(kind: String) {
         else -> listOf(0xFFFFFFFF, 0xFFFFF3C4, 0xFFC6D4FF, 0xFFFFFFFF)
     }.map { Color(it) }
     Canvas(Modifier.fillMaxSize()) {
+        val t = clock.value
         for (f in parts) {
             val c = cols[f[6].toInt()]; val r = 6f * f[2] * density / 2.6f
             if (kind == "stars") {
@@ -171,9 +207,11 @@ private fun ThemeFx(kind: String) {
 
 @Composable
 private fun SnowFx() {
-    val flakes = remember { List(46) { floatArrayOf(Random.nextFloat(), Random.nextFloat(), 2 + Random.nextFloat() * 5, .45f + Random.nextFloat() * .5f, 9 + Random.nextFloat() * 14) } }
-    val t = anim(20000, fps = 24)
+    val n = particles(46)
+    val flakes = remember(n) { List(n) { floatArrayOf(Random.nextFloat(), Random.nextFloat(), 2 + Random.nextFloat() * 5, .45f + Random.nextFloat() * .5f, 9 + Random.nextFloat() * 14) } }
+    val clock = bgPhaseState(20000, fps = 24, cap = Perf.flags.bgFps * 2)
     Canvas(Modifier.fillMaxSize()) {
+        val t = clock.value
         for (f in flakes) {
             val y = ((f[1] + t * 20f / f[4]) % 1f) * size.height
             val x = f[0] * size.width + sin(y / 80f) * 20
@@ -195,11 +233,12 @@ private fun precip(c: Int) = when (c) { 51, 56, 61, 80 -> .55f; 53, 57, 63, 66, 
 fun SkyCanvas(s: Weather.Sky) {
     val p = LocalPal.current
     var frame by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(s.phase, s.cond, p.motion) {
-        if (p.motion) return@LaunchedEffect
-        var last = 0L
-        // 12 images par seconde : nuages et pluie restent fluides, l'écran et le flou des cartes travaillent deux fois moins
-        while (isActive) { withFrameNanos { n -> frame = n }; kotlinx.coroutines.delay(80) }
+    val run = Perf.flags.bgAnim && !LocalBgPaused.current
+    val step = 1000L / Perf.flags.bgFps.coerceIn(1, 12)
+    LaunchedEffect(s.phase, s.cond, p.motion, run, step) {
+        if (p.motion || !run) return@LaunchedEffect
+        // 12 images par seconde au plus : nuages et pluie restent fluides, l'écran et le flou des cartes travaillent moins
+        while (isActive) { withFrameNanos { n -> frame = n }; kotlinx.coroutines.delay(step) }
     }
     val seed = remember(s.phase, s.cond, s.code) { Random(s.code * 31 + s.phase.hashCode()) }
     val stars = remember(seed) { List(180) { floatArrayOf(seed.nextFloat(), seed.nextFloat() * .78f, .35f + seed.nextFloat() * 1.1f, seed.nextFloat() * 6.28f, .5f + seed.nextFloat() * 1.2f) } }
@@ -207,8 +246,8 @@ fun SkyCanvas(s: Weather.Sky) {
         val n = when (s.cond) { "clear" -> if (s.clouds > 30) 3 else 1; "fog" -> 3; "clouds" -> 4 + (s.clouds / 22).toInt(); else -> 9 }
         List(n) { i -> floatArrayOf(seed.nextFloat(), -.05f + seed.nextFloat() * .47f, (i % 3).toFloat(), .8f + seed.nextFloat() * .5f, .6f + seed.nextFloat() * .5f) }
     }
-    val drops = remember(seed) { if (s.cond == "rain" || s.cond == "storm") List((160 * precip(s.code)).toInt()) { floatArrayOf(seed.nextFloat() * 1.2f, seed.nextFloat(), 10 + seed.nextFloat() * 12, 650 + seed.nextFloat() * 300) } else emptyList() }
-    val flakes = remember(seed) { if (s.cond == "snow") List((110 * precip(s.code)).toInt()) { floatArrayOf(seed.nextFloat(), seed.nextFloat(), 1 + seed.nextFloat() * 2.3f, 16 + seed.nextFloat() * 26, seed.nextFloat() * 6.28f) } else emptyList() }
+    val drops = remember(seed) { if (s.cond == "rain" || s.cond == "storm") List(particles((160 * precip(s.code)).toInt())) { floatArrayOf(seed.nextFloat() * 1.2f, seed.nextFloat(), 10 + seed.nextFloat() * 12, 650 + seed.nextFloat() * 300) } else emptyList() }
+    val flakes = remember(seed) { if (s.cond == "snow") List(particles((110 * precip(s.code)).toInt())) { floatArrayOf(seed.nextFloat(), seed.nextFloat(), 1 + seed.nextFloat() * 2.3f, 16 + seed.nextFloat() * 26, seed.nextFloat() * 6.28f) } else emptyList() }
     Canvas(Modifier.fillMaxSize()) {
         val t = frame / 1e9f
         val cov = cover(s); val night = s.phase == "night"

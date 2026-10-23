@@ -157,10 +157,10 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     var headH by remember { mutableIntStateOf(0) }; var footH by remember { mutableIntStateOf(0) }
     remember(key) { Stagger.reset() }
     Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
-        Box(Modifier.fillMaxSize().then(if (!p.transp) Modifier.hazeSource(chatHaze, zIndex = 0f) else Modifier)) { PageBackdrop(cc, chosen?.get(2) ?: p.pink) }
+        Box(Modifier.fillMaxSize().then(if (!p.transp && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.hazeSource(chatHaze, zIndex = 0f) else Modifier)) { PageBackdrop(cc, chosen?.get(2) ?: p.pink) }
         Box(Modifier.fillMaxSize().imePadding()) {
             // Messages
-            LazyColumn(Modifier.fillMaxSize().then(if (!p.transp) Modifier.hazeSource(chatHaze, zIndex = 1f) else Modifier), state,
+            LazyColumn(Modifier.fillMaxSize().then(if (!p.transp && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.hazeSource(chatHaze, zIndex = 1f) else Modifier), state,
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = with(dn) { headH.toDp() } + 14.dp, bottom = with(dn) { footH.toDp() } + 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 if (list.isEmpty()) item("empty") { Muted(if (g != null) "Aucun message pour l’instant. Dis bonjour au groupe !" else "Aucun message pour l'instant. Lance la conversation !", Modifier.fillMaxWidth().padding(top = 30.dp), small = true, center = true) }
                 var lastDay = ""; var lastFrom = ""
@@ -196,7 +196,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 val one = picked.singleOrNull()
                 val editable = one != null && one.from == u.id && one.id !in gone && Social.body(ui, one)?.str("k") == "text" && pg.store.online
                 val clip = androidx.compose.ui.platform.LocalClipboardManager.current
-                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp).shadow(if (p.transp) 0.dp else 12.dp, RoundedCornerShape(26.dp))
+                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp).shadow((if (p.transp) 0.dp else 12.dp).ifShadows(), RoundedCornerShape(26.dp))
                     .clip(RoundedCornerShape(26.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(26.dp)).padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     IconBtn("x", "Annuler la sélection", { sel = emptySet(); askDel = false }, plain = true, size = 44.dp)
@@ -235,7 +235,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 IconBtn("chevronleft", "Retour", { ui.back() }, size = 44.dp)
                 val headInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                 val pill = RoundedCornerShape(26.dp)
-                Row(Modifier.weight(1f).bounce(headInter, .97f).shadow(if (p.transp) 0.dp else 12.dp, pill, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
+                Row(Modifier.weight(1f).bounce(headInter, .97f).shadow((if (p.transp) 0.dp else 12.dp).ifShadows(), pill, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
                     .clip(pill).background(p.glassStrong).border(1.dp, p.glassEdge, pill)
                     .springClick(headInter) { if (g != null) ui.open(Sheet.GroupInfo(g.id)) else ui.open(Sheet.User(x!!.id)) }.padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (g != null) GroupAv(g.emoji, 40) else Av(x, 40.dp)
@@ -311,7 +311,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 !pg.store.online -> "Hors ligne : la messagerie revient avec la connexion."
                 else -> null
             }
-            if (status != null) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp).shadow(if (p.transp) 0.dp else 14.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
+            if (status != null) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp).shadow((if (p.transp) 0.dp else 14.dp).ifShadows(), RoundedCornerShape(22.dp), ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
                 .clip(RoundedCornerShape(22.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(22.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (status == "blocked") { Muted("Tu as bloqué ce compte.", Modifier.weight(1f), small = true); PButton("Débloquer", { ui.run("${x!!.name} est débloqué.") { ui.cloud.unblock(x.id) } }, kind = "ghost", small = true) }
                 else Muted(status, small = true)
@@ -350,7 +350,7 @@ private fun MessageRow(
             mine -> Brush.linearGradient(listOf(p.flame2.copy(alpha = if (p.materialYou) .5f else .38f), p.pink.copy(alpha = if (p.materialYou) .45f else .32f)))
             else -> SolidColor(p.glassStrong)
         }
-        Column(Modifier.widthIn(max = 300.dp).msgEnter(mine).shadow(if (p.transp) 0.dp else 6.dp, shape, ambientColor = Color(0x3328186E), spotColor = if (mine) p.flame.copy(alpha = .5f) else Color(0x4428186E))
+        Column(Modifier.widthIn(max = 300.dp).msgEnter(mine).shadow((if (p.transp) 0.dp else 6.dp).ifShadows(), shape, ambientColor = Color(0x3328186E), spotColor = if (mine) p.flame.copy(alpha = .5f) else Color(0x4428186E))
             .clip(shape).background(if (p.contrast) SolidColor(p.glassStrong) else bg)
             .then(if (p.contrast || p.transp) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .06f else .22f), .5f to Color.Transparent))).then(if (mentioned) Modifier.border(2.dp, p.flame2, shape) else Modifier)
             .then(if (selected) Modifier.border(2.dp, p.flame, shape) else Modifier)
@@ -363,7 +363,7 @@ private fun MessageRow(
                 kind == "photo" -> {
                     val data = Att.get(ui, m, b.obj("a"))
                     val a = b.obj("a"); val ratio = (a.int("w").takeIf { it > 0 }?.toFloat() ?: 4f) / (a.int("h").takeIf { it > 0 }?.toFloat() ?: 3f)
-                    val bmp = remember(data) { data?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
+                    val bmp = rememberDecoded(data) { data?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
                     Box(Modifier.width(240.dp).aspectRatio(ratio.coerceIn(.5f, 2f)).clip(RoundedCornerShape(16.dp)).background(p.glass).clickable(enabled = data != null) { data?.let(onPhoto) }, contentAlignment = Alignment.Center) {
                         if (bmp != null) androidx.compose.foundation.Image(bmp, "Photo envoyée", Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Pi("image", tint = p.ink3)
                     }
@@ -503,7 +503,7 @@ private fun Composer(ui: AppState, u: User, members: List<String>?, replyTo: Mes
 
     // Zone de saisie : carte de verre flottante au-dessus des messages
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)
-        .shadow(if (p.transp) 0.dp else 16.dp, RoundedCornerShape(26.dp), ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
+        .shadow((if (p.transp) 0.dp else 16.dp).ifShadows(), RoundedCornerShape(26.dp), ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
         .clip(RoundedCornerShape(26.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(26.dp)).padding(8.dp)
         .animateContentSize(spring(dampingRatio = .75f, stiffness = 500f)), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (Voice.recording) {
@@ -626,6 +626,7 @@ private fun ChatPollForm(cancel: () -> Unit, submit: (String, List<String>, Bool
 /** Arrivée d'une bulle : elle glisse depuis son côté et grandit avec un rebond. */
 @Composable
 private fun Modifier.msgEnter(mine: Boolean): Modifier {
+    if (!fr.pepsgoal.app.sys.Perf.flags.rich) return this
     val motionOff = LocalPal.current.motion
     val a = remember { androidx.compose.animation.core.Animatable(if (motionOff) 1f else 0f) }
     LaunchedEffect(Unit) { if (a.value < 1f) { delay(Stagger.next() / 2); a.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .55f, stiffness = 320f)) } }

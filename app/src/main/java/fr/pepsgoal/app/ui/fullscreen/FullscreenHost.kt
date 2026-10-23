@@ -75,7 +75,7 @@ fun FullscreenHost(ui: AppState) {
     BackHandler { ui.closeFs() }
     val p = LocalPal.current; val h = LocalHaze.current
     // Fond : l'écran derrière est flouté (verre dépoli), ou masqué par une teinte opaque si la transparence est réduite
-    val back = if (h != null && !p.transp && f !is Fs.Stories)
+    val back = if (h != null && !p.transp && f !is Fs.Stories && fr.pepsgoal.app.sys.Perf.flags.blur)
         Modifier.hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.bg.copy(alpha = .6f))), blurRadius = 40.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.bg)))
     else Modifier.background(p.bg)
     Box(Modifier.fillMaxSize().then(back).pointerInput(Unit) { detectTapGestures { } }) {
@@ -99,9 +99,10 @@ private class Bit(val x: Float, val delay: Float, val speed: Float, val drift: F
 @Composable
 fun Confetti(modifier: Modifier = Modifier) {
     val p = LocalPal.current
-    if (p.motion) return
+    // Effets décoratifs coupés (Paramètres › Performance) : pas de confettis ; sinon leur nombre suit le réglage
+    if (p.motion || !fr.pepsgoal.app.sys.Perf.flags.fx) return
     val cols = listOf(p.flame, p.flame2, p.pink, p.type("objective").c, p.type("routine").c, p.type("abstinence").c)
-    val bits = remember { List(140) { Bit(Random.nextFloat(), Random.nextFloat() * 1.4f, .25f + Random.nextFloat() * .35f, Random.nextFloat() * 2 - 1, Random.nextFloat() * 6.28f, Random.nextInt(6), 6 + Random.nextFloat() * 6) } }
+    val bits = remember { List(fr.pepsgoal.app.ui.particles(140)) { Bit(Random.nextFloat(), Random.nextFloat() * 1.4f, .25f + Random.nextFloat() * .35f, Random.nextFloat() * 2 - 1, Random.nextFloat() * 6.28f, Random.nextInt(6), 6 + Random.nextFloat() * 6) } }
     var t by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) { val t0 = withFrameNanos { it }; while (isActive && t < 6f) { withFrameNanos { t = (it - t0) / 1e9f } } }
     Canvas(modifier.fillMaxSize()) {
@@ -442,7 +443,7 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
         val ok = pst is coil3.compose.AsyncImagePainter.State.Success
         val glow by animateFloatAsState(if (ok || s.kind != "photo") 1f else 0f, tween(500), label = "glow")
         if (s.kind == "photo" && ok) Image(painter, null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.35f; scaleY = 1.35f; alpha = .85f * glow }
-            .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(90.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded) else Modifier.graphicsLayer { alpha = .35f * glow }), contentScale = ContentScale.Crop)
+            .then(if (android.os.Build.VERSION.SDK_INT >= 31 && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.blur(90.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded) else Modifier.graphicsLayer { alpha = .35f * glow }), contentScale = ContentScale.Crop)
         else if (s.kind != "photo") Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(p.flame.copy(alpha = .45f), p.pink.copy(alpha = .2f), Color.Transparent))))
         // Voile sombre pour garder l'en-tête et les boutons lisibles
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .55f), .25f to Color.Black.copy(alpha = .15f), .75f to Color.Black.copy(alpha = .15f), 1f to Color.Black.copy(alpha = .6f))))
@@ -454,12 +455,12 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
                     val sz = (pst as? coil3.compose.AsyncImagePainter.State.Success)?.painter?.intrinsicSize
                     val ratio = sz?.let { if (it.width > 0 && it.height > 0) it.width / it.height else null } ?: (9f / 16f)
                     Box(Modifier.aspectRatio(ratio).graphicsLayer { scaleX = .94f + .06f * glow; scaleY = .94f + .06f * glow; alpha = glow }
-                        .shadow(30.dp, shape, ambientColor = Color.Black, spotColor = Color.Black).clip(shape).border(1.dp, Color.White.copy(alpha = .18f), shape)) {
+                        .shadow(30.dp.ifShadows(), shape, ambientColor = Color.Black, spotColor = Color.Black).clip(shape).border(1.dp, Color.White.copy(alpha = .18f), shape)) {
                         Image(painter, s.text.ifEmpty { "Photo partagée en story" }, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
                     }
                 }
-                else -> Box(Modifier.fillMaxSize().shadow(30.dp, shape).clip(shape), contentAlignment = Alignment.Center) {
+                else -> Box(Modifier.fillMaxSize().shadow(30.dp.ifShadows(), shape).clip(shape), contentAlignment = Alignment.Center) {
                     s.data?.let { StoryCard(s.kind, it, compact = false) }
                     if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
                 }
