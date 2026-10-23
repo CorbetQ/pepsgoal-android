@@ -994,6 +994,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         badgeCheckPending = false
         val u = me() ?: return
         if (store.acct && cloud?.pulledBefore == false) return
+        repriceShop(); checkFlameBonus()
         val st = Badges.state(this, u.id); val keys = Badges.keys(st)
         val fams = BADGE_FAMILIES.map { it.k }
         if (u.badges != null && (u.badgeFams ?: BADGE_FAMS_V20).size < fams.size) {

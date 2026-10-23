@@ -48,49 +48,212 @@ import fr.pepsgoal.core.model.User
 @Composable
 fun ProfileScreen(ui: AppState) {
     ui.watch()
-    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    val pg = ui.pg; val u = pg.me() ?: return
     // Chiffres recalculés seulement quand la base change (pas à chaque recomposition de l'onglet)
     val lv = remember(ui.rev, u.id) { pg.level(pg.points(u.id)) }; val st = remember(ui.rev, u.id) { pg.globalStreak(u.id) }
     val done = remember(ui.rev, u.id) { pg.db.goals.count { it.userId == u.id && it.completedAt != null } }
     val best = remember(ui.rev, u.id) { pg.bestStreak(u.id) }; val wins = remember(ui.rev, u.id) { pg.userCheckins(u.id).count { pg.isWin(it) } }
     ScreenList {
-        item("head") {
-            Glass {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    // Pas de découpe sur le conteneur : le badge « modifier » déborde légèrement de l'anneau, comme sur le web
-                    Box {
-                        Box(Modifier.clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) { LevelRing(lv.idx, 76.dp) { Av(u, 76.dp) } }
-                        Box(Modifier.align(Alignment.BottomEnd).offset(x = 2.dp, y = 2.dp).size(28.dp).clip(CircleShape).background(p.ink).border(2.dp, p.bg, CircleShape)
-                            .clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }, contentAlignment = Alignment.Center) { Pi("edit", size = 14.dp, tint = p.bg) }
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(u.name, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            IconBtn("gear", "Paramètres", { ui.push(Screen.Settings()) })
-                        }
-                        Muted("${if (pg.isGuest(u)) "Sans compte · données sur cet appareil" else "@" + u.username} · Niveau ${lv.idx}, ${lv.name}${if (pg.isAdmin(u)) " · Administrateur" else ""}", small = true)
-                        if (pg.isGuest(u)) PButton("Créer un compte", { ui.push(Screen.Settings("account")) }, icon = "user", kind = "primary", small = true)
-                        if (u.bio.isNotEmpty()) Text(u.bio, fontSize = 15.sp)
-                    }
+        item("hero") { ProfileHero(ui, u, lv) }
+        item("tiles") {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProfileTile("${st.n}", "série", "flameo", Modifier.weight(1f), lit = st.lit)
+                ProfileTile("$best", "record", "trophy", Modifier.weight(1f))
+                ProfileTile(fmtNum(wins), "validations", "check", Modifier.weight(1f))
+                ProfileTile("$done", "caps", "target", Modifier.weight(1f))
+            }
+        }
+        item("wallet") { WalletStrip(ui, u) }
+        item("tabs") {
+            Seg(listOf("overview" to "Aperçu", "badges" to "Badges", "collection" to "Collection"), ui.profileTab, { ui.profileTab = it }, Modifier.fillMaxWidth(), icons = listOf("sun", "medal", "palette"))
+        }
+        when (ui.profileTab) {
+            "badges" -> {
+                item("near") { NearBadgesCard(ui, u) }
+                item("badges") { BadgeGridCard(ui, u) }
+            }
+            "collection" -> {
+                item("flames") { FlameSkinsCard(ui, u) }
+                item("look") { LookCard(ui) }
+                item("stories") { StoryArchiveCard(ui, u) }
+            }
+            else -> {
+                item("recap") { RecapCard(ui) }
+                item("quests") { FlameQuestsCard(ui) }
+                item("gel") { GelCard(ui, u, false) }
+                item("rewards") { fr.pepsgoal.app.ui.sheets.RewardsCard(ui) }
+            }
+        }
+    }
+}
+
+/** En-tête : bannière aux couleurs du niveau, grand avatar qui la chevauche, nom, pseudo, bio et progression du niveau. */
+@Composable
+private fun ProfileHero(ui: AppState, u: User, lv: Level) {
+    val p = LocalPal.current; val pg = ui.pg; val ctx = androidx.compose.ui.platform.LocalContext.current
+    val cols = levelColors(lv.idx, p)
+    Glass(pad = 0.dp) {
+        Box(Modifier.fillMaxWidth()) {
+            // Bannière : dégradé du niveau, halos et petites flammes dessinés une fois (aucune animation)
+            androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(118.dp)) {
+                drawRect(Brush.linearGradient(cols.map { it.copy(alpha = .9f) }, Offset.Zero, Offset(size.width, size.height)))
+                drawCircle(Color.White.copy(alpha = .16f), size.height * .9f, Offset(size.width * .92f, -size.height * .1f))
+                drawCircle(Color.White.copy(alpha = .1f), size.height * .55f, Offset(size.width * .08f, size.height * 1.05f))
+                drawCircle(Color.White.copy(alpha = .08f), size.height * .3f, Offset(size.width * .62f, size.height * .35f))
+                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .18f))))
+            }
+            Row(Modifier.align(Alignment.TopEnd).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HeroRound("share", "Partager mon profil") { shareProfile(ctx, ui, u, lv) }
+                HeroRound("gear", "Paramètres") { ui.push(Screen.Settings()) }
+            }
+            Column(Modifier.fillMaxWidth().padding(top = 66.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box {
+                    Box(Modifier.clip(CircleShape).background(p.bg).padding(4.dp).clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) { LevelRing(lv.idx, 92.dp) { Av(u, 92.dp) } }
+                    Box(Modifier.align(Alignment.BottomEnd).offset(x = (-2).dp, y = (-2).dp).size(30.dp).clip(CircleShape).background(p.ink).border(2.dp, p.bg, CircleShape)
+                        .clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }, contentAlignment = Alignment.Center) { Pi("edit", size = 15.dp, tint = p.bg) }
                 }
-                Spacer(Modifier.height(16.dp))
-                Bar(lv.pct * 100)
-                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Muted("${lv.pts} flammes${lv.next?.let { " · encore ${it - lv.pts} pour « ${lv.nextName} »" } ?: ""}", Modifier.weight(1f), small = true)
-                    // Boutique : icônes et thèmes avec les flammes à dépenser
-                    PButton("${pg.wallet(u)} 🔥", { ui.push(Screen.Shop) }, icon = "star", small = true, kind = "ghost")
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(u.name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (pg.isOfficial(u)) Verified()
+                }
+                Muted(if (pg.isGuest(u)) "Sans compte · données sur cet appareil" else "@" + u.username + if (pg.isAdmin(u)) " · Administrateur" else "", small = true)
+                if (u.bio.isNotEmpty()) Text(u.bio, Modifier.padding(horizontal = 24.dp, vertical = 6.dp), fontSize = 15.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (pg.isGuest(u)) PButton("Créer un compte", { ui.push(Screen.Settings("account")) }, icon = "user", kind = "primary", small = true)
+                    else PButton("Modifier le profil", { ui.push(Screen.Settings("account")) }, icon = "edit", small = true)
+                    PButton("Apparence", { ui.push(Screen.Settings("appearance")) }, icon = "palette", small = true, kind = "ghost")
                 }
             }
         }
-        item("stats") {
-            StatGrid(listOf("${st.n}" to "Série actuelle", "$best" to "Meilleure série", "$wins" to "Validations", "$done" to "Caps atteints"))
+        // Niveau : nom, palier suivant et barre de progression
+        Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.clip(CircleShape).background(Brush.linearGradient(cols)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                    Text("Niveau ${lv.idx}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                }
+                Text(lv.name, Modifier.padding(start = 8.dp).weight(1f), fontWeight = FontWeight.ExtraBold)
+                Muted(lv.next?.let { "${fmtNum(lv.pts)} / ${fmtNum(it)}" } ?: "${fmtNum(lv.pts)} flammes", small = true)
+            }
+            Bar(lv.pct * 100, height = 10.dp)
+            Muted(lv.next?.let { "Encore ${fmtNum(it - lv.pts)} flammes pour « ${lv.nextName} »" } ?: "Niveau maximum atteint", small = true)
         }
-        item("recap") { RecapCard(ui) }
-        item("gel") { GelCard(ui, u, false) }
-        item("stories") { StoryArchiveCard(ui, u) }
-        item("rewards") { fr.pepsgoal.app.ui.sheets.RewardsCard(ui) }
-        item("flames") { FlameSkinsCard(ui, u) }
-        item("badges") { BadgesCard(ui, u) }
+    }
+}
+
+/** Couleurs d'un niveau (bannière, pastille), comme l'anneau autour de l'avatar. */
+private fun levelColors(level: Int, p: fr.pepsgoal.app.ui.theme.Pal): List<Color> = when (level) {
+    1 -> listOf(hex("#FFB000"), hex("#FF7A3D")); 2 -> listOf(hex("#FF7A3D"), hex("#FF4D6D")); 3 -> listOf(p.flame, p.pink)
+    4 -> listOf(p.pink, hex("#8C7DFF")); 5 -> listOf(hex("#8C7DFF"), hex("#22D3FF")); else -> listOf(hex("#22D3FF"), hex("#B48CFF"), p.pink)
+}
+
+@Composable
+private fun HeroRound(icon: String, desc: String, onClick: () -> Unit) {
+    Box(Modifier.size(38.dp).clip(CircleShape).background(Color.Black.copy(alpha = .22f)).clickable(onClickLabel = desc, onClick = onClick), contentAlignment = Alignment.Center) {
+        Pi(icon, size = 18.dp, tint = Color.White)
+    }
+}
+
+/** Partage du profil en texte : pseudo, niveau et série. */
+private fun shareProfile(ctx: android.content.Context, ui: AppState, u: User, lv: Level) {
+    val st = ui.pg.globalStreak(u.id).n
+    val text = tr("Rejoins-moi sur PepsGoal 🔥") + "\n" + (if (ui.pg.isGuest(u)) "" else "@${u.username} · ") + tr("Niveau ${lv.idx}, ${lv.name}") + " · " + tr("série de ${pl(st, "jour", "jours")}")
+    val i = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
+    try { ctx.startActivity(android.content.Intent.createChooser(i, tr("Partager mon profil")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {}
+}
+
+/** Tuile de chiffre : icône colorée, grand nombre, libellé. */
+@Composable
+private fun ProfileTile(value: String, label: String, icon: String, modifier: Modifier, lit: Boolean = true) {
+    val p = LocalPal.current
+    Glass(modifier, pad = 10.dp, radius = 20.dp) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (icon == "flameo") Flame(24.dp, dim = !lit) else Pi(icon, size = 20.dp, tint = p.flame)
+            FitText(value, Modifier.fillMaxWidth(), size = 20, min = 12, weight = FontWeight.ExtraBold)
+            Text(label, fontSize = 11.sp, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Porte-monnaie : flammes à dépenser et accès à la boutique. */
+@Composable
+private fun WalletStrip(ui: AppState, u: User) {
+    val p = LocalPal.current; val pg = ui.pg
+    Glass(onClick = { ui.push(Screen.Shop) }, pad = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(p.flame.copy(alpha = .25f), p.pink.copy(alpha = .18f)))), contentAlignment = Alignment.Center) { Flame(28.dp) }
+            Column(Modifier.weight(1f)) {
+                Text("${fmtNum(pg.wallet(u))} flammes à dépenser", fontWeight = FontWeight.ExtraBold)
+                Muted("Icônes, thèmes et fonds dans la boutique", small = true)
+            }
+            Chip("Boutique", "star", p.flame, p.onAccent)
+        }
+    }
+}
+
+/** Raccourci vers l'apparence (thème, fond, icône). */
+@Composable
+private fun LookCard(ui: AppState) {
+    val p = LocalPal.current
+    Glass(onClick = { ui.push(Screen.Settings("appearance")) }) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconTile("palette", p.flame, p.pink, 40.dp, 13.dp)
+            Column(Modifier.weight(1f)) { Text("Thème, fond et icône", fontWeight = FontWeight.ExtraBold); Muted("Ce que tu as acheté dans la boutique s’applique ici", small = true) }
+            Text("›", color = p.ink3, fontSize = 22.sp)
+        }
+    }
+}
+
+/** Les badges les plus proches de leur prochain palier. */
+@Composable
+private fun NearBadgesCard(ui: AppState, u: User) {
+    val p = LocalPal.current
+    val st = remember(ui.rev) { Badges.state(ui.pg, u.id) }
+    val near = st.filter { it.next != null }.sortedByDescending { it.pct }.take(3)
+    if (near.isEmpty()) return
+    Glass {
+        CardHead("Presque là") { Chip("+${BADGE_REWARDS.first()} à ${BADGE_REWARDS.last()} 🔥", color = p.flame.copy(alpha = .16f), ink = p.ink) }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            near.forEach { b ->
+                val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) },
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Medal(b.f.e, b.tier + 1, true, 46, b.f.k)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row { Text(b.f.n, Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, maxLines = 1); Muted("${Math.round(b.pct * 100)} %", small = true) }
+                        Bar(b.pct * 100, height = 6.dp)
+                        Muted("${fmtNum(b.v)} / ${fmtNum(b.next!!)} · ${b.f.d(b.next!!)}", small = true, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Toutes les médailles en grille de trois : palier, pastilles et progression. */
+@Composable
+private fun BadgeGridCard(ui: AppState, u: User) {
+    val p = LocalPal.current
+    val st = remember(ui.rev) { Badges.state(ui.pg, u.id).sortedWith(compareByDescending<BadgeState> { it.tier }.thenByDescending { it.pct }) }
+    Glass {
+        CardHead("Ma collection de badges") { Count("${Badges.keys(st).size} / ${Badges.total()}") }
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            st.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (k in 0 until 3) {
+                        val b = row.getOrNull(k)
+                        if (b == null) { Spacer(Modifier.weight(1f)); continue }
+                        val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                        Column(Modifier.weight(1f).bounce(inter, .95f).clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            BadgeMedal(b, 62)
+                            Text(b.f.n, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { b.f.t.indices.forEach { i -> Box(Modifier.size(6.dp).clip(CircleShape).background(if (i <= b.tier) hex(BADGE_TIERS[i].second) else p.line)) } }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

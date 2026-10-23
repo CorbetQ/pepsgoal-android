@@ -62,7 +62,7 @@ fun LeagueScreen(ui: AppState) {
                 }
                 item("board") {
                     Glass(pad = 10.dp) {
-                        if (l.size <= 1) Empty("Seul pour l’instant", "Ajoute des amis pour vous mesurer chaque semaine.", icon = "users") { PButton("Trouver des amis", { ui.back(); ui.nav("friends") }, icon = "userplus", small = true) }
+                        if (l.size <= 1) Empty("Seul pour l’instant", "Ajoute des amis pour vous mesurer chaque semaine.", icon = "users") { PButton("Trouver des amis", { ui.back(); ui.friendsTab = "discover"; ui.nav("friends") }, icon = "userplus", small = true) }
                         l.forEachIndexed { i, r ->
                             val meRow = r.userId == me; val (tn, te, _) = League.tier(r.points)
                             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (meRow) p.flame.copy(alpha = .14f) else Color.Transparent).padding(10.dp),

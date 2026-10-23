@@ -124,7 +124,7 @@ object Mapping {
         extra["restDays"] = strArr(u.restDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
         extra["hardDays"] = strArr(u.hardDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
         extra["essentials"] = strArr(u.essentials); extra["flameSkin"] = JsonPrimitive(u.flameSkin)
-        extra["shop"] = buildJsonObject { put("owned", strArr(u.shopOwned)); put("spent", u.shopSpent); put("bonus", u.shopBonus) }
+        extra["shop"] = buildJsonObject { put("owned", strArr(u.shopOwned)); put("spent", u.shopSpent); put("bonus", u.shopBonus); put("claimed", strArr(u.shopClaimed)) }
         extra["places"] = JSON.encodeToJsonElement(u.places)
         extra["rewards"] = JSON.encodeToJsonElement(u.rewards.filter { it.claimedAt == null || it.claimedAt!! > fr.pepsgoal.core.nowMs() - 400L * 86_400_000 })
         extra["vacations"] = strArr(u.vacations.filter { it.substringAfter('|') >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
@@ -177,6 +177,7 @@ object Mapping {
             (o["owned"] as? JsonArray)?.let { a -> u.shopOwned = a.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.toMutableList() }
             (o["spent"] as? JsonPrimitive)?.intOrNull?.let { u.shopSpent = it }
             (o["bonus"] as? JsonPrimitive)?.intOrNull?.let { u.shopBonus = it }
+            (o["claimed"] as? JsonArray)?.let { a -> u.shopClaimed = a.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.toMutableList() }
         }
         (x["rewards"] as? JsonArray)?.let { u.rewards = try { JSON.decodeFromJsonElement<List<Reward>>(it).toMutableList() } catch (e: Exception) { u.rewards } }
         (x["places"] as? JsonArray)?.let { u.places = try { JSON.decodeFromJsonElement<List<SavedPlace>>(it).toMutableList() } catch (e: Exception) { u.places } }

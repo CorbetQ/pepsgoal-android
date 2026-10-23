@@ -276,4 +276,22 @@ class LogicTest {
         assertEquals(w0 + u.shopBonus + pg.db.checkins.filter { it.goalId == g.id }.sumOf { it.pts }, pg.wallet())
         assertTrue(BADGE_FAMILIES.size >= 28)
     }
+
+    @Test fun flameBonusesOnce() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        pg.validate(g.id); pg.checkPerfect(); pg.checkFlameBonus()
+        val u = pg.me()!!
+        assertTrue("perfect:${today()}" in u.shopClaimed)
+        val b = u.shopBonus; assertTrue(b >= PERFECT_BONUS)
+        pg.checkFlameBonus(); assertEquals(b, u.shopBonus)
+        assertTrue(pg.flameQuests().isNotEmpty())
+    }
+
+    @Test fun repriceGivesBackOnce() {
+        val u = pg.me()!!
+        val t = SHOP_THEMES.first { it.price > 0 }
+        u.shopOwned = mutableListOf("theme:${t.key}"); u.shopSpent = t.price + 250
+        pg.repriceShop(); assertEquals(t.price, u.shopSpent)
+        pg.repriceShop(); assertEquals(t.price, u.shopSpent)
+    }
 }
