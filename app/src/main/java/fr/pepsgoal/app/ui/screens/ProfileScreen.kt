@@ -64,6 +64,7 @@ fun ProfileScreen(ui: AppState) {
                 ProfileTile("$done", "caps", "target", Modifier.weight(1f))
             }
         }
+        item("status") { StatusRow(ui) }
         item("wallet") { WalletStrip(ui, u) }
         item("tabs") {
             Seg(listOf("overview" to "Aperçu", "badges" to "Badges", "collection" to "Collection"), ui.profileTab, { ui.profileTab = it }, Modifier.fillMaxWidth(), icons = listOf("sun", "medal", "palette"))

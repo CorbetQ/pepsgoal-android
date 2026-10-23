@@ -93,6 +93,7 @@ fun UserSheet(ui: AppState, id: String) {
             // Surnom : on rappelle le nom que la personne s'est choisi
             if (pg.nickname(x.id) != null) Muted("Surnom · son nom : ${pg.realName(x)}", small = true)
             Muted("@${x.username} · ${lv.name}", small = true)
+            pg.statusOf(x.id)?.let { st -> Muted("${st.e} ${st.l.ifBlank { tr("Statut du jour") }} · ${ago(st.at)}", small = true) }
             if (x.bio.isNotEmpty()) Text(x.bio)
         }
     }

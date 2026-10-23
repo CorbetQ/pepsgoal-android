@@ -61,7 +61,7 @@ object Badges {
             "variety" to gs.map { it.type }.toSet().size, "pts" to pg.points(id),
             "early" to cs.count { hour(it) < 8 }, "night" to cs.count { hour(it) >= 22 },
             "weekend" to cs.count { wdIdx(parseYmd(it.date)) >= 5 }, "period" to cs.count { it.goalId in periodIds },
-            "builder" to cs.count { it.taskId != null }, "stories" to db.stories.count { it.userId == id },
+            "builder" to cs.count { it.taskId != null }, "stories" to db.stories.count { it.userId == id && it.kind != "status" },
             "writer" to db.posts.count { it.userId == id && it.kind != "milestone" },
             "loyal" to (gs.filter { !it.archived }.maxOfOrNull { pg.goalStreak(it) } ?: 0),
             "mini" to cs.count { it.kind == "done" && it.value < 1.0 },

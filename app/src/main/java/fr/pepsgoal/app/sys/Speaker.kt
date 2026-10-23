@@ -7,7 +7,7 @@ import fr.pepsgoal.app.ai.firstName
 import fr.pepsgoal.core.*
 import java.util.Locale
 
-/** Lecture à voix haute (synthèse vocale du téléphone) : bilan du soir lu par le coach. */
+/** Lecture à voix haute (synthèse vocale du téléphone) : bilan du soir lu par le coach, briefing du matin. */
 object Speaker {
     private var tts: TextToSpeech? = null
     private var ready = false
@@ -58,4 +58,13 @@ object Speaker {
             append(if (left.isEmpty()) "Bravo, repose-toi bien." else "Encore un petit effort, ou note ce qui t’a empêché. Bonne soirée.")
         }
     }
+
+    /** Texte du briefing du matin : chaque phrase traduite, ponctuée pour marquer une pause à l’oral. */
+    fun briefingText(ctx: Context): String {
+        val pg = ctx.peps.pg; val place = pg.me()?.settings?.weather
+        val wx = place?.let { fr.pepsgoal.app.ui.Wx.cached(ctx, it)?.data }
+        return pg.briefing(place?.name, wx).joinToString(" ") { fr.pepsgoal.app.ui.I18n.tr(it).let { t -> if (t.trimEnd().lastOrNull() in setOf('.', '!', '?')) t else "$t." } }
+    }
+
+    fun briefing(ctx: Context) = say(ctx, briefingText(ctx))
 }

@@ -387,4 +387,24 @@ class LogicTest {
         pg.setNickname("me", "Moi"); assertEquals("Camille Roux", pg.me()!!.name)
         pg.setNickname("f1", ""); assertEquals("Samuel Martin", f.name); assertEquals(null, f.realName)
     }
+
+    @Test fun statusMilestonesPlanBMomentsBriefing() {
+        // Statut du jour : hors des stories, visible 24 h
+        pg.db.users.add(User("f1", "sam", "Sam"))
+        pg.db.stories.add(Story("s1", "f1", "status", kotlinx.serialization.json.buildJsonObject { put("e", kotlinx.serialization.json.JsonPrimitive("💪")); put("l", kotlinx.serialization.json.JsonPrimitive("Motivé")) }, null, "", nowMs() - 3600_000))
+        assertEquals("💪", pg.statusOf("f1")?.e); assertTrue(pg.liveStories().isEmpty())
+        // Plan B : seulement quand il pleut
+        val g = goal("routine") { mode = "days"; days = (0..6).toList(); title = "Courir"; planB = "vélo d’appartement" }
+        val rain = Forecast(current = WxCurrent(temp = 12.4, code = 63), daily = listOf(WxDay(today(), 63, pop = 90.0)))
+        val sun = Forecast(current = WxCurrent(code = 0), daily = listOf(WxDay(today(), 0, pop = 0.0)))
+        assertEquals(listOf(g.id), pg.planBToday(rain).map { it.id }); assertTrue(pg.planBToday(sun).isEmpty())
+        val b = pg.briefing("Angers", rain)
+        assertTrue(b.first().startsWith("Bonjour Camille")); assertTrue(b.any { "plan B" in it && "vélo" in it }); assertTrue(b.any { it == "À Angers, 12 degrés." }); assertTrue("Pluie" in b)
+        // Meilleur moment : validations horodatées
+        for (i in 1..20) { at(2026, 10, 21 - i, 7); pg.addCheck(g, "done", 1.0, 10, today()) }
+        at(2026, 10, 21)
+        val m = pg.moments(); assertEquals("morning", m.slot?.first); assertEquals(20, m.hours[7]); assertEquals(g.id, m.goals.first().first.id)
+        assertEquals("7 h 30", hourLabel(7.5f))
+        assertEquals("🔥 100 jours de série, quelle régularité ! Bravo à toi.", milestoneCheer(100))
+    }
 }

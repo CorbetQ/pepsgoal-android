@@ -1100,7 +1100,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
     fun shareText(g: Goal): String { val s = statBig(g); return "${s.v} ${s.l} pour « ${g.title} » sur PepsGoal." }
 
     /* ---------------------------------------------------------------- stories */
-    fun liveStories() = db.stories.filter { nowMs() - it.at < STORY_TTL && userById(it.userId) != null }
+    fun liveStories() = db.stories.filter { it.kind != "status" && nowMs() - it.at < STORY_TTL && userById(it.userId) != null }
     fun canSeeStory(s: Story, v: String) = s.userId == v || (areFriends(s.userId, v) && !isBlockedPair(s.userId, v))
     class StoryGroup(val u: User, val list: List<Story>, val unseen: Boolean, val last: Long)
     fun storyUsers(v: String = meId()): List<StoryGroup> {
@@ -1111,7 +1111,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
             StoryGroup(u, list, id != v && list.any { !it.seenBy.contains(v) }, list.last().at)
         }.sortedWith(compareByDescending<StoryGroup> { it.u.id == v }.thenByDescending { it.unseen }.thenByDescending { it.last })
     }
-    fun myStoryArchive(id: String = meId()) = db.stories.filter { it.userId == id }.sortedByDescending { it.at }
+    fun myStoryArchive(id: String = meId()) = db.stories.filter { it.userId == id && it.kind != "status" }.sortedByDescending { it.at }
 
     /* ---------------------------------------------------------------- easter egg */
     fun eggWord(): String {

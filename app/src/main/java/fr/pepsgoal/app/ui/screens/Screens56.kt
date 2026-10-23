@@ -55,8 +55,17 @@ fun GalleryScreen(ui: AppState, goalId: String) {
     val ctx = LocalContext.current; val p = LocalPal.current; val g = ui.pg.goalById(goalId)
     val list = remember(Proofs.rev, goalId) { Proofs.of(ctx, goalId).sortedByDescending { it.date } }
     var big by remember { mutableStateOf<Proof?>(null) }
+    var mode by remember { mutableStateOf<String?>(null) }
+    val photos = remember(list) { list.filter { it.photo != null }.sortedBy { it.date } }
     ScreenFrame(ui, "Galerie", "Retour", { ui.back() }, icon = "image", color = p.type("measure").c, color2 = p.type("objective").c) {
         item("head") { Muted("${g?.icon ?: ""} ${g?.title ?: ""} · ${pl(list.size, "souvenir", "souvenirs")}", small = true) }
+        // Au moins deux photos : comparer la première et la dernière, ou tout revoir en accéléré
+        if (photos.size >= 2) item("lapse") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PButton("Avant / après", { mode = "ba" }, Modifier.weight(1f), icon = "image", small = true)
+                PButton("Accéléré", { mode = "lapse" }, Modifier.weight(1f), icon = "play", small = true, kind = "primary")
+            }
+        }
         if (list.isEmpty()) item("empty") { Glass { Empty("Pas encore de preuve", "Après une validation, ajoute une photo ou une note depuis la fiche de l’objectif.", icon = "image") } }
         list.groupBy { it.date.substring(0, 7) }.forEach { (m, items) ->
             item("m$m") {
@@ -73,6 +82,8 @@ fun GalleryScreen(ui: AppState, goalId: String) {
             }
         }
     }
+    if (mode == "ba" && photos.size >= 2) BeforeAfterDialog(photos.first(), photos.last()) { mode = null }
+    if (mode == "lapse" && photos.size >= 2) TimelapseDialog(photos) { mode = null }
     big?.let { pr ->
         androidx.compose.ui.window.Dialog({ big = null }) {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

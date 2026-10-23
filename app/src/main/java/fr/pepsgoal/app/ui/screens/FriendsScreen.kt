@@ -44,6 +44,7 @@ fun FriendsScreen(ui: AppState) {
     ScreenList {
         item("search") { Field(ui.friendQuery, { ui.friendQuery = it }, "", placeholder = "Rechercher un nom ou un @pseudo", max = 40, icon = "search") }
         if (searching) { item("results") { SearchCard(ui, u) }; return@ScreenList }
+        item("status") { StatusRow(ui) }
         if (incoming.isNotEmpty()) item("in") { RequestsCard(ui, incoming) }
         item("tabs") {
             Seg(listOf("friends" to (if (friends.isEmpty()) "Amis" else "Amis · ${friends.size}"), "msgs" to (if (unread > 0) "Messages · $unread" else "Messages"), "discover" to "Découvrir"),

@@ -95,6 +95,9 @@ fun TodayScreen(ui: AppState) {
                 }
             }
             "timeline" -> item("timeline") { TimelineCard(ui, plan) }
+            "briefing" -> item("briefing") { BriefingCard(ui) }
+            "cheers" -> item("cheers") { FriendCheersCard(ui) }
+            "weekimg" -> item("weekimg") { WeekImageCard(ui) }
             "evening" -> item("evening") { EveningQuickCard(ui, plan) }
             "quest" -> item("quest") { QuestCard(ui) }
             "tools" -> item("tools") { QuickTools(ui) }
@@ -401,7 +404,10 @@ private fun ContextCards(ui: AppState) {
             }
             adapt.take(3).forEach { g ->
                 Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GoalIcon(g, 32.dp); Text(g.title, Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1)
+                    GoalIcon(g, 32.dp)
+                    Column(Modifier.weight(1f)) { Text(g.title, fontWeight = FontWeight.Bold, maxLines = 1); if (g.planB.isNotBlank()) Muted("☔ Plan B : ${g.planB}", small = true) }
+                    // Plan B : l'alternative compte comme une validation normale
+                    if (g.planB.isNotBlank()) PButton("Plan B fait", { doValidate(ui, g.id); ui.toast("Plan B validé pour « ${g.title} ». Bien joué !", "check") }, small = true, kind = "primary")
                     PButton("Demain", { pg.skipToday(g)?.let { ui.toast(it, "x") } ?: ui.toast("« ${g.title} » décalé : ta série est préservée.", "cloud") }, small = true)
                     PButton("Je le fais", { ui.prefs.raw.edit().putString("wxKeep:${g.id}", today()).apply(); ui.bump() }, small = true, kind = "ghost")
                 }

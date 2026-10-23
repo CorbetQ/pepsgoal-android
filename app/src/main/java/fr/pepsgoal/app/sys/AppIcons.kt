@@ -59,6 +59,7 @@ object AppIcons {
         Icon("glace", "Glace", "IconGlace", listOf(0xFFFFE0EC, 0xFFFFB8D2), R.drawable.ic_launcher_foreground_glace, 150),
         Icon("chat", "Chat", "IconChat", listOf(0xFF2A1E5A, 0xFF0E0A24), R.drawable.ic_launcher_foreground_chat, 150),
         Icon("chateau", "Château d’Angers", "IconChateau", listOf(0xFF7FB8E8, 0xFFD6EAFA), R.drawable.ic_launcher_foreground_chateau, 250),
+        Icon("angevine", "Douceur angevine", "IconAngevine", listOf(0xFF8FB6DE, 0xFFF3E6CC), R.drawable.ic_launcher_foreground_angevine, 200),
     )
 
     fun current(ctx: Context): String {

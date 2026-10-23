@@ -96,25 +96,8 @@ fun StatsScreen(ui: AppState) {
                 }
             }
         }
-        // Par jour de la semaine et par heure
-        item("week") {
-            Glass {
-                CardHead("Par jour de la semaine")
-                val by = IntArray(7); wins.forEach { by[wdIdx(parseYmd(it.date))]++ }
-                Bars(by.toList(), WD, by.indices.maxByOrNull { by[it] } ?: 0)
-                val bestWd = by.indices.maxByOrNull { by[it] } ?: 0; val worstWd = by.indices.minByOrNull { by[it] } ?: 0
-                if (wins.size >= 7) Muted("Ton jour le plus fort : ${WD_LONG.getOrElse(bestWd) { "" }}. Le plus calme : ${WD_LONG.getOrElse(worstWd) { "" }}.", Modifier.padding(top = 8.dp), small = true)
-            }
-        }
-        item("hours") {
-            Glass {
-                CardHead("Par heure de la journée")
-                val by = IntArray(24); wins.filter { it.at > 0 }.forEach { by[localDateTime(it.at).hour]++ }
-                Bars(by.toList(), (0 until 24).map { if (it % 6 == 0) "${it}h" else "" }, by.indices.maxByOrNull { by[it] } ?: 0, height = 80)
-                val peak = by.indices.maxByOrNull { by[it] }
-                if (peak != null && by[peak] > 0) Muted("Tu valides le plus souvent vers ${peak} h.", Modifier.padding(top = 8.dp), small = true)
-            }
-        }
+        // Ton meilleur moment : réussite par jour de la semaine, créneau, heures habituelles
+        item("moments") { MomentsCard(ui) }
         // Réussite de chaque objectif (30 derniers jours)
         item("goals") {
             Glass {
@@ -151,6 +134,7 @@ private val WD_LONG = listOf("le lundi", "le mardi", "le mercredi", "le jeudi", 
 
 /** Histogramme simple : barres arrondies, la plus haute en couleur flamme. */
 @Composable
+@Suppress("unused")
 private fun Bars(values: List<Int>, labels: List<String>, hi: Int, height: Int = 110) {
     val p = LocalPal.current; val max = (values.maxOrNull() ?: 1).coerceAtLeast(1)
     Column {

@@ -473,6 +473,14 @@
             </intent-filter>
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity-alias>
+        <activity-alias android:name=".IconAngevine" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_angevine" android:roundIcon="@mipmap/ic_launcher_angevine">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
         <!-- Health Connect (Android 14+) : page « utilisation des autorisations » -->
         <activity-alias android:name="ViewPermissionUsageActivity" android:exported="true" android:targetActivity=".MainActivity"
             android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
@@ -549,6 +557,10 @@
         <receiver android:name=".sys.FlameWidgetReceiver" android:exported="true" android:label="@string/widget_flame_name">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_flame" />
+        </receiver>
+        <receiver android:name=".sys.TimelineWidgetReceiver" android:exported="true" android:label="@string/widget_timeline_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_timeline" />
         </receiver>
         <receiver android:name=".sys.WeekWidgetReceiver" android:exported="true" android:label="@string/widget_week_name">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>

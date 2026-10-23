@@ -47,7 +47,7 @@ fun weatherIssue(fc: Forecast?): String? {
 /** Objectifs d'extérieur encore à faire aujourd'hui, quand la météo s'y prête mal. */
 fun Pg.weatherAdaptable(fc: Forecast?): List<Goal> {
     if (weatherIssue(fc) == null) return emptyList()
-    return todayPlan().due.filter { !it.done && it.g.outdoor && today() !in it.g.strs("skipDays") }.map { it.g }
+    return todayPlan().due.filter { !it.done && (it.g.outdoor || it.g.planB.isNotBlank()) && today() !in it.g.strs("skipDays") }.map { it.g }
 }
 /** Décale l'objectif à demain : aujourd'hui ne compte pas pour sa série (une fois par semaine au plus). */
 fun Pg.skipToday(g: Goal): String? {

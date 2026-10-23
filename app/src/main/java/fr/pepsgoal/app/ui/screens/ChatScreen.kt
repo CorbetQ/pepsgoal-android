@@ -514,7 +514,8 @@ private fun ChatPoll(ui: AppState, m: Message, b: JsonObject, votes: Map<String,
 private fun Composer(ui: AppState, u: User, members: List<String>?, replyTo: Message?, clearReply: () -> Unit, send: (JsonElement, ByteArray?, String?) -> Unit,
                      editing: Message? = null, editedText: String? = null, clearEdit: () -> Unit = {}) {
     val p = LocalPal.current; val pg = ui.pg; val ctx = LocalContext.current
-    var tv by remember { mutableStateOf(TextFieldValue("")) }
+    // Message prérempli (bravo pour la série d’un ami) : le texte est prêt, il reste à l’envoyer
+    var tv by remember { val d = ui.chatDraft.orEmpty(); ui.chatDraft = null; mutableStateOf(TextFieldValue(d, TextRange(d.length))) }
     // Modification d'un message : la zone de saisie reprend son texte
     LaunchedEffect(editing?.id) { if (editing != null) { val t0 = editedText ?: Social.body(ui, editing)?.str("t").orEmpty(); tv = TextFieldValue(t0, TextRange(t0.length)) } }
     var panel by remember { mutableStateOf<String?>(null) }
