@@ -120,7 +120,7 @@ fun AiCreateCard(ui: AppState) {
                         Unit
                     }
                 }
-            }, size = 48.dp, tint = p.flame)
+            }, size = 48.dp, tint = p.flameInk)
         }
         if (creating) Muted("Le coach prépare ton objectif…", Modifier.padding(top = 4.dp).alpha(pulse), small = true)
         FlowRowCompat(Modifier.padding(top = 8.dp), gap = 6.dp) {

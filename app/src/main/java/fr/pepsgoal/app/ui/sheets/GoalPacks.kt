@@ -71,7 +71,7 @@ fun PacksStep(ui: AppState, onBack: () -> Unit) {
                     Column(Modifier.weight(1f).fillMaxHeight().bounce(inter, .96f).clip(RoundedCornerShape(18.dp)).background(p.ink.copy(alpha = .05f)).border(1.dp, p.line, RoundedCornerShape(18.dp))
                         .springClick(inter, label = k.name) { pack = k }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Emoji(k.emoji, 32.dp); Text(k.name, fontWeight = FontWeight.ExtraBold); Text(k.desc, fontSize = 12.sp, color = p.ink2)
-                        Text(pl(k.goals.size, "objectif", "objectifs"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.flame)
+                        Text(pl(k.goals.size, "objectif", "objectifs"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.flameInk)
                     }
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))

@@ -282,9 +282,9 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                         scope.launch { state.animateScrollToItem(i) }
                     }.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pi("pinned", size = 16.dp, tint = p.flame)
+                    Pi("pinned", size = 16.dp, tint = p.flameInk)
                     Column(Modifier.weight(1f)) {
-                        Text("Épinglé", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = p.flame)
+                        Text("Épinglé", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
                         Text(edits[pm.id] ?: Social.preview(ui, pm), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (pg.store.online) IconBtn("x", "Désépingler", { send(buildJsonObject { put("k", "pin"); put("p", pm.id); put("on", false) }, null, null) }, plain = true, size = 36.dp)
@@ -553,7 +553,7 @@ private fun Composer(ui: AppState, u: User, members: List<String>?, replyTo: Mes
         }
         editing?.let { e ->
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(p.flame.copy(alpha = .12f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pi("edit", size = 16.dp, tint = p.flame)
+                Pi("edit", size = 16.dp, tint = p.flameInk)
                 Column(Modifier.weight(1f)) { Text("Modifier le message", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold); Text(editedText ?: Social.preview(ui, e), fontSize = 12.sp, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 IconBtn("x", "Annuler la modification", { clearEdit(); tv = TextFieldValue("") }, plain = true, size = 32.dp)
             }

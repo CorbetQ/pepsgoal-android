@@ -71,6 +71,8 @@ import coil3.compose.SubcomposeAsyncImage
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
+import fr.pepsgoal.app.ui.theme.readable
+import fr.pepsgoal.app.ui.theme.over
 import fr.pepsgoal.app.sys.Perf
 import fr.pepsgoal.core.ACCENTS
 import fr.pepsgoal.core.model.Avatar
@@ -168,6 +170,9 @@ fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink
  * Apparition en cascade des cartes : à l'ouverture d'un onglet ou d'une page, les cartes arrivent l'une après
  * l'autre (léger décalage), en glissant vers le haut avec un rebond.
  */
+/** Onglet touché alors qu'il est déjà ouvert : signal de « retour en haut » pour la liste de la page. */
+object TabReTap { var n by mutableIntStateOf(0) }
+
 object Stagger {
     private var t0 = 0L; private var n = 0
     fun reset() { t0 = android.os.SystemClock.uptimeMillis(); n = 0 }
@@ -235,7 +240,8 @@ fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.
     val inset = (if (top) WindowInsets.statusBars else WindowInsets.navigationBars).asPaddingValues().let { if (top) it.calculateTopPadding() else it.calculateBottomPadding() }
     val h = maxOf(cover, inset + 48.dp) + 18.dp
     // Part du voile entièrement floutée (côté bord), puis fondu progressif jusqu'au contenu
-    val full = ((cover / h) * .45f).coerceIn(.18f, .55f)
+    // (toute la barre est couverte : le titre et les boutons ne se mélangent plus au contenu qui passe dessous)
+    val full = ((cover / h) * .62f).coerceIn(.22f, .68f)
     fun smooth(u: Float) = u.coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
     // Courbe d'opacité du bord (1) vers le contenu (0), échantillonnée finement : aucun bord net
     fun level(fromEdge: Float) = if (fromEdge <= full) 1f else 1f - smooth((fromEdge - full) / (1 - full))
@@ -243,14 +249,14 @@ fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.
     fun grad(color: (Float) -> Color) = Brush.verticalGradient(*(0..n).map { i -> val t = i / n.toFloat(); t to color(level(if (top) t else 1 - t)) }.toTypedArray())
     // Voile très léger : c'est le flou qui fait disparaître le contenu, le voile ne fait que l'adoucir
     val milk = if (p.dark) p.bg else Color.White
-    val k = if (p.dark) .4f else .32f
-    val veil = grad { a -> milk.copy(alpha = k * a * a) }
+    val k = if (p.dark) .58f else .46f
+    val veil = grad { a -> milk.copy(alpha = k * a) }
     val box = modifier.fillMaxWidth().height(h)
     if (haze != null && !p.transp && !p.contrast && Perf.flags.blur) {
         // Flou progressif (rayon variable) : maximal au bord, nul côté contenu. Le dégradé s'étend sur toute la
         // hauteur de la zone (fin « infinie » = bas de la zone, quelle que soit la réduction de l'image floutée)
         val ease = androidx.compose.animation.core.Easing { t -> level(if (top) t else 1 - t) }
-        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 32.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+        Box(box.hazeEffect(haze, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 40.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
             inputScale = HazeInputScale.Fixed(.5f)
             progressive = dev.chrisbanes.haze.HazeProgressive.verticalGradient(startY = 0f, startIntensity = 0f, endY = Float.POSITIVE_INFINITY, endIntensity = 1f, easing = ease)
         }.background(veil))
@@ -464,9 +470,12 @@ fun Badge(n: Int, modifier: Modifier = Modifier) {
 fun Chip(text: String, icon: String? = null, color: Color? = null, ink: Color? = null, modifier: Modifier = Modifier) {
     val p = LocalPal.current
     val c = color ?: p.ink3
-    Row(modifier.clip(CircleShape).background(c.copy(alpha = .2f)).padding(horizontal = 9.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (icon != null) Pi(icon, size = 13.dp, tint = ink ?: p.ink2)
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = ink ?: p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    // Fond réel de la puce (teinte posée sur une carte) : le texte est ajusté pour toujours s'y lire
+    val fill = c.copy(alpha = .2f)
+    val fg = remember(ink, c, p) { readable(ink ?: if (color != null) c else p.ink2, fill.over(p.glass.over(p.bg)), 4.6f) }
+    Row(modifier.clip(CircleShape).background(fill).padding(horizontal = 9.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (icon != null) Pi(icon, size = 13.dp, tint = fg)
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -706,7 +715,9 @@ fun PSwitch(on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
 @Composable
 fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, modifier: Modifier = Modifier, icons: List<String>? = null) {
     val p = LocalPal.current
-    FlowRowCompat(modifier.clip(RoundedCornerShape(18.dp)).background(p.ink.copy(alpha = if (p.dark) .1f else .07f)).padding(4.dp)) {
+    // Rail en verre givré : les options non choisies restent lisibles même sur un fond animé ou une image
+    val rail = RoundedCornerShape(18.dp)
+    FlowRowCompat(modifier.glassBg(rail).background(p.ink.copy(alpha = if (p.dark) .06f else .04f)).border(1.dp, ctlEdge(p).copy(alpha = ctlEdge(p).alpha * .6f), rail).padding(4.dp)) {
         options.forEachIndexed { i, (k, l) ->
             val on = k == value
             val inter = remember { MutableInteractionSource() }

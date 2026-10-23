@@ -69,6 +69,14 @@ object CoachChat {
     fun stop() { if (!busy) return; stopped = true; if (LocalAi.busy) LocalAi.stopGeneration() else job?.cancel() }
 
     private fun reply(ctx: Context, text: String) {
+        // Petites surprises (blague, « qui es-tu ? », 42) : réponse immédiate, même sans modèle
+        val fun0 = fr.pepsgoal.core.Eggs.coach(text)
+        if (fun0 != null) {
+            val key = fun0.second
+            val first = key != null && ctx.peps.pg.findEgg(key)
+            save(ctx, all(ctx) + ChatMsg(System.currentTimeMillis(), "coach", if (first) "${fun0.first}\n\n🎉 Surprise trouvée : +${fr.pepsgoal.core.Eggs.BONUS} flammes !" else fun0.first, simple = true))
+            return
+        }
         busy = true; partial = null; stopped = false
         job = scope.launch {
             var out: String? = null

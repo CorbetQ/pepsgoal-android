@@ -211,7 +211,7 @@ private fun ModeCard(ui: AppState, m: ShopMode, wallet: Int, modifier: Modifier,
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 m.accent.forEach { c -> Box(Modifier.size(14.dp).clip(CircleShape).background(hex(c))) }
                 if (owned && u.settings.accentCustom != m.accent) Text("Assortir", Modifier.padding(start = 4.dp).clip(CircleShape).clickable { u.settings.accentCustom = m.accent; pg.store.commit(); ui.themeTick++; ui.toast("Couleurs assorties à « ${m.name} ».", "palette") }.padding(horizontal = 6.dp, vertical = 2.dp),
-                    fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.flame)
+                    fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
             }
             if (!owned && !trying) PButton("Essayer", onTry, Modifier.fillMaxWidth().padding(top = 8.dp), icon = "eye", small = true, kind = "ghost")
             PriceTag(owned, on, m.price, wallet)

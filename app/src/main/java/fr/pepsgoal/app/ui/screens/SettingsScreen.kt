@@ -701,8 +701,18 @@ private fun HelpSettings(ui: AppState) {
     val ctx = LocalContext.current; val p = LocalPal.current
     val open = { url: String -> try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { ui.toast("Aucune application pour ouvrir ce lien.", "x") } }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        // Toucher 7 fois la flamme de la version (comme les options pour développeurs d'Android) : surprise
+        var taps by remember { mutableIntStateOf(0) }
+        val spin by androidx.compose.animation.core.animateFloatAsState(taps * 51.4f, Motion.emphasis(), label = "verSpin")
         CatHero("help", "PepsGoal $APP_VERSION · application Android native${if (ui.pg.db.sandbox) " · démonstration" else ""}", leading = {
-            Box(Modifier.size(52.dp).clip(RoundedCornerShape(17.dp)).background(Brush.linearGradient(listOf(p.flame2.copy(alpha = .3f), p.pink.copy(alpha = .22f)))), contentAlignment = Alignment.Center) { Flame(34.dp) }
+            Box(Modifier.size(52.dp).graphicsLayer { rotationZ = spin }.clip(RoundedCornerShape(17.dp)).background(Brush.linearGradient(listOf(p.flame2.copy(alpha = .3f), p.pink.copy(alpha = .22f))))
+                .clickable(onClickLabel = "PepsGoal $APP_VERSION") {
+                    taps++; Feedback.tick()
+                    when {
+                        taps in 3..6 -> ui.toast(if (7 - taps > 1) "Encore ${7 - taps} touches…" else "Encore une touche…", "sparkle")
+                        taps == 7 -> ui.egg("version", "Tu es maintenant développeur… de flammes 🔥", "confetti")
+                    }
+                }, contentAlignment = Alignment.Center) { Flame(34.dp) }
         }, chips = { Chip(if (ui.pg.store.acct) "Compte synchronisé" else "Données sur l’appareil", if (ui.pg.store.acct) "cloud" else "lock", p.type("monthly").c); Chip("Licence MIT", "book", p.type("challenge").c) })
         if (!fr.pepsgoal.app.BuildConfig.PLAY) UpdateCard(ui)
         SetGroup("Découvrir") {

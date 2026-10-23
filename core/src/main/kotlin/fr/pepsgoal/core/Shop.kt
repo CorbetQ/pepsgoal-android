@@ -178,7 +178,7 @@ val SHOP_MODES = listOf(
     ShopMode("sand", "Sable", "Beige doré des dunes", 150, false, "#F3EBDD", "#2E271C", "#FFFBF3", listOf("#EBD3A8", "#F5C98A", "#DDE6C8"), listOf("#C98A2E", "#E0A43A", "#8A6A2E")),
 )
 
-fun shopMode(theme: String?): ShopMode? = if (theme != null && theme.startsWith("m:")) SHOP_MODES.firstOrNull { "m:${it.key}" == theme } else null
+fun shopMode(theme: String?): ShopMode? = if (theme != null && theme.startsWith("m:")) (SHOP_MODES + Eggs.SECRET_MODES).firstOrNull { "m:${it.key}" == theme } else null
 
 /** Nom lisible d'un thème : thème de base ou ambiance. */
 fun themeName(theme: String): String = shopMode(theme)?.name ?: THEMES.firstOrNull { it.first == theme }?.second ?: "Auto"

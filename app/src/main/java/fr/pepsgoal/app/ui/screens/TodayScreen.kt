@@ -31,12 +31,17 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
+import kotlinx.coroutines.launch
 import fr.pepsgoal.core.*
 
 @Composable
 fun ScreenList(content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
     val bars = LocalBars.current
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 14.dp, bottom = bars.calculateBottomPadding() + 86.dp),
+    // Toucher l'onglet déjà ouvert : la page remonte en douceur tout en haut
+    val state = androidx.compose.foundation.lazy.rememberLazyListState()
+    val tap = TabReTap.n
+    LaunchedEffect(tap) { if (tap > 0 && (state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 0)) state.animateScrollToItem(0) }
+    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 14.dp, bottom = bars.calculateBottomPadding() + 86.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
 }
 
@@ -144,7 +149,7 @@ private fun Hero(ui: AppState) {
                 Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
                 Muted(msg)
             }
-            HeroFlame(st.n, st.lit)
+            HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") }
         }
         Spacer(Modifier.height(12.dp))
         WeekStrip(pg, u.id)
@@ -152,14 +157,28 @@ private fun Hero(ui: AppState) {
 }
 
 @Composable
-fun HeroFlame(n: Int, lit: Boolean) {
+fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
     val p = LocalPal.current
     // Flamme qui respire, à 15 images par seconde
     val ph = slowPhaseState(2800, 15)
     val count = remember { Animatable(0f) }
     LaunchedEffect(n) { if (p.motion) count.snapTo(n.toFloat()) else count.animateTo(n.toFloat(), tween(minOf(1500, 600 + n * 6), easing = FastOutSlowInEasing)) }
+    // Chatouilles : chaque toucher fait gigoter la flamme ; 7 touchers rapprochés, elle bondit (surprise)
+    val wiggle = remember { Animatable(0f) }; val jump = remember { Animatable(0f) }
+    val taps = remember { mutableListOf<Long>() }; val scope = rememberCoroutineScope()
+    val tickle = if (onTickle == null) Modifier else Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClickLabel = "Flamme") {
+        val now = android.os.SystemClock.uptimeMillis(); taps.removeAll { now - it > 2500 }; taps.add(now)
+        fr.pepsgoal.app.ui.Feedback.ramp((taps.size / 7f).coerceAtMost(1f))
+        scope.launch { wiggle.snapTo(if (taps.size % 2 == 0) 1f else -1f); wiggle.animateTo(0f, spring(dampingRatio = .25f, stiffness = 900f)) }
+        if (taps.size >= 7) { taps.clear(); scope.launch { jump.snapTo(0f); jump.animateTo(1f, tween(700, easing = FastOutSlowInEasing)); jump.snapTo(0f) }; onTickle() }
+    }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.graphicsLayer { val f = if (lit) 1f + .03f * (1f - kotlin.math.cos(ph.value * 2f * kotlin.math.PI.toFloat())) else 1f; scaleX = f; scaleY = f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f) }) { Flame(84.dp, dim = !lit) }
+        Box(tickle.graphicsLayer {
+            val f = if (lit) 1f + .03f * (1f - kotlin.math.cos(ph.value * 2f * kotlin.math.PI.toFloat())) else 1f
+            val j = kotlin.math.sin(jump.value * kotlin.math.PI.toFloat())
+            scaleX = f * (1f + .25f * j); scaleY = f * (1f + .25f * j); translationY = -j * 40.dp.toPx(); rotationZ = wiggle.value * 12f + jump.value * 360f
+            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
+        }) { Flame(84.dp, dim = !lit) }
         Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
         Text(if (n > 1) "jours de série" else "jour de série", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
     }
@@ -295,13 +314,13 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
     Glass(Modifier.animateContentSize(Motion.standard()), ai = ai) {
         CardHead("À valider aujourd'hui") { Count("$done/$total") }
         if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pi("sparkle", size = 15.dp, tint = p.flame)
+            Pi("sparkle", size = 15.dp, tint = p.flameInk)
             Muted(if (picks == null) "Le coach trie tes objectifs selon l’heure et la météo…" else "Ordre conseillé par ton coach pour ce moment", if (picks == null) Modifier.alpha(pulse) else Modifier, small = true)
         }
         // Astuce affichée une fois : les gestes de balayage
         if (ui.prefs.swipe && !ui.prefs.swipeHint && sorted.any { !it.done }) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(start = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pi("hand", size = 18.dp, tint = p.flame)
+            Pi("hand", size = 18.dp, tint = p.flameInk)
             Muted("Balaie un objectif vers la droite pour le valider, vers la gauche pour reporter, mettre en favori ou lancer un Focus.", Modifier.weight(1f).padding(vertical = 8.dp), small = true)
             IconBtn("x", "Masquer l’astuce", { ui.prefs.swipeHint = true; ui.bump() }, plain = true, size = 36.dp)
         }
@@ -313,7 +332,7 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
                     GoalRow(ui, d.g, d.done, d.meta)
                     val why = reasons[d.g.id]
                     if (why != null && !d.done) Row(Modifier.padding(start = 64.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Pi("sparkle", size = 13.dp, tint = p.flame); Muted(why, small = true, maxLines = 2)
+                        Pi("sparkle", size = 13.dp, tint = p.flameInk); Muted(why, small = true, maxLines = 2)
                     }
                 }
             } }

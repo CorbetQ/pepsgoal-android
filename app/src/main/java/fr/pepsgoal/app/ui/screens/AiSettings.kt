@@ -107,7 +107,7 @@ private fun PersonaGroup(ui: AppState) {
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CoachAvatar(40.dp, emoji = ps.emoji)
                 Column(Modifier.weight(1f)) { Text(ps.label, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp); Muted(ps.desc, small = true) }
-                if (on) Pi("check", size = 20.dp, tint = p.flame)
+                if (on) Pi("check", size = 20.dp, tint = p.flameInk)
             }
         }
         SetBlock {

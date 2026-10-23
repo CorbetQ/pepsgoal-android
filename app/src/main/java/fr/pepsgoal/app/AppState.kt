@@ -2,6 +2,7 @@ package fr.pepsgoal.app
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -143,6 +144,9 @@ class AppState(val app: PepsApp) : Hooks {
     var themePreview by mutableStateOf<String?>(null)
     /** Onglet ouvert de la boutique (icons, themes, modes, bgs). */
     var shopTab by mutableStateOf("icons")
+    /** Effet visuel d'une surprise en cours (confettis, poissons…), relancé à chaque [eggTick]. */
+    var eggFx by mutableStateOf<String?>(null)
+    var eggTick by mutableIntStateOf(0)
     private var bumpJob: Job? = null
 
     val pg get() = app.pg
@@ -220,7 +224,7 @@ class AppState(val app: PepsApp) : Hooks {
     fun open(s: Sheet) { sheet = s }
     fun close() { sheet = null }
     fun push(s: Screen) { sheet = null; screens.add(s) }
-    fun nav(t: String) { tab = t; sheet = null; screens.clear(); if (t in setOf("feed", "friends", "mod", "today")) cloud.scheduleSocial(50) }
+    fun nav(t: String) { if (t == tab && screens.isEmpty() && sheet == null) fr.pepsgoal.app.ui.TabReTap.n++; tab = t; sheet = null; screens.clear(); if (t in setOf("feed", "friends", "mod", "today")) cloud.scheduleSocial(50) }
 
     /** Bouton retour : ferme ce qui est ouvert, revient à l'accueil, sinon laisse quitter. */
     fun back(): Boolean {

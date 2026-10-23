@@ -63,6 +63,8 @@ data class Pal(
     val bg: Color, val ink: Color, val ink2: Color, val ink3: Color,
     val glass: Color, val glassStrong: Color, val glassEdge: Color, val line: Color, val scrim: Color,
     val flame2: Color, val flame: Color, val pink: Color, val onAccent: Color,
+    /** Accent utilisable comme couleur de texte (assombri sur fond clair, éclairci sur fond sombre si besoin). */
+    val flameInk: Color,
     val ok: Color, val danger: Color, val focus: Color,
     val blobs: List<Color>, val blobAlpha: Float,
     val types: Map<String, TypeColor>,
@@ -115,6 +117,32 @@ class ThemeInput(
 )
 
 private fun mix(a: Color, b: Color, k: Float) = lerp(a, b, k)
+
+/* ------------------------------------------------------------------ lisibilité (contraste WCAG) */
+private fun lin(c: Float) = if (c <= .03928f) c / 12.92f else Math.pow(((c + .055f) / 1.055f).toDouble(), 2.4).toFloat()
+/** Luminance relative (0 : noir, 1 : blanc). */
+fun lum(c: Color): Float = .2126f * lin(c.red) + .7152f * lin(c.green) + .0722f * lin(c.blue)
+/** Rapport de contraste entre deux couleurs opaques (1 à 21). */
+fun contrast(a: Color, b: Color): Float { val x = lum(a); val y = lum(b); return (maxOf(x, y) + .05f) / (minOf(x, y) + .05f) }
+/** Couleur translucide posée sur un fond opaque. */
+fun Color.over(bg: Color): Color = if (alpha >= 1f) this else lerp(bg, copy(alpha = 1f), alpha)
+/** Texte à poser sur un dégradé de [cols] : foncé ou blanc, celui qui se lit le mieux sur toutes les teintes. */
+fun onColors(cols: List<Color>): Color {
+    val d = hex("#10102A")
+    return if (cols.minOf { contrast(d, it) } >= cols.minOf { contrast(Color.White, it) }) d else Color.White
+}
+/**
+ * Rend [fg] lisible sur [bg] : garde la teinte, mais la pousse vers le blanc ou le noir (selon le fond) jusqu'à atteindre
+ * le contraste [min] (4,5 : texte courant ; 3 : gros texte et icônes).
+ */
+fun readable(fg: Color, bg: Color, min: Float = 4.5f): Color {
+    val f = fg.copy(alpha = 1f); val b = bg.copy(alpha = 1f)
+    if (contrast(f, b) >= min) return fg
+    val to = if (lum(b) > .18f) Color.Black else Color.White
+    var k = .1f
+    while (k < 1f) { val c = lerp(f, to, k); if (contrast(c, b) >= min) return c.copy(alpha = fg.alpha); k += .1f }
+    return to.copy(alpha = fg.alpha)
+}
 /** Rapproche une couleur de son gris de même luminosité. */
 private fun desat(c: Color, k: Float): Color { val l = .299f * c.red + .587f * c.green + .114f * c.blue; return lerp(c, Color(l, l, l, c.alpha), k) }
 
@@ -143,6 +171,17 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         validAccent(input.accentCustom) -> input.accentCustom!!.map(::hex)
         else -> (ACCENTS.getOrNull(input.accent) ?: ACCENTS[0]).c.map(::hex)
     }
+    // Texte posé sur l'accent : foncé ou blanc, celui qui se lit le mieux sur les trois teintes ; si aucun n'atteint
+    // 4,5, les teintes trop proches du texte sont éclaircies (ou assombries) juste ce qu'il faut
+    val inkDark = hex("#10102A")
+    val onAc: Color = if (dyn != null) (if (dark) dyn.onPrimaryContainer else dyn.onPrimary) else {
+        val d = ac.minOf { contrast(inkDark, it) }; val w = ac.minOf { contrast(Color.White, it) }
+        if (d >= w) inkDark else Color.White
+    }
+    val ac2 = if (dyn != null) ac else ac.map { stop ->
+        if (contrast(onAc, stop) >= 4.5f) stop
+        else { val to = if (onAc == Color.White) Color.Black else Color.White; var c = stop; var k = .08f; while (contrast(onAc, c) < 4.5f && k < 1f) { c = lerp(stop, to, k); k += .08f }; c }
+    }
     var bg = if (dark) hex("#07081A") else hex("#ECEEFF")
     var ink = if (dark) hex("#F4F5FF") else hex("#0D0E2B"); var ink2 = if (dark) hex("#D3D6F7") else hex("#34375F"); var ink3 = if (dark) hex("#AAADDB") else hex("#575A86")
     // Sombre : cartes un peu plus claires que le fond, pour mieux s'en détacher
@@ -154,7 +193,7 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     }
     if (oled) { bg = Color.Black; glass = Color(255, 255, 255, 14); glassStrong = Color(20, 20, 24, 240) }
     if (mode != null) {
-        bg = hex(mode.bg); ink = hex(mode.ink); ink2 = mix(ink, bg, .2f); ink3 = mix(ink, bg, .4f)
+        bg = hex(mode.bg); ink = hex(mode.ink); ink2 = mix(ink, bg, .2f); ink3 = mix(ink, bg, if (dark) .4f else .3f)
         val g = hex(mode.glass); glass = g.copy(alpha = .62f); glassStrong = g.copy(alpha = if (dark) .92f else .88f)
     }
     // Opacité du verre : réglage séparé du flou (Paramètres › Apparence)
@@ -164,6 +203,10 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     if (transp || input.contrast) { glass = if (dark) (if (oled) Color(12, 12, 14) else hex("#14163A")) else Color.White; glassStrong = glass }
     if (input.contrast) { ink = if (dark) Color.White else Color.Black; ink2 = ink; ink3 = if (dark) Color(0xFFDDDDDD) else Color(0xFF222222) }
     val line = if (input.contrast) ink.copy(alpha = .7f) else ink.copy(alpha = .13f)
+    // Fond réel d'une carte (verre posé sur le fond) : base de tous les calculs de lisibilité
+    val card = glass.over(bg)
+    ink2 = readable(ink2, card, 7f); ink3 = readable(ink3, card, 4.6f)
+    val flameInk = if (input.contrast) ink else readable(ac2[1], card, 4.6f)
 
     val cvd = CVD[input.cvd]
     val types = TYPE_LIGHT.entries.mapIndexed { i, (k, v) ->
@@ -172,13 +215,14 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         else if (dyn != null) { c = harmonize(c, dyn.primary); tink = harmonize(tink, dyn.primary) }
         // La nuit, couleurs des types légèrement désaturées : moins criardes sur fond sombre
         else if (dark && !input.contrast) c = desat(c, .14f)
-        k to TypeColor(c, tink)
+        // Encre du type toujours lisible sur les cartes, y compris sur les fonds teintés des ambiances
+        k to TypeColor(c, readable(tink, card, 4.6f))
     }.toMap()
 
     val pal = Pal(
         dark, oled, bg, ink, ink2, ink3, glass, glassStrong, if (dark) Color(255, 255, 255, 36) else Color(255, 255, 255, 242), line,
         if (dark) Color(3, 3, 14, 160) else Color(13, 14, 43, 97),
-        ac[0], ac[1], ac[2], if (dyn != null) (if (dark) dyn.onPrimaryContainer else dyn.onPrimary) else hex("#10102A"),
+        ac2[0], ac2[1], ac2[2], onAc, flameInk,
         if (dark) hex("#5BE38A") else hex("#1E8E3E"), if (dark) hex("#FF6B81") else hex("#C8102E"), if (dark) hex("#6FE3FF") else hex("#0057D9"),
         if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: mode?.let { m -> m.blobs.map(::hex) + ac[1] } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
         if (oled) .22f else if (dark) .42f else .55f, types, dyn != null, input.contrast, transp, input.mono, motion,
@@ -188,7 +232,8 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
 
     val base = dyn ?: if (dark) darkColorScheme() else lightColorScheme()
     val scheme = base.copy(
-        primary = pal.flame, onPrimary = pal.onAccent, secondary = pal.pink, tertiary = pal.flame2,
+        // Composants Material (boutons texte des dialogues, champs, curseur) : l'accent lisible, pas l'accent brut
+        primary = pal.flameInk, onPrimary = onColors(listOf(pal.flameInk)), secondary = pal.pink, tertiary = pal.flame2,
         background = bg, onBackground = ink, surface = if (oled) Color.Black else if (mode != null) mix(bg, hex(mode.glass), .5f) else if (dyn != null) dyn.surface else (if (dark) hex("#10122E") else hex("#F7F7FF")),
         onSurface = ink, onSurfaceVariant = ink2, outline = ink3, outlineVariant = line, error = pal.danger,
         surfaceContainerLow = glass, surfaceContainer = glassStrong, surfaceContainerHigh = glassStrong,

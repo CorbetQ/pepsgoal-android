@@ -137,7 +137,8 @@ fun PepsRoot(ui: AppState) {
             } } }
             // Flamme de collection choisie (si elle est toujours débloquée par la meilleure série)
             val skinKey = u?.flameSkin ?: "classic"
-            val flame = remember(skinKey, u?.id, rev) { FLAME_SKINS.firstOrNull { it.key == skinKey && it.colors != null && u != null && pg.bestStreak(u.id) >= it.min }?.colors?.map(::hex) }
+            // Jour de fête (Halloween, 1er avril) : la flamme change de couleurs pour la journée
+            val flame = remember(skinKey, u?.id, rev) { fr.pepsgoal.core.Eggs.flameColors()?.map(::hex) ?: FLAME_SKINS.firstOrNull { it.key == skinKey && it.colors != null && u != null && pg.bestStreak(u.id) >= it.min }?.colors?.map(::hex) }
             CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame) {
                 Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
@@ -186,8 +187,10 @@ fun PepsRoot(ui: AppState) {
                 }
                 SheetHost(ui)
                 FullscreenHost(ui)
+                EggOverlay(ui)
                 Toasts(ui)
                 Sparks(ui)
+                DailyEggs(ui, u)
             }
         }
     }
@@ -559,6 +562,6 @@ private fun Sparks(ui: AppState) {
         val l = label.value; val fade = (1f - ((prog.value - .6f) / .4f).coerceIn(0f, 1f))
         Text("+${sp.second}", Modifier.offset { IntOffset(sp.first.x.roundToInt() - 24, (sp.first.y - 30 - l * 70 - prog.value * 30).roundToInt()) }
             .graphicsLayer { alpha = fade; val sc = .6f + .4f * l; scaleX = sc; scaleY = sc },
-            fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = p.flame)
+            fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = p.flameInk)
     }
 }

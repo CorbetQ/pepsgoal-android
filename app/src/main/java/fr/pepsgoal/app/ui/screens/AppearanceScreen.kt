@@ -227,7 +227,8 @@ private val THEME_DESC = mapOf("system" to "Clair le jour, sombre la nuit, comme
 @Composable
 private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
     val p = LocalPal.current; val s = u.settings
-    val owned = SHOP_MODES.filter { ui.pg.owns("mode:${it.key}", it.price, u) }
+    // Ambiances achetées, et l'ambiance secrète une fois trouvée
+    val owned = (SHOP_MODES + Eggs.SECRET_MODES).filter { ui.pg.owns("mode:${it.key}", it.price, u) }
     val pick = { k: String ->
         s.theme = k; commit(ui); ui.themeTick++
         if (k == "weather" && s.weather == null) ui.toast("Choisis ta ville dans Paramètres › Météo pour un ciel en direct.", "cloud")
@@ -241,7 +242,7 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
         base.chunked(3).forEach { row ->
             Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { (k, l) ->
-                    if (k == "shop") ShopModesTile(ui, owned.size, Modifier.weight(1f))
+                    if (k == "shop") ShopModesTile(ui, owned.count { it in SHOP_MODES }, Modifier.weight(1f))
                     else ThemeCard(k, l, s.theme == k, { pick(k) }, Modifier.weight(1f), height = 104.dp)
                 }
                 repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -251,7 +252,7 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
             Box(Modifier.padding(top = 4.dp, bottom = 8.dp)) { Eyebrow("Mes ambiances") }
             owned.chunked(3).forEach { row ->
                 Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { m -> ThemeCard("m:${m.key}", m.name, s.theme == "m:${m.key}", { pick("m:${m.key}") }, Modifier.weight(1f), height = 104.dp, badge = if (m.dark) "Sombre" else "Clair") }
+                    row.forEach { m -> ThemeCard("m:${m.key}", m.name, s.theme == "m:${m.key}", { pick("m:${m.key}") }, Modifier.weight(1f), height = 104.dp, badge = if (m in Eggs.SECRET_MODES) "Secrète" else if (m.dark) "Sombre" else "Clair") }
                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }

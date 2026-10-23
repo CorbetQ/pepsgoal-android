@@ -87,6 +87,9 @@ class DevicePrefs(context: Context) {
     var bgStamp get() = p.getLong("bgStamp", 0L); set(v) = p.edit().putLong("bgStamp", v).apply()
     var collapsed: Set<String> get() = p.getStringSet("collapsed", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("collapsed", v).apply()
     var seenVersion get() = p.getString("seenVersion", "") ?: ""; set(v) = p.edit().putString("seenVersion", v).apply()
+    /** Dernier jour où la surprise d'un jour de fête (ou de 3 h du matin) a été montrée. */
+    var eggDay get() = p.getString("eggDay", "") ?: ""; set(v) = p.edit().putString("eggDay", v).apply()
+    var owlDay get() = p.getString("owlDay", "") ?: ""; set(v) = p.edit().putString("owlDay", v).apply()
     var notifiedIds: Set<String> get() = p.getStringSet("notified", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("notified", v.toList().takeLast(400).toSet()).apply()
     /** Dernière relève réussie des notifications du serveur en arrière-plan (ms). */
     var lastPoll get() = p.getLong("lastPoll", 0L); set(v) = p.edit().putLong("lastPoll", v).apply()
