@@ -303,7 +303,7 @@ private fun SuggestCard(ui: AppState, u: User) {
     Glass(ai = ai) {
         CardHead("Suggestions d’amis") { IconBtn("gear", "Réglages des suggestions", { ui.push(Screen.Settings("privacy")) }, plain = true, size = 36.dp) }
         if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pi("sparkle", size = 15.dp, tint = p.flame); Muted(if (aiPicks == null) "Le coach cherche les meilleurs partenaires pour toi…" else "Classées par ton coach selon tes objectifs", small = true)
+            Pi("sparkle", size = 15.dp, tint = p.flameInk); Muted(if (aiPicks == null) "Le coach cherche les meilleurs partenaires pour toi…" else "Classées par ton coach selon tes objectifs", small = true)
         }
         Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             shown.forEach { (x, s) ->

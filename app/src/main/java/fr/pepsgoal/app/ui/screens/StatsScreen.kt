@@ -178,7 +178,7 @@ private fun HealthStatsCard(ui: AppState) {
     if (!ok) {
         Glass(onClick = { ui.push(fr.pepsgoal.app.Screen.Settings("health")) }) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Pi("heart", size = 20.dp, tint = p.flame); Column(Modifier.weight(1f)) { Text("Ajoute tes données Santé", fontWeight = FontWeight.ExtraBold); Muted("Pas, distances, sommeil, coucher, réveil, poids… avec Health Connect.", small = true) }; Text("›", color = p.ink3, fontSize = 20.sp)
+                Pi("heart", size = 20.dp, tint = p.flameInk); Column(Modifier.weight(1f)) { Text("Ajoute tes données Santé", fontWeight = FontWeight.ExtraBold); Muted("Pas, distances, sommeil, coucher, réveil, poids… avec Health Connect.", small = true) }; Text("›", color = p.ink3, fontSize = 20.sp)
             }
         }
         return

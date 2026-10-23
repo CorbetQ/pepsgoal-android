@@ -42,7 +42,7 @@ fun themeLook(key: String): ThemeLook = when (key) {
     "oled" -> ThemeLook(listOf(Color.Black, Color.Black), Color.White, Color(22, 22, 26, 240))
     "weather" -> ThemeLook(listOf(hex("#3E7BFA"), hex("#8EC5FF"), hex("#FFD59E")), Color.White, Color.White.copy(alpha = .32f), listOf(Color.White.copy(alpha = .7f)))
     "system" -> ThemeLook(LIGHT.bg, LIGHT.ink, LIGHT.glass, LIGHT.blobs, other = DARK)
-    else -> SHOP_MODES.firstOrNull { "m:${it.key}" == key }?.let { m ->
+    else -> fr.pepsgoal.core.shopMode(key)?.let { m ->
         val bg = hex(m.bg)
         ThemeLook(listOf(androidx.compose.ui.graphics.lerp(bg, hex(m.glass), .25f), bg), hex(m.ink), hex(m.glass).copy(alpha = .88f), m.blobs.map(::hex))
     } ?: DARK

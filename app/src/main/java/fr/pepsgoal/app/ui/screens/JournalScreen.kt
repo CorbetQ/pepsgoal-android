@@ -86,7 +86,7 @@ fun JournalScreen(ui: AppState) {
                 Row(Modifier.fillMaxWidth().height(90.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
                     last.forEach { e -> Box(Modifier.weight(1f).fillMaxHeight(e.mood / 5f).clip(RoundedCornerShape(4.dp)).background(androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, (e.mood - 1) / 4f))) }
                 }
-                insight?.let { Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("sparkle", size = 15.dp, tint = p.flame); Muted(it, small = true) } }
+                insight?.let { Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("sparkle", size = 15.dp, tint = p.flameInk); Muted(it, small = true) } }
             }
         }
         if (all.isEmpty()) item("empty") { Glass { Empty("Ton journal est vide", "Note ton humeur chaque jour : tu verras ce qui t’aide à avancer.", icon = "book") } }

@@ -106,7 +106,7 @@ fun GoalsScreen(ui: AppState) {
             if (aiOpen) AiCreateCard(ui)
             else Glass(pad = 12.dp, onClick = { aiOpen = true }, ai = true) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Pi("sparkle", size = 18.dp, tint = p.flame); Text("Créer un objectif avec le coach…", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = p.ink2)
+                    Pi("sparkle", size = 18.dp, tint = p.flameInk); Text("Créer un objectif avec le coach…", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = p.ink2)
                     Text("›", color = p.ink3, fontSize = 20.sp)
                 }
             }

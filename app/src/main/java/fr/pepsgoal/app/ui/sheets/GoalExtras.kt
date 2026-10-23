@@ -196,7 +196,7 @@ fun DuoRow(ui: AppState, g: Goal, divider: Boolean = true) {
         else -> "Avec ${first(peer.name)}"
     }
     OptionRow("users", p.type("group").c, p.pink, "En duo", sub, open, { open = !open }, divider,
-        right = if (st == Duo.State.JOINED) ({ Text("🔥 $n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = p.flame) }) else null) {
+        right = if (st == Duo.State.JOINED) ({ Text("🔥 $n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = p.flameInk) }) else null) {
         if (peer != null && st != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Av(peer, 32.dp)

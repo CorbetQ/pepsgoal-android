@@ -83,7 +83,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
         Field(ask, { ask = it }, "Ton objectif en une phrase", placeholder = "Ex. Faire 10 000 pas par jour", singleLine = false, minLines = 2, max = 200)
         FlowRowCompat(gap = 6.dp) { listOf("Faire 10 000 pas par jour", "Courir 3 fois par semaine", "Lire 12 livres cette année", "Arrêter le sucre", "Méditer 10 minutes par jour").forEach { ex -> FChip(ex, false, { ask = ex }) } }
         if (thinking) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pi("sparkle", size = 16.dp, tint = p.flame); Muted("Le coach prépare ton objectif…", Modifier.alpha(fr.pepsgoal.app.ui.screens.thinkingAlpha()), small = true)
+            Pi("sparkle", size = 16.dp, tint = p.flameInk); Muted("Le coach prépare ton objectif…", Modifier.alpha(fr.pepsgoal.app.ui.screens.thinkingAlpha()), small = true)
         }
         Err(err)
         SheetFoot {
@@ -116,7 +116,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     if (step == "summary") {
         val (g, e) = buildGoal(ui, u, g0, type, title, icon, note, vis, t, members, buddy, bVerify, bMiss)
         if (fromAi) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pi("sparkle", size = 16.dp, tint = p.flame)
+            Pi("sparkle", size = 16.dp, tint = p.flameInk)
             Muted(if (byAi) "Voici ce que le coach a préparé à partir de ta demande." else "Voici ce que PepsGoal a compris de ta demande.", small = true)
         } else Muted("Vérifie ton objectif avant de ${if (editing) "l’enregistrer" else "le créer"}.", small = true)
         if (g != null) GoalSummary(ui, u, g, grp, t["health"])

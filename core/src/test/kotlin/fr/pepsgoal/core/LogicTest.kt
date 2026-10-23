@@ -302,4 +302,19 @@ class LogicTest {
         assertEquals(250, shopPriceOf("mode:neon"))
         assertEquals(null, shopMode("dark"))
     }
+
+    @Test fun easterEggsFoundOnce() {
+        val u = pg.me()!!
+        assertEquals("angers", Eggs.search("  Angers ")?.egg); assertEquals("answer", Eggs.search("42")?.egg); assertEquals(null, Eggs.search("courir"))
+        assertEquals("halloween", Eggs.day(java.time.LocalDate.of(2026, 10, 31))?.key); assertEquals(null, Eggs.day(java.time.LocalDate.of(2026, 10, 22)))
+        assertEquals("friday13", Eggs.day(java.time.LocalDate.of(2026, 11, 13))?.key)
+        assertEquals("joke", Eggs.coach("Raconte-moi une blague")?.second)
+        // Ambiance secrète : inconnue de la boutique, possédée une fois la surprise trouvée
+        assertEquals(false, pg.owns("mode:angers", 1, u))
+        assertTrue(pg.findEgg("angers")); assertEquals(Eggs.BONUS, u.shopBonus)
+        assertTrue(pg.owns("mode:angers", 1, u)); assertEquals("Douceur angevine", themeName("m:angers")); assertEquals("light", baseTheme("m:angers"))
+        assertEquals(null, shopPriceOf("mode:angers"))
+        assertEquals(false, pg.findEgg("angers")); assertEquals(Eggs.BONUS, u.shopBonus)
+        assertEquals(false, pg.findEgg("nope")); assertEquals(setOf("angers"), pg.eggsFound(u))
+    }
 }

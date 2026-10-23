@@ -84,7 +84,7 @@ fun CoachChatScreen(ui: AppState) {
                 if (!ready) item("off") {
                     Glass(onClick = { ui.push(Screen.Settings("ai")) }, pad = 14.dp) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Pi("sparkle", size = 20.dp, tint = p.flame)
+                            Pi("sparkle", size = 20.dp, tint = p.flameInk)
                             Column(Modifier.weight(1f)) { Text("Mode simple", fontWeight = FontWeight.ExtraBold); Muted(if (LocalAi.installed(ctx)) "Le coach IA est en pause : réactive-le pour des réponses complètes." else "Installe le coach IA pour des réponses complètes et personnalisées.", small = true) }
                             Text("›", color = p.ink3, fontSize = 22.sp)
                         }
@@ -101,7 +101,7 @@ fun CoachChatScreen(ui: AppState) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp).clip(RoundedCornerShape(26.dp)).background(p.glassStrong).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(input, { input = it }, "", Modifier.weight(1f), placeholder = "Écris à $name…", max = 600, singleLine = false, icon = "sparkle")
                 if (busy) IconBtn("pause", "Arrêter la réponse", { CoachChat.stop() }, size = 46.dp, tint = p.danger)
-                else IconBtn("send", "Envoyer", { send(input) }, size = 46.dp, tint = p.flame)
+                else IconBtn("send", "Envoyer", { send(input) }, size = 46.dp, tint = p.flameInk)
             }
         }
     }

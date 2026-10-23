@@ -85,6 +85,17 @@ fun SearchScreen(ui: AppState, initial: String) {
             }
             return@ScreenFrame
         }
+        // Surprise cachée derrière certains mots
+        val egg = fr.pepsgoal.core.Eggs.search(q)
+        if (egg != null) item("egg") {
+            LaunchedEffect(q.trim().lowercase()) { kotlinx.coroutines.delay(450); ui.egg(egg.egg, egg.text, egg.fx, say = false) }
+            Glass(border = p.flame.copy(alpha = .5f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    IconTile("sparkle", p.flame2, p.pink, 44.dp, 14.dp)
+                    Text(egg.text, Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
         // Objectifs
         val goals = pg.myGoals(u.id).filter { hit(it.title) || hit(it.note) || hit(typeInfo(it.type).label) }.sortedBy { it.archived }.take(20)
         if (goals.isNotEmpty()) item("goals") {
@@ -143,7 +154,7 @@ fun SearchScreen(ui: AppState, initial: String) {
                 }
             }
         }
-        if (goals.isEmpty() && sets.isEmpty() && tools.isEmpty() && pages.isEmpty()) item("none") {
+        if (egg == null && goals.isEmpty() && sets.isEmpty() && tools.isEmpty() && pages.isEmpty()) item("none") {
             Glass { Empty("Aucun résultat pour « ${q.trim()} »", "Essaie un autre mot, ou dis une commande avec le micro.", icon = "search") { PButton("Parler", command, icon = "mic", small = true) } }
         }
     }

@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.BlendMode
@@ -76,6 +77,7 @@ fun ProfileScreen(ui: AppState) {
                 item("flames") { FlameSkinsCard(ui, u) }
                 item("look") { LookCard(ui) }
                 item("stories") { StoryArchiveCard(ui, u) }
+                item("eggs") { EggsCard(ui, u) }
             }
             else -> {
                 item("recap") { RecapCard(ui) }
@@ -130,7 +132,7 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
         Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.clip(CircleShape).background(Brush.linearGradient(cols)).padding(horizontal = 10.dp, vertical = 4.dp)) {
-                    Text("Niveau ${lv.idx}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                    Text("Niveau ${lv.idx}", color = fr.pepsgoal.app.ui.theme.onColors(cols), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                 }
                 Text(lv.name, Modifier.padding(start = 8.dp).weight(1f), fontWeight = FontWeight.ExtraBold)
                 Muted(lv.next?.let { "${fmtNum(lv.pts)} / ${fmtNum(it)}" } ?: "${fmtNum(lv.pts)} flammes", small = true)
@@ -169,7 +171,7 @@ private fun ProfileTile(value: String, label: String, icon: String, modifier: Mo
     Glass(modifier, pad = 10.dp, radius = 20.dp) {
         // Même hauteur d'icône partout (la flamme est plus haute que les pictos), textes centrés et ajustés à la tuile
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) { if (icon == "flameo") Flame(24.dp, dim = !lit) else Pi(icon, size = 20.dp, tint = p.flame) }
+            Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) { if (icon == "flameo") Flame(24.dp, dim = !lit) else Pi(icon, size = 20.dp, tint = p.flameInk) }
             FitText(value, Modifier.fillMaxWidth(), size = 20, min = 12, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
             FitText(label, Modifier.fillMaxWidth(), size = 11, min = 8, color = p.ink2, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Center)
         }
@@ -184,10 +186,18 @@ private fun WalletStrip(ui: AppState, u: User) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(p.flame.copy(alpha = .25f), p.pink.copy(alpha = .18f)))), contentAlignment = Alignment.Center) { Flame(28.dp) }
             Column(Modifier.weight(1f)) {
-                FitText(fmtNum(pg.wallet(u)), size = 22, min = 14, weight = FontWeight.ExtraBold, family = Unbounded)
+                // Le solde défile jusqu'à sa nouvelle valeur après un achat ou un bonus
+                val w = pg.wallet(u); val shown = remember { androidx.compose.animation.core.Animatable(w.toFloat()) }
+                LaunchedEffect(w) { if (p.motion) shown.snapTo(w.toFloat()) else shown.animateTo(w.toFloat(), androidx.compose.animation.core.tween(700)) }
+                FitText(fmtNum(shown.value.toInt()), size = 22, min = 14, weight = FontWeight.ExtraBold, family = Unbounded)
                 Muted("flammes à dépenser", small = true, maxLines = 1)
             }
-            Chip("Boutique", "star", p.flame, p.onAccent)
+            // Bouton plein aux couleurs de l'accent : texte toujours contrasté (onAccent est choisi pour l'accent)
+            Row(Modifier.clip(CircleShape).background(if (p.contrast) SolidColor(p.ink) else p.accent).padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                val fg = if (p.contrast) p.bg else p.onAccent
+                Pi("star", size = 14.dp, tint = fg); Text(tr("Boutique"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            }
         }
     }
 }

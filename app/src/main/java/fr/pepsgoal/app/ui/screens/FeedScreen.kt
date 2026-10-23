@@ -367,7 +367,7 @@ fun CommentsScreen(ui: AppState, postId: String) {
                     IconBtn("send", "Envoyer le commentaire", {
                         val t = comment.trim(); if (t.isEmpty() || pg.socialBlocked("de commenter")) return@IconBtn
                         comment = ""; ui.run { ui.cloud.comment(post, t) }
-                    }, size = 46.dp, tint = p.flame)
+                    }, size = 46.dp, tint = p.flameInk)
                 }
             }
         }
