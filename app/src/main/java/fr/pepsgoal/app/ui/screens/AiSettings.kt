@@ -1,9 +1,11 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -11,6 +13,7 @@ import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.ai.AiMemory
 import fr.pepsgoal.app.ai.LocalAi
+import fr.pepsgoal.app.ai.Personas
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
@@ -34,6 +37,7 @@ fun AiSettings(ui: AppState) {
             Muted("Le modèle tourne entièrement sur ton téléphone : tes objectifs, ta météo et la mémoire de l’IA ne quittent jamais l’appareil. Seul le fichier du modèle est téléchargé, une fois, depuis Hugging Face.", small = true)
         }
         if (installed) SetGroup { SetToggle("Coach IA activé", "Coupe-le sans supprimer le modèle", "sparkle", p.type("program").c, pr.aiEnabled, { pr.aiEnabled = it; ui.themeTick++ }) }
+        PersonaGroup(ui)
         if (!installed) Glass {
             Text("1. Choisis le modèle", fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(8.dp))
@@ -84,6 +88,44 @@ fun AiSettings(ui: AppState) {
     }
 }
 
+/** Personnalité du coach : prénom, ton (avec un exemple) et longueur des réponses. */
+@Composable
+private fun PersonaGroup(ui: AppState) {
+    val p = LocalPal.current; val pr = ui.prefs
+    var persona by remember { mutableStateOf(pr.aiPersona) }
+    var name by remember { mutableStateOf(pr.aiCoachName) }
+    var len by remember { mutableStateOf(pr.aiLength) }
+    val cur = Personas.of(persona)
+    SetGroup("Personnalité", note = "Le ton s’applique à la conversation, aux conseils, aux récaps et au mode simple.") {
+        SetBlock { Field(name, { name = it.take(20); pr.aiCoachName = name.trim().ifEmpty { "Peps" } }, "Prénom du coach", max = 20, icon = "smile") }
+        Personas.ALL.forEach { ps ->
+            val on = ps.key == persona
+            val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            Row(Modifier.fillMaxWidth().bounce(inter, .98f).clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+                .background(if (on) p.flame.copy(alpha = .1f) else androidx.compose.ui.graphics.Color.Transparent)
+                .springClick(inter, role = androidx.compose.ui.semantics.Role.RadioButton) { persona = ps.key; pr.aiPersona = ps.key }.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CoachAvatar(40.dp, emoji = ps.emoji)
+                Column(Modifier.weight(1f)) { Text(ps.label, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp); Muted(ps.desc, small = true) }
+                if (on) Pi("check", size = 20.dp, tint = p.flame)
+            }
+        }
+        SetBlock {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CoachAvatar(32.dp, emoji = cur.emoji)
+                Column(Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp, 18.dp, 18.dp, 6.dp)).background(p.glassStrong).padding(12.dp)) {
+                    Muted("${name.trim().ifEmpty { "Peps" }} · exemple", small = true)
+                    Text(cur.sample, fontSize = 14.sp)
+                }
+            }
+        }
+        SetBlock {
+            Text("Longueur des réponses", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+            Seg(listOf("short" to "Courtes", "normal" to "Normales", "long" to "Détaillées"), len, { len = it; pr.aiLength = it })
+        }
+    }
+}
+
 /** Mémoire de l'IA : ce que le coach retient, lisible entrée par entrée, effaçable. */
 @Composable
 private fun MemoryCard(ui: AppState) {
@@ -94,6 +136,14 @@ private fun MemoryCard(ui: AppState) {
     var on by remember { mutableStateOf(pr.aiMemory) }
     SetGroup("Mémoire de l’IA", note = "Le coach retient tes demandes et tes réactions pour mieux te conseiller. Cette mémoire reste sur ton téléphone.") {
         SetToggle("Mémoriser", if (list.isEmpty()) "La mémoire est vide" else pl(list.size, "souvenir", "souvenirs"), "book", p.type("measure").c, on, { on = it; pr.aiMemory = it })
+        if (on) SetBlock {
+            var fact by remember { mutableStateOf("") }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Field(fact, { fact = it }, "", Modifier.weight(1f), placeholder = "Apprends-lui quelque chose sur toi…", max = 200, icon = "sparkle")
+                PButton("Retenir", { if (AiMemory.addFact(ctx, fact)) { fact = ""; ui.toast("Le coach s’en souviendra.", "sparkle") } else ui.toast("Déjà retenu, ou trop court.", "x") }, small = true, kind = "primary", enabled = fact.trim().length >= 4)
+            }
+            Muted("Exemples : « Je travaille de nuit », « Je cours le dimanche matin », « Je préfère les conseils courts ».", small = true)
+        }
         if (list.isNotEmpty()) SetBlock {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PButton(if (open) "Masquer" else "Lire la mémoire", { open = !open }, icon = "book", small = true)
@@ -111,4 +161,4 @@ private fun MemoryCard(ui: AppState) {
     }
 }
 
-private val MEM_KIND = mapOf("goal" to "création d’objectif", "tip" to "conseil", "reco" to "recommandation", "system" to "système")
+private val MEM_KIND = mapOf("fact" to "à retenir", "goal" to "création d’objectif", "tip" to "conseil", "reco" to "recommandation", "chat" to "conversation", "system" to "système")

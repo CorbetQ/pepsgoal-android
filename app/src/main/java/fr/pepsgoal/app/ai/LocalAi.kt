@@ -9,6 +9,10 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
+import com.google.mediapipe.tasks.genai.llminference.ProgressListener
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import fr.pepsgoal.app.BuildConfig
 import fr.pepsgoal.app.peps
 import kotlinx.coroutines.*
@@ -93,6 +97,9 @@ object LocalAi {
 
     /* ------------------------------------------------------------------ installation */
 
+    /** Nom du dernier fichier choisi : sa taille de contexte (« ekv1280 ») règle la longueur maximale des demandes. */
+    private var lastFile = ""
+
     /** Trouve le fichier .task d'un dépôt Hugging Face public (non restreint) : (adresse, taille). */
     private fun resolve(repo: String): Pair<String, Long>? {
         val r = http.newCall(Request.Builder().url("https://huggingface.co/api/models/$repo?blobs=true").header("User-Agent", "PepsGoal-Android/${BuildConfig.VERSION_NAME}").build()).execute()
@@ -106,6 +113,7 @@ object LocalAi {
             fun size(s: JsonObject) = s["size"]?.jsonPrimitive?.longOrNull ?: 0L
             // Préférence : quantification 8 bits, contexte ~1280 jetons (rapide), sinon le plus petit fichier
             val pick = files.sortedWith(compareBy({ if (name(it).contains("q8")) 0 else 1 }, { if (name(it).contains("ekv1280")) 0 else 1 }, { size(it) })).firstOrNull() ?: return null
+            lastFile = name(pick)
             return "https://huggingface.co/$repo/resolve/main/${name(pick)}" to size(pick)
         }
     }
@@ -138,6 +146,7 @@ object LocalAi {
                         }
                     }
                     part.renameTo(modelFile(app))
+                    app.peps.prefs.aiCtx = Regex("ekv(\\d+)").find(lastFile)?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(512, 4096) ?: 1024
                 }
                 progress = 1f
                 selfTest(app)
@@ -158,7 +167,7 @@ object LocalAi {
     /** Premier chargement et mesure de vitesse : valide que le modèle tourne vraiment sur ce téléphone. */
     private suspend fun selfTest(ctx: Context) {
         val t0 = System.currentTimeMillis()
-        val out = generate(ctx, "Réponds seulement par le mot : prêt", 16) ?: throw IllegalStateException("Le modèle n’a pas pu démarrer sur ce téléphone.")
+        val out = generate(ctx, 16, .1f) { "Réponds seulement par le mot : prêt" } ?: throw IllegalStateException("Le modèle n’a pas pu démarrer sur ce téléphone.")
         val s = (System.currentTimeMillis() - t0) / 1000.0
         speed = "Premier test en %.1f s".format(s); ctx.peps.prefs.aiSpeed = speed!!
         if (out.isBlank()) throw IllegalStateException("Le modèle ne répond pas.")
@@ -166,27 +175,89 @@ object LocalAi {
 
     /* ------------------------------------------------------------------ génération */
 
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    /** Session d'une génération de fond (conseil, recommandations) : interrompue dès qu'une conversation a besoin du modèle. */
+    @Volatile private var bgSession: LlmInferenceSession? = null
+    /** Session de la génération en cours, pour l'arrêter proprement (le texte déjà écrit est gardé). */
+    @Volatile private var curSession: LlmInferenceSession? = null
+    fun stopGeneration() { curSession?.let { try { it.cancelGenerateResponseAsync() } catch (_: Throwable) {} } }
+
+    /** Ancienne forme : une consigne toute faite. */
+    suspend fun generate(ctx: Context, prompt: String, maxTokens: Int = 256): String? = generate(ctx, maxTokens) { prompt }
+
     /**
-     * Génère une réponse (null si l'IA n'est pas disponible ou en cas d'erreur). Le modèle est chargé à la demande et
-     * libéré après deux minutes d'inactivité pour rendre la mémoire au téléphone.
+     * Génère une réponse (null si l'IA n'est pas disponible, si la demande de fond a cédé la place, ou en cas d'erreur).
+     * - [build] construit la consigne selon un niveau de détail (0 : complète, 1 : réduite, 2 : minimale) : on garde la
+     *   plus complète qui tient dans le contexte du modèle (sinon le modèle refuse la demande et le coach se tait) ;
+     * - [temperature] basse pour les réponses à format imposé, plus haute pour la conversation ; graine aléatoire à chaque
+     *   appel (deux demandes identiques ne donnent plus la même réponse) ;
+     * - [onPartial] reçoit le texte au fil de l'écriture (fil principal) ;
+     * - [background] : demande de fond, abandonnée si le modèle est occupé et interrompue si une conversation arrive.
+     * Le modèle est chargé à la demande et libéré après deux minutes d'inactivité.
      */
-    suspend fun generate(ctx: Context, prompt: String, maxTokens: Int = 256): String? = lock.withLock {
-        val f = modelFile(ctx); if (!f.exists()) return@withLock null
-        busy = true
-        try {
-            withContext(Dispatchers.Default) {
-                val e = engine ?: LlmInference.createFromOptions(ctx.applicationContext,
-                    LlmInference.LlmInferenceOptions.builder().setModelPath(f.path).setMaxTokens(1024).build()).also { engine = it }
-                // Interface en anglais : le coach répond en anglais
-                val p = if (fr.pepsgoal.core.Lang.en) "$prompt\n(Answer in English.)" else prompt
-                withTimeoutOrNull(60_000) { runInterruptible { e.generateResponse(p) } }?.let(::fixEncoding)?.trim()?.take(maxTokens * 6)
+    suspend fun generate(ctx: Context, maxTokens: Int = 256, temperature: Float = .7f, background: Boolean = false,
+                         onPartial: ((String) -> Unit)? = null, build: (Int) -> String): String? {
+        val f = modelFile(ctx); if (!f.exists()) return null
+        if (background && lock.isLocked) return null
+        if (!background) bgSession?.let { try { it.cancelGenerateResponseAsync() } catch (_: Throwable) {} }
+        return lock.withLock {
+            busy = true
+            try {
+                withContext(Dispatchers.Default) {
+                    val maxCtx = ctx.peps.prefs.aiCtx.coerceIn(512, 4096)
+                    val e = engine ?: LlmInference.createFromOptions(ctx.applicationContext,
+                        LlmInference.LlmInferenceOptions.builder().setModelPath(f.path).setMaxTokens(maxCtx).build()).also { engine = it }
+                    val out = maxTokens.coerceIn(16, maxCtx / 2)
+                    val prompt = fit(e, maxCtx - out - 24, build)
+                    val opts = LlmInferenceSession.LlmInferenceSessionOptions.builder()
+                        .setTemperature(temperature).setTopK(40).setTopP(.95f).setRandomSeed(kotlin.random.Random.nextInt(1, Int.MAX_VALUE)).build()
+                    val s = LlmInferenceSession.createFromOptions(e, opts)
+                    if (background) bgSession = s
+                    curSession = s
+                    try {
+                        s.addQueryChunk(prompt)
+                        withTimeoutOrNull(90_000) { stream(s, onPartial) }?.let { clean(fixEncoding(it)) }?.take(out * 6)?.trim()?.takeIf { it.isNotEmpty() }
+                    } finally { if (bgSession === s) bgSession = null; if (curSession === s) curSession = null }
+                }
+            } catch (e: CancellationException) { throw e
+            } catch (e: Throwable) { error = e.message; null }
+            finally {
+                busy = false
+                idleJob?.cancel(); idleJob = scope.launch { delay(120_000); lock.withLock { withContext(Dispatchers.Default) { engine?.close(); engine = null } } }
             }
-        } catch (e: Throwable) { error = e.message; null }
-        finally {
-            busy = false
-            idleJob?.cancel(); idleJob = scope.launch { delay(120_000); lock.withLock { withContext(Dispatchers.Default) { engine?.close(); engine = null } } }
         }
     }
+
+    /** Consigne la plus détaillée qui tient dans [budget] jetons ; en dernier recours, le milieu est coupé. */
+    private fun fit(e: LlmInference, budget: Int, build: (Int) -> String): String {
+        fun size(t: String) = try { e.sizeInTokens(t) } catch (_: Throwable) { t.length / 3 }
+        var p = build(0)
+        for (lvl in 0..2) { p = build(lvl); if (size(p) <= budget) return p }
+        val keep = (budget * 3).coerceAtLeast(400)
+        return p.take(keep / 3) + "\n…\n" + p.takeLast(keep * 2 / 3)
+    }
+
+    /** Génération en continu : les morceaux arrivent au fil de l'eau ; la session est libérée une fois terminée. */
+    private suspend fun stream(s: LlmInferenceSession, onPartial: ((String) -> Unit)?): String = suspendCancellableCoroutine { cont ->
+        val sb = StringBuilder()
+        val fut = s.generateResponseAsync(ProgressListener<String> { part, _ ->
+            if (part != null) {
+                val t = synchronized(sb) { sb.append(part); sb.toString() }
+                if (onPartial != null) { val c = clean(fixEncoding(t)); main.post { onPartial(c) } }
+            }
+        })
+        fut.addListener({
+            val r = try { fut.get() } catch (e: Throwable) { null }
+            try { s.close() } catch (_: Throwable) {}
+            val all = synchronized(sb) { sb.toString() }.ifEmpty { r.orEmpty() }
+            if (cont.isActive) { if (all.isEmpty() && r == null) cont.resumeWithException(IllegalStateException("Génération interrompue.")) else cont.resume(all) }
+        }, Runnable::run)
+        cont.invokeOnCancellation { try { s.cancelGenerateResponseAsync() } catch (_: Throwable) {} }
+    }
+
+    /** Retire les jetons de fin de tour et les débuts de réplique que certains modèles répètent. */
+    fun clean(s: String): String = s.replace(Regex("<\\|im_end\\|>|<\\|endoftext\\|>|<end_of_turn>|<\\|im_start\\|>(assistant|user)?"), "")
+        .replace(Regex("^\\s*(Coach|Assistant)\\s*:\\s*"), "").trimStart()
 }
 
 /** Répare le texte UTF-8 mal décodé par certaines versions du moteur (voir [fr.pepsgoal.core.fixMojibake]). */
@@ -217,7 +288,24 @@ object AiMemory {
         file(ctx).parentFile?.mkdirs(); file(ctx).writeText(json.encodeToString(ListSerializer(MemoryItem.serializer()), list)); rev++
     }
 
-    /** Contexte donné à l'IA : les souvenirs utiles les plus récents. */
-    fun context(ctx: Context, n: Int = 10): String =
-        all(ctx).filter { it.kind != "system" }.takeLast(n).joinToString("\n") { "- ${it.text}" }
+    /**
+     * Contexte donné à l'IA : d'abord ce qui est durable (faits retenus : contraintes, préférences, habitudes), puis les
+     * réactions aux conseils, puis quelques événements récents.
+     */
+    fun context(ctx: Context, n: Int = 10): String {
+        val all = all(ctx).filter { it.kind != "system" }
+        val facts = all.filter { it.kind == "fact" }.takeLast(8)
+        val likes = all.filter { it.kind == "tip" }.takeLast(3)
+        val rest = all.filter { it.kind != "fact" && it.kind != "tip" }.takeLast((n - facts.size - likes.size).coerceIn(0, 3))
+        return (facts + likes + rest).joinToString("\n") { "- ${it.text}" }
+    }
+
+    /** Retient un fait durable (« Je travaille de nuit »), sans doublon. Renvoie vrai s'il est nouveau. */
+    fun addFact(ctx: Context, text: String): Boolean {
+        val t = text.trim().trimEnd('.').replaceFirstChar { it.uppercase() }.take(200)
+        if (t.length < 4 || !ctx.peps.prefs.aiMemory) return false
+        val norm = t.lowercase().filter { it.isLetterOrDigit() }
+        if (all(ctx).any { it.kind == "fact" && it.text.lowercase().filter { c -> c.isLetterOrDigit() } == norm }) return false
+        add(ctx, "fact", t); return true
+    }
 }
