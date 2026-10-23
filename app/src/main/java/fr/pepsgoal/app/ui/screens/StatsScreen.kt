@@ -53,10 +53,10 @@ fun StatsScreen(ui: AppState) {
         item("insights") { InsightsCard(ui) }
         item("pixels") { YearPixels(ui) }
         item("hours") { fr.pepsgoal.app.ui.sheets.HourHeatCard(ui) }
-        // Raisons notées les jours manqués (« Je n'ai pas pu »)
-        val why = remember(ui.rev) { pg.missStats() }
-        if (why.isNotEmpty()) item("why") {
-            Glass {
+        // Raisons notées les jours manqués (« Je n'ai pas pu ») — calcul mémorisé dans l'élément (contexte Compose)
+        item("why") {
+            val why = remember(ui.rev) { pg.missStats() }
+            if (why.isNotEmpty()) Glass {
                 CardHead("Pourquoi ça coince")
                 val tot = why.sumOf { it.second }
                 why.take(5).forEach { (k, n) ->
