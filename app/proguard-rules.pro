@@ -19,3 +19,11 @@
 -keep class com.google.protobuf.** { *; }
 -dontwarn com.google.protobuf.**
 -dontwarn com.google.auto.value.**
+# JSch (mise à jour du serveur en SSH) : algorithmes chargés par réflexion, dépendances facultatives absentes
+-keep class com.jcraft.jsch.** { *; }
+-dontwarn com.jcraft.jsch.**
+-dontwarn org.slf4j.**
+-dontwarn org.apache.logging.log4j.**
+-dontwarn com.sun.jna.**
+-dontwarn org.newsclub.net.unix.**
+-dontwarn org.ietf.jgss.**

@@ -46,6 +46,9 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -508,6 +511,44 @@ fun FChip(text: String, on: Boolean, onClick: () -> Unit, leading: (@Composable 
     }
 }
 
+/**
+ * Étend un élément sur les marges de son conteneur ([h] de chaque côté) : une rangée qui défile va jusqu'au bord de la
+ * carte ou de l'écran, et son contenu, décalé d'autant, reste aligné sur le reste.
+ */
+fun Modifier.bleed(h: Dp): Modifier = this.layout { m, c ->
+    if (!c.hasBoundedWidth) { val pl = m.measure(c); return@layout layout(pl.width, pl.height) { pl.place(0, 0) } }
+    val b = h.roundToPx()
+    val pl = m.measure(c.copy(minWidth = c.minWidth + 2 * b, maxWidth = c.maxWidth + 2 * b))
+    layout((pl.width - 2 * b).coerceAtLeast(0), pl.height) { pl.place(-b, 0) }
+}
+
+/** Rangée de puces qui défile, sans jamais couper la première ni la dernière (même agrandies quand elles sont choisies). */
+@Composable
+fun ChipScroller(bleed: Dp = 18.dp, gap: Dp = 8.dp, content: @Composable RowScope.() -> Unit) {
+    Row(Modifier.fillMaxWidth().bleed(bleed).horizontalScroll(rememberScrollState()).padding(horizontal = bleed, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.CenterVertically, content = content)
+}
+
+/**
+ * Choix d'un objectif : puces sur une ligne qui défile jusqu'aux bords, coche sur l'objectif choisi, et liste déjà
+ * défilée jusqu'à lui à l'ouverture. [none] : première puce « sans objectif » (valeur null).
+ */
+@Composable
+fun GoalChips(goals: List<fr.pepsgoal.core.model.Goal>, selected: String?, onPick: (String?) -> Unit, none: String? = null, bleed: Dp = 18.dp, maxTitle: Int = 26) {
+    val p = LocalPal.current
+    val items: List<fr.pepsgoal.core.model.Goal?> = (if (none != null) listOf(null) else emptyList<fr.pepsgoal.core.model.Goal?>()) + goals
+    val start = items.indexOfFirst { it?.id == selected }.coerceAtLeast(0)
+    val st = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, start - 1))
+    androidx.compose.foundation.lazy.LazyRow(Modifier.fillMaxWidth().bleed(bleed), state = st, contentPadding = PaddingValues(horizontal = bleed, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        items(items.size, key = { items[it]?.id ?: "none" }) { i ->
+            val g = items[i]; val on = g?.id == selected
+            val label = if (g == null) none ?: "" else "${g.icon} ${if (g.title.length > maxTitle) g.title.take(maxTitle - 1).trimEnd() + "…" else g.title}"
+            FChip(label, on, { onPick(g?.id) }, leading = if (on) ({ Pi("check", size = 14.dp, tint = if (p.contrast) p.bg else p.onAccent) }) else null)
+        }
+    }
+}
+
 /** Barre de progression aux couleurs du type (ou de l'accent). */
 @Composable
 fun Bar(pct: Double, modifier: Modifier = Modifier, color: Color? = null, height: Dp = 8.dp) {
@@ -684,11 +725,11 @@ fun FlowRowCompat(modifier: Modifier = Modifier, gap: Dp = 4.dp, content: @Compo
 
 /** Texte sur une ligne qui rétrécit pour tenir dans sa place (petites tuiles, grands réglages de police). */
 @Composable
-fun FitText(text: String, modifier: Modifier = Modifier, size: Int = 14, min: Int = 8, color: Color = Color.Unspecified, weight: FontWeight = FontWeight.Bold, family: androidx.compose.ui.text.font.FontFamily? = null) {
+fun FitText(text: String, modifier: Modifier = Modifier, size: Int = 14, min: Int = 8, color: Color = Color.Unspecified, weight: FontWeight = FontWeight.Bold, family: androidx.compose.ui.text.font.FontFamily? = null, align: androidx.compose.ui.text.style.TextAlign? = null) {
     val c = if (color == Color.Unspecified) LocalContentColor.current else color
     val lang = I18n.rev
     val shown = remember(text, lang) { tr(text) }
-    androidx.compose.foundation.text.BasicText(shown, modifier, style = LocalTextStyle.current.copy(color = c, fontSize = size.sp, fontWeight = weight, fontFamily = family ?: LocalTextStyle.current.fontFamily),
+    androidx.compose.foundation.text.BasicText(shown, modifier, style = LocalTextStyle.current.copy(color = c, fontSize = size.sp, fontWeight = weight, fontFamily = family ?: LocalTextStyle.current.fontFamily, textAlign = align ?: LocalTextStyle.current.textAlign),
         maxLines = 1, softWrap = false, autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(min.sp, size.sp, 0.5.sp))
 }
 

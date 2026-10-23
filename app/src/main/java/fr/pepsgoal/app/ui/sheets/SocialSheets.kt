@@ -286,7 +286,7 @@ fun ComposeSheet(ui: AppState) {
     val goals = pg.myGoals(u.id).filter { it.userId == u.id && !it.archived }
     if (goals.isNotEmpty()) {
         SectionTitle("Lier un objectif (optionnel)")
-        FlowRowCompat(gap = 6.dp) { FChip("Aucun", goal == null, { goal = null }); goals.forEach { g -> FChip("${g.icon} ${g.title}", goal == g.id, { goal = g.id }) } }
+        GoalChips(goals, goal, { goal = it }, none = "Aucun", bleed = 20.dp)
     }
     SheetFoot {
         PButton("Annuler", { ui.close() }, kind = "ghost")
@@ -325,7 +325,7 @@ fun StoryNewSheet(ui: AppState, s0: Sheet.StoryNew) {
         "photo" -> PButton(if (photo != null) "Changer de photo" else "Choisir une photo", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image")
         "recap" -> Seg(listOf("week" to "Semaine", "month" to "Mois", "year" to "Année"), period, { period = it })
         else -> if (goals.isEmpty()) Muted("Crée d'abord un objectif pour partager ta progression.", small = true)
-            else FlowRowCompat(gap = 6.dp) { goals.forEach { x -> FChip("${x.icon} ${x.title}", goalId == x.id, { goalId = x.id }) } }
+            else GoalChips(goals, goalId, { it?.let { id -> goalId = id } }, bleed = 20.dp)
     }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(Modifier.width(220.dp).aspectRatio(9f / 16f).clip(RoundedCornerShape(22.dp))) {

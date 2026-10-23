@@ -167,10 +167,11 @@ private fun shareProfile(ctx: android.content.Context, ui: AppState, u: User, lv
 private fun ProfileTile(value: String, label: String, icon: String, modifier: Modifier, lit: Boolean = true) {
     val p = LocalPal.current
     Glass(modifier, pad = 10.dp, radius = 20.dp) {
+        // Même hauteur d'icône partout (la flamme est plus haute que les pictos), textes centrés et ajustés à la tuile
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (icon == "flameo") Flame(24.dp, dim = !lit) else Pi(icon, size = 20.dp, tint = p.flame)
-            FitText(value, Modifier.fillMaxWidth(), size = 20, min = 12, weight = FontWeight.ExtraBold)
-            Text(label, fontSize = 11.sp, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) { if (icon == "flameo") Flame(24.dp, dim = !lit) else Pi(icon, size = 20.dp, tint = p.flame) }
+            FitText(value, Modifier.fillMaxWidth(), size = 20, min = 12, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
+            FitText(label, Modifier.fillMaxWidth(), size = 11, min = 8, color = p.ink2, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }
@@ -183,8 +184,8 @@ private fun WalletStrip(ui: AppState, u: User) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(p.flame.copy(alpha = .25f), p.pink.copy(alpha = .18f)))), contentAlignment = Alignment.Center) { Flame(28.dp) }
             Column(Modifier.weight(1f)) {
-                Text("${fmtNum(pg.wallet(u))} flammes à dépenser", fontWeight = FontWeight.ExtraBold)
-                Muted("Icônes, thèmes et fonds dans la boutique", small = true)
+                FitText(fmtNum(pg.wallet(u)), size = 22, min = 14, weight = FontWeight.ExtraBold, family = Unbounded)
+                Muted("flammes à dépenser", small = true, maxLines = 1)
             }
             Chip("Boutique", "star", p.flame, p.onAccent)
         }
@@ -478,7 +479,7 @@ private fun FlameSkinsCard(ui: AppState, u: fr.pepsgoal.core.model.User) {
         CardHead("Flammes de collection")
         Muted("Ta meilleure série débloque de nouvelles couleurs de flamme : $best ${if (best > 1) "jours" else "jour"} pour l’instant.", small = true)
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FLAME_SKINS.forEach { sk ->
                 val open = best >= sk.min; val on = u.flameSkin == sk.key || (sk.key == "classic" && FLAME_SKINS.none { it.key == u.flameSkin })
                 Column(Modifier.width(84.dp).clip(RoundedCornerShape(18.dp)).background(if (on) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .04f))

@@ -88,9 +88,7 @@ fun ChainRow(ui: AppState, g: Goal, divider: Boolean = true) {
         val cands = pg.chainCandidates(g)
         if (cands.isEmpty()) Muted("Aucun autre objectif disponible.", small = true)
         else Muted("Quand celui-ci sera validé, PepsGoal te proposera « ${g.title} » :", small = true)
-        FlowRowCompat(gap = 6.dp) {
-            cands.forEach { c -> FChip("${c.icon} ${c.title.take(24)}", c.id == g.after, { g.after = c.id; pg.store.commit(); open = false; ui.toast("Enchaîné après « ${c.title} ».", "repeat") }) }
-        }
+        GoalChips(cands, g.after, { id -> cands.firstOrNull { it.id == id }?.let { c -> g.after = c.id; pg.store.commit(); open = false; ui.toast("Enchaîné après « ${c.title} ».", "repeat") } }, bleed = 20.dp)
         if (prev != null) {
             Muted("Rappel si tu ne l’as pas encore fait :", small = true)
             FlowRowCompat(gap = 6.dp) {
@@ -118,7 +116,7 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
     SectionTitle(if (list.isEmpty()) "Preuve du jour" else "Preuves · ${list.size}")
     ProofStory(list)
     if (list.isEmpty() && !editing) Muted("Garde une trace de ta réussite : une photo ou quelques mots, gardés sur ton téléphone.", small = true)
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(Modifier.fillMaxWidth().bleed(20.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         // Tuile d'ajout de la preuve du jour
         if (own && doneNow && todayProof == null && !editing) Column(Modifier.width(104.dp).height(128.dp).clip(RoundedCornerShape(18.dp))
             .background(Brush.linearGradient(listOf(tc.c.copy(alpha = .22f), p.pink.copy(alpha = .12f))))

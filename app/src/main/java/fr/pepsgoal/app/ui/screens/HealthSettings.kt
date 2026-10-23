@@ -86,7 +86,7 @@ fun HealthSettings(ui: AppState) {
                 var op by remember(metric) { mutableStateOf(m.op) }
                 SectionTitle("Ajouter un lien")
                 Text("Objectif", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                FlowRowCompat(Modifier.padding(vertical = 6.dp), gap = 6.dp) { candidates.forEach { g -> FChip("${g.icon} ${g.title}", goal == g.id, { goal = g.id }) } }
+                Box(Modifier.padding(vertical = 6.dp)) { GoalChips(candidates, goal, { goal = it }) }
                 Text("Mesure", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 FlowRowCompat(Modifier.padding(vertical = 6.dp), gap = 6.dp) { Health.METRICS.forEach { x -> FChip("${x.emoji} ${x.label}", metric == x.key, { metric = x.key; thr = "" }) } }
                 Seg(listOf(">=" to if (m.kind == "time") "Au plus tard" else "Au moins", "<=" to if (m.kind == "time") "Au plus tôt" else "Au plus").let { if (m.kind == "time") listOf("<=" to "Avant", ">=" to "Après") else it }, op, { op = it })

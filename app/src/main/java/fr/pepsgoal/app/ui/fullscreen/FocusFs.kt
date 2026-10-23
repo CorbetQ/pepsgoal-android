@@ -68,10 +68,8 @@ fun FocusFs(ui: AppState, preGoal: String?) {
                     Spacer(Modifier.height(8.dp))
                     FlowRowCompat(gap = 6.dp) { listOf(15, 25, 45, 60, 90).forEach { m -> FChip("$m min", minutes == m, { minutes = m }) } }
                     Text("Objectif lié", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-                    ChipsRowFs {
-                        FChip("Session libre", goal == null, { goal = null })
-                        goals.forEach { x -> FChip("${x.icon} ${x.title}", goal == x.id, { goal = x.id; if (x.type == "duration") minutes = x.minutes.toInt().coerceIn(5, 180) }) }
-                    }
+                    GoalChips(goals, goal, { id -> goal = id; goals.firstOrNull { it.id == id }?.let { x -> if (x.type == "duration") minutes = x.minutes.toInt().coerceIn(5, 180) } }, none = "Session libre")
+                    Spacer(Modifier.height(4.dp))
                     SetRow("Ne pas déranger pendant la session", if (dndOk) "Les notifications non prioritaires sont mises en sourdine." else "Autorise PepsGoal à gérer « Ne pas déranger ».") {
                         if (dndOk) PSwitch(ui.prefs.focusDnd, { ui.prefs.focusDnd = it; ui.bump() }) else PButton("Autoriser", { Focus.askDnd(ctx) }, small = true)
                     }
@@ -88,6 +86,3 @@ fun FocusFs(ui: AppState, preGoal: String?) {
     }
 }
 
-@Composable
-private fun ChipsRowFs(content: @Composable RowScope.() -> Unit) =
-    Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), content = content)
