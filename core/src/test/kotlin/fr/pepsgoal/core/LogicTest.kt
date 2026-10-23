@@ -418,4 +418,13 @@ class LogicTest {
         assertEquals(listOf("me", "f1"), ch.first { it.first.key == "loire" }.second)
         assertTrue(fr.pepsgoal.core.cloud.Msg.SILENT.containsAll(listOf("bg", "bgs")))
     }
+
+    @Test fun emojiDetection() {
+        assertEquals(listOf("🔥"), Emo.only("🔥"))
+        assertEquals(listOf("👍🏽", "❤️", "🇫🇷"), Emo.only(" 👍🏽 ❤️🇫🇷 "))
+        assertEquals(1, Emo.only("👨‍👩‍👧")?.size)
+        assertEquals(null, Emo.only("🔥🔥🔥🔥🔥")); assertEquals(null, Emo.only("Bravo 🔥")); assertEquals(null, Emo.only("12"))
+        assertEquals(listOf("🎉", "💪"), Emo.extract("Trop bien 🎉 on y va 💪 !"))
+        assertTrue(fr.pepsgoal.core.cloud.Msg.SILENT.contains("shot"))
+    }
 }

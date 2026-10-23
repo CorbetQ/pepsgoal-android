@@ -90,7 +90,7 @@ private fun Tod.col(day: String, dawn: String, dusk: String, night: String): Col
     return Color(cs.sumOf { (x, w) -> (x.red * w).toDouble() }.toFloat(), cs.sumOf { (x, w) -> (x.green * w).toDouble() }.toFloat(), cs.sumOf { (x, w) -> (x.blue * w).toDouble() }.toFloat())
 }
 /** Scènes qui gèrent elles-mêmes l'heure (au lieu du voile générique). */
-private val OWN_TOD = setOf("loire", "lighthouse", "angers", "rooftops")
+private val OWN_TOD = setOf("loire", "lighthouse", "angers", "rooftops", "nantes")
 
 /** Une image de la scène [key] à la phase [t] ; [h] : heure réelle (null : éclairage d'origine, aperçus). */
 internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
@@ -104,7 +104,7 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
         "tunnel" -> tunnel(t); "loire" -> loire(t, td); "lighthouse" -> lighthouse(t, td); "vineyard" -> vineyard(t); "balloons" -> balloons(t); "jellyfish" -> jellyfish(t)
         "bamboo" -> bamboo(t); "nighttrain" -> nighttrain(t); "rooftops" -> rooftops(t, td); "canyon" -> canyon(t)
         "savanna" -> savanna(t); "lanterns" -> lanterns(t); "icefield" -> icefield(t)
-        "angers" -> angers(t, td); "angevine" -> angevine(t)
+        "angers" -> angers(t, td); "angevine" -> angevine(t); "nantes" -> nantes(t, td)
         else -> {
             val sky = SHOP_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")
             drawRect(Brush.verticalGradient(sky.map { c(it) }))
@@ -117,9 +117,9 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
 
 /** Durée d'un cycle d'animation par scène (ms) : les scènes à mouvement visible (poissons, pluie) tournent plus vite. */
 private val SCENE_DUR = mapOf("tram" to 40000, "deepsea" to 60000, "coderain" to 20000, "fireworks" to 24000, "rainwindow" to 50000, "autumnwood" to 30000, "sakura" to 30000,
-    "tunnel" to 20000, "lighthouse" to 30000, "nighttrain" to 40000, "lanterns" to 60000, "jellyfish" to 50000, "savanna" to 60000, "angers" to 60000, "angevine" to 40000)
+    "tunnel" to 20000, "lighthouse" to 30000, "nighttrain" to 40000, "lanterns" to 60000, "jellyfish" to 50000, "savanna" to 60000, "angers" to 60000, "angevine" to 40000, "nantes" to 60000)
 /** Images par seconde : les scènes très détaillées et presque immobiles se contentent de moins (batterie). */
-private val SCENE_FPS = mapOf("tram" to 8, "mountains" to 6, "mistforest" to 8, "dunes" to 6, "planet" to 6, "citynight" to 8, "tunnel" to 15, "rooftops" to 6, "canyon" to 6, "vineyard" to 8, "angers" to 12, "angevine" to 8)
+private val SCENE_FPS = mapOf("tram" to 8, "mountains" to 6, "mistforest" to 8, "dunes" to 6, "planet" to 6, "citynight" to 8, "tunnel" to 15, "rooftops" to 6, "canyon" to 6, "vineyard" to 8, "angers" to 12, "angevine" to 8, "nantes" to 12)
 
 /*
  * Arrière-plans illustrés : peints sur Canvas en couches (perspective atmosphérique, lumière directionnelle, brume,
@@ -3175,4 +3175,141 @@ private fun DrawScope.angevine(t: Float) {
     for (i in 0 until 7) { val k = (t * 1.5f + i * .13f) % 1f; val x = W * (1.1f - k * 1.3f); val y = H * (.16f + (i % 3) * .03f) + sin(k * TAU * 2 + i) * u; val s = u * .9f; val fl = sin(t * TAU * 18 + i) * .5f
         drawPath(Path().apply { moveTo(x - s * 1.4f, y - s * (.4f + fl)); quadraticTo(x - s * .5f, y - s * .2f, x, y + s * .2f); quadraticTo(x + s * .5f, y - s * .2f, x + s * 1.4f, y - s * (.4f + fl)) }, c("#3A3F4A", .7f), style = Stroke(max(1f, u * .28f))) }
     mist(hz + H * .1f, u * 4f, c("#FFF4E6", .35f))
+}
+
+/* ------------------------------------------------------------------ Nantes : l'Éléphant, la grue Titan et la Loire */
+
+/** Grue Titan jaune du quai des Antilles : pylône en treillis, flèche horizontale, contre-flèche, cabine. */
+private fun DrawScope.titan(x: Float, base: Float, u: Float, col: Color, dark: Color, lit: Float) {
+    val tw = u * 7f; val top = base - u * 30f; val jy = top - u * 4f
+    // Pieds et pylône
+    for (sx in listOf(-1f, 1f)) line(x + sx * tw * .7f, base, x + sx * tw * .45f, top, max(1f, u * .9f), col)
+    var y = base; var k = 0
+    while (y > top + u) { val y2 = y - u * 3.2f; val f = (base - y) / (base - top); val f2 = (base - y2) / (base - top)
+        val a = tw * (.7f - .25f * f); val b = tw * (.7f - .25f * f2)
+        line(x - a, y, x + b, y2, max(1f, u * .3f), col); line(x + a, y, x - b, y2, max(1f, u * .3f), col); line(x - a, y, x + a, y, max(1f, u * .35f), col); y = y2; k++ }
+    // Machinerie et cabine
+    rect(x - tw * .6f, top - u * 4f, tw * 1.2f, u * 4.2f, col); rect(x - tw * .55f, top - u * 3.2f, tw * .4f, u * 1.6f, mix(dark, c("#FFD27A"), lit))
+    // Flèche (vers la gauche, au-dessus du fleuve) et contre-flèche avec son contrepoids
+    val jl = x - u * 36f; val jr = x + u * 12f
+    line(jl, jy, jr, jy, max(1f, u * .8f), col); line(jl + u * 2f, jy + u * 2.4f, x - tw * .6f, jy + u * 2.4f, max(1f, u * .6f), col)
+    var jx = jl + u * 2f; while (jx < x - tw * .6f) { line(jx, jy + u * 2.4f, jx + u * 1.6f, jy, max(1f, u * .25f), col); line(jx + u * 1.6f, jy, jx + u * 3.2f, jy + u * 2.4f, max(1f, u * .25f), col); jx += u * 3.2f }
+    line(x, jy - u * 6f, jl + u * 4f, jy, max(1f, u * .3f), col); line(x, jy - u * 6f, jr, jy, max(1f, u * .3f), col); line(x, jy - u * 6f, x, top - u * 4f, max(1f, u * .6f), col)
+    rect(jr - u * 4f, jy, u * 4f, u * 3.2f, dark)
+    // Câble et crochet
+    line(jl + u * 6f, jy, jl + u * 6f, jy + u * 9f, max(1f, u * .15f), dark); rect(jl + u * 5.4f, jy + u * 9f, u * 1.2f, u * 1f, dark)
+    if (lit > .01f) { glow(x, top - u * 2f, u * 22f, c("#FFE08A", .25f * lit), BlendMode.Screen); for (i in 0 until 6) disc(jl + i * u * 8f, jy, u * .5f, c("#FFF2C8", lit)) }
+}
+
+/** Le Grand Éléphant des Machines de l'île : bois et acier, oreilles de cuir, trompe articulée, terrasse et passagers. */
+private fun DrawScope.elephant(cx: Float, ground: Float, u: Float, t: Float, night: Float) {
+    val wood = mix(c("#C9A274"), c("#3A3446"), .6f * night); val woodD = mix(c("#9A7650"), c("#2A2436"), .6f * night); val steel = mix(c("#3A3632"), c("#14121C"), .5f * night)
+    val leather = mix(c("#6E4E36"), c("#2A2030"), .55f * night)
+    val step = t * TAU * 3f; val sway = sin(step) * u * .5f
+    val bodyY = ground - u * 34f + sway
+    // Pattes (pistons visibles), deux par deux en alternance
+    for ((i, lx) in listOf(-14f, -6f, 8f, 16f).withIndex()) {
+        val lift = max(0f, sin(step + i * 3.1416f / 2)) * u * 2.2f; val far = i % 2 == 1
+        val x = cx + lx * u; val top = bodyY + u * 12f; val foot = ground - lift
+        val col = if (far) woodD else wood
+        rect(x - u * 3f, top, u * 6f, foot - top - u * 2f, col); for (k in 1..3) line(x - u * 3f, top + k * u * 3.4f, x + u * 3f, top + k * u * 3.4f, max(1f, u * .2f), steel.a(.6f))
+        line(x + u * 1.8f, top, x + u * 1.8f, foot - u * 3f, max(1f, u * .55f), steel)
+        drawOval(steel, Offset(x - u * 3.6f, foot - u * 2.6f), Size(u * 7.2f, u * 2.6f))
+    }
+    // Corps : coque de planches et ossature d'acier
+    val body = Path().apply { moveTo(cx - u * 18f, bodyY + u * 14f); cubicTo(cx - u * 22f, bodyY - u * 4f, cx - u * 10f, bodyY - u * 10f, cx + u * 6f, bodyY - u * 9f)
+        cubicTo(cx + u * 20f, bodyY - u * 8f, cx + u * 24f, bodyY + u * 4f, cx + u * 20f, bodyY + u * 14f); close() }
+    fill(body, vg(bodyY - u * 10f, bodyY + u * 14f, 0f to mix(wood, c("#FFF2DC"), .15f * (1f - night)), 1f to woodD))
+    clipPath(body) { for (k in -10..10) line(cx + k * u * 2.2f, bodyY - u * 12f, cx + k * u * 2.2f + u * 1f, bodyY + u * 16f, max(1f, u * .15f), woodD.a(.5f)); for (k in 0 until 4) line(cx - u * 24f, bodyY - u * 4f + k * u * 5f, cx + u * 24f, bodyY - u * 4f + k * u * 5f, max(1f, u * .35f), steel.a(.7f)) }
+    drawPath(body, steel, style = Stroke(max(1f, u * .5f)))
+    // Queue
+    drawPath(Path().apply { moveTo(cx + u * 21f, bodyY + u * 2f); quadraticTo(cx + u * 25f, bodyY + u * 6f + sway, cx + u * 23.5f, bodyY + u * 11f) }, steel, style = Stroke(max(1f, u * .5f)))
+    // Terrasse sur le dos : plancher, garde-corps, auvent et passagers
+    val deck = bodyY - u * 9.5f
+    rect(cx - u * 12f, deck - u * .8f, u * 26f, u * 1.2f, woodD)
+    for (k in 0..13) line(cx - u * 12f + k * u * 2f, deck - u * .8f, cx - u * 12f + k * u * 2f, deck - u * 3.4f, max(1f, u * .18f), steel)
+    line(cx - u * 12f, deck - u * 3.4f, cx + u * 14f, deck - u * 3.4f, max(1f, u * .3f), steel)
+    fill(poly(cx - u * 4f, deck - u * 8f, cx + u * 10f, deck - u * 8f, cx + u * 11.5f, deck - u * 6.6f, cx - u * 5.5f, deck - u * 6.6f), mix(c("#B23A2E"), c("#3A2030"), .5f * night)); for (k in listOf(-4f, 10f)) line(cx + k * u, deck - u * 6.6f, cx + k * u, deck - u * .8f, max(1f, u * .3f), steel)
+    val r = Mul(7); for (k in 0 until 7) { val px = cx - u * 10f + k * u * 3.4f + r() * u; val col = listOf(c("#E8412C"), c("#2E6FD8"), c("#F2C230"), c("#3AA060"), c("#8A4FC0"))[k % 5]
+        rect(px - u * .45f, deck - u * 3f, u * .9f, u * 2.2f, mix(col, c("#1A1A22"), .5f * night)); disc(px, deck - u * 3.5f, u * .55f, mix(c("#E8C4A0"), c("#2A2430"), .5f * night)) }
+    // Tête, oreille qui bat, œil
+    val hx = cx - u * 21f; val hy = bodyY - u * 1f
+    fill(Path().apply { addOval(androidx.compose.ui.geometry.Rect(hx - u * 7f, hy - u * 8f, hx + u * 7f, hy + u * 8f)) }, vg(hy - u * 8f, hy + u * 8f, 0f to mix(wood, c("#FFF2DC"), .12f * (1f - night)), 1f to woodD))
+    drawOval(steel, Offset(hx - u * 7f, hy - u * 8f), Size(u * 14f, u * 16f), style = Stroke(max(1f, u * .5f)))
+    val flap = sin(t * TAU * 5f) * 8f
+    rotate(flap, Offset(hx + u * 4f, hy - u * 5f)) {
+        val ear = Path().apply { moveTo(hx + u * 4f, hy - u * 6f); cubicTo(hx + u * 14f, hy - u * 10f, hx + u * 16f, hy + u * 6f, hx + u * 6f, hy + u * 9f); cubicTo(hx + u * 3f, hy + u * 4f, hx + u * 2f, hy - u * 2f, hx + u * 4f, hy - u * 6f); close() }
+        fill(ear, leather); drawPath(ear, steel, style = Stroke(max(1f, u * .4f)))
+        for (k in 1..3) drawPath(Path().apply { moveTo(hx + u * 5f, hy - u * 4f + k * u * 2.5f); quadraticTo(hx + u * 10f, hy - u * 4f + k * u * 2.5f, hx + u * 12f, hy - u * 2f + k * u * 3f) }, steel.a(.5f), style = Stroke(max(1f, u * .15f)))
+    }
+    disc(hx - u * 3f, hy - u * 2.5f, u * 1.1f, c("#1A1410")); disc(hx - u * 3.3f, hy - u * 2.8f, u * .35f, c("#FFFFFF", .7f * (1f - night)))
+    // Trompe articulée (anneaux), qui se relève et souffle de l'eau de temps en temps
+    val lift = (sin(t * TAU) * .5f + .5f)
+    var px = hx - u * 5f; var py = hy + u * 4f; var ang = 1.75f - lift * 1.5f; var w = u * 4.2f
+    for (k in 0 until 11) {
+        val nx = px + cos(ang) * u * 2.3f; val ny = py + sin(ang) * u * 2.3f
+        line(px, py, nx, ny, w, if (k % 2 == 0) wood else woodD, StrokeCap.Round); line(px, py, nx, ny, max(1f, u * .2f), steel.a(.5f))
+        px = nx; py = ny; ang += (.12f + lift * .16f) * if (lift > .5f) 1f else -.2f; w *= .9f
+    }
+    if (lift > .8f) { val a = (lift - .8f) / .2f; for (k in 0 until 14) { val f = k / 14f; disc(px - f * u * 6f + sin(k * 2f) * u, py - f * u * 10f, u * (.4f + f * 1.6f), c("#EAF4FF", .35f * a * (1f - f))) } }
+    if (night > .3f) { glow(cx, deck - u * 6f, u * 16f, c("#FFC46A", .25f * night), BlendMode.Screen); for (k in 0 until 4) disc(cx - u * 2f + k * u * 3.6f, deck - u * 6.9f, u * .45f, c("#FFE2A0", night)) }
+}
+
+private fun DrawScope.nantes(t: Float, d: Tod? = null) {
+    val W = size.width; val H = size.height; val S = min(W, H); val u = S / 100f
+    val night = d?.night ?: 0f; val hz = H * .5f; val quay = H * .64f
+    if (d == null) sky(0f to c("#4A7EC4"), .45f to c("#A6C8E8"), .85f to c("#F6D8B8"), 1f to c("#FFE6C8"), y1 = hz)
+    else sky(0f to d.col("#3F86D6", "#6A7FC0", "#3A3E86", "#060A1E"), .45f to d.col("#8EC0EC", "#C9A8D0", "#B06A92", "#121A40"),
+        .85f to d.col("#D6E8F6", "#FFC9B0", "#FFA86E", "#232E58"), 1f to d.col("#EAF2F8", "#FFE2C8", "#FFD08E", "#2E3A62"), y1 = hz)
+    val sun = d?.sun ?: .78f; val sunA = if (d == null) 1f else (1f - night).coerceIn(0f, 1f)
+    val sx = W * (.1f + .8f * sun); val sy = if (d == null) H * .32f else hz - H * .04f - (hz - H * .14f) * sin(sun * 3.1416f)
+    if (sunA > .01f) { glow(sx, sy, S * 1f, c("#FFE2B0", .4f * sunA), BlendMode.Screen); glow(sx, sy, S * .18f, c("#FFF2D6", .9f * sunA), BlendMode.Screen); disc(sx, sy, S * .036f, c("#FFF8EA", sunA)) }
+    if (night > .2f) { starField(91, 120, hz - H * .12f, c("#FFFFFF", .8f * night), t, 2); val mx = W * .2f; val my = H * .11f; glow(mx, my, S * .45f, c("#BFD6FF", .22f * night), BlendMode.Screen); disc(mx, my, S * .036f, c("#F4F7FF", night)) }
+    for (i in 0 until 4) { val dx = ((t * (.45f + i * .1f) + i * .29f) % 1.3f - .15f) * W * 1.1f; softCloud(dx, H * (.07f + i * .065f), W * (.5f + i * .08f), c("#FFFFFF", (.5f - i * .06f) * (1f - .85f * night)), c("#FFF1DE", .4f * (1f - .85f * night)), 120 + i) }
+    val haze = d?.col("#B9C8DC", "#D8B8C8", "#E8B090", "#2A3460") ?: c("#C8D4E4")
+    // Rive nord : la ville, la tour Bretagne et la cathédrale Saint-Pierre dans la brume
+    val r = Mul(41); var x = -u
+    while (x < W) { val w = u * (3f + r() * 5f); val h = u * (2f + r() * 4f); val col = mix(c("#8A8098"), haze, .5f)
+        rect(x, hz - h, w, h + u * 3f, col); if (night > .3f && r() < .6f) disc(x + w * r(), hz - h * r(), u * .25f, c("#FFD27A", .7f * night)); x += w }
+    run { val col = mix(c("#7A7090"), haze, .45f); val tx = W * .3f
+        rect(tx - u * 2.6f, hz - u * 26f, u * 5.2f, u * 26f, col); for (k in 0 until 12) rect(tx - u * 2.2f, hz - u * 25f + k * u * 2f, u * 4.4f, u * .5f, mix(col, if (night > .3f) c("#FFD27A") else c("#B8C4D8"), .35f))
+        rect(tx - u * .2f, hz - u * 29f, u * .4f, u * 3f, col)
+        val cx = W * .52f; rect(cx - u * 5f, hz - u * 14f, u * 3.6f, u * 14f, col); rect(cx + u * 1.4f, hz - u * 14f, u * 3.6f, u * 14f, col); rect(cx - u * 1.4f, hz - u * 9f, u * 2.8f, u * 9f, col)
+        rect(cx - u * 5.4f, hz - u * 14.6f, u * 4.4f, u * .8f, col); rect(cx + u * 1f, hz - u * 14.6f, u * 4.4f, u * .8f, col) }
+    // La Loire, large, et ses reflets
+    val water = hz + u * 2f
+    if (d == null) drawRect(vg(water, quay, 0f to c("#E8D8C2"), .35f to c("#9EBCD6"), 1f to c("#4E7EAE")), Offset(0f, water), Size(W, quay - water))
+    else drawRect(vg(water, quay, 0f to d.col("#DCEAF6", "#F2D2C8", "#F2B98E", "#2A3A60"), .35f to d.col("#A8C8E6", "#C8C0DA", "#B88AA6", "#1C2A50"), 1f to d.col("#3F74AE", "#6F8FC8", "#4A5E9A", "#0A1430")), Offset(0f, water), Size(W, quay - water))
+    val g = Mul(17); for (i in 0 until 50) { val v = g(); val y = water + (quay - water) * (.05f + v * .95f); val xx = ((g() + t * (.12f + v * .3f)) % 1f) * W; val len = u * (2f + v * 8f)
+        line(xx, y, xx + len, y, max(1f, u * .2f), c("#FFFFFF", (.14f + v * .12f) * (1f - .5f * night))) }
+    if (sunA > .01f) for (i in 0 until 60) { val v = g(); val y = water + (quay - water) * (.05f + v * .9f); val xx = sx + (g() - .5f) * W * (.06f + v * .2f); val tw = .5f + .5f * sin(t * TAU * 6 + i)
+        line(xx - u, y, xx + u, y, max(1f, u * .2f), c("#FFF6E2", (.2f + .5f * tw) * sunA)) }
+    // Quai des Antilles : grue Titan jaune et hangar à bananes
+    val titCol = mix(c("#F2C230"), c("#8A6A20"), .45f * night)
+    titan(W * .82f, quay - u * 1f, u, titCol, mix(c("#5A4A20"), c("#1A1A22"), .5f * night), night)
+    rect(W * .48f, quay - u * 6f, W * .3f, u * 6f, mix(c("#C9B8A0"), c("#2A2A3A"), .6f * night)); fill(poly(W * .48f, quay - u * 6f, W * .63f, quay - u * 9f, W * .78f, quay - u * 6f), mix(c("#8A8090"), c("#1E2236"), .6f * night))
+    for (k in 0 until 8) rect(W * .5f + k * W * .034f, quay - u * 4.2f, u * 1.6f, u * 2f, if (night > .3f && k % 3 != 1) c("#FFD27A", night) else mix(c("#6A6070"), c("#1A1A22"), .5f * night))
+    // Quai et Anneaux de Buren (rayures, éclairés en couleur la nuit)
+    drawRect(vg(quay, H, 0f to mix(c("#B8AE9C"), c("#2A2A36"), .55f * night), .25f to mix(c("#9C9282"), c("#20202C"), .55f * night), 1f to mix(c("#6E6658"), c("#121218"), .55f * night)), Offset(0f, quay), Size(W, H - quay))
+    rect(0f, quay, W, u * 1.2f, mix(c("#E6DCCA"), c("#3A3A48"), .55f * night))
+    val ringCols = listOf(c("#E8412C"), c("#3AB060"), c("#2E7FE8"))
+    for ((k, rx) in listOf(.06f, .26f, .46f).withIndex()) { val cx = W * rx; val cy = quay - u * 7.5f; val rr = u * 7f
+        drawOval(mix(c("#F4F4F4"), ringCols[k], .15f + .7f * night), Offset(cx - rr * .45f, cy - rr), Size(rr * .9f, rr * 2f), style = Stroke(u * 1.1f))
+        for (j in 0 until 6) { val a = j / 6f * TAU; drawLine(mix(c("#1A1A22"), ringCols[k], night), Offset(cx + cos(a) * rr * .45f, cy + sin(a) * rr), Offset(cx + cos(a + .25f) * rr * .45f, cy + sin(a + .25f) * rr), u * .5f) }
+        if (night > .2f) glow(cx, cy, rr * 2.4f, ringCols[k].a(.35f * night), BlendMode.Screen)
+        line(cx, quay, cx, cy + rr, max(1f, u * .4f), c("#8A8A96")) }
+    // Le Grand Éléphant marche sur l'esplanade
+    val ground = H * .95f
+    // Pavés de l'esplanade, en perspective
+    for (k in 0 until 12) { val yy = quay + u * 1.2f + (H - quay) * (k / 12f).pow(1.5f); line(0f, yy, W, yy, max(1f, u * .15f), c("#000000", .1f)) }
+    for (k in -8..8) line(W * .5f + k * W * .08f, quay + u * 1.2f, W * .5f + k * W * .3f, H, max(1f, u * .15f), c("#000000", .08f))
+    drawOval(c("#000000", .2f), Offset(W * .5f - u * 38f, ground - u * 2.4f), Size(u * 76f, u * 5f))
+    elephant(W * .54f, ground, u * 1.25f, t, night)
+    // Promeneurs qui regardent passer l'éléphant
+    val pr = Mul(23); for (k in 0 until 9) { val px = W * (.04f + pr() * .92f); if (px > W * .25f && px < W * .78f) continue; val py = H * (.9f + pr() * .06f); val h = u * (4.5f + pr() * 1.5f)
+        val col = mix(listOf(c("#2E4A7A"), c("#B23A2E"), c("#3A3A44"), c("#2E7A5A"))[k % 4], c("#101018"), .5f * night)
+        rect(px - h * .14f, py - h * .62f, h * .28f, h * .62f, col); disc(px, py - h * .74f, h * .13f, mix(c("#E8C4A0"), c("#2A2430"), .6f * night)) }
+    if (d == null) return
+    if (d.dusk > .01f) drawRect(vg(0f, H, 0f to c("#5A2E8A", .14f * d.dusk), .5f to c("#FF7A3A", .12f * d.dusk), 1f to c("#FFB070", .05f * d.dusk)))
+    if (d.dawn > .01f) drawRect(vg(0f, H, 0f to c("#7F8FE0", .1f * d.dawn), .5f to c("#FFB0C0", .12f * d.dawn), 1f to Color.Transparent))
 }

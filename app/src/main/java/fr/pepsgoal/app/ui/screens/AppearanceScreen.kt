@@ -467,6 +467,9 @@ private fun EffectsSection(ui: AppState, u: User) {
         SetRow("Fond qui réagit", "Une lueur chaude monte au fil de tes validations, et des confettis tombent les journées parfaites.") {
             PSwitch(ui.prefs.bgReactive, { ui.prefs.bgReactive = it; ui.themeTick++ })
         }
+        SetRow("Fond à la météo", if (ui.pg.me()?.settings?.weather == null) "Choisis ta ville dans Paramètres › Météo : il pleuvra sur ton fond quand il pleut dehors." else "Pluie, neige, orage ou brouillard sur ton fond quand il fait ce temps-là dehors.") {
+            PSwitch(ui.prefs.bgWeather, { ui.prefs.bgWeather = it; ui.themeTick++ })
+        }
         Text(tr("Effet animé"), Modifier.padding(top = 8.dp, bottom = 6.dp), fontWeight = FontWeight.Bold)
         if (avail.isEmpty()) Muted("Neige, pétales, braises… arrivent avec les thèmes de la boutique.", small = true)
         else FlowRowCompat(gap = 6.dp) {

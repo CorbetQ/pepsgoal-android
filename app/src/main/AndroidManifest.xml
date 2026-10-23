@@ -39,6 +39,8 @@
         <intent><action android:name="android.speech.RecognitionService" /></intent>
     </queries>
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Information « capture d’écran » dans les conversations (Android 14 et plus) -->
+    <uses-permission android:name="android.permission.DETECT_SCREEN_CAPTURE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />

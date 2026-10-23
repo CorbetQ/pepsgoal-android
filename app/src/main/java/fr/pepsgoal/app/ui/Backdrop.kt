@@ -40,7 +40,7 @@ fun bgFile(ctx: android.content.Context) = File(ctx.filesDir, "bg.jpg")
 
 /** Arrière-plan derrière toute l'application (calque `.backdrop` de la version web). */
 @Composable
-fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: String = "") {
+fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: String = "", weather: String? = null) {
     val p = LocalPal.current
     Box(Modifier.fillMaxSize().background(p.bg)) {
         if (p.transp || p.contrast) return@Box
@@ -57,6 +57,36 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: 
         }
         // Effets décoratifs : coupés par Paramètres › Performance (ou le mode Économie)
         if (Perf.flags.fx) { if (snow || fx == "snow") SnowFx() else if (fx.isNotEmpty() && !p.motion) ThemeFx(fx) }
+        // Temps qu'il fait dehors, par-dessus le fond (réglage Apparence › Fond à la météo)
+        if (weather != null && Perf.flags.fx && !p.motion) WeatherFx(weather)
+    }
+}
+
+/** Pluie qui tombe en biais, neige, orage (pluie et éclairs) ou brouillard qui dérive, selon la météo du moment. */
+@Composable
+private fun WeatherFx(cond: String) {
+    if (cond == "snow") { SnowFx(); return }
+    val n = particles(if (cond == "fog") 0 else if (cond == "storm") 150 else 110)
+    val drops = remember(n) { List(n) { floatArrayOf(Random.nextFloat() * 1.2f, Random.nextFloat(), 14 + Random.nextFloat() * 16, .7f + Random.nextFloat() * .6f, .25f + Random.nextFloat() * .35f) } }
+    val clock = bgPhaseState(if (cond == "fog") 40000 else 6000, fps = 24, cap = Perf.flags.bgFps * 2)
+    Canvas(Modifier.fillMaxSize()) {
+        val t = clock.value; val d = density / 2.6f
+        if (cond == "fog") {
+            // Bancs de brume en trois couches qui glissent lentement
+            for (i in 0 until 3) { val y = size.height * (.35f + i * .2f); val x = ((t + i * .33f) % 1f) * size.width * 2 - size.width
+                drawOval(Brush.radialGradient(listOf(Color.White.copy(alpha = .22f), Color.Transparent), Offset(x + size.width, y), size.width * .9f), Offset(x, y - size.height * .12f), androidx.compose.ui.geometry.Size(size.width * 2, size.height * .24f)) }
+            drawRect(Color.White.copy(alpha = .08f))
+            return@Canvas
+        }
+        drawRect(Color(0xFF1A2236).copy(alpha = if (cond == "storm") .22f else .1f))
+        for (f in drops) {
+            val k = (f[1] + t * f[3] * 3f) % 1f
+            val y = k * (size.height + 80f) - 40f; val x = f[0] * size.width - k * 60f * d
+            val len = f[2] * d * 2f
+            drawLine(Color(0xFFCFE2FF).copy(alpha = f[4]), Offset(x, y), Offset(x - len * .25f, y + len), strokeWidth = 1.6f * d)
+        }
+        // Éclairs : un flash bref de temps en temps
+        if (cond == "storm") { val ph = (t * 6f) % 1f; if (ph < .03f) drawRect(Color.White.copy(alpha = .35f * (1f - ph / .03f))) }
     }
 }
 
