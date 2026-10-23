@@ -161,6 +161,6 @@ private fun OverTile(v: String, l: String, icon: String, on: Boolean, modifier: 
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.items(list: List<Goal>, key: ((Goal) -> Any)? = { it.id }, content: @Composable (Goal) -> Unit) {
+private fun androidx.compose.foundation.lazy.LazyListScope.items(list: List<Goal>, key: ((Goal) -> Any)? = { it.id }, content: @Composable androidx.compose.foundation.lazy.LazyItemScope.(Goal) -> Unit) {
     items(list.size, key = key?.let { k -> { i: Int -> k(list[i]) } }) { i -> content(list[i]) }
 }
