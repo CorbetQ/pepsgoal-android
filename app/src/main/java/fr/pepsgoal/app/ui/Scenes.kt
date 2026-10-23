@@ -90,7 +90,7 @@ private fun Tod.col(day: String, dawn: String, dusk: String, night: String): Col
     return Color(cs.sumOf { (x, w) -> (x.red * w).toDouble() }.toFloat(), cs.sumOf { (x, w) -> (x.green * w).toDouble() }.toFloat(), cs.sumOf { (x, w) -> (x.blue * w).toDouble() }.toFloat())
 }
 /** Scènes qui gèrent elles-mêmes l'heure (au lieu du voile générique). */
-private val OWN_TOD = setOf("loire", "lighthouse", "angers")
+private val OWN_TOD = setOf("loire", "lighthouse", "angers", "rooftops")
 
 /** Une image de la scène [key] à la phase [t] ; [h] : heure réelle (null : éclairage d'origine, aperçus). */
 internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
@@ -102,7 +102,7 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
         "snowvillage" -> snowvillage(t); "fireworks" -> fireworks(t); "snowpeak" -> snowpeak(t); "heartsky" -> heartsky(t)
         "eggmeadow" -> eggmeadow(t); "flowerfield" -> flowerfield(t); "summerbeach" -> summerbeach(t); "autumnwood" -> autumnwood(t)
         "tunnel" -> tunnel(t); "loire" -> loire(t, td); "lighthouse" -> lighthouse(t, td); "vineyard" -> vineyard(t); "balloons" -> balloons(t); "jellyfish" -> jellyfish(t)
-        "bamboo" -> bamboo(t); "nighttrain" -> nighttrain(t); "rooftops" -> rooftops(t); "canyon" -> canyon(t)
+        "bamboo" -> bamboo(t); "nighttrain" -> nighttrain(t); "rooftops" -> rooftops(t, td); "canyon" -> canyon(t)
         "savanna" -> savanna(t); "lanterns" -> lanterns(t); "icefield" -> icefield(t)
         "angers" -> angers(t, td); "angevine" -> angevine(t)
         else -> {
@@ -2568,37 +2568,187 @@ private fun DrawScope.nighttrain(t: Float) {
     for (i in 0 until 10) { val x = ((x0 + i * u * 22f) % (W * 2f)); if (x in 0f..W) line(x, H * (.9f + i * .006f), x + u * 5f, H * (.9f + i * .006f), max(1f, u * .3f), c("#FFD27A", .25f)) }
 }
 
-/* ------------------------------------------------------------------ Toits de Paris au crépuscule */
-private fun DrawScope.rooftops(t: Float) {
-    val W = size.width; val H = size.height; val S = min(W, H); val u = S / 100f
-    sky(0f to c("#3A3F7A"), .4f to c("#A06A9A"), .7f to c("#F2A07A"), 1f to c("#FFD2A0"), y1 = H * .7f)
-    glow(W * .5f, H * .62f, S * 1.2f, c("#FFB07A", .4f), BlendMode.Screen)
-    starField(19, 60, H * .25f, c("#FFFFFF", .6f), t, 1)
-    // Tour Eiffel au loin
-    run { val ex = W * .66f; val eb = H * .6f; val eh = H * .3f; val col = c("#3A2E4A", .85f)
-        fill(poly(ex - eh * .2f, eb, ex - eh * .04f, eb - eh * .55f, ex - eh * .015f, eb - eh, ex + eh * .015f, eb - eh, ex + eh * .04f, eb - eh * .55f, ex + eh * .2f, eb, ex + eh * .12f, eb, ex, eb - eh * .3f, ex - eh * .12f, eb), col)
-        rect(ex - eh * .09f, eb - eh * .32f, eh * .18f, eh * .025f, col); rect(ex - eh * .05f, eb - eh * .6f, eh * .1f, eh * .02f, col)
-        val bl = .5f + .5f * sin(t * TAU * 8f); disc(ex, eb - eh, u * .7f, c("#FFE7B0", bl)); glow(ex, eb - eh, u * 6f, c("#FFE7B0", .4f * bl), BlendMode.Screen) }
-    // Rangs d'immeubles haussmanniens : toits de zinc, lucarnes allumées, cheminées
-    val rows = listOf(Triple(.62f, c("#6A5E8A"), 1), Triple(.72f, c("#4E4670"), 2), Triple(.84f, c("#2E2A4A"), 3))
-    for ((yk, col, seed) in rows) {
-        val r = Mul(seed * 13); var x = -u * 4f; val base = H * yk
-        while (x < W) { val w = u * (14f + r() * 12f); val roof = u * (5f + r() * 3f); val y = base - u * r() * 4f
-            val zinc = mix(col, c("#9AA6C6"), .25f)
-            rect(x, y, w, H - y, mix(col, c("#E8D8C8"), .12f + seed * .02f))
-            fill(poly(x - u, y, x + u * 2f, y - roof, x + w - u * 2f, y - roof, x + w + u, y), zinc)
-            for (cc in 0 until 2) { val chx = x + w * (.2f + cc * .55f); rect(chx, y - roof - u * 3f, u * 3f, u * 3.5f, mix(col, c("#C8806A"), .5f)); for (p in 0 until 3) rect(chx + u * (.3f + p * .9f), y - roof - u * 3.8f, u * .6f, u * .9f, c("#A0584A")) }
-            for (l in 0 until (w / (u * 6f)).toInt()) { val lx = x + u * (3f + l * 6f); val lit = r() < .55f
-                rect(lx, y - roof * .75f, u * 2.4f, roof * .55f, if (lit) c("#FFD27A") else c("#2A2A44")); fill(poly(lx - u * .4f, y - roof * .75f, lx + u * 1.2f, y - roof - u * .5f, lx + u * 2.8f, y - roof * .75f), zinc)
-                if (lit) glow(lx + u * 1.2f, y - roof * .5f, u * 4f, c("#FFC46A", .2f), BlendMode.Screen) }
-            for (fl in 0 until 4) for (l in 0 until (w / (u * 5f)).toInt()) { val lit = r() < .3f; rect(x + u * (2f + l * 5f), y + u * (3f + fl * 6f), u * 2.2f, u * 3.5f, if (lit) c("#FFCF7A", .9f) else mix(col, Color.Black, .25f)) }
-            rect(x, y + u * 1.6f, w, u * .5f, c("#1E1A30", .6f))
-            x += w + u * r() * 1.5f }
-        mist(base - u * 3f, u * 10f, c("#F2A07A", .12f))
+/* ------------------------------------------------------------------ Toits de Paris */
+
+/** Profil de la tour Eiffel : demi-largeur (en fraction de la hauteur) selon la hauteur relative (0 au sol, 1 au sommet). */
+private val EIF_H = floatArrayOf(0f, .06f, .19f, .3f, .39f, .5f, .62f, .75f, .86f, .92f, 1f)
+private val EIF_W = floatArrayOf(.208f, .175f, .118f, .088f, .066f, .052f, .041f, .031f, .022f, .017f, .004f)
+
+/** Tour Eiffel : quatre piliers et grande arche, trois étages, fût effilé en treillis, antenne. [gap] : couleur vue à travers le treillis. */
+private fun DrawScope.eiffel(cx: Float, base: Float, eh: Float, col: Color, gap: Color, lit: Float, t: Float) {
+    fun y(h: Float) = base - eh * h
+    fun hw(h: Float) = eh * tab(h, EIF_H, EIF_W)
+    fun leg(h: Float) = eh * (.07f - .036f * (h / .39f).coerceAtMost(1f))
+    val sw = max(1f, eh * .0022f)
+    // Piliers jusqu'au deuxième étage : deux montants qui se rejoignent
+    for (side in listOf(-1f, 1f)) {
+        val n = 26; val pth = Path()
+        for (i in 0..n) { val h = .39f * i / n; val x = cx + side * hw(h); if (i == 0) pth.moveTo(x, y(h)) else pth.lineTo(x, y(h)) }
+        for (i in n downTo 0) { val h = .39f * i / n; pth.lineTo(cx + side * (hw(h) - leg(h)), y(h)) }
+        pth.close(); fill(pth, col)
+        // Treillis : croix de Saint-André entre les arêtes du pilier
+        var h = .01f
+        while (h < .37f) { val h2 = h + .035f
+            line(cx + side * hw(h), y(h), cx + side * (hw(h2) - leg(h2)), y(h2), sw, gap); line(cx + side * (hw(h) - leg(h)), y(h), cx + side * hw(h2), y(h2), sw, gap); h = h2 }
     }
-    // Pigeons / oiseaux
-    for (i in 0 until 3) { val k = (t * 1.5f + i * .33f) % 1f; val x = W * (k * 1.2f - .1f); val y = H * (.25f + i * .05f); val s = u * 1.3f; val fl = sin(t * TAU * 18 + i) * .4f
-        drawPath(Path().apply { moveTo(x - s, y - s * (.4f + fl)); quadraticTo(x - s * .4f, y - s * .2f, x, y + s * .2f); quadraticTo(x + s * .4f, y - s * .2f, x + s, y - s * (.4f + fl)) }, c("#2A2340", .75f), style = Stroke(max(1f, u * .3f))) }
+    // Grande arche décorative sous le premier étage
+    val ax = hw(.02f) - leg(.02f)
+    drawPath(Path().apply { moveTo(cx - ax, y(.02f)); quadraticTo(cx, y(.3f), cx + ax, y(.02f)) }, col, style = Stroke(eh * .011f))
+    // Fût au-dessus du deuxième étage
+    val n = 30; val shaft = Path()
+    for (i in 0..n) { val h = .39f + .53f * i / n; if (i == 0) shaft.moveTo(cx - hw(h), y(h)) else shaft.lineTo(cx - hw(h), y(h)) }
+    for (i in n downTo 0) { val h = .39f + .53f * i / n; shaft.lineTo(cx + hw(h), y(h)) }
+    shaft.close(); fill(shaft, col)
+    var h = .4f
+    while (h < .9f) { val h2 = h + .045f; line(cx - hw(h), y(h), cx + hw(h2), y(h2), sw, gap); line(cx + hw(h), y(h), cx - hw(h2), y(h2), sw, gap); h = h2 }
+    line(cx, y(.39f), cx, y(.92f), sw, gap.a(gap.alpha * .6f))
+    // Étages : plateformes et galeries
+    for ((ph, th, ext) in listOf(Triple(.19f, .022f, .014f), Triple(.39f, .014f, .008f))) {
+        rect(cx - hw(ph) - eh * ext, y(ph) - eh * th, (hw(ph) + eh * ext) * 2, eh * th, col)
+        var gx = cx - hw(ph) - eh * ext + eh * .006f
+        while (gx < cx + hw(ph) + eh * ext - eh * .006f) { rect(gx, y(ph) - eh * th * .7f, eh * .004f, eh * th * .45f, gap); gx += eh * .011f }
+    }
+    // Sommet : campanile, phare et antenne
+    rect(cx - hw(.9f) * 1.5f, y(.935f), hw(.9f) * 3f, eh * .02f, col)
+    fill(poly(cx - hw(.93f) * 1.1f, y(.935f), cx, y(.975f), cx + hw(.93f) * 1.1f, y(.935f)), col)
+    line(cx, y(.97f), cx, y(1.04f), max(1f, eh * .004f), col)
+    // Illumination dorée le soir, phare et scintillement
+    if (lit > .01f) {
+        glow(cx, y(.35f), eh * .5f, c("#FFB04A", .18f * lit), BlendMode.Screen)
+        val r = Mul(88)
+        for (i in 0 until 70) { val hh = r() * .95f; val x = cx + (r() * 2f - 1f) * hw(hh) * .9f; val tw = sin(t * TAU * 40 + i * 2.3f)
+            if (tw > .6f) disc(x, y(hh), max(1f, eh * .003f), c("#FFFFFF", lit * (tw - .6f) * 2.5f)) }
+        val beam = t * TAU * 6f
+        for (k in 0..1) { val a = beam + k * 3.1416f; val bx = cos(a)
+            drawPath(Path().apply { moveTo(cx, y(1f)); lineTo(cx + bx * eh * .9f, y(1f) - eh * .025f); lineTo(cx + bx * eh * .9f, y(1f) + eh * .025f); close() }, c("#FFF2C8", .05f * lit * abs(bx)), blendMode = BlendMode.Screen) }
+        glow(cx, y(1f), eh * .04f, c("#FFF2C8", .8f * lit), BlendMode.Screen)
+    }
+}
+
+/** Immeuble haussmannien vu de face : pierre de taille, balcons filants, corniche, combles en zinc et lucarnes, souche de cheminée. */
+private fun DrawScope.haussmann(x: Float, w: Float, cornice: Float, bottom: Float, u: Float, seed: Int, night: Float, light: Float) {
+    val r = Mul(seed)
+    // La nuit, pierre et zinc passent au bleu (les fenêtres allumées restent chaudes)
+    val nt = { col: Color -> mix(col, c("#232A44"), .62f * night) }
+    val stone = nt(mix(c("#E9DCC4"), c("#D8C8AA"), r())); val stoneSh = mix(stone, c("#8E7E68"), .35f)
+    val zinc = nt(c("#7D8AA2")); val zincLit = nt(c("#A8B4C8")); val iron = c("#1E1E26")
+    val fl = u * 6.2f
+    // Façade et ombre portée côté droit (lumière du couchant à gauche)
+    rect(x, cornice, w, bottom - cornice, stone)
+    drawRect(lg(x, 0f, x + w, 0f, 0f to c("#FFF4DE", .12f * light), .6f to Color.Transparent, 1f to c("#3A2E2A", .18f)), Offset(x, cornice), Size(w, bottom - cornice))
+    // Refends (joints horizontaux) des étages bas
+    for (k in 0 until 3) line(x, cornice + fl * (4f + k * .25f), x + w, cornice + fl * (4f + k * .25f), max(1f, u * .1f), stoneSh.a(.35f))
+    // Fenêtres : hautes portes-fenêtres à encadrement mouluré, linteaux sculptés aux étages nobles
+    val cols = max(2, (w / (u * 5.4f)).toInt()); val gapX = w / cols
+    for (f in 0 until 5) { val fy = cornice + u * 1.6f + f * fl
+        for (k in 0 until cols) { val wx = x + gapX * (k + .5f) - u * 1.05f
+            rect(wx - u * .35f, fy - u * .3f, u * 2.8f, u * 4.3f, mix(stone, c("#FFFFFF"), .15f))
+            val litW = r() < (.25f + .45f * night)
+            drawRect(vg(fy, fy + u * 3.7f, 0f to if (litW) c("#FFE2A0") else c("#3A4258"), 1f to if (litW) c("#F2B05A") else c("#1E2232")), Offset(wx, fy), Size(u * 2.1f, u * 3.7f))
+            if (litW && night > .05f) glow(wx + u * 1.05f, fy + u * 1.8f, u * 4f, c("#FFC46A", .25f * night), BlendMode.Screen)
+            line(wx + u * 1.05f, fy, wx + u * 1.05f, fy + u * 3.7f, max(1f, u * .15f), mix(stone, c("#FFFFFF"), .2f))
+            line(wx, fy + u * 1.4f, wx + u * 2.1f, fy + u * 1.4f, max(1f, u * .12f), mix(stone, c("#FFFFFF"), .2f))
+            if (f == 3) fill(poly(wx - u * .6f, fy - u * .4f, wx + u * 1.05f, fy - u * 1.5f, wx + u * 2.7f, fy - u * .4f), stoneSh.a(.8f))
+            // Garde-corps individuels (étages sans balcon filant)
+            if (f == 1 || f == 2) for (b in 0 until 6) line(wx + b * u * .42f, fy + u * 2.6f, wx + b * u * .42f, fy + u * 3.7f, max(1f, u * .1f), iron)
+        }
+        // Balcons filants au 5e (f = 0) et au 2e (f = 3) : dalle, rambarde et volutes de fer forgé
+        if (f == 0 || f == 3) { val by = fy + u * 3.8f
+            rect(x, by, w, u * .55f, stoneSh); rect(x, by - u * 1.5f, w, u * .22f, iron)
+            var bx = x; while (bx < x + w) { line(bx, by - u * 1.5f, bx, by, max(1f, u * .1f), iron); drawCircle(iron, u * .32f, Offset(bx + u * .45f, by - u * .75f), style = Stroke(max(1f, u * .08f))); bx += u * .9f }
+            drawRect(c("#000000", .12f), Offset(x, by + u * .55f), Size(w, u * .6f)) }
+    }
+    // Corniche saillante
+    rect(x - u * .6f, cornice - u * 1.2f, w + u * 1.2f, u * 1.3f, mix(stone, c("#FFFFFF"), .2f)); rect(x - u * .6f, cornice + u * .1f, w + u * 1.2f, u * .5f, c("#000000", .15f))
+    // Combles à la Mansart : brisis presque vertical, terrasson en pente douce, lucarnes
+    val brisis = u * 5.2f; val terr = u * 2.2f
+    fill(poly(x - u * .4f, cornice - u * 1.2f, x + u * .8f, cornice - u * 1.2f - brisis, x + w - u * .8f, cornice - u * 1.2f - brisis, x + w + u * .4f, cornice - u * 1.2f), zinc)
+    fill(poly(x + u * .8f, cornice - u * 1.2f - brisis, x + u * 3f, cornice - u * 1.2f - brisis - terr, x + w - u * 3f, cornice - u * 1.2f - brisis - terr, x + w - u * .8f, cornice - u * 1.2f - brisis), zincLit)
+    var sx = x + u * 1.2f; while (sx < x + w - u) { line(sx, cornice - u * 1.2f, sx + u * .2f, cornice - u * 1.2f - brisis, max(1f, u * .08f), c("#5E6A80", .6f)); sx += u * 1.1f }
+    for (k in 0 until cols) { val lx = x + gapX * (k + .5f) - u * 1.1f; val ly = cornice - u * 1.2f - brisis + u * .6f
+        val litL = r() < (.2f + .5f * night)
+        rect(lx - u * .4f, ly, u * 3f, u * 3.8f, if (k % 2 == 0) mix(stone, c("#FFFFFF"), .1f) else zincLit)
+        if (k % 2 == 0) fill(Path().apply { moveTo(lx - u * .6f, ly); quadraticTo(lx + u * 1.1f, ly - u * 2f, lx + u * 2.8f, ly); close() }, mix(stone, c("#FFFFFF"), .1f))
+        else fill(poly(lx - u * .6f, ly, lx + u * 1.1f, ly - u * 1.6f, lx + u * 2.8f, ly), zinc)
+        rect(lx, ly + u * .5f, u * 2.2f, u * 3f, if (litL) c("#FFD27A") else c("#2E3448"))
+        if (litL && night > .05f) glow(lx + u * 1.1f, ly + u * 2f, u * 3.5f, c("#FFB04A", .3f * night), BlendMode.Screen) }
+    // Souche de cheminée sur le mur mitoyen, rangée de boisseaux en terre cuite
+    val cxs = x + w - u * 2f; val ctop = cornice - u * 1.2f - brisis - terr - u * 2.5f
+    rect(cxs - u * 1.6f, ctop, u * 3.6f, cornice - ctop - u * 2f, mix(stone, c("#B8A488"), .5f)); rect(cxs - u * 1.9f, ctop, u * 4.2f, u * .6f, stoneSh)
+    for (p in 0 until 4) { val px = cxs - u * 1.4f + p * u * .9f; fill(poly(px, ctop, px + u * .15f, ctop - u * 1.6f, px + u * .65f, ctop - u * 1.6f, px + u * .8f, ctop), c("#C2683E")); rect(px + u * .1f, ctop - u * 1.8f, u * .6f, u * .25f, c("#A85432")) }
+}
+
+private fun DrawScope.rooftops(t: Float, d: Tod? = null) {
+    val W = size.width; val H = size.height; val S = min(W, H); val u = S / 100f
+    val night = d?.night ?: .1f; val hz = H * .6f
+    // Ciel du soir par défaut ; à l'heure réelle, aube, jour, couchant ou nuit
+    if (d == null) sky(0f to c("#34407A"), .35f to c("#8A6A9E"), .7f to c("#F0A27E"), 1f to c("#FFD6A6"), y1 = hz)
+    else sky(0f to d.col("#3F86D6", "#5E6EB0", "#34407A", "#060A1E"), .35f to d.col("#8EC0EC", "#B89AC8", "#9A6A9E", "#121A40"),
+        .7f to d.col("#D6E8F6", "#FFC2B0", "#F0A27E", "#232E58"), 1f to d.col("#EEF4F8", "#FFDCC4", "#FFD6A6", "#2E3A62"), y1 = hz)
+    val sun = d?.sun ?: .93f; val sunA = if (d == null) 1f else (1f - d.night).coerceIn(0f, 1f)
+    val sx = W * (.85f - .7f * sun); val sy = if (d == null) H * .5f else hz - H * .04f - (hz - H * .14f) * sin(sun * 3.1416f)
+    if (sunA > .01f) { glow(sx, sy, S * 1.2f, c("#FFC08A", .45f * sunA), BlendMode.Screen); glow(sx, sy, S * .18f, c("#FFF0D0", .9f * sunA), BlendMode.Screen); disc(sx, sy, S * .035f, c("#FFF8EA", sunA)) }
+    if (night > .2f) { starField(19, 120, hz - H * .15f, c("#FFFFFF", .8f * night), t, 2); val mx = W * .82f; val my = H * .1f; glow(mx, my, S * .45f, c("#BFD6FF", .22f * night), BlendMode.Screen); disc(mx, my, S * .035f, c("#F4F7FF", night)) }
+    for (i in 0 until 3) { val dx = ((t * (.4f + i * .1f) + i * .37f) % 1.3f - .15f) * W * 1.1f; softCloud(dx, H * (.1f + i * .08f), W * (.55f + i * .1f), c("#FFE6D6", (.35f - i * .05f) * (1f - .8f * night)), c("#FFD0B0", .3f * (1f - .8f * night)), 21 + i) }
+    val haze = d?.col("#B9C8DC", "#D8B8C8", "#E8A890", "#2A3460") ?: c("#E8A890")
+    // Paris au loin : toits et dôme des Invalides dans la brume
+    val r = Mul(11); var x = -u * 2f
+    while (x < W) { val w = u * (3f + r() * 6f); val h = u * (2.5f + r() * 4f); val col = mix(c("#7A6E92"), haze, .55f)
+        rect(x, hz - h, w, h + H * .12f, col); fill(poly(x, hz - h, x + u * .8f, hz - h - u * 1.4f, x + w - u * .8f, hz - h - u * 1.4f, x + w, hz - h), mix(col, haze, .2f))
+        if (r() < .35f) rect(x + w * .7f, hz - h - u * 2.4f, u * .9f, u * 1.2f, col)
+        if (night > .3f && r() < .5f) disc(x + w * r(), hz - h * r(), u * .25f, c("#FFD27A", .7f * night))
+        x += w }
+    run { val ix = W * .2f; val iy = hz - u * 5f; val gold = mix(c("#D9A441"), haze, .35f); val st = mix(c("#8E8098"), haze, .5f)
+        rect(ix - u * 4f, iy, u * 8f, u * 5f, st); rect(ix - u * 3f, iy - u * 3f, u * 6f, u * 3f, st)
+        drawArc(gold, 180f, 180f, true, Offset(ix - u * 3f, iy - u * 6.6f), Size(u * 6f, u * 7f)); rect(ix - u * .5f, iy - u * 8.5f, u * 1f, u * 2f, gold); line(ix, iy - u * 8.5f, ix, iy - u * 10.5f, max(1f, u * .2f), gold) }
+    // Tour Eiffel, voilée par la distance
+    val lit = sm(.35f, .7f, night)
+    val towerCol = mix(d?.col("#6A5A52", "#6A5068", "#4A3446", "#2A2236")?.let { mix(it, haze, .3f) } ?: c("#4E3A4E"), c("#E0A048"), .75f * lit)
+    eiffel(W * .64f, hz + u * 2f, H * .43f, towerCol, mix(haze, c("#3A2A2A"), .5f * lit).a(.55f), lit, t)
+    mist(hz - u * 1f, u * 6f, haze.a(.35f))
+    // Plan intermédiaire : derniers étages et combles des rues voisines, cheminées et boisseaux, dans la brume du soir
+    run { val rr = Mul(29); var mx = -u * 3f; val mb = H * .675f
+        while (mx < W) { val w = u * (9f + rr() * 8f); val top = mb - u * (2f + rr() * 3f)
+            val st = mix(mix(c("#D9C8AC"), c("#232A44"), .6f * night), haze, .38f); val zc = mix(mix(c("#7D8AA2"), c("#232A44"), .6f * night), haze, .3f)
+            rect(mx, top, w, H * .72f - top, st)
+            fill(poly(mx - u * .3f, top, mx + u * .6f, top - u * 3f, mx + w - u * .6f, top - u * 3f, mx + w + u * .3f, top), zc)
+            for (k in 0 until (w / (u * 3f)).toInt()) { val wx = mx + u * (1.2f + k * 3f); val on = rr() < .2f + .5f * night
+                rect(wx, top + u * 1.2f, u * 1.2f, u * 2f, if (on) c("#FFD27A", .9f) else mix(c("#3A4258"), haze, .3f)); rect(wx, top - u * 2.2f, u * 1.1f, u * 1.5f, if (rr() < .3f + .4f * night) c("#FFD27A", .85f) else mix(c("#3A4258"), haze, .3f)) }
+            if (rr() < .7f) { val cxx = mx + w * (.2f + rr() * .6f); rect(cxx, top - u * 5.2f, u * 2.4f, u * 2.6f, st); for (q in 0 until 3) rect(cxx + u * (.2f + q * .75f), top - u * 6f, u * .5f, u * .9f, mix(c("#C2683E"), haze, .3f)) }
+            mx += w + u * .2f }
+        mist(mb - u * 2f, u * 5f, haze.a(.25f)) }
+    // Rangée d'immeubles haussmanniens
+    val cornice = H * .7f
+    var bx = -u * 6f; var seed = 3
+    while (bx < W) { val w = u * (24f + (seed * 7 % 9)); haussmann(bx, w, cornice + ((seed % 3) - 1) * u * 1.4f, H, u, seed, night, sunA); bx += w + u * .3f; seed++ }
+    // Toit de zinc au premier plan : tasseaux, verrière, cheminée à boisseaux et chat sur le faîtage
+    val ridge = H * .86f
+    fill(poly(-u, ridge, W + u, ridge - u * 3f, W + u, H, -u, H), vg(ridge - u * 3f, H, 0f to c("#9AA6BA"), 1f to c("#5E6A80")))
+    for (k in 0 until 40) { val fx = W * k / 39f; line(fx, ridge - u * 3f * fx / W, W * .5f + (fx - W * .5f) * 1.6f, H, max(1f, u * .2f), c("#4A5468", .5f)) }
+    rect(-u, ridge - u * 3f * 0f - u * .8f, W + 2 * u, u * .8f, c("#6E7A90"))
+    // Verrière d'atelier : châssis en fer, carreaux qui reflètent le ciel (ou éclairés la nuit)
+    run { val gx0 = W * .56f; val gx1 = W * .8f; val gy0 = ridge + u * 3f; val gy1 = ridge + u * 11f
+        val glass = Path().apply { moveTo(gx0 + u, gy0); lineTo(gx1 - u, gy0 - u * .4f); lineTo(gx1 + u, gy1); lineTo(gx0 - u, gy1 + u * .4f); close() }
+        fill(Path().apply { moveTo(gx0 + u * .2f, gy0 - u * .8f); lineTo(gx1 - u * .2f, gy0 - u * 1.2f); lineTo(gx1 + u * 1.9f, gy1 + u * .7f); lineTo(gx0 - u * 1.9f, gy1 + u * 1.1f); close() }, c("#3A3E48"))
+        fill(glass, vg(gy0, gy1, 0f to mix(c("#B8D2EC"), c("#FFD98A"), night), 1f to mix(c("#6A8AAA"), c("#E8A040"), night)))
+        clipPath(glass) { for (k in 1 until 6) { val f = k / 6f; line(gx0 + u + (gx0 - u - gx0 - u) * 0f + (gx1 - gx0) * f, gy0 - u * .4f * f, gx0 - u + (gx1 - gx0 + u * 2f) * f, gy1 + u * .4f * (1 - f), max(1f, u * .3f), c("#2A2E36")) }
+            for (k in 1 until 3) { val f = k / 3f; line(gx0, gy0 + (gy1 - gy0) * f, gx1, gy0 + (gy1 - gy0) * f - u * .4f, max(1f, u * .3f), c("#2A2E36")) }
+            line(gx0 + (gx1 - gx0) * .2f, gy0, gx0 + (gx1 - gx0) * .45f, gy1, max(1f, u * 1.2f), c("#FFFFFF", .18f * (1f - night))) }
+        if (night > .05f) glow((gx0 + gx1) / 2, (gy0 + gy1) / 2, u * 14f, c("#FFB04A", .3f * night), BlendMode.Screen) }
+    run { val cx = W * .16f; val top = ridge - u * 16f
+        rect(cx - u * 6f, top, u * 12f, ridge - top + u * 2f, c("#C9B496")); rect(cx + u * 2f, top, u * 4f, ridge - top + u * 2f, c("#A89478")); rect(cx - u * 6.6f, top, u * 13.2f, u * 1.2f, c("#8E7E68"))
+        for (p in 0 until 6) { val px = cx - u * 5.4f + p * u * 1.9f; fill(poly(px, top, px + u * .3f, top - u * 3.4f, px + u * 1.3f, top - u * 3.4f, px + u * 1.6f, top), vg(top - u * 3.4f, top, 0f to c("#D27A4A"), 1f to c("#A8542E"))); rect(px + u * .2f, top - u * 3.8f, u * 1.2f, u * .5f, c("#8E4426")) } }
+    run { val kx = W * .42f; val ky = ridge - u * 1.4f * .42f - u * .8f; val cat = c("#1A1820")
+        drawOval(cat, Offset(kx - u * 2f, ky - u * 4.4f), Size(u * 4f, u * 4.6f)); disc(kx, ky - u * 5.2f, u * 1.6f, cat)
+        fill(poly(kx - u * 1.5f, ky - u * 6f, kx - u * 1.1f, ky - u * 7.6f, kx - u * .3f, ky - u * 6.5f), cat); fill(poly(kx + u * .3f, ky - u * 6.5f, kx + u * 1.1f, ky - u * 7.6f, kx + u * 1.5f, ky - u * 6f), cat)
+        val tail = sin(t * TAU * 3f) * u * .8f
+        drawPath(Path().apply { moveTo(kx + u * 1.6f, ky - u * .4f); cubicTo(kx + u * 4.5f, ky, kx + u * 4.5f + tail, ky - u * 3f, kx + u * 3.2f + tail, ky - u * 4f) }, cat, style = Stroke(u * .7f, cap = StrokeCap.Round)) }
+    // Pigeons
+    for (i in 0 until 3) { val k = (t * 1.5f + i * .33f) % 1f; val px = W * (k * 1.2f - .1f); val py = H * (.24f + i * .05f); val s = u * 1.3f; val fl = sin(t * TAU * 18 + i) * .4f
+        drawPath(Path().apply { moveTo(px - s, py - s * (.4f + fl)); quadraticTo(px - s * .4f, py - s * .2f, px, py + s * .2f); quadraticTo(px + s * .4f, py - s * .2f, px + s, py - s * (.4f + fl)) }, c("#2A2340", .75f), style = Stroke(max(1f, u * .3f))) }
+    if (d == null) return
+    if (d.dawn > .01f) drawRect(vg(0f, H, 0f to c("#7F8FE0", .1f * d.dawn), .5f to c("#FFB0C0", .12f * d.dawn), 1f to Color.Transparent))
+    if (d.night > .01f) drawRect(vg(hz, H, 0f to c("#1A2550", .25f * d.night), 1f to c("#0A1030", .45f * d.night)), Offset(0f, hz), Size(W, H - hz), blendMode = BlendMode.Multiply)
 }
 
 /* ------------------------------------------------------------------ Canyon */
@@ -2836,7 +2986,13 @@ private fun DrawScope.angersTram(cx: Float, rail: Float, L: Float, night: Float,
     // Bande arc-en-ciel sur la jupe
     RAINBOW.forEachIndexed { i, h -> rect(x0 + u * 1.5f, bot - u * 2.8f + i * u * .38f, L - u * 3.5f, u * .38f, c(h, .9f * a)) }
     // Bogies et roues
-    for (k in 0..mods) { val bx = x0 + L * k / mods; rect(bx - u * 2.4f, bot - u * .4f, u * 4.8f, u * 1.6f, c("#2A2E36", a)); disc(bx - u * 1.2f, rail - u * .3f, u * .8f, c("#1A1C22", a)); disc(bx + u * 1.2f, rail - u * .3f, u * .8f, c("#1A1C22", a)) }
+    // (Citadis à 5 modules : bogies sous les modules 1, 3 et 5, en retrait des extrémités, à moitié cachés par la jupe)
+    for (k in listOf(0, 2, 4)) {
+        val bx = x0 + L * (k + .5f) / mods + (if (k == 0) u * 1.5f else if (k == mods - 1) -u * 1.5f else 0f)
+        fill(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(bx - u * 3f, bot - u * .3f, bx + u * 3f, rail - u * .2f, CornerRadius(u * .5f))) }, c("#2A2E36", a))
+        for (wx in listOf(-1.6f, 1.6f)) { disc(bx + u * wx, rail - u * .6f, u * .95f, c("#16181D", a)); disc(bx + u * wx, rail - u * .6f, u * .35f, c("#6A707A", a)) }
+        rect(bx - u * 3.2f, bot - u * .6f, u * 6.4f, u * .5f, c("#3A3F48", a))
+    }
     // Phares (et leur halo la nuit)
     disc(x1 - u * .4f, bot - u * 2.2f, u * .6f, c("#FFFBEA", a))
     if (night > .01f) { glow(x1 + u * 2f, bot - u * 2.2f, u * 12f, c("#FFF0C8", .35f * night * a), BlendMode.Screen); ellGlow(x1 + u * 14f, rail + u * .2f, u * 14f, u * 1.4f, c("#FFE8B0", .25f * night * a), BlendMode.Screen) }
@@ -2882,14 +3038,14 @@ private fun DrawScope.angers(t: Float, d: Tod? = null) {
     rect(-u, deck, W + 2 * u, dk, mix(c("#E9E6E0"), c("#2E3650"), .6f * night)); rect(-u, deck + dk * .6f, W + 2 * u, dk * .4f, mix(c("#B9B4AC"), c("#1E2640"), .6f * night))
     line(-u, deck - u * 3.4f, W + u, deck - u * 3.4f, max(1f, u * .35f), c("#FFFFFF", .9f))
     for (k in 0..24) { val x = W * k / 24f; line(x, deck, x, deck - u * 3.4f, max(1f, u * .18f), c("#FFFFFF", .7f)) }
+    // Mâts d'éclairage du pont (côté amont, derrière la rame)
+    for (k2 in 0 until 4) { val lx = W * (.06f + k2 * .3f); line(lx, deck, lx, deck - u * 12f, max(1f, u * .35f), c("#C9CDD4")); line(lx, deck - u * 12f, lx + u * 2.4f, deck - u * 12.6f, max(1f, u * .35f), c("#C9CDD4"))
+        if (night > .01f) { disc(lx + u * 2.4f, deck - u * 12.4f, u * .6f, c("#FFF2C8", night)); glow(lx + u * 2.4f, deck - u * 12f, u * 8f, c("#FFE2A0", .3f * night), BlendMode.Screen) } }
     // Rame qui traverse lentement la Maine
     val k = (t + .5f) % 1f; val L = W * .92f
     angersTram(W * (-.6f + 2.2f * k), deck, L, night)
     // Reflet de la rame
     clipRect(0f, deck + dk, W, quay) { scale(1f, -.45f, Offset(0f, deck + dk)) { angersTram(W * (-.6f + 2.2f * k), deck, L, night, .25f) } }
-    // Mâts d'éclairage du pont
-    for (k2 in 0 until 4) { val lx = W * (.06f + k2 * .3f); line(lx, deck, lx, deck - u * 12f, max(1f, u * .35f), c("#C9CDD4")); line(lx, deck - u * 12f, lx + u * 2.4f, deck - u * 12.6f, max(1f, u * .35f), c("#C9CDD4"))
-        if (night > .01f) { disc(lx + u * 2.4f, deck - u * 12.4f, u * .6f, c("#FFF2C8", night)); glow(lx + u * 2.4f, deck - u * 12f, u * 8f, c("#FFE2A0", .3f * night), BlendMode.Screen) } }
     // Quai : mur de schiste et tuffeau, promenade, platanes
     rect(0f, quay - u * 3f, W, u * 3f, c("#6A6878")); for (k2 in 0 until 30) rect(W * k2 / 30f, quay - u * 3f, u * .25f, u * 3f, c("#4A4858"))
     rect(0f, quay - u * 3.6f, W, u * .7f, c("#E6DCCA"))

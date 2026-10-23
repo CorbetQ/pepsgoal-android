@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Vague » : arrière-plan -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="0" android:endY="108">
+            <item android:offset="0" android:color="#FFF6E8C8" />
+            <item android:offset="1" android:color="#FFE8D2A0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M68.00,30.00a8.00,8.00 0 1,0 16.00,0a8.00,8.00 0 1,0 -16.00,0Z" android:fillColor="#FFE8412C" android:fillAlpha="0.85" />
+</vector>

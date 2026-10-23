@@ -150,6 +150,19 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
         } }
     }
 
+    // Fonds de la conversation : chacun partage (sans bruit) les fonds qu'il a débloqués, le fond choisi est commun à tous
+    val bgKey = Social.chatBg(ui, all)?.takeIf { k -> SHOP_BGS.any { it.key == k } }
+    val shared = Social.sharedBgs(ui, all)
+    val members = g?.members ?: listOf(u.id, x!!.id)
+    val canWrite = if (g != null) g.members.contains(u.id) else x!!.role == null && pg.areFriends(u.id, x.id) && !pg.isBlockedPair(u.id, x.id)
+    var bgsSent by remember(key) { mutableStateOf(false) }
+    LaunchedEffect(key, all.size) {
+        if (bgsSent || !canWrite || pg.isBanned(u)) return@LaunchedEffect
+        delay(2500)
+        val mine = pg.ownedBgs().toSet()
+        if (shared[u.id] != mine) send(buildJsonObject { put("k", "bgs"); put("l", JsonArray(mine.sorted().map(::JsonPrimitive))) }, null, null)
+        bgsSent = true
+    }
     // Fond aux couleurs choisies pour la conversation, sinon de l'interlocuteur (couleur de son avatar) ou de PepsGoal pour un groupe
     val chosen = colorIdx?.let { fr.pepsgoal.core.ACCENTS.getOrNull(it) }?.c?.map(::hex)
     val cc = chosen?.get(1) ?: x?.let { hex((fr.pepsgoal.core.ACCENTS.getOrNull(it.avatar.color) ?: fr.pepsgoal.core.ACCENTS[0]).c[1]) } ?: p.flame
@@ -159,7 +172,10 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     var headH by remember { mutableIntStateOf(0) }; var footH by remember { mutableIntStateOf(0) }
     remember(key) { Stagger.reset() }
     Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
-        Box(Modifier.fillMaxSize().then(if (!p.transp && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.hazeSource(chatHaze, zIndex = 0f) else Modifier)) { PageBackdrop(cc, chosen?.get(2) ?: p.pink) }
+        Box(Modifier.fillMaxSize().then(if (!p.transp && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.hazeSource(chatHaze, zIndex = 0f) else Modifier)) {
+            if (bgKey != null) { SceneBg(bgKey, Modifier.fillMaxSize()); Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = .18f))) }
+            else PageBackdrop(cc, chosen?.get(2) ?: p.pink)
+        }
         Box(Modifier.fillMaxSize().imePadding()) {
             // Messages
             LazyColumn(Modifier.fillMaxSize().then(if (!p.transp && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.hazeSource(chatHaze, zIndex = 1f) else Modifier), state,
@@ -250,7 +266,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                         Muted(if (g != null) "${pl(g.members.size, "membre", "membres")} · infos et membres" else if (pg.isOfficial(x)) "Compte officiel" else "@${x!!.username}", small = true, maxLines = 1)
                     }
                 }
-                if (g != null || !pg.isOfficial(x)) IconBtn(if (ttl > 0) "timer" else "palette", "Couleur et messages éphémères", { palette = !palette }, size = 44.dp, tint = if (palette) p.flame else null)
+                if (g != null || !pg.isOfficial(x)) IconBtn(if (ttl > 0) "timer" else "palette", "Fond, couleur et messages éphémères", { palette = !palette }, size = 44.dp, tint = if (palette) p.flame else null)
                 if (g != null || !pg.isOfficial(x)) IconBtn("lock", "Chiffrement de bout en bout : en savoir plus", { e2eOpen = !e2eOpen }, size = 44.dp, tint = if (e2eOpen) p.flame else null)
             }
             AnimatedVisibility(palette && sel.isEmpty()) {
@@ -258,6 +274,8 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                     Text("Messages éphémères", fontWeight = FontWeight.ExtraBold)
                     Muted("Les messages que tu envoies disparaissent pour tout le monde après ce délai.", Modifier.padding(bottom = 8.dp), small = true)
                     Seg(listOf(0 to "Désactivés", 24 to "24 h", 168 to "7 jours"), ttl, { h -> ttl = h; ui.prefs.chatTtl = ui.prefs.chatTtl.toMutableMap().apply { if (h == 0) remove(key) else put(key, h) } })
+                    Spacer(Modifier.height(12.dp))
+                    ChatBgPicker(ui, bgKey, pg.chatBgChoices(shared, members), canWrite) { k -> send(buildJsonObject { put("k", "bg"); put("b", k ?: "") }, null, null); Feedback.tick() }
                     Spacer(Modifier.height(12.dp))
                     Text("Couleur de la conversation", fontWeight = FontWeight.ExtraBold)
                     Muted("Le fond et tes bulles prennent cette couleur, sur ce téléphone.", Modifier.padding(bottom = 8.dp), small = true)

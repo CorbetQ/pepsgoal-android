@@ -237,8 +237,10 @@ private fun MessagesCard(ui: AppState, u: User, always: Boolean = false) {
     class Row0(val dm: User?, val grp: fr.pepsgoal.core.model.Chat?, val last: Message?, val n: Int)
     val dms = pg.db.messages.filter { it.chat == null && (it.from == u.id || it.to == u.id) }.map { if (it.from == u.id) it.to ?: "" else it.from }.distinct()
         .filter { pg.userById(it) != null && !pg.blockedBy(u.id, it) }
-    val rows = (dms.map { id -> Row0(pg.userById(id), null, Social.convo(ui, u.id, id).lastOrNull(), Social.unreadFrom(ui, id)) } +
-        pg.db.chats.filter { it.members.contains(u.id) }.map { g -> Row0(null, g, Social.groupConvo(ui, g.id).lastOrNull(), Social.unreadGroup(ui, g.id)) })
+    // Dernier message visible (les fonds partagés automatiquement ne remontent pas la conversation)
+    val lastShown = { l: List<fr.pepsgoal.core.model.Message> -> l.lastOrNull { Social.body(ui, it)?.str("k") != "bgs" } }
+    val rows = (dms.map { id -> Row0(pg.userById(id), null, lastShown(Social.convo(ui, u.id, id)), Social.unreadFrom(ui, id)) } +
+        pg.db.chats.filter { it.members.contains(u.id) }.map { g -> Row0(null, g, lastShown(Social.groupConvo(ui, g.id)), Social.unreadGroup(ui, g.id)) })
         .sortedWith(compareByDescending<Row0> { it.dm != null && pg.isOfficial(it.dm) }.thenByDescending { it.last?.at ?: it.grp?.at ?: 0L })
     val canGroup = pg.socialOn(u) && !pg.isGuest(u) && !pg.isBanned(u) && pg.friendsOf(u.id).isNotEmpty()
     if (rows.isEmpty() && !canGroup && !always) return
