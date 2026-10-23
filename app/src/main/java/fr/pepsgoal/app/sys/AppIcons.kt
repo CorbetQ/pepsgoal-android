@@ -60,6 +60,14 @@ object AppIcons {
         Icon("chat", "Chat", "IconChat", listOf(0xFF2A1E5A, 0xFF0E0A24), R.drawable.ic_launcher_foreground_chat, 150),
         Icon("chateau", "Château d’Angers", "IconChateau", listOf(0xFF7FB8E8, 0xFFD6EAFA), R.drawable.ic_launcher_foreground_chateau, 250),
         Icon("angevine", "Douceur angevine", "IconAngevine", listOf(0xFF8FB6DE, 0xFFF3E6CC), R.drawable.ic_launcher_foreground_angevine, 200),
+        Icon("eiffel", "Tour Eiffel", "IconEiffel", listOf(0xFF3A3F7A, 0xFFFFC89A), R.drawable.ic_launcher_foreground_eiffel, 250),
+        Icon("tramway", "Tramway", "IconTramway", listOf(0xFF8FC4F0, 0xFFFFE2C2), R.drawable.ic_launcher_foreground_tramway, 200),
+        Icon("sommet", "Sommet", "IconSommet", listOf(0xFF2E5AA8, 0xFFB8D8F4), R.drawable.ic_launcher_foreground_sommet, 200),
+        Icon("sablier", "Sablier", "IconSablier", listOf(0xFF3A2A4E, 0xFF120C1E), R.drawable.ic_launcher_foreground_sablier, 200),
+        Icon("lanterne", "Lanterne", "IconLanterne", listOf(0xFF0E1030, 0xFF3A1E4A), R.drawable.ic_launcher_foreground_lanterne, 200),
+        Icon("trophee", "Trophée", "IconTrophee", listOf(0xFF5A2EA8, 0xFF2A1A5E), R.drawable.ic_launcher_foreground_trophee, 250),
+        Icon("pousse", "Pousse", "IconPousse", listOf(0xFFE8F5D8, 0xFFBFE0A6), R.drawable.ic_launcher_foreground_pousse, 150),
+        Icon("vague", "Vague", "IconVague", listOf(0xFFF6E8C8, 0xFFE8D2A0), R.drawable.ic_launcher_foreground_vague, 200),
     )
 
     fun current(ctx: Context): String {

@@ -481,6 +481,70 @@
             </intent-filter>
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity-alias>
+        <activity-alias android:name=".IconEiffel" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_eiffel" android:roundIcon="@mipmap/ic_launcher_eiffel">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconTramway" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_tramway" android:roundIcon="@mipmap/ic_launcher_tramway">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconSommet" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_sommet" android:roundIcon="@mipmap/ic_launcher_sommet">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconSablier" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_sablier" android:roundIcon="@mipmap/ic_launcher_sablier">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconLanterne" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_lanterne" android:roundIcon="@mipmap/ic_launcher_lanterne">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconTrophee" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_trophee" android:roundIcon="@mipmap/ic_launcher_trophee">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconPousse" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_pousse" android:roundIcon="@mipmap/ic_launcher_pousse">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconVague" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_vague" android:roundIcon="@mipmap/ic_launcher_vague">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
         <!-- Health Connect (Android 14+) : page « utilisation des autorisations » -->
         <activity-alias android:name="ViewPermissionUsageActivity" android:exported="true" android:targetActivity=".MainActivity"
             android:permission="android.permission.START_VIEW_PERMISSION_USAGE">

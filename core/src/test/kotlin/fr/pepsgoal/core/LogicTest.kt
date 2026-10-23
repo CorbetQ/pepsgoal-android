@@ -407,4 +407,15 @@ class LogicTest {
         assertEquals("7 h 30", hourLabel(7.5f))
         assertEquals("🔥 100 jours de série, quelle régularité ! Bravo à toi.", milestoneCheer(100))
     }
+
+    @Test fun chatBackgrounds() {
+        val me = pg.me()!!; me.shopOwned.add("bg:loire")
+        assertTrue("loire" in pg.ownedBgs()); assertTrue("tunnel" !in pg.ownedBgs())
+        // Fonds partagés par un membre de la conversation : proposés avec son nom, ceux d'un non-membre ignorés
+        val ch = pg.chatBgChoices(mapOf("f1" to setOf("tunnel", "loire"), "zz" to setOf("canyon")), listOf("me", "f1"))
+        val keys = ch.map { it.first.key }
+        assertTrue("tunnel" in keys && "loire" in keys && "canyon" !in keys)
+        assertEquals(listOf("me", "f1"), ch.first { it.first.key == "loire" }.second)
+        assertTrue(fr.pepsgoal.core.cloud.Msg.SILENT.containsAll(listOf("bg", "bgs")))
+    }
 }

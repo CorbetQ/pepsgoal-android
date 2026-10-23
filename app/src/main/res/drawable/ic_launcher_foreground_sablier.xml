@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône « Sablier » : premier plan (sujet dans la zone sûre centrale de l'icône adaptative) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M34,22h40a2,2 0 0 1 2,2v2a2,2 0 0 1 -2,2h-40a2,2 0 0 1 -2,-2v-2a2,2 0 0 1 2,-2Z" android:fillColor="#FFC9964A" />
+    <path android:pathData="M34,80h40a2,2 0 0 1 2,2v2a2,2 0 0 1 -2,2h-40a2,2 0 0 1 -2,-2v-2a2,2 0 0 1 2,-2Z" android:fillColor="#FFC9964A" />
+    <path android:pathData="M34,28h3v52h-3Z" android:fillColor="#FF8E6A3A" />
+    <path android:pathData="M71,28h3v52h-3Z" android:fillColor="#FF8E6A3A" />
+    <path android:pathData="M40,28H68C68,44 58,48 56,54C58,60 68,64 68,80H40C40,64 50,60 52,54C50,48 40,44 40,28Z" android:fillColor="#33FFFFFF" />
+    <path android:pathData="M44,36H64C62,44 56,47 54,52C52,47 46,44 44,36Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="12" android:startY="22.5" android:endX="12" android:endY="1.5">
+            <item android:offset="0" android:color="#FFFF7A1A" />
+            <item android:offset="0.5" android:color="#FFFFB04A" />
+            <item android:offset="1" android:color="#FFFFE8A0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M53.4,52h1.2v18h-1.2Z" android:fillColor="#FFFFB04A" />
+    <path android:pathData="M42,80C44,72 50,68 54,68C58,68 64,72 66,80Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="68" android:endX="0" android:endY="80">
+            <item android:offset="0" android:color="#FFFFD25A" />
+            <item android:offset="1" android:color="#FFFF5A1A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M42.00,74.00a12.00,12.00 0 1,0 24.00,0a12.00,12.00 0 1,0 -24.00,0Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="74" android:gradientRadius="12">
+            <item android:offset="0" android:color="#66FFB04A" />
+            <item android:offset="1" android:color="#00FFB04A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

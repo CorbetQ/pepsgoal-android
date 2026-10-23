@@ -91,6 +91,21 @@ object Social {
         return id
     }
 
+    /** Fond illustré choisi pour la conversation (dernier message « bg »), ou null. */
+    fun chatBg(ui: AppState, list: List<Message>): String? {
+        var k: String? = null
+        for (m in list) { val b = body(ui, m) ?: continue; if (b.str("k") == "bg") k = b.str("b").ifEmpty { null } }
+        return k
+    }
+
+    /** Fonds débloqués partagés par chaque membre dans la conversation (dernier message « bgs » de chacun). */
+    fun sharedBgs(ui: AppState, list: List<Message>): Map<String, Set<String>> {
+        val out = HashMap<String, Set<String>>()
+        for (m in list) { val b = body(ui, m) ?: continue
+            if (b.str("k") == "bgs") out[m.from] = (b["l"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }?.toSet() ?: emptySet() }
+        return out
+    }
+
     /** Message éphémère arrivé à expiration (champ « x » : fin de vie en ms). */
     fun expired(ui: AppState, m: Message): Boolean = (body(ui, m)?.get("x") as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull()?.let { it < nowMs() } == true
 
