@@ -698,7 +698,8 @@ fun SetRow(title: String, sub: String? = null, modifier: Modifier = Modifier, ri
 @Composable
 fun PSwitch(on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     val p = LocalPal.current
-    Switch(on, onChange, enabled = enabled, colors = SwitchDefaults.colors(checkedTrackColor = p.flame, checkedThumbColor = p.onAccent, uncheckedTrackColor = p.ink.copy(alpha = .12f)))
+    // Clic net à l'activation, cran léger à la désactivation
+    Switch(on, { v -> if (v) Feedback.armed() else Feedback.disarmed(); onChange(v) }, enabled = enabled, colors = SwitchDefaults.colors(checkedTrackColor = p.flame, checkedThumbColor = p.onAccent, uncheckedTrackColor = p.ink.copy(alpha = .12f)))
 }
 
 /** Choix segmenté (boutons radio côte à côte). */
@@ -709,7 +710,9 @@ fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, mod
         options.forEachIndexed { i, (k, l) ->
             val on = k == value
             val inter = remember { MutableInteractionSource() }
-            Row(Modifier.bounce(inter, .9f).clip(RoundedCornerShape(14.dp)).background(if (on) p.glassStrong else Color.Transparent).then(if (on) Modifier.border(1.dp, ctlEdge(p), RoundedCornerShape(14.dp)) else Modifier).springClick(inter, role = Role.RadioButton) { onChange(k) }.semantics { selected = on }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Pastille choisie qui apparaît en fondu (et non d'un coup)
+            val sel by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, Motion.standard(), label = "seg")
+            Row(Modifier.bounce(inter, .9f).clip(RoundedCornerShape(14.dp)).background(p.glassStrong.copy(alpha = p.glassStrong.alpha * sel)).border(1.dp, ctlEdge(p).copy(alpha = ctlEdge(p).alpha * sel), RoundedCornerShape(14.dp)).springClick(inter, role = Role.RadioButton) { onChange(k) }.semantics { selected = on }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
                 Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) p.ink else p.ink2)
             }

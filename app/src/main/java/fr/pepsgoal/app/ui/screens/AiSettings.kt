@@ -26,18 +26,14 @@ fun AiSettings(ui: AppState) {
     val checks = remember(model, LocalAi.status) { LocalAi.checks(ctx, v) }
     val ok = checks.all { it.ok }
     val installed = LocalAi.status == "ready"
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Glass {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IconTile("sparkle", p.type("program").c, p.type("measure").c, 46.dp, 15.dp)
-                Column(Modifier.weight(1f)) {
-                    Text("Coach IA 100 % local", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
-                    Muted(when (LocalAi.status) { "ready" -> "Installé · ${v.label.lowercase()}${pr.aiSpeed.takeIf { it.isNotEmpty() }?.let { " · $it" } ?: ""}"; "downloading" -> "Installation en cours…"; "error" -> "Installation interrompue"; else -> "Non installé" }, small = true)
-                }
-                if (installed) PSwitch(pr.aiEnabled, { pr.aiEnabled = it; ui.themeTick++ })
-            }
-            Muted("Le modèle tourne entièrement sur ton téléphone : tes objectifs, ta météo et la mémoire de l’IA ne quittent jamais l’appareil. Seul le fichier du modèle est téléchargé, une fois, depuis Hugging Face.", Modifier.padding(top = 10.dp), small = true)
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        CatHero("ai", when (LocalAi.status) { "ready" -> "Coach 100 % local · ${v.label.lowercase()}${pr.aiSpeed.takeIf { it.isNotEmpty() }?.let { " · $it" } ?: ""}"; "downloading" -> "Installation en cours…"; "error" -> "Installation interrompue"; else -> "Coach 100 % local, pas encore installé" }, chips = {
+            Chip(if (!installed) "Non installé" else if (pr.aiEnabled) "Actif" else "En pause", if (installed && pr.aiEnabled) "check" else "pause", if (installed && pr.aiEnabled) p.ok else p.ink3)
+            Chip("Sur le téléphone", "lock", p.type("program").c)
+        }) {
+            Muted("Le modèle tourne entièrement sur ton téléphone : tes objectifs, ta météo et la mémoire de l’IA ne quittent jamais l’appareil. Seul le fichier du modèle est téléchargé, une fois, depuis Hugging Face.", small = true)
         }
+        if (installed) SetGroup { SetToggle("Coach IA activé", "Coupe-le sans supprimer le modèle", "sparkle", p.type("program").c, pr.aiEnabled, { pr.aiEnabled = it; ui.themeTick++ }) }
         if (!installed) Glass {
             Text("1. Choisis le modèle", fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(8.dp))
@@ -67,17 +63,21 @@ fun AiSettings(ui: AppState) {
                 }
             }
         }
-        if (installed) Glass {
-            Text("Fonctions", fontWeight = FontWeight.ExtraBold)
+        if (installed) {
             var a by remember { mutableStateOf(pr.aiCreate) }; var b by remember { mutableStateOf(pr.aiRecommend) }; var c by remember { mutableStateOf(pr.aiTips) }
             var d by remember { mutableStateOf(pr.aiRecaps) }; var e by remember { mutableStateOf(pr.aiFriends) }
-            SetRow("Créer un objectif en une phrase", "Dans l’onglet Objectifs : « Courir 3 fois par semaine », « Lire 12 livres »…") { PSwitch(a, { a = it; pr.aiCreate = it }, enabled = pr.aiEnabled) }
-            SetRow("Recommandations du moment", "« À valider aujourd’hui » trié selon l’heure et la météo, avec la raison du coach") { PSwitch(b, { b = it; pr.aiRecommend = it }, enabled = pr.aiEnabled) }
-            SetRow("Conseils sur l’accueil", "Une carte « Conseil du coach », renouvelée au fil de la journée") { PSwitch(c, { c = it; pr.aiTips = it }, enabled = pr.aiEnabled) }
-            SetRow("Récaps personnalisés", "« Le mot du coach » à la fin de chaque récap de la semaine, du mois et de l’année") { PSwitch(d, { d = it; pr.aiRecaps = it }, enabled = pr.aiEnabled) }
-            SetRow("Suggestions d’amis", "Classées selon tes objectifs, avec une raison personnalisée") { PSwitch(e, { e = it; pr.aiFriends = it }, enabled = pr.aiEnabled) }
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PButton("Supprimer le modèle", { ui.confirm("Supprimer le modèle IA ?", "Le fichier du modèle (≈ ${v.approxMb} Mo) est effacé et l’IA désactivée. Tu pourras le réinstaller à tout moment.", "Supprimer") { LocalAi.uninstall(ctx); ui.toast("Modèle IA supprimé.", "trash") } }, icon = "trash", kind = "danger", small = true)
+            val on = pr.aiEnabled
+            SetGroup("Fonctions", note = if (!on) "Réactive le coach pour modifier ses fonctions." else null) {
+                SetToggle("Créer un objectif en une phrase", "Dans l’onglet Objectifs : « Courir 3 fois par semaine », « Lire 12 livres »…", "wand", p.type("program").c, a, { a = it; pr.aiCreate = it }, enabled = on)
+                SetToggle("Recommandations du moment", "« À valider aujourd’hui » trié selon l’heure et la météo, avec la raison du coach", "compass", p.type("objective").c, b, { b = it; pr.aiRecommend = it }, enabled = on)
+                SetToggle("Conseils sur l’accueil", "Une carte « Conseil du coach », renouvelée au fil de la journée", "sun", p.type("period").c, c, { c = it; pr.aiTips = it }, enabled = on)
+                SetToggle("Récaps personnalisés", "« Le mot du coach » à la fin de chaque récap", "star", p.type("monthly").c, d, { d = it; pr.aiRecaps = it }, enabled = on)
+                SetToggle("Suggestions d’amis", "Classées selon tes objectifs, avec une raison personnalisée", "users", p.type("group").c, e, { e = it; pr.aiFriends = it }, enabled = on)
+            }
+            SetGroup("Modèle") {
+                SetItem("Supprimer le modèle", "Libère ≈ ${v.approxMb} Mo. Tu pourras le réinstaller à tout moment.", "trash", danger = true, onClick = {
+                    ui.confirm("Supprimer le modèle IA ?", "Le fichier du modèle (≈ ${v.approxMb} Mo) est effacé et l’IA désactivée. Tu pourras le réinstaller à tout moment.", "Supprimer") { LocalAi.uninstall(ctx); ui.toast("Modèle IA supprimé.", "trash") }
+                })
             }
         }
         MemoryCard(ui)
@@ -92,13 +92,10 @@ private fun MemoryCard(ui: AppState) {
     val list = remember(AiMemory.rev) { AiMemory.all(ctx) }
     var open by remember { mutableStateOf(false) }
     var on by remember { mutableStateOf(pr.aiMemory) }
-    Glass {
-        CardHead("Mémoire de l’IA") { Count(list.size) }
-        Muted("Le coach retient tes demandes et tes réactions pour mieux te conseiller. Cette mémoire reste sur ton téléphone.", small = true)
-        SetRow("Mémoriser") { PSwitch(on, { on = it; pr.aiMemory = it }) }
-        if (list.isEmpty()) Muted("La mémoire est vide.", Modifier.padding(top = 6.dp), small = true)
-        else {
-            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    SetGroup("Mémoire de l’IA", note = "Le coach retient tes demandes et tes réactions pour mieux te conseiller. Cette mémoire reste sur ton téléphone.") {
+        SetToggle("Mémoriser", if (list.isEmpty()) "La mémoire est vide" else pl(list.size, "souvenir", "souvenirs"), "book", p.type("measure").c, on, { on = it; pr.aiMemory = it })
+        if (list.isNotEmpty()) SetBlock {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PButton(if (open) "Masquer" else "Lire la mémoire", { open = !open }, icon = "book", small = true)
                 PButton("Vider la mémoire", { ui.confirm("Vider la mémoire de l’IA ?", "Les ${list.size} souvenirs du coach seront effacés définitivement.", "Vider") { AiMemory.clear(ctx); ui.toast("Mémoire de l’IA vidée.", "trash") } }, icon = "trash", kind = "danger", small = true)
             }

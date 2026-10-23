@@ -41,6 +41,58 @@ object Feedback {
     /** Seuil franchi pendant un geste (balayage). */
     fun tick() { if (level != "off") buzz(if (Build.VERSION.SDK_INT >= 29) VibrationEffect.EFFECT_TICK else -1, 10, 60) }
 
+    /*
+     * Retours progressifs pendant un geste : des crans de plus en plus nets à mesure que le doigt approche du seuil,
+     * un « clic » franc quand l'action est armée, un cran léger quand on revient en arrière. Sur Android 11+, primitives
+     * de vibration à intensité réglable ; sinon amplitude variable ; sinon effets prédéfinis.
+     */
+    private val strength get() = if (level == "strong") 1f else .7f
+
+    private fun prim(primitive: Int, scale: Float, fallback: Int, ms: Long, amp: Int) {
+        val v = vib ?: return
+        if (!v.hasVibrator()) return
+        try {
+            if (Build.VERSION.SDK_INT >= 30 && v.areAllPrimitivesSupported(primitive)) {
+                v.vibrate(VibrationEffect.startComposition().addPrimitive(primitive, scale.coerceIn(.05f, 1f)).compose()); return
+            }
+            if (v.hasAmplitudeControl()) { v.vibrate(VibrationEffect.createOneShot(ms, amp.coerceIn(1, 255))); return }
+            buzz(fallback, ms, amp)
+        } catch (e: Exception) {}
+    }
+
+    /** Cran pendant le geste : [k] de 0 (début) à 1 (seuil). */
+    fun ramp(k: Float) {
+        if (level == "off") return
+        val kk = k.coerceIn(0f, 1f)
+        prim(if (Build.VERSION.SDK_INT >= 31) VibrationEffect.Composition.PRIMITIVE_LOW_TICK else 7, (.12f + .38f * kk) * strength,
+            if (Build.VERSION.SDK_INT >= 29) VibrationEffect.EFFECT_TICK else -1, (6 + 6 * kk).toLong(), (30 + 90 * kk * strength).toInt())
+    }
+
+    /** Seuil atteint : l'action se déclenchera au lâcher. */
+    fun armed() {
+        if (level == "off") return
+        prim(if (Build.VERSION.SDK_INT >= 30) VibrationEffect.Composition.PRIMITIVE_CLICK else 1, .85f * strength,
+            if (Build.VERSION.SDK_INT >= 29) VibrationEffect.EFFECT_CLICK else -1, 18, (200 * strength).toInt())
+    }
+
+    /** Retour sous le seuil : l'action est annulée. */
+    fun disarmed() {
+        if (level == "off") return
+        prim(if (Build.VERSION.SDK_INT >= 30) VibrationEffect.Composition.PRIMITIVE_TICK else 7, .35f * strength,
+            if (Build.VERSION.SDK_INT >= 29) VibrationEffect.EFFECT_TICK else -1, 8, (60 * strength).toInt())
+    }
+
+    /** Action du geste déclenchée (au lâcher) : petit élan suivi d'un clic. */
+    fun commit() {
+        if (level == "off") return
+        val v = vib ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= 31 && v.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, VibrationEffect.Composition.PRIMITIVE_CLICK))
+                v.vibrate(VibrationEffect.startComposition().addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, .5f * strength).addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, strength, 20).compose())
+            else buzz(if (Build.VERSION.SDK_INT >= 29) VibrationEffect.EFFECT_HEAVY_CLICK else -1, 24, (220 * strength).toInt())
+        } catch (e: Exception) {}
+    }
+
     /** Validation réussie. */
     fun success() { if (level != "off") buzz(if (Build.VERSION.SDK_INT >= 29) VibrationEffect.EFFECT_HEAVY_CLICK else -1, 30, 200); if (sound()) tone(listOf(1046.5, 1318.5, 1568.0), 110, .32f) }
 

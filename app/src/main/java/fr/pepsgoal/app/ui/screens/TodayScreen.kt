@@ -1,6 +1,7 @@
 package fr.pepsgoal.app.ui.screens
 
 import androidx.compose.animation.core.*
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -113,7 +114,7 @@ fun TodayScreen(ui: AppState) {
                         Count(plan.ongoing.size)
                         IconBtn("x", "Masquer la carte « En cours » (réactivable dans Paramètres › Apparence)", { u.settings.hideOngoing = true; pg.store.commit(); ui.toast("Carte « En cours » masquée. Réaffiche-la dans Paramètres › Apparence.", "list") }, plain = true, size = 36.dp)
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { plan.ongoing.forEach { key(it.id) { GoalRow(ui, it, false) } } }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { plan.ongoing.forEach { key(it.id) { Box(Modifier.animatePlacement()) { GoalRow(ui, it, false) } } } }
                 }
             }
             "recap" -> item("recap") { RecapCard(ui) }
@@ -291,7 +292,7 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
     val later = Snooze.ids(ui)
     val sorted = plan.due.filter { it.g.id !in later || it.done }.sortedWith(compareBy<DueItem> { it.done }.thenBy { if (it.g.id in order) order.indexOf(it.g.id) else 99 }.thenByDescending { pg.isFav(it.g) })
     val pulse = thinkingAlpha()
-    Glass(ai = ai) {
+    Glass(Modifier.animateContentSize(Motion.standard()), ai = ai) {
         CardHead("À valider aujourd'hui") { Count("$done/$total") }
         if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Pi("sparkle", size = 15.dp, tint = p.flame)
@@ -307,7 +308,8 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
         if (total == 0) Empty("Rien de prévu aujourd'hui", "Profite de ta journée, ou ajoute une routine.", icon = "sun")
         else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             sorted.forEach { d -> key(d.g.id) {
-                Column {
+                // Un objectif validé glisse vers le bas de la liste au lieu de sauter
+                Column(Modifier.animatePlacement()) {
                     GoalRow(ui, d.g, d.done, d.meta)
                     val why = reasons[d.g.id]
                     if (why != null && !d.done) Row(Modifier.padding(start = 64.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

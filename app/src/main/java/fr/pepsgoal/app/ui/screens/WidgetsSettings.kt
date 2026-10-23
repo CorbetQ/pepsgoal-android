@@ -38,7 +38,11 @@ fun WidgetsSettings(ui: AppState) {
     var hide by remember { mutableStateOf(ui.prefs.widgetHideDone) }
     val sysDark = (LocalConfiguration.current.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     val dark = when (theme) { "light" -> false; "dark" -> true; "you" -> sysDark; else -> p.dark }
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        CatHero("widgets", "${WidgetUpdater.ALL.size} widgets et 3 tuiles de réglages rapides, aux couleurs de PepsGoal", chips = {
+            Chip(when (theme) { "light" -> "Clair"; "dark" -> "Sombre"; "you" -> "Material You"; else -> "Comme l’app" }, "palette", p.type("challenge").c)
+            if (hide) Chip("Validés masqués", "eye", p.type("deadline").c)
+        })
         Glass {
             Text("Apparence des widgets", fontWeight = FontWeight.ExtraBold)
             Muted("Le style des widgets suit celui de PepsGoal : verre clair ou nuit, flamme et couleurs des types d’objectifs.", Modifier.padding(top = 2.dp, bottom = 10.dp), small = true)

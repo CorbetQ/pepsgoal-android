@@ -135,10 +135,10 @@ fun GoalsScreen(ui: AppState) {
                             // Liste compacte : une carte par section, une ligne par objectif, validation en un geste
                             Glass(pad = 8.dp) {
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    items.forEach { g -> key(g.id) { GoalRow(ui, g, dueIds[g.id] ?: false) } }
+                                    items.forEach { g -> key(g.id) { Box(Modifier.animatePlacement()) { GoalRow(ui, g, dueIds[g.id] ?: false) } } }
                                 }
                             }
-                        } else items(items, key = { "g-" + it.id }) { g -> GoalCard(ui, g) }
+                        } else items(items, key = { "g-" + it.id }) { g -> GoalCard(ui, g, Modifier.animateItem()) }
                     }
                 }
             }
