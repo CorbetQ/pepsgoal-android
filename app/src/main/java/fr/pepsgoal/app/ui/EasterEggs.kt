@@ -45,9 +45,9 @@ fun AppState.egg(key: String?, text: String, fx: String? = null, say: Boolean = 
 fun EggOverlay(ui: AppState) {
     val fx = ui.eggFx ?: return
     val p = LocalPal.current
-    key(ui.eggTick) {
-        LaunchedEffect(Unit) { delay(6500); ui.eggFx = null }
-        if (p.motion) return@key
+    // Fin de l'effet 6,5 s après le dernier déclenchement (relancé par chaque nouvelle surprise)
+    LaunchedEffect(ui.eggTick) { delay(6500); ui.eggFx = null }
+    if (!p.motion) key(ui.eggTick) {
         when (fx) {
             "confetti" -> fr.pepsgoal.app.ui.fullscreen.Confetti()
             "fish" -> Drifters(listOf("🐟", "🐠", "🐡"), 7)
@@ -64,9 +64,10 @@ private fun Drifters(emojis: List<String>, n: Int) {
     val t = remember { Animatable(0f) }
     LaunchedEffect(Unit) { t.animateTo(1f, tween(6000, easing = LinearEasing)) }
     Box(Modifier.fillMaxSize()) {
-        items.forEachIndexed { i, (e, y0, d) ->
+        for (i in items.indices) {
+            val (e, y0, d) = items[i]
             val k = (t.value * 1.6f - d * .6f).coerceIn(0f, 1f)
-            if (k <= 0f || k >= 1f) return@forEachIndexed
+            if (k <= 0f || k >= 1f) continue
             val ltr = i % 2 == 0
             Text(e, Modifier.graphicsLayer {
                 translationX = ((if (ltr) k else 1f - k) * (w + 80) - 40).dp.toPx()
