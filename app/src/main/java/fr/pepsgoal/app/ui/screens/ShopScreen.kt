@@ -28,6 +28,7 @@ import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
 import fr.pepsgoal.core.*
+import kotlinx.coroutines.launch
 
 /** Aperçu d'une icône de l'application (fond en dégradé et premier plan, comme sur l'écran d'accueil). */
 @Composable
@@ -52,7 +53,10 @@ fun keepCurrentIcon(ui: AppState, ctx: android.content.Context) {
 fun ShopScreen(ui: AppState) {
     ui.watch()
     val p = LocalPal.current; val pg = ui.pg; val ctx = LocalContext.current; val u = pg.me() ?: return
-    var tab by remember { mutableStateOf("icons") }
+    var tab by remember { mutableStateOf(ui.shopTab) }
+    // L'essai d'une ambiance s'arrête en quittant la boutique
+    DisposableEffect(Unit) { onDispose { ui.themePreview = null } }
+    val scope = rememberCoroutineScope()
     var curIcon by remember { mutableStateOf(AppIcons.current(ctx)) }
     LaunchedEffect(Unit) { keepCurrentIcon(ui, ctx) }
     val wallet = pg.wallet(u)
@@ -80,9 +84,9 @@ fun ShopScreen(ui: AppState) {
         item("quests") { FlameQuestsCard(ui) }
         item("tabs") {
             Row(Modifier.fillMaxWidth().clip(CircleShape).background(p.ink.copy(alpha = .06f)).padding(4.dp)) {
-                listOf("icons" to "Icônes", "themes" to "Thèmes", "bgs" to "Fonds").forEach { (k, l) ->
-                    Box(Modifier.weight(1f).clip(CircleShape).background(if (tab == k) p.glassStrong else Color.Transparent).clickable { tab = k }.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                        Text(l, fontWeight = if (tab == k) FontWeight.ExtraBold else FontWeight.Bold, color = if (tab == k) p.ink else p.ink2)
+                listOf("icons" to "Icônes", "themes" to "Thèmes", "modes" to "Ambiances", "bgs" to "Fonds").forEach { (k, l) ->
+                    Box(Modifier.weight(1f).clip(CircleShape).background(if (tab == k) p.glassStrong else Color.Transparent).clickable { tab = k; ui.shopTab = k }.padding(vertical = 10.dp, horizontal = 2.dp), contentAlignment = Alignment.Center) {
+                        FitText(tr(l), size = 14, min = 10, color = if (tab == k) p.ink else p.ink2, weight = if (tab == k) FontWeight.ExtraBold else FontWeight.Bold)
                     }
                 }
             }
@@ -126,6 +130,37 @@ fun ShopScreen(ui: AppState) {
                 }
             }
         }
+        // Ambiances : thèmes d'interface complets (fond, texte, verre), à essayer avant d'acheter
+        if (tab == "modes") {
+            item("modesHead") {
+                Glass(pad = 14.dp) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        IconTile("palette", p.flame, p.pink, 36.dp, 12.dp)
+                        Column(Modifier.weight(1f)) {
+                            Text("Ambiances", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                            Muted("Des thèmes d’interface complets, au même titre que Clair, Sombre ou OLED : fond, texte et verre des cartes. Ta couleur d’accent est conservée.", small = true)
+                        }
+                    }
+                }
+            }
+            val sorted = SHOP_MODES.sortedBy { if (it.dark) 0 else 1 }
+            sorted.chunked(2).forEachIndexed { row, pair ->
+                item("mode$row") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        pair.forEach { m -> ModeCard(ui, m, wallet, Modifier.weight(1f), onBuy = {
+                            purchase("mode:${m.key}", m.name, m.price) { ui.themePreview = null; u.settings.theme = "m:${m.key}"; pg.store.commit(); ui.themeTick++; ui.toast("Ambiance « ${m.name} » appliquée.", "palette") }
+                        }, onTry = {
+                            ui.themePreview = "m:${m.key}"; ui.toast("Essai de « ${m.name} » pendant 10 secondes.", "eye")
+                            scope.launch { kotlinx.coroutines.delay(10_000); if (ui.themePreview == "m:${m.key}") ui.themePreview = null }
+                        }) }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+            if (shopMode(u.settings.theme) != null) item("modeoff") {
+                Glass { SetRow("Revenir à un thème de base", "Clair, Sombre, OLED, Météo ou Auto, dans Paramètres › Apparence.") { PButton("Sombre", { u.settings.theme = "dark"; pg.store.commit(); ui.themeTick++ }, small = true, kind = "ghost") } }
+            }
+        }
         // Arrière-plans illustrés : aperçu animé, deux par ligne ; saison en cours d'abord
         if (tab == "bgs") SHOP_BGS.sortedBy { b -> val ss = b.season; when { ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.chunked(2).forEachIndexed { row, pair ->
             item("bg$row") {
@@ -155,6 +190,32 @@ fun ShopScreen(ui: AppState) {
             Glass { SetRow("Effet animé : ${FX_LABELS[u.settings.fx] ?: u.settings.fx}", "Il s’ajoute à l’arrière-plan de ton thème.") { PButton("Retirer", { u.settings.fx = ""; pg.store.commit(); ui.themeTick++ }, small = true, kind = "ghost") } }
         }
         item("note") { Muted("Les icônes, thèmes et fonds achetés restent à toi sur tous tes appareils (avec un compte). Les couleurs de saison restent gratuites.", Modifier.padding(horizontal = 4.dp), small = true) }
+    }
+}
+
+/** Carte d'une ambiance : aperçu, nom, clair ou sombre, couleurs assorties, essai et prix. */
+@Composable
+private fun ModeCard(ui: AppState, m: ShopMode, wallet: Int, modifier: Modifier, onBuy: () -> Unit, onTry: () -> Unit) {
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    val owned = pg.owns("mode:${m.key}", m.price, u); val on = u.settings.theme == "m:${m.key}"; val trying = ui.themePreview == "m:${m.key}"
+    Glass(modifier, pad = 0.dp, border = if (on || trying) p.flame else null, onClick = onBuy) {
+        Box(Modifier.fillMaxWidth().aspectRatio(.72f).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))) {
+            ThemePreview(themeLook("m:${m.key}"), Modifier.fillMaxSize(), accent = m.accent.map(::hex))
+            Text(if (m.dark) "Sombre" else "Clair", Modifier.align(Alignment.TopStart).padding(8.dp).clip(CircleShape).background(Color.Black.copy(alpha = .4f)).padding(horizontal = 8.dp, vertical = 3.dp),
+                color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+            if (trying) Text("Essai", Modifier.align(Alignment.TopEnd).padding(8.dp).clip(CircleShape).background(p.flame).padding(horizontal = 8.dp, vertical = 3.dp), color = p.onAccent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+        }
+        Column(Modifier.padding(12.dp)) {
+            Text(m.name, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Muted(m.desc, small = true, maxLines = 2)
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                m.accent.forEach { c -> Box(Modifier.size(14.dp).clip(CircleShape).background(hex(c))) }
+                if (owned && u.settings.accentCustom != m.accent) Text("Assortir", Modifier.padding(start = 4.dp).clip(CircleShape).clickable { u.settings.accentCustom = m.accent; pg.store.commit(); ui.themeTick++; ui.toast("Couleurs assorties à « ${m.name} ».", "palette") }.padding(horizontal = 6.dp, vertical = 2.dp),
+                    fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.flame)
+            }
+            if (!owned && !trying) PButton("Essayer", onTry, Modifier.fillMaxWidth().padding(top = 8.dp), icon = "eye", small = true, kind = "ghost")
+            PriceTag(owned, on, m.price, wallet)
+        }
     }
 }
 

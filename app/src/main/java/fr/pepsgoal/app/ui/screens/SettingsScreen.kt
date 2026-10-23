@@ -872,7 +872,7 @@ private fun BackupCard(ui: AppState) {
 fun setSummary(ui: AppState, k: String): String? {
     val u = ui.pg.me() ?: return null; val st = u.settings; val pr = ui.prefs; val ctx = ui.app
     return when (k) {
-        "appearance" -> listOfNotNull(fr.pepsgoal.core.THEMES.firstOrNull { it.first == st.theme }?.second,
+        "appearance" -> listOfNotNull(fr.pepsgoal.core.themeName(st.theme),
             if (pr.materialYou) "Material You" else if (st.accentCustom != null) "accent personnalisé" else "accent ${fr.pepsgoal.core.ACCENTS.getOrNull(st.accent)?.name ?: ""}".trim()).joinToString(" · ")
         "home" -> homeOrder(pr).count { it.second }.let { "$it ${if (it > 1) "cartes affichées" else "carte affichée"}" }
         "reminders" -> listOfNotNull(if (st.morning.on) "Matin ${st.morning.time}" else null, if (st.evening.on) "soir ${st.evening.time}" else null).joinToString(" · ").ifEmpty { "Rappels du matin et du soir coupés" }

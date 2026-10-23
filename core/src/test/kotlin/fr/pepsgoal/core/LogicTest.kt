@@ -294,4 +294,12 @@ class LogicTest {
         pg.repriceShop(); assertEquals(t.price, u.shopSpent)
         pg.repriceShop(); assertEquals(t.price, u.shopSpent)
     }
+
+    @Test fun ambiancesAreInterfaceThemes() {
+        assertEquals(16, SHOP_MODES.size)
+        assertEquals("dark", baseTheme("m:neon")); assertEquals("light", baseTheme("m:paper")); assertEquals("oled", baseTheme("oled"))
+        assertEquals("Néon", themeName("m:neon")); assertEquals("Sombre", themeName("dark"))
+        assertEquals(250, shopPriceOf("mode:neon"))
+        assertEquals(null, shopMode("dark"))
+    }
 }

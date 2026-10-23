@@ -87,7 +87,10 @@ fun PepsRoot(ui: AppState) {
     val rev = ui.watch(); ui.themeTick
     val pg = ui.pg; val u = pg.me(); val s = u?.settings
     val wx = Wx.cached(ctx, s?.weather)
-    val input = ThemeInput(s?.theme ?: "system", s?.accent ?: 0, s?.accentCustom, s?.glassBlur ?: "mid", ui.prefs.materialYou,
+    // Ambiance choisie mais pas (ou plus) possédée : on retombe sur le thème de base équivalent
+    val theme0 = ui.themePreview ?: s?.theme ?: "system"
+    val theme = fr.pepsgoal.core.shopMode(theme0)?.let { m -> if (ui.themePreview != null || pg.owns("mode:${m.key}", m.price, u)) theme0 else fr.pepsgoal.core.baseTheme(theme0) } ?: theme0
+    val input = ThemeInput(theme, s?.accent ?: 0, s?.accentCustom, s?.glassBlur ?: "mid", ui.prefs.materialYou,
         ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion, ui.prefs.transp, Weather.skyDark(wx?.data), ui.prefs.glassOpacity,
         ui.prefs.easy, rememberTalkBack(), ui.prefs.oneHand,
         if (ui.prefs.seasonal) fr.pepsgoal.app.sys.Season.now()?.let { fr.pepsgoal.app.sys.Season.COLORS[it] } else null)

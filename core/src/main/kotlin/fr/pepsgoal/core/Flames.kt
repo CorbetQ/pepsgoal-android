@@ -20,6 +20,7 @@ var shopExtraPrices: Map<String, Int> = emptyMap()
 fun shopPriceOf(key: String): Int? = when {
     key.startsWith("theme:") -> SHOP_THEMES.firstOrNull { "theme:${it.key}" == key }?.price
     key.startsWith("bg:") -> SHOP_BGS.firstOrNull { "bg:${it.key}" == key }?.price
+    key.startsWith("mode:") -> SHOP_MODES.firstOrNull { "mode:${it.key}" == key }?.price
     else -> shopExtraPrices[key]
 }
 

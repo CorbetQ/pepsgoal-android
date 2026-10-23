@@ -137,7 +137,7 @@ private fun LivePreview(ui: AppState, u: User) {
             // Résumé des choix, à côté de l'aperçu
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Aperçu", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                PreviewLine("Thème", THEMES.firstOrNull { it.first == s.theme }?.second ?: "Auto")
+                PreviewLine("Thème", themeName(s.theme))
                 PreviewLine("Couleur", if (ui.prefs.materialYou && Build.VERSION.SDK_INT >= 31) "Material You" else if (validAccent(s.accentCustom)) (SHOP_THEMES.firstOrNull { it.colors == s.accentCustom }?.name ?: "Personnalisée") else (ACCENTS.getOrNull(s.accent) ?: ACCENTS[0]).name)
                 PreviewLine("Fond", if (s.theme == "weather") "Ciel en direct" else bgName(s.bg))
                 PreviewLine("Icône", icon?.label ?: "Braise")
@@ -220,20 +220,64 @@ private fun Modifier.graphicsLayerScale(s: Float) = this.then(Modifier.graphicsL
 
 /* ------------------------------------------------------------------ thème */
 
+/** Description courte de chaque thème de base. */
+private val THEME_DESC = mapOf("system" to "Clair le jour, sombre la nuit, comme ton téléphone", "light" to "Lumineux et doux", "dark" to "Bleu nuit, reposant pour les yeux",
+    "oled" to "Noir pur : économise la batterie des écrans OLED", "weather" to "Un ciel en direct selon l’heure et le temps de ta ville")
+
 @Composable
 private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
     val p = LocalPal.current; val s = u.settings
+    val owned = SHOP_MODES.filter { ui.pg.owns("mode:${it.key}", it.price, u) }
+    val pick = { k: String ->
+        s.theme = k; commit(ui); ui.themeTick++
+        if (k == "weather" && s.weather == null) ui.toast("Choisis ta ville dans Paramètres › Météo pour un ciel en direct.", "cloud")
+    }
+    val cur = shopMode(s.theme)
     Glass {
-        Head("sun", "Thème", "Clair, sombre, OLED (noir pur), Météo (ciel en direct) ou selon ton appareil")
-        SegFill(THEMES, s.theme, { k -> s.theme = k; commit(ui); if (k == "weather" && s.weather == null) ui.toast("Choisis ta ville dans Paramètres › Météo pour un ciel en direct.", "cloud") })
-        Spacer(Modifier.height(6.dp))
+        Head("sun", "Thème", cur?.desc ?: THEME_DESC[s.theme] ?: "Apparence de toute l’interface") { Chip(themeName(s.theme), if (cur != null) "star" else null, p.flame.copy(alpha = .18f), p.ink) }
+        // Thèmes de base, puis une tuile vers les ambiances de la boutique
+        Box(Modifier.padding(bottom = 8.dp)) { Eyebrow("De base") }
+        val base = THEMES.map { it.first to it.second } + ("shop" to "Ambiances")
+        base.chunked(3).forEach { row ->
+            Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (k, l) ->
+                    if (k == "shop") ShopModesTile(ui, owned.size, Modifier.weight(1f))
+                    else ThemeCard(k, l, s.theme == k, { pick(k) }, Modifier.weight(1f), height = 104.dp)
+                }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+        if (owned.isNotEmpty()) {
+            Box(Modifier.padding(top = 4.dp, bottom = 8.dp)) { Eyebrow("Mes ambiances") }
+            owned.chunked(3).forEach { row ->
+                Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { m -> ThemeCard("m:${m.key}", m.name, s.theme == "m:${m.key}", { pick("m:${m.key}") }, Modifier.weight(1f), height = 104.dp, badge = if (m.dark) "Sombre" else "Clair") }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
         SetRow("Couleurs Material You", if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface." else "Nécessite Android 12 ou plus récent.") {
             PSwitch(ui.prefs.materialYou && dynOk, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = dynOk)
         }
         if (ui.prefs.materialYou && dynOk) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             listOf(p.flame2, p.flame, p.pink, p.glassStrong, p.bg).forEach { Box(Modifier.size(22.dp).clip(CircleShape).background(it).border(1.dp, p.line, CircleShape)) }
-            Muted("Propre à cet appareil", Modifier.padding(start = 4.dp), small = true)
+            Muted(if (cur != null) "Propre à cet appareil · l’ambiance garde son fond et son texte" else "Propre à cet appareil", Modifier.padding(start = 4.dp), small = true)
         }
+    }
+}
+
+/** Tuile « Ambiances » : aperçu en éventail de trois ambiances, et accès à la boutique. */
+@Composable
+private fun ShopModesTile(ui: AppState, owned: Int, modifier: Modifier) {
+    val p = LocalPal.current
+    Column(modifier.clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = "Ambiances de la boutique") { ui.shopTab = "modes"; ui.push(Screen.Shop) }.padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().height(104.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, p.line, RoundedCornerShape(16.dp)).background(p.ink.copy(alpha = .05f)), contentAlignment = Alignment.Center) {
+            listOf("m:sakura", "m:neon", "m:mint").forEachIndexed { i, k ->
+                ThemePreview(themeLook(k), Modifier.size(38.dp, 62.dp).graphicsLayer { rotationZ = (i - 1) * 12f; translationX = (i - 1) * 16.dp.toPx() }.clip(RoundedCornerShape(8.dp)).border(1.dp, Color.White.copy(alpha = .6f), RoundedCornerShape(8.dp)))
+            }
+            Text(if (owned > 0) "$owned / ${SHOP_MODES.size}" else "${SHOP_MODES.size}", Modifier.align(Alignment.TopEnd).padding(5.dp).clip(CircleShape).background(p.flame).padding(horizontal = 6.dp, vertical = 2.dp), color = p.onAccent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+        }
+        FitText(tr("Ambiances"), Modifier.padding(top = 6.dp), size = 12, min = 8, color = p.ink2, weight = FontWeight.Bold)
     }
 }
 
