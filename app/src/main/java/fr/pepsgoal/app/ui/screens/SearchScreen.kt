@@ -62,6 +62,8 @@ fun SearchScreen(ui: AppState, initial: String) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (initial.isEmpty()) try { focus.requestFocus() } catch (e: Exception) {} }
     val n = VoiceCmd.norm(q)
+    // Journal lu une fois (et à chaque modification), pas à chaque lettre tapée
+    val journal = remember(Journal.rev) { Journal.all(ctx) }
     fun hit(s: String?) = s != null && VoiceCmd.norm(s).contains(n)
     ScreenFrame(ui, "Recherche", "Retour", { ui.back() }, icon = "search", color = p.type("objective").c, color2 = p.type("project").c) {
         item("field") {
@@ -117,7 +119,7 @@ fun SearchScreen(ui: AppState, initial: String) {
             }
         }
         // Journal
-        val pages = Journal.all(ctx).filter { hit(it.text) }.sortedByDescending { it.date }.take(10)
+        val pages = journal.filter { hit(it.text) }.sortedByDescending { it.date }.take(10)
         if (pages.isNotEmpty()) item("journal") {
             Glass(pad = 10.dp) {
                 Box(Modifier.padding(6.dp)) { CardHead("Journal") { Count(pages.size) } }

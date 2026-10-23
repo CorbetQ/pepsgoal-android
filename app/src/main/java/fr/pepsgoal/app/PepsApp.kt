@@ -50,6 +50,7 @@ class PepsApp : Application() {
         prefs = DevicePrefs(this)
         // Langue de l'interface (Paramètres › Apparence) : français, anglais, ou celle du téléphone
         fr.pepsgoal.app.ui.I18n.apply(this, prefs.raw.getString("lang", "auto") ?: "auto")
+        fr.pepsgoal.app.sys.Perf.load(this)
         fr.pepsgoal.app.ui.FluentEmoji.load(this)
         secrets = KeystoreSecrets(this)
         store = Store(FileDb(this))

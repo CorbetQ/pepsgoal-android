@@ -180,7 +180,7 @@ fun ProofStory(proofs: List<Proof>) {
 @Composable
 private fun ProofImage(pr: Proof, modifier: Modifier) {
     val ctx = LocalContext.current
-    val bmp = remember(pr.id) { Proofs.photoFile(ctx, pr)?.let { f ->
+    val bmp = rememberDecoded(pr.id) { Proofs.photoFile(ctx, pr)?.let { f ->
         // Réduite à l'affichage : un diaporama de dizaines de photos reste léger en mémoire
         val o = BitmapFactory.Options().apply { inSampleSize = 2 }
         BitmapFactory.decodeFile(f.path, o)?.asImageBitmap()

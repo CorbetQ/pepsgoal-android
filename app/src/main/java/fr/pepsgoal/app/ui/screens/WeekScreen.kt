@@ -34,8 +34,14 @@ fun WeekScreen(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
     var off by rememberSaveable { mutableIntStateOf(0) }
     val ws = weekStart(todayDate()).plusWeeks(off.toLong())
-    val goals = pg.myGoals(u.id).filter { !it.archived && it.userId == u.id }
-    val counts = goals.filter { it.type == "routine" && it.mode == "count" }
+    val goals = remember(ui.rev, u.id) { pg.myGoals(u.id).filter { !it.archived && it.userId == u.id } }
+    val counts = remember(goals) { goals.filter { it.type == "routine" && it.mode == "count" } }
+    // Validations de la semaine affichée, indexées une fois (au lieu de parcourir toutes les validations pour chaque
+    // objectif de chaque jour)
+    val wins = remember(ui.rev, ws) {
+        val from = ymd(ws); val to = ymd(ws.plusDays(6)); val me = pg.meId()
+        pg.db.checkins.filter { it.userId == me && it.date >= from && it.date <= to && pg.isWin(it) }.mapTo(HashSet()) { it.goalId + "|" + it.date }
+    }
     ScreenFrame(ui, "Ma semaine", "Retour", { ui.back() }, icon = "cal", color = p.type("period").c, color2 = p.type("routine").c) {
         item("nav") {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -59,12 +65,12 @@ fun WeekScreen(ui: AppState) {
                 }
             }
         }
-        for (i in 0..6) { val d = ws.plusDays(i.toLong()); item("d${ymd(d)}") { DayCard(ui, d, goals) } }
+        for (i in 0..6) { val d = ws.plusDays(i.toLong()); item("d${ymd(d)}", contentType = "day") { DayCard(ui, d, goals, wins) } }
     }
 }
 
 @Composable
-private fun DayCard(ui: AppState, d: LocalDate, goals: List<Goal>) {
+private fun DayCard(ui: AppState, d: LocalDate, goals: List<Goal>, wins: Set<String>) {
     val p = LocalPal.current; val pg = ui.pg; val k = ymd(d); val t = today()
     val list = goals.filter { g -> ymd(g.createdAt) <= k && !(g.type == "routine" && g.mode == "count") && (pg.scheduled(g, d) || (g.type == "deadline" && g.due == k && g.completedAt == null)) }
     val isToday = k == t; val past = k < t
@@ -79,13 +85,13 @@ private fun DayCard(ui: AppState, d: LocalDate, goals: List<Goal>) {
             }
             Column(Modifier.weight(1f)) {
                 Text(if (isToday) "Aujourd’hui" else cap(weekdayLongDate(d)), fontWeight = FontWeight.ExtraBold)
-                val done = list.count { g -> pg.db.checkins.any { it.goalId == g.id && it.date == k && it.userId == pg.meId() && pg.isWin(it) } }
+                val done = list.count { g -> "${g.id}|$k" in wins }
                 Muted(when { rest && k in (pg.me()?.restDays ?: emptyList<String>()) -> "😴 Jour de repos"; rest -> "🏖️ Vacances"; list.isEmpty() -> "Rien de prévu"; else -> "$done/${list.size} ${if (past || isToday) "validés" else "prévus"}" }, small = true)
             }
         }
         if (list.isNotEmpty()) Spacer(Modifier.height(8.dp))
         list.forEach { g ->
-            val done = pg.db.checkins.any { it.goalId == g.id && it.date == k && it.userId == pg.meId() && pg.isWin(it) }
+            val done = "${g.id}|$k" in wins
             val skipped = k in pg.goalRest(g)
             val (ic, col) = when { done -> "✓" to p.ok; skipped -> "–" to p.ink3; past -> "✕" to p.danger; else -> "○" to p.ink3 }
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { ui.open(Sheet.Goal(g.id)) }.padding(vertical = 5.dp, horizontal = 4.dp),

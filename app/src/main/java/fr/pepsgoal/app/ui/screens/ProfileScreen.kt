@@ -49,8 +49,10 @@ import fr.pepsgoal.core.model.User
 fun ProfileScreen(ui: AppState) {
     ui.watch()
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
-    val lv = pg.level(pg.points(u.id)); val st = pg.globalStreak(u.id)
-    val done = pg.db.goals.count { it.userId == u.id && it.completedAt != null }
+    // Chiffres recalculés seulement quand la base change (pas à chaque recomposition de l'onglet)
+    val lv = remember(ui.rev, u.id) { pg.level(pg.points(u.id)) }; val st = remember(ui.rev, u.id) { pg.globalStreak(u.id) }
+    val done = remember(ui.rev, u.id) { pg.db.goals.count { it.userId == u.id && it.completedAt != null } }
+    val best = remember(ui.rev, u.id) { pg.bestStreak(u.id) }; val wins = remember(ui.rev, u.id) { pg.userCheckins(u.id).count { pg.isWin(it) } }
     ScreenList {
         item("head") {
             Glass {
@@ -81,7 +83,7 @@ fun ProfileScreen(ui: AppState) {
             }
         }
         item("stats") {
-            StatGrid(listOf("${st.n}" to "Série actuelle", "${pg.bestStreak(u.id)}" to "Meilleure série", "${pg.userCheckins(u.id).count { pg.isWin(it) }}" to "Validations", "$done" to "Caps atteints"))
+            StatGrid(listOf("${st.n}" to "Série actuelle", "$best" to "Meilleure série", "$wins" to "Validations", "$done" to "Caps atteints"))
         }
         item("recap") { RecapCard(ui) }
         item("gel") { GelCard(ui, u, false) }
@@ -194,7 +196,7 @@ fun Medal(e: String, tier: Int, locked: Boolean, size: Int, seed: String = e) {
         ColorFilter.colorMatrix(ColorMatrix(row(lo.red, hi.red, 0) + row(lo.green, hi.green, 1) + row(lo.blue, hi.blue, 2) + floatArrayOf(0f, 0f, 0f, 1f, 0f)))
     }
     val edge = remember(tier, locked) { ColorFilter.tint(light, BlendMode.SrcIn) }
-    Box(Modifier.size(size.dp).shadow(if (p.transp) 0.dp else (size / 9).dp, CircleShape, ambientColor = dark, spotColor = dark).alpha(if (locked) .7f else 1f), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(size.dp).shadow((if (p.transp) 0.dp else (size / 9).dp).ifShadows(), CircleShape, ambientColor = dark, spotColor = dark).alpha(if (locked) .7f else 1f), contentAlignment = Alignment.Center) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             val r = this.size.minDimension / 2; val c = this.center
             // Anneau : reflets métalliques tout autour

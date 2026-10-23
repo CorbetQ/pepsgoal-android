@@ -43,10 +43,13 @@ fun ScreenList(content: androidx.compose.foundation.lazy.LazyListScope.() -> Uni
 fun TodayScreen(ui: AppState) {
     ui.watch()
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
-    val st = pg.globalStreak(u.id); val plan = pg.todayPlan(u.id); val lv = pg.level(pg.points(u.id))
+    // Calculs de l'accueil faits une fois par changement de la base (ou du jour), pas à chaque recomposition
+    val day = today()
+    val st = remember(ui.rev, u.id, day) { pg.globalStreak(u.id) }; val plan = remember(ui.rev, u.id, day) { pg.todayPlan(u.id) }
+    val lv = remember(ui.rev, u.id) { pg.level(pg.points(u.id)) }
     val done = plan.due.count { it.done }; val total = plan.due.size
-    val hasGoals = pg.myGoals(u.id).any { !it.archived }
-    val cards = homeOrder(ui.prefs).filter { it.second }.map { it.first }
+    val hasGoals = remember(ui.rev, u.id) { pg.myGoals(u.id).any { !it.archived } }
+    val cards = remember(ui.rev) { homeOrder(ui.prefs).filter { it.second }.map { it.first } }
     ScreenList {
         if (!hasGoals) {
             item("hero") { Hero(ui) }

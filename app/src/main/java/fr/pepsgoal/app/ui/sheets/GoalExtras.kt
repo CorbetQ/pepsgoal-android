@@ -132,7 +132,7 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
     }
     big?.let { pr ->
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(20.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            val bmp = remember(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
+            val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
             if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 380.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Fit)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(cap(weekdayLongDate(parseYmd(pr.date))), Modifier.weight(1f), fontWeight = FontWeight.ExtraBold)
@@ -169,7 +169,7 @@ private fun stepDateOrToday(pg: Pg, g: Goal) = if (g.type == "timed") pg.timedDa
 @Composable
 private fun ProofTile(ctx: android.content.Context, pr: Proof, on: Boolean, onClick: () -> Unit) {
     val p = LocalPal.current
-    val bmp = remember(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f ->
+    val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f ->
         val o = BitmapFactory.Options().apply { inSampleSize = 4 }; BitmapFactory.decodeFile(f.path, o)?.asImageBitmap() } }
     Box(Modifier.width(104.dp).height(128.dp).clip(RoundedCornerShape(18.dp)).background(p.glassStrong)
         .border(if (on) 2.dp else 1.dp, if (on) p.focus else p.line, RoundedCornerShape(18.dp)).clickable(onClick = onClick)) {

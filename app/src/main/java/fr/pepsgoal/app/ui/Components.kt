@@ -68,6 +68,7 @@ import coil3.compose.SubcomposeAsyncImage
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
+import fr.pepsgoal.app.sys.Perf
 import fr.pepsgoal.core.ACCENTS
 import fr.pepsgoal.core.model.Avatar
 import fr.pepsgoal.core.model.User
@@ -172,8 +173,13 @@ object Stagger {
     fun next(): Long = if (active()) (n++ * 45L).coerceAtMost(315L) else 0L
 }
 
+/** Ombre portée, coupée par le réglage de performance « Ombres des cartes ». */
+fun Dp.ifShadows(): Dp = if (Perf.flags.shadows) this else 0.dp
+
 @Composable
 fun Modifier.enter(): Modifier {
+    // Transitions simples (Paramètres › Performance) : cartes affichées directement, sans calque d'animation
+    if (!Perf.flags.rich) return this
     val motionOff = LocalPal.current.motion
     // Hors de la fenêtre d'ouverture (carte qui revient en faisant défiler la liste) : affichée directement,
     // l'animation ne se rejoue pas à chaque défilement
@@ -209,7 +215,7 @@ fun PageBackdrop(c1: Color, c2: Color, modifier: Modifier = Modifier) {
 @Composable
 fun IconTile(icon: String, c1: Color, c2: Color, size: Dp = 40.dp, radius: Dp = 13.dp) {
     val p = LocalPal.current
-    Box(Modifier.size(size).shadow(if (p.transp) 0.dp else 8.dp, RoundedCornerShape(radius), ambientColor = c1, spotColor = c1).clip(RoundedCornerShape(radius))
+    Box(Modifier.size(size).shadow((if (p.transp) 0.dp else 8.dp).ifShadows(), RoundedCornerShape(radius), ambientColor = c1, spotColor = c1).clip(RoundedCornerShape(radius))
         .background(if (p.contrast) SolidColor(p.ink) else Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
         Pi(icon, size = size * .5f, tint = if (p.contrast) p.bg else Color(0xFF10102A))
     }
@@ -237,7 +243,7 @@ fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.
     val k = if (p.dark) .4f else .32f
     val veil = grad { a -> milk.copy(alpha = k * a * a) }
     val box = modifier.fillMaxWidth().height(h)
-    if (haze != null && !p.transp && !p.contrast) {
+    if (haze != null && !p.transp && !p.contrast && Perf.flags.blur) {
         // Flou progressif (rayon variable) : maximal au bord, nul côté contenu. Le dégradé s'étend sur toute la
         // hauteur de la zone (fin « infinie » = bas de la zone, quelle que soit la réduction de l'image floutée)
         val ease = androidx.compose.animation.core.Easing { t -> level(if (top) t else 1 - t) }
@@ -287,8 +293,8 @@ private val AI_COLORS = listOf(Color(0xFFFF4A12), Color(0xFFFFB000), Color(0xFF2
 @Composable
 fun Modifier.aiGlow(radius: Dp): Modifier {
     val motionOff = LocalPal.current.motion; val dark = LocalPal.current.dark
-    // Rotation lente à 20 images par seconde (au lieu de chaque image de l'écran)
-    val ph = slowPhaseState(5200, 20)
+    // Rotation lente à 20 images par seconde (au lieu de chaque image de l'écran) ; figée sans effets décoratifs
+    val ph = slowPhaseState(5200, 20, running = Perf.flags.fx)
     return this.drawWithContent {
         val angle = ph.value * 360f
         val r = radius.toPx(); val c = Offset(size.width / 2, size.height / 2)
@@ -352,7 +358,8 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
     if (LocalInSheet.current) return this.clip(shape).background(p.bg).background(tint)
     // Sans flou (pages secondaires, contraste) : fond plein sous la teinte, sinon l'ombre portée de la carte se voit
     // à travers le verre et dessine un rectangle plus clair à l'intérieur
-    if (h == null || p.transp || p.contrast || p.oled) return this.clip(shape).then(if (p.transp || p.oled) Modifier else Modifier.background(p.bg)).background(tint)
+    // Verre givré coupé (Paramètres › Performance) : même teinte, sans flou
+    if (h == null || p.transp || p.contrast || p.oled || !Perf.flags.blur) return this.clip(shape).then(if (p.transp || p.oled) Modifier else Modifier.background(p.bg)).background(tint)
     return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.6f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
         // Flou calculé sur une image réduite de moitié : même rendu, bien moins de travail pour le GPU
         inputScale = HazeInputScale.Fixed(.5f)
@@ -368,7 +375,7 @@ fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 2
         // Toute la largeur disponible par défaut : une carte au contenu court reste alignée sur les autres
         (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).enter().then(if (onClick != null) Modifier.bounce(inter, .97f) else Modifier)
             .then(if (ai && !p.easy) Modifier.aiGlow(radius) else if (ai) Modifier.border(2.dp, p.flame, shape) else Modifier)
-            .shadow(if (p.oled || p.transp) 0.dp else 18.dp, shape, ambientColor = Color(0x4428186E), spotColor = Color(0x5528186E))
+            .shadow((if (p.oled || p.transp) 0.dp else 18.dp).ifShadows(), shape, ambientColor = Color(0x4428186E), spotColor = Color(0x5528186E))
             .glassBg(shape, strong)
             // Profondeur : reflet en haut de la carte et liseré lumineux dégradé (plus vif en haut, discret en bas)
             .then(if (p.contrast || p.transp) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .07f else .3f), .45f to Color.Transparent)))
@@ -554,7 +561,7 @@ fun Av(u: User?, size: Dp = 40.dp, a: Avatar? = null, modifier: Modifier = Modif
 fun LevelRing(level: Int, size: Dp, content: @Composable () -> Unit) {
     val p = LocalPal.current
     val cols = when (level) { 1 -> listOf(hex("#FFB000"), hex("#FFE45C")); 2 -> listOf(hex("#FF7A3D"), hex("#FFB000")); 3 -> listOf(p.flame, p.flame2); 4 -> listOf(p.pink, p.flame, p.flame2); 5 -> listOf(hex("#8C7DFF"), p.pink, p.flame); else -> listOf(hex("#22D3FF"), hex("#B48CFF"), p.pink, p.flame2) }
-    val rot = slowPhaseState(9000, 12)
+    val rot = slowPhaseState(9000, 12, running = Perf.flags.fx)
     // `size` : taille de l'avatar ; l'anneau l'entoure à 2 dp (comme .lv-ring de la version web)
     Box(Modifier.size(size + 10.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize().graphicsLayer { rotationZ = rot.value * 360f }) { val w = 3.dp.toPx(); drawCircle(Brush.sweepGradient(cols + cols.first()), radius = this.size.minDimension / 2 - w / 2, style = Stroke(w)) }
@@ -581,7 +588,7 @@ fun Empty(title: String, text: String, icon: String = "sparkle", action: (@Compo
 /** Illustration des états vides : halo coloré, petites étincelles et pastille d'icône qui flotte doucement. */
 @Composable
 private fun EmptyArt(icon: String) {
-    val p = LocalPal.current; val ph = slowPhaseState(3600, 15)
+    val p = LocalPal.current; val ph = slowPhaseState(3600, 15, running = Perf.flags.fx)
     Box(Modifier.size(120.dp).padding(bottom = 4.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val c = Offset(size.width / 2, size.height / 2); val r = size.minDimension / 2

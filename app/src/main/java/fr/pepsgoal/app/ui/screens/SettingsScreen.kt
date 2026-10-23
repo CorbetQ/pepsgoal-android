@@ -78,13 +78,14 @@ val SET_CATS = listOf(
     listOf("health", "Santé", "Health Connect : pas, sommeil, sport, eau et validation automatique", "heart"),
     listOf("widgets", "Widgets", "Widgets de l’écran d’accueil : ajout et apparence", "sun"),
     listOf("data", "Données", "Synchronisation, export, réinitialisation", "archive"),
+    listOf("perf", "Performance", "Fluidité, animations, effets et analyse du téléphone", "gauge"),
     listOf("a11y", "Accessibilité et confort", "Lecture facile, taille du texte, densité, mode une main, vibrations et sons, contraste, daltonisme", "eye"),
     listOf("help", "Aide", "Tutoriel, notes de version et à propos", "star")
 )
 
 /** Couleurs des catégories de réglages (reprises des couleurs des types d'objectifs). */
 val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
-    "weather" to ("objective" to "period"), "places" to ("measure" to "routine"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "home" to ("routine" to "objective"), "a11y" to ("duration" to "objective"), "help" to ("monthly" to "challenge"))
+    "weather" to ("objective" to "period"), "places" to ("measure" to "routine"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "home" to ("routine" to "objective"), "a11y" to ("duration" to "objective"), "perf" to ("timed" to "challenge"), "help" to ("monthly" to "challenge"))
 
 /** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
 @Composable
@@ -189,6 +190,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
             "ai" -> item("b") { AiSettings(ui) }
             "health" -> item("b") { HealthSettings(ui) }
             "home" -> item("b") { HomeSettings(ui) }
+            "perf" -> item("b") { PerformancePage(ui) }
             "a11y" -> item("b") { Column(verticalArrangement = Arrangement.spacedBy(14.dp)) { ComfortSettings(ui); Glass { SectionTitle("Couleurs et effets"); A11yRows(ui); Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(top = 10.dp), small = true) } } }
             else -> item("b") { HelpSettings(ui) }
         }
@@ -779,6 +781,7 @@ fun setSummary(ui: AppState, k: String): String? {
         "privacy" -> if (!st.social) "Fonctions sociales désactivées" else "Visibilité par défaut : ${VIS[st.defaultVis]?.first?.lowercase() ?: st.defaultVis}"
         "ai" -> if (!fr.pepsgoal.app.ai.LocalAi.installed(ctx)) "Coach non installé" else if (pr.aiEnabled) "Coach installé et actif" else "Coach installé, en pause"
         "data" -> if (pr.backupUri.isNotEmpty()) "Sauvegarde auto${if (pr.backupLast > 0) " · dernière le ${fr.pepsgoal.core.fmtDT(pr.backupLast)}" else ""}" else null
+        "perf" -> fr.pepsgoal.app.sys.Perf.MODES.firstOrNull { it.first == fr.pepsgoal.app.sys.Perf.mode }?.second?.let { m -> if (fr.pepsgoal.app.sys.Perf.mode == "auto") "Auto · ${fr.pepsgoal.app.sys.Perf.MODES.first { it.first == fr.pepsgoal.app.sys.Perf.recommended }.second}" else m }
         "a11y" -> listOfNotNull(if (pr.easy) "Lecture facile" else null, if (pr.textScale != 1f) "texte ${Math.round(pr.textScale * 100)} %" else null, if (pr.oneHand) "une main" else null,
             if (pr.contrast) "contraste" else null, if (pr.motion) "animations réduites" else null).joinToString(" · ").replaceFirstChar { it.uppercase() }.ifEmpty { null }
         "help" -> "Version ${fr.pepsgoal.core.APP_VERSION}"

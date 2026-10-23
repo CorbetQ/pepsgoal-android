@@ -53,10 +53,10 @@ fun StatsScreen(ui: AppState) {
         item("insights") { InsightsCard(ui) }
         item("pixels") { YearPixels(ui) }
         item("hours") { fr.pepsgoal.app.ui.sheets.HourHeatCard(ui) }
-        // Raisons notées les jours manqués (« Je n'ai pas pu »)
-        val why = pg.missStats()
-        if (why.isNotEmpty()) item("why") {
-            Glass {
+        // Raisons notées les jours manqués (« Je n'ai pas pu ») — calcul mémorisé dans l'élément (contexte Compose)
+        item("why") {
+            val why = remember(ui.rev) { pg.missStats() }
+            if (why.isNotEmpty()) Glass {
                 CardHead("Pourquoi ça coince")
                 val tot = why.sumOf { it.second }
                 why.take(5).forEach { (k, n) ->
@@ -76,18 +76,16 @@ fun StatsScreen(ui: AppState) {
         item("heat") {
             Glass {
                 CardHead("Ton année") { Count("${perDay.filterKeys { parseYmd(it) > today.minusDays(365) }.size} jours actifs") }
-                val start = weekStart(today).minusWeeks(52)
                 val max = (perDay.values.maxOrNull() ?: 1).coerceAtLeast(1)
-                Row(Modifier.horizontalScroll(rememberScrollState(Int.MAX_VALUE)), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    for (w in 0 until 53) Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        for (d in 0 until 7) {
-                            val day = start.plusDays((w * 7 + d).toLong())
-                            val n = if (day > today) -1 else perDay[ymd(day)] ?: 0
-                            Box(Modifier.size(13.dp).clip(RoundedCornerShape(3.dp)).background(when {
-                                n < 0 -> androidx.compose.ui.graphics.Color.Transparent
-                                n == 0 -> p.ink.copy(alpha = .07f)
-                                else -> p.flame.copy(alpha = .25f + .75f * n / max)
-                            }))
+                // 371 cases dessinées d'un seul Canvas (et non 371 boîtes découpées, chacune avec son calque)
+                val cells = remember(perDay, today) { val start = weekStart(today).minusWeeks(52); IntArray(53 * 7) { i -> val day = start.plusDays(i.toLong()); if (day > today) -1 else perDay[ymd(day)] ?: 0 } }
+                val empty = p.ink.copy(alpha = .07f); val hot = p.flame
+                Row(Modifier.horizontalScroll(rememberScrollState(Int.MAX_VALUE))) {
+                    Canvas(Modifier.size(width = 13.dp * 53 + 3.dp * 52, height = 13.dp * 7 + 3.dp * 6)) {
+                        val c = 13.dp.toPx(); val g = 3.dp.toPx(); val r = CornerRadius(3.dp.toPx())
+                        for (i in cells.indices) {
+                            val n = cells[i]; if (n < 0) continue
+                            drawRoundRect(if (n == 0) empty else hot.copy(alpha = .25f + .75f * n / max), Offset((i / 7) * (c + g), (i % 7) * (c + g)), Size(c, c), r)
                         }
                     }
                 }
@@ -121,16 +119,19 @@ fun StatsScreen(ui: AppState) {
         item("goals") {
             Glass {
                 CardHead("Tes objectifs (30 jours)")
-                val since = today.minusDays(30)
-                val goals = pg.myGoals(u.id).filter { !pg.isClosedGoal(it) }
-                if (goals.isEmpty()) Muted("Aucun objectif en cours.", small = true)
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    goals.map { g ->
+                // Calcul (30 jours × objectifs) fait une fois par changement de données, pas à chaque recomposition
+                val rows = remember(wins, today) {
+                    val since = today.minusDays(30)
+                    pg.myGoals(u.id).filter { !pg.isClosedGoal(it) }.map { g ->
                         var planned = 0; var d = maxOf(since, parseYmd(ymd(g.createdAt)))
                         while (d <= today) { if (pg.scheduled(g, d)) planned++; d = d.plusDays(1) }
                         val done = wins.count { it.goalId == g.id && parseYmd(it.date) > since }
                         Triple(g, done, planned)
-                    }.sortedByDescending { if (it.third > 0) it.second.toDouble() / it.third else 0.0 }.forEach { (g, done, planned) ->
+                    }.sortedByDescending { if (it.third > 0) it.second.toDouble() / it.third else 0.0 }
+                }
+                if (rows.isEmpty()) Muted("Aucun objectif en cours.", small = true)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    rows.forEach { (g, done, planned) ->
                         val pct = if (planned > 0) (done.toDouble() / planned).coerceAtMost(1.0) else 0.0
                         Row(Modifier.clip(RoundedCornerShape(12.dp)).springClick(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { ui.open(Sheet.Goal(g.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             GoalIcon(g, 34.dp)
@@ -286,15 +287,16 @@ private fun YearPixels(ui: AppState) {
         }
         Muted("$year · chaque carré est un jour, chaque colonne un mois", small = true)
         Spacer(Modifier.height(10.dp))
+        val td = today()
         Canvas(Modifier.fillMaxWidth().aspectRatio(12f / 31f * 1.25f)) {
             val cw = size.width / 12f; val ch = size.height / 31f; val gap = 2.dp.toPx()
             for (m in 1..12) {
                 val len = LocalDate.of(year, m, 1).lengthOfMonth()
                 for (d in 1..len) {
                     val k = ymd(LocalDate.of(year, m, d))
-                    val c = if (k > today()) p.ink.copy(alpha = .03f) else pixelColor(withToday[k], p)
+                    val c = if (k > td) p.ink.copy(alpha = .03f) else pixelColor(withToday[k], p)
                     drawRoundRect(c, Offset((m - 1) * cw + gap / 2, (d - 1) * ch + gap / 2), Size(cw - gap, ch - gap), CornerRadius(3.dp.toPx()))
-                    if (k == today()) drawRoundRect(p.ink, Offset((m - 1) * cw + gap / 2, (d - 1) * ch + gap / 2), Size(cw - gap, ch - gap), CornerRadius(3.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+                    if (k == td) drawRoundRect(p.ink, Offset((m - 1) * cw + gap / 2, (d - 1) * ch + gap / 2), Size(cw - gap, ch - gap), CornerRadius(3.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
                 }
             }
         }

@@ -357,7 +357,7 @@ fun CommentsScreen(ui: AppState, postId: String) {
     val canWrite = !post.commentsLocked && pg.canComment(u, post) && post.status != "pending"
     ScreenFrame(ui, "Commentaires", "Feed", { ui.back() }, icon = "comment", color = p.type("measure").c, color2 = p.flame2, state = state, bottom = {
         val shape = RoundedCornerShape(26.dp)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp).shadow(if (p.transp) 0.dp else 14.dp, shape, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp).shadow((if (p.transp) 0.dp else 14.dp).ifShadows(), shape, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
             .clip(shape).background(p.glassStrong).border(1.dp, p.glassEdge, shape).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             when {
                 post.commentsLocked -> Muted("🔒 Les commentaires sont fermés sur cette publication.", Modifier.padding(8.dp), small = true)
