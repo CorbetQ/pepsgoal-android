@@ -73,6 +73,10 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.layout.onSizeChanged
+import dev.chrisbanes.haze.HazeInputScale
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -191,6 +195,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                     item("m:${m.id}") {
                         MessageRow(ui, m, mine, who, g?.members, reacts[m.id], menu == m.id, more,
                             selected = m.id in sel, selecting = sel.isNotEmpty(), editedText = edits[m.id], gone = m.id in gone, accent = chosen,
+                            blur = if (!p.transp && !p.contrast && fr.pepsgoal.app.sys.Perf.flags.blur) chatHaze else null,
                             onMenu = { sel = if (m.id in sel) sel - m.id else sel + m.id; more = false; Feedback.tick() }, onMore = { more = !more },
                             onTap = { if (sel.isNotEmpty()) sel = if (m.id in sel) sel - m.id else sel + m.id },
                             onReact = { e -> val on = reacts[m.id]?.get(e)?.contains(u.id) != true; sel = emptySet(); more = false; send(buildJsonObject { put("k", "react"); put("p", m.id); put("e", e); put("on", on) }, null, null) },
@@ -362,7 +367,9 @@ private fun MessageRow(
     ui: AppState, m: Message, mine: Boolean, who: String?, members: List<String>?, reacts: Map<String, Set<String>>?, menuOpen: Boolean, more: Boolean,
     onMenu: () -> Unit, onMore: () -> Unit, onReact: (String) -> Unit, onReply: () -> Unit, onPhoto: (ByteArray) -> Unit, onVote: (JsonObject, String) -> Unit,
     votes: Map<String, List<String>>?, selected: Boolean = false, selecting: Boolean = false, editedText: String? = null, gone: Boolean = false,
-    accent: List<Color>? = null, onTap: () -> Unit = {}
+    accent: List<Color>? = null, onTap: () -> Unit = {},
+    /** Verre givré : la bulle floute le fond de la conversation qui passe derrière elle. */
+    blur: dev.chrisbanes.haze.HazeState? = null
 ) {
     val p = LocalPal.current; val pg = ui.pg; val me = pg.meId()
     val pending = Social.pending(ui, m)
@@ -395,10 +402,15 @@ private fun MessageRow(
             gone -> SolidColor(p.ink.copy(alpha = .06f))
             mine && accent != null -> Brush.linearGradient(listOf(accent[0].copy(alpha = .5f), accent[2].copy(alpha = .42f)))
             mine -> Brush.linearGradient(listOf(p.flame2.copy(alpha = if (p.materialYou) .5f else .38f), p.pink.copy(alpha = if (p.materialYou) .45f else .32f)))
-            else -> SolidColor(p.glassStrong)
+            // Bulle reçue : verre plus léger quand le fond est flouté derrière, pour laisser voir le givre
+            else -> SolidColor(if (blur != null) p.glass.copy(alpha = maxOf(p.glass.alpha, .5f)) else p.glassStrong)
+        }
+        // Flou de l'arrière-plan sous la bulle (les calques de messages ne sont jamais floutés, seulement le fond)
+        val frost = if (blur == null || gone) Modifier else Modifier.hazeEffect(blur, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 22.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+            inputScale = HazeInputScale.Fixed(.5f)
         }
         Column(Modifier.widthIn(max = 300.dp).msgEnter(mine).shadow((if (p.transp) 0.dp else 6.dp).ifShadows(), shape, ambientColor = Color(0x3328186E), spotColor = if (mine) p.flame.copy(alpha = .5f) else Color(0x4428186E))
-            .clip(shape).background(if (p.contrast) SolidColor(p.glassStrong) else bg)
+            .clip(shape).then(frost).background(if (p.contrast) SolidColor(p.glassStrong) else bg)
             .then(if (p.contrast || p.transp) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .06f else .22f), .5f to Color.Transparent))).then(if (mentioned) Modifier.border(2.dp, p.flame2, shape) else Modifier)
             .then(if (selected) Modifier.border(2.dp, p.flame, shape) else Modifier)
             .combinedClickable(enabled = canAct || selecting || gone, onClick = onTap, onLongClick = onMenu, onLongClickLabel = "Sélectionner (réagir, répondre, copier, modifier, supprimer)", onClickLabel = if (selecting) (if (selected) "Désélectionner" else "Sélectionner") else null).padding(if (kind == "photo") 4.dp else 12.dp, if (kind == "photo") 4.dp else 9.dp)) {
