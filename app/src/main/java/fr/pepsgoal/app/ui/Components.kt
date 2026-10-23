@@ -10,6 +10,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -170,6 +171,9 @@ fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink
  * Apparition en cascade des cartes : à l'ouverture d'un onglet ou d'une page, les cartes arrivent l'une après
  * l'autre (léger décalage), en glissant vers le haut avec un rebond.
  */
+/** Marge intérieure par défaut des cartes (l'accueil compact ou aéré la change). */
+val LocalGlassPad = staticCompositionLocalOf { 18.dp }
+
 /** Onglet touché alors qu'il est déjà ouvert : signal de « retour en haut » pour la liste de la page. */
 object TabReTap { var n by mutableIntStateOf(0) }
 
@@ -356,8 +360,10 @@ fun Modifier.bounce(inter: MutableInteractionSource, pressed: Float = .94f): Mod
 
 /** Zone cliquable avec effet ressort et ondulation (à placer après le clip/fond de l'élément). */
 @Composable
-fun Modifier.springClick(inter: MutableInteractionSource, enabled: Boolean = true, label: String? = null, role: Role? = null, onClick: () -> Unit): Modifier =
-    this.clickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role) { Feedback.tap(); onClick() }
+fun Modifier.springClick(inter: MutableInteractionSource, enabled: Boolean = true, label: String? = null, role: Role? = null, onLongClick: (() -> Unit)? = null, onClick: () -> Unit): Modifier =
+    if (onLongClick == null) this.clickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role) { Feedback.tap(); onClick() }
+    else this.combinedClickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role,
+        onLongClick = { Feedback.armed(); onLongClick() }) { Feedback.tap(); onClick() }
 
 /** Fond « verre givré » : arrière-plan flouté et teinté (backdrop-filter de la version web), sinon simple teinte. */
 @Composable
@@ -376,7 +382,7 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
 }
 
 @Composable
-fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = 18.dp, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = LocalGlassPad.current, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     val shape = RoundedCornerShape(radius)
     val inter = remember { MutableInteractionSource() }

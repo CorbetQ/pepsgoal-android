@@ -134,6 +134,11 @@ fun PepsRoot(ui: AppState) {
                     Backdrop(k[0] as String, skies[k], k[4] as Boolean, k[5] as Long, k[7] as String)
                 }
                 LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
+                // Fond qui réagit à l'avancement du jour (réglage Apparence › Effets et saisons)
+                if (u != null && ui.prefs.bgReactive) {
+                    val prog = remember(rev, u.id) { val pl = pg.todayPlan(u.id); if (pl.due.isEmpty()) 0f else pl.due.count { it.done }.toFloat() / pl.due.size }
+                    ReactiveBg(prog, prog >= 1f)
+                }
             } } }
             // Flamme de collection choisie (si elle est toujours débloquée par la meilleure série)
             val skinKey = u?.flameSkin ?: "classic"
