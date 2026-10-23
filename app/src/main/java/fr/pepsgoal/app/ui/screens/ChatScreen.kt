@@ -58,6 +58,7 @@ import fr.pepsgoal.core.*
 import fr.pepsgoal.core.cloud.*
 import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.User
+import fr.pepsgoal.core.model.unit
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
