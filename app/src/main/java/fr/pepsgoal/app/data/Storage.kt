@@ -119,6 +119,12 @@ class DevicePrefs(context: Context) {
     var aiPicks get() = p.getString("aiPicks", "") ?: ""; set(v) = p.edit().putString("aiPicks", v).apply()
     var aiFriendPicks get() = p.getString("aiFriendPicks", "") ?: ""; set(v) = p.edit().putString("aiFriendPicks", v).apply()
     var aiPromoHidden get() = p.getBoolean("aiPromoHidden", false); set(v) = p.edit().putBoolean("aiPromoHidden", v).apply()
+    /** Personnalité du coach (voir [fr.pepsgoal.app.ai.Persona]), son prénom et la longueur de ses réponses (short, normal, long). */
+    var aiPersona get() = p.getString("aiPersona", "kind") ?: "kind"; set(v) = p.edit().putString("aiPersona", v).apply()
+    var aiCoachName get() = p.getString("aiCoachName", "Peps") ?: "Peps"; set(v) = p.edit().putString("aiCoachName", v).apply()
+    var aiLength get() = p.getString("aiLength", "normal") ?: "normal"; set(v) = p.edit().putString("aiLength", v).apply()
+    /** Contexte maximal du modèle installé (jetons), lu dans le nom du fichier téléchargé (« ekv1280 »). */
+    var aiCtx get() = p.getInt("aiCtx", 1024); set(v) = p.edit().putInt("aiCtx", v).apply()
     /** Onglet Objectifs : affichage ("list" compact ou "cards") et regroupement par groupe d'objectifs. */
     var goalView get() = p.getString("goalView", "list") ?: "list"; set(v) = p.edit().putString("goalView", v).apply()
     var goalGroupBy get() = p.getBoolean("goalGroupBy", true); set(v) = p.edit().putBoolean("goalGroupBy", v).apply()

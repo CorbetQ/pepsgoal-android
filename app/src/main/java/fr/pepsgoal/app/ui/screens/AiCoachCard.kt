@@ -66,8 +66,12 @@ fun AiTipCard(ui: AppState) {
     val renew = { scope.launch { busy = true; tip = Coach.tip(ctx, force = true); busy = false }; Unit }
     Glass(ai = true) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconTile("sparkle", p.type("program").c, p.type("measure").c, 36.dp, 12.dp)
-            Text("Conseil du coach", Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+            CoachAvatar(40.dp, thinking = busy)
+            Column(Modifier.weight(1f)) {
+                Text("Le conseil de ${fr.pepsgoal.app.ai.Personas.coachName(ctx)}", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+                Muted(fr.pepsgoal.app.ai.Personas.current(ctx).label, small = true)
+            }
+            if (tip != null && !busy) IconBtn("music", "Écouter le conseil", { fr.pepsgoal.app.sys.Speaker.say(ctx, tip!!) }, plain = true, size = 36.dp)
             IconBtn("comment", "Discuter avec le coach", { ui.push(Screen.CoachChat) }, plain = true, size = 36.dp)
             IconBtn("repeat", "Nouveau conseil", renew, plain = true, size = 36.dp)
         }
@@ -75,7 +79,7 @@ fun AiTipCard(ui: AppState) {
             Column(Modifier.padding(top = 8.dp)) {
                 if (b || t == null) Muted("Le coach prépare ton conseil…", Modifier.alpha(pulse))
                 else {
-                    Text(t, fontSize = 15.sp)
+                    Text(rich(t), fontSize = 15.sp)
                     Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Muted("Utile ?", small = true)
                         IconBtn("heart", "Ce conseil m’aide", { AiMemory.add(ctx, "tip", "A aimé ce conseil : « ${t.take(120)} »"); ui.toast("Le coach s’en souviendra.", "sparkle") }, plain = true, size = 34.dp)
@@ -99,8 +103,8 @@ fun AiCreateCard(ui: AppState) {
     val pulse = thinkingAlpha()
     Glass(ai = true) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconTile("sparkle", p.type("program").c, p.type("measure").c, 36.dp, 12.dp)
-            Column(Modifier.weight(1f)) { Text("Créer avec le coach", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp); Muted("Décris ton objectif, le coach remplit le formulaire.", small = true) }
+            CoachAvatar(40.dp, thinking = creating)
+            Column(Modifier.weight(1f)) { Text("Créer avec ${fr.pepsgoal.app.ai.Personas.coachName(ctx)}", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp); Muted("Décris ton objectif, le coach remplit le formulaire.", small = true) }
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

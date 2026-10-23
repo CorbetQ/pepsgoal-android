@@ -14,9 +14,8 @@ import java.time.LocalTime
  * ou répond de travers : le résultat reste toujours utilisable.
  */
 object Coach {
-    private const val ROLE = "Tu es le coach bienveillant de PepsGoal, une application de suivi d’objectifs et d’habitudes. Tu réponds toujours en français, très brièvement."
-
-    private fun memory(ctx: Context) = whoIs(ctx) + AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }
+    /** Consigne d'identité (personnalité, langue, prénom) et, au niveau de détail 0, la mémoire. */
+    private fun head(ctx: Context, lvl: Int, task: String) = Brain.system(ctx, task) + (if (lvl == 0) Brain.memory(ctx) else "\n")
 
     /* ------------------------------------------------------------------ créer un objectif */
 
@@ -26,7 +25,7 @@ object Coach {
     private val TYPES = setOf("routine", "objective", "cap", "abstinence", "limit", "duration", "deadline", "challenge")
 
     suspend fun createGoal(ctx: Context, request: String): Draft {
-        val prompt = """$ROLE${memory(ctx)}
+        val prompt = { lvl: Int -> """${head(ctx, lvl, "goal")}
 Transforme la demande en UN objectif PepsGoal. Réponds uniquement par une ligne au format TYPE|TITRE|EMOJI|PARAMETRE
 TYPE parmi : routine, objective, cap, abstinence, limit, duration, deadline, challenge.
 PARAMETRE : routine = jours (lun,mer,ven) ou nombre de fois par semaine (3x) ; objective = cible et unité (12 livres) ; cap = seuil quotidien et unité (10000 pas) ; limit = maximum et unité (2 cafés) ; duration = minutes par jour (20) ; deadline = date AAAA-MM-JJ ; challenge = nombre de jours (30) ; abstinence = rien.
@@ -39,8 +38,9 @@ cap|10 000 pas par jour|👟|10000 pas
 Demande : arrêter de fumer
 abstinence|Arrêter la cigarette|🚭|
 Demande : ${request.trim().take(200)}
-"""
-        val out = if (LocalAi.on(ctx, ctx.peps.prefs.aiCreate)) LocalAi.generate(ctx, prompt, 60) else null
+""" }
+        // Format imposé : température basse pour une réponse fiable
+        val out = if (LocalAi.on(ctx, ctx.peps.prefs.aiCreate)) LocalAi.generate(ctx, 60, .2f, build = prompt) else null
         val ai = out?.lines()?.map { it.trim().trim('`') }?.firstOrNull { it.count { c -> c == '|' } >= 2 }?.let { parseLine(it, request) }
         val d = ai ?: rules(request)
         AiMemory.add(ctx, "goal", "A demandé « ${request.trim().take(120)} » → objectif « ${d.title} » (${typeInfo(d.type).label.lowercase()}).")
@@ -140,12 +140,13 @@ Demande : ${request.trim().take(200)}
         val hour = LocalTime.now().hour; val wx = weather(ctx)
         val wxTxt = wx?.let { "${it.first.lowercase()}${it.second?.let { t -> ", ${Math.round(t)} °C" } ?: ""}" } ?: "inconnue"
         val list = left.take(9).mapIndexed { i, g -> "${i + 1}. ${g.title} (${typeInfo(g.type).label.lowercase()})" }.joinToString("\n")
-        val prompt = """$ROLE${memory(ctx)}
+        val prompt = { lvl: Int -> """${head(ctx, lvl, "reco")}
 Il est $hour h, météo : $wxTxt. Objectifs qu’il reste à valider aujourd’hui :
 $list
-Choisis les ${minOf(3, left.size)} objectifs les plus adaptés à ce moment (heure, météo). Réponds uniquement par des lignes au format NUMERO|RAISON (moins de 12 mots).
-"""
-        val out = if (LocalAi.on(ctx, ctx.peps.prefs.aiRecommend)) LocalAi.generate(ctx, prompt, 120) else null
+Choisis les ${minOf(3, left.size)} objectifs les plus adaptés à ce moment (heure, météo). Réponds uniquement par des lignes au format NUMERO|RAISON (moins de 12 mots, dans ton style).
+""" }
+        // Demande de fond : cède la place si l'utilisateur discute avec le coach
+        val out = if (LocalAi.on(ctx, ctx.peps.prefs.aiRecommend)) LocalAi.generate(ctx, 120, .4f, background = true, build = prompt) else null
         val ai = out?.lines()?.mapNotNull { l ->
             val m = Regex("^\\D*(\\d+)\\s*[|.:)-]\\s*(.+)$").find(l.trim()) ?: return@mapNotNull null
             val g = left.take(9).getOrNull(m.groupValues[1].toInt() - 1) ?: return@mapNotNull null
@@ -187,13 +188,16 @@ Choisis les ${minOf(3, left.size)} objectifs les plus adaptés à ce moment (heu
         if (!force && app.prefs.aiTipKey == key && app.prefs.aiTip.isNotBlank()) return fixEncoding(app.prefs.aiTip)
         val wx = weather(ctx)
         val health = try { fr.pepsgoal.app.sys.Health.summary(ctx) } catch (e: Exception) { "" }
-        val prompt = """$ROLE${memory(ctx)}
-${if (health.isNotBlank()) "$health\n" else ""}Contexte : il est $hour h${wx?.let { ", météo ${it.first.lowercase()}${it.second?.let { t -> " (${Math.round(t)} °C)" } ?: ""}" } ?: ""}, série de ${st.n} jour(s)${if (st.lit) " déjà allumée aujourd’hui" else " pas encore allumée aujourd’hui"}, $done validation(s) sur ${plan.due.size} prévue(s).
+        // Un angle tiré au hasard : les conseils varient d'une fois sur l'autre
+        val angle = listOf("une astuce pratique pour s’y mettre tout de suite", "une idée pour rendre l’effort plus agréable", "une façon d’organiser le reste de la journée",
+            "un encouragement qui s’appuie sur ses chiffres", "une technique pour ne pas lâcher sa série", "un rappel bienveillant sur le repos et la récupération").random()
+        val prompt = { lvl: Int -> """${head(ctx, lvl, "tip")}
+${if (health.isNotBlank() && lvl < 2) "$health\n" else ""}Contexte : il est $hour h${wx?.let { ", météo ${it.first.lowercase()}${it.second?.let { t -> " (${Math.round(t)} °C)" } ?: ""}" } ?: ""}, série de ${st.n} jour(s)${if (st.lit) " déjà allumée aujourd’hui" else " pas encore allumée aujourd’hui"}, $done validation(s) sur ${plan.due.size} prévue(s).
 Objectifs du jour : ${plan.due.joinToString(", ") { it.g.title }.ifEmpty { "aucun" }}.
-Donne UN conseil concret et motivant pour maintenant, en 2 phrases maximum, sans liste ni titre.
-"""
-        val out = (if (LocalAi.on(ctx, app.prefs.aiTips)) LocalAi.generate(ctx, prompt, 90) else null)?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.take(260)
-        val t = out?.takeIf { it.length > 15 } ?: rulesTip(st.n, st.lit, done, plan.due.size, hour)
+Donne UN conseil pour maintenant, en 2 phrases maximum, sans liste ni titre : $angle.
+""" }
+        val out = (if (LocalAi.on(ctx, app.prefs.aiTips)) LocalAi.generate(ctx, 90, .9f, background = true, build = prompt) else null)?.let { fixName(ctx, it) }?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.take(260)
+        val t = out?.takeIf { it.length > 15 } ?: (rulesTip(st.n, st.lit, done, plan.due.size, hour) + " " + Personas.current(ctx).cheer.random())
         app.prefs.aiTip = t; app.prefs.aiTipKey = key
         return t
     }
@@ -211,7 +215,6 @@ Donne UN conseil concret et motivant pour maintenant, en 2 phrases maximum, sans
 /* ------------------------------------------------------------------ récaps et suggestions d'amis */
 
 object CoachExtras {
-    private const val ROLE = "Tu es le coach bienveillant de PepsGoal, une application de suivi d’objectifs et d’habitudes. Tu réponds toujours en français, très brièvement."
     private val recapCache = HashMap<String, String>()
 
     /** « Le mot du coach » d'un récap : 2 à 3 phrases personnalisées à partir des chiffres de la période. */
@@ -221,11 +224,11 @@ object CoachExtras {
         val key = "${st.p}|${st.r.s}|${st.r.e}|${st.n}"
         recapCache[key]?.let { return it }
         val per = when (st.p) { "week" -> "la semaine"; "month" -> "le mois"; else -> "l’année" }
-        val prompt = """$ROLE${whoIs(ctx)}${AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }}
+        val prompt = { lvl: Int -> """${Brain.system(ctx, "recap")}${if (lvl == 0) Brain.memory(ctx) else "\n"}
 Bilan de $per : ${st.n} validations (période précédente : ${st.prevN}), ${st.days.size} jours actifs sur ${st.r.days}, meilleure série ${st.best} jours, ${st.perfect} journées parfaites${st.top?.let { ", objectif le plus suivi : « ${it.first.title} » (${it.second} fois)" } ?: ""}, moment préféré : ${st.slot}, profil : ${st.persona.n}.
 Écris un message personnel de 2 à 3 phrases : félicite précisément, puis donne une piste concrète pour la suite. Sans titre ni liste.
-"""
-        val out = LocalAi.generate(ctx, prompt, 120)?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.let { fixName(ctx, it) }?.take(400)?.takeIf { it.length > 20 } ?: return null
+""" }
+        val out = LocalAi.generate(ctx, 120, .8f, build = prompt)?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.let { fixName(ctx, it) }?.take(400)?.takeIf { it.length > 20 } ?: return null
         recapCache[key] = out
         AiMemory.add(ctx, "tip", "Récap de $per : ${st.n} validations, profil ${st.persona.n}.")
         return out
@@ -248,13 +251,13 @@ Bilan de $per : ${st.n} validations (période précédente : ${st.prevN}), ${st.
         val pg = app.pg; val u = pg.me() ?: return null
         val mine = pg.myGoals(u.id).filter { !it.archived }.take(8).joinToString(", ") { it.title }
         val list = cands.take(8).mapIndexed { i, (_, name, info) -> "${i + 1}. $name ($info)" }.joinToString("\n")
-        val prompt = """$ROLE${whoIs(ctx)}${AiMemory.context(ctx).let { if (it.isBlank()) "" else "\nCe que tu sais de l’utilisateur :\n$it\n" }}
+        val prompt = { lvl: Int -> """${Brain.system(ctx, "friends")}${if (lvl == 0) Brain.memory(ctx) else "\n"}
 Objectifs de l’utilisateur : ${mine.ifEmpty { "aucun" }}.
 Personnes suggérées comme amis :
 $list
 Classe-les de la plus pertinente à la moins pertinente pour se motiver ensemble. Réponds uniquement par des lignes NUMERO|RAISON (moins de 12 mots, tutoiement).
-"""
-        val out = LocalAi.generate(ctx, prompt, 160) ?: return null
+""" }
+        val out = LocalAi.generate(ctx, 160, .4f, background = true, build = prompt) ?: return null
         val picks = out.lines().mapNotNull { l ->
             val m = Regex("^\\D*(\\d+)\\s*[|.:)-]\\s*(.+)$").find(l.trim()) ?: return@mapNotNull null
             val c = cands.take(8).getOrNull(m.groupValues[1].toInt() - 1) ?: return@mapNotNull null

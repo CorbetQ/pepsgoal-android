@@ -384,7 +384,7 @@ private fun ContextCards(ui: AppState) {
             var intro by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(sug.size) {
                 if (sug.isEmpty()) return@LaunchedEffect
-                if (fr.pepsgoal.app.ai.LocalAi.on(ctx)) intro = fr.pepsgoal.app.ai.LocalAi.generate(ctx, "Tu es le coach bienveillant de PepsGoal. En une phrase courte et motivante, en français et en tutoyant, présente ces ajustements de la semaine à venir : " + sug.joinToString(" ; ") { it.text }, 60)?.trim()?.trim('"')
+                if (fr.pepsgoal.app.ai.LocalAi.on(ctx)) intro = fr.pepsgoal.app.ai.LocalAi.generate(ctx, 60, .7f, background = true) { fr.pepsgoal.app.ai.Brain.system(ctx, "tip") + "\nEn une phrase courte et motivante, présente ces ajustements de la semaine à venir : " + sug.joinToString(" ; ") { it.text } }?.let { fr.pepsgoal.app.ai.fixName(ctx, it) }?.trim()?.trim('"')
             }
             val key = if (wdIdx(todayDate()) == 6) ymd(weekStart(todayDate()).plusDays(7)) else wk
             if (sug.isNotEmpty()) Glass(ai = true) {
