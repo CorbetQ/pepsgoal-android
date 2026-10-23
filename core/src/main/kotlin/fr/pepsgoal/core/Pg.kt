@@ -353,7 +353,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
 
     fun todayPlan(id: String = meId()): Plan {
         val t = today(); val wd = wdIdx(todayDate()); val due = mutableListOf<DueItem>(); val ongoing = mutableListOf<Goal>()
-        for (g in myGoals(id).filter { !it.archived }) {
+        for (g in myGoals(id).filter { !it.archived && !isPaused(it, t) }) {
             when (g.type) {
                 "routine" -> if (g.mode == "days") { if (g.days.contains(wd)) due.add(DueItem(g, hasCheck(g.id, t))) } else {
                     val c = weekCount(g, weekStart(todayDate())); val dn = hasCheck(g.id, t)
@@ -441,6 +441,17 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
 
     fun todayDone(g: Goal, date: String = today()) = db.checkins.firstOrNull { it.goalId == g.id && it.date == date && it.kind == "done" && it.userId == meId() }
     private fun undoDone(ex: Checkin) { db.checkins.remove(ex); db.checkins = db.checkins.toMutableList(); store.commit(); hooks.toast("Validation annulée.", "x"); hooks.liveChanged() }
+    /**
+     * Rattrapage : valide [g] pour hier (oubli de la veille). Si un gel avait déjà comblé ce jour, il est rendu.
+     * Renvoie faux si hier n'était pas prévu ou déjà validé.
+     */
+    fun catchUp(g: Goal): Boolean {
+        val y = yday(); val u = me() ?: return false
+        if (hasCheck(g.id, y) || !scheduled(g, parseYmd(y))) return false
+        winDone(g, typeInfo(g.type).pts, y)
+        if (u.frozenDays.remove(y)) { u.freezes += 1; store.commit() }
+        return true
+    }
     private fun winDone(g: Goal, pts: Int, date: String = today()) {
         val lit = wasLit()
         addCheck(g, "done", 1.0, pts, date); justDone = g.id
@@ -994,7 +1005,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         badgeCheckPending = false
         val u = me() ?: return
         if (store.acct && cloud?.pulledBefore == false) return
-        repriceShop(); checkFlameBonus()
+        repriceShop(); checkFlameBonus(); checkSecrets(); checkResumes(); checkLadders()
         val st = Badges.state(this, u.id); val keys = Badges.keys(st)
         val fams = BADGE_FAMILIES.map { it.k }
         if (u.badges != null && (u.badgeFams ?: BADGE_FAMS_V20).size < fams.size) {
