@@ -32,6 +32,7 @@ import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
+import fr.pepsgoal.core.cloud.*
 import fr.pepsgoal.core.model.Message
 import kotlinx.coroutines.delay
 import kotlin.math.PI
