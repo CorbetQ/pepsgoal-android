@@ -144,6 +144,44 @@ fun Pg.buy(key: String, price: Int): String? {
 fun Pg.applyTheme(t: ShopTheme) {
     val u = me() ?: return
     u.settings.accentCustom = t.colors; u.settings.bg = t.bg; u.settings.fx = t.fx
-    t.dark?.let { if (it) u.settings.theme = "dark" }
+    // Thème de couleurs pensé pour le sombre : on passe en sombre, sauf si une interface sombre est déjà choisie
+    t.dark?.let { if (it && u.settings.theme in setOf("light", "system")) u.settings.theme = "dark" }
     store.commit()
 }
+
+/* ---------------------------------------------------------------- Ambiances (thèmes d'interface) */
+
+/**
+ * Ambiance : thème d'interface complet, au même niveau que Clair, Sombre ou OLED (réglage « theme » = « m:<clé> ») :
+ * couleur du fond, du texte, du verre des cartes, et teintes des halos d'arrière-plan. La couleur d'accent reste celle
+ * choisie par l'utilisateur ; [accent] est l'accent conseillé, proposé à l'achat.
+ */
+class ShopMode(val key: String, val name: String, val desc: String, val price: Int, val dark: Boolean,
+               val bg: String, val ink: String, val glass: String, val blobs: List<String>, val accent: List<String>)
+
+val SHOP_MODES = listOf(
+    ShopMode("midnight", "Minuit", "Bleu nuit profond, étoiles froides", 180, true, "#0A1024", "#EAF0FF", "#1A2448", listOf("#2B4BFF", "#7AA2FF", "#00C2FF"), listOf("#7AA2FF", "#3D6BFF", "#B36BFF")),
+    ShopMode("forest", "Forêt nocturne", "Vert sapin et sous-bois", 180, true, "#08140F", "#E6F5EC", "#17302A", listOf("#1F7A4D", "#5BD39A", "#C6FF5C"), listOf("#B6FF2E", "#2EF2B0", "#22D3A0")),
+    ShopMode("wine", "Bordeaux", "Velours rouge sombre et or", 200, true, "#1A070D", "#FBE9EE", "#3A1220", listOf("#8C1F3F", "#FF4F7B", "#FFB000"), listOf("#FFC14D", "#FF4F7B", "#C2185B")),
+    ShopMode("graphite", "Graphite", "Gris neutre, sobre et net", 150, true, "#121315", "#ECEDEF", "#24262A", listOf("#5A5F6A", "#8E95A3", "#C9CED8"), listOf("#E6E9EF", "#9AA3B5", "#5C6476")),
+    ShopMode("cocoa", "Cacao", "Brun chaud, chocolat et caramel", 180, true, "#160E09", "#F5E9DF", "#33231A", listOf("#8A5A3B", "#D9925B", "#FFC27A"), listOf("#FFC27A", "#E07B39", "#A0522D")),
+    ShopMode("abyss", "Abysses", "Bleu-vert des grands fonds", 200, true, "#031417", "#E0FAFB", "#0F3138", listOf("#007C89", "#00D1D1", "#6FFFE9"), listOf("#6FFFE9", "#00C2D1", "#2E7DFF")),
+    ShopMode("plum", "Aubergine", "Violet profond et mûre", 180, true, "#120A1E", "#F1E9FF", "#2A1B45", listOf("#6B2FD1", "#B36BFF", "#FF7AD9"), listOf("#D4A8FF", "#9B5CFF", "#FF7AD9")),
+    ShopMode("neon", "Néon", "Nuit électrique, cyan et magenta", 250, true, "#05040C", "#F3F0FF", "#1A1530", listOf("#00F0FF", "#FF00E5", "#7B2BFF"), listOf("#00F0FF", "#FF00E5", "#FFE600")),
+    ShopMode("paper", "Papier", "Crème doux, comme un carnet", 150, false, "#F6F1E7", "#2B2620", "#FFFDF8", listOf("#E8DCC4", "#F2C9A0", "#D6E3D0"), listOf("#E07B39", "#C2553D", "#8A5A3B")),
+    ShopMode("sepia", "Sépia", "Tons chauds de vieille photo", 180, false, "#EFE2CC", "#3A2A18", "#FAF1E2", listOf("#D9B98C", "#C98E5A", "#E8D3B0"), listOf("#B5651D", "#8A4B12", "#D2A15E")),
+    ShopMode("mint", "Menthe", "Vert frais et lumineux", 180, false, "#E6F6EE", "#0F2C22", "#F6FFFA", listOf("#9EF0C8", "#7DD3FC", "#C6FF9E"), listOf("#00B37E", "#00A3C4", "#7BD88F")),
+    ShopMode("lavender", "Lavande", "Mauve tendre et apaisant", 180, false, "#EEE9FA", "#241A3D", "#FBF9FF", listOf("#C9B8FF", "#FFC2E8", "#A8D8FF"), listOf("#8C6BFF", "#C35BD9", "#5A8DFF")),
+    ShopMode("peach", "Pêche", "Abricot et corail du matin", 180, false, "#FCEBE1", "#3B1E14", "#FFF7F2", listOf("#FFC2A8", "#FF9E80", "#FFD6A5"), listOf("#FF7A59", "#FF4F7B", "#FFB000")),
+    ShopMode("nordic", "Nordique", "Gris bleuté, épuré et calme", 150, false, "#E8EDF2", "#1A2633", "#F8FAFC", listOf("#BFD3E6", "#D8E2EC", "#A7C4D9"), listOf("#3D7EA6", "#5A9BC2", "#2E5A88")),
+    ShopMode("sakura", "Sakura", "Rose cerisier et pétales", 200, false, "#FBE8EF", "#3A1626", "#FFF6F9", listOf("#FFB7CE", "#FFD6E5", "#E8B4FF"), listOf("#FF5C8A", "#E8559D", "#B85CFF")),
+    ShopMode("sand", "Sable", "Beige doré des dunes", 150, false, "#F3EBDD", "#2E271C", "#FFFBF3", listOf("#EBD3A8", "#F5C98A", "#DDE6C8"), listOf("#C98A2E", "#E0A43A", "#8A6A2E")),
+)
+
+fun shopMode(theme: String?): ShopMode? = if (theme != null && theme.startsWith("m:")) SHOP_MODES.firstOrNull { "m:${it.key}" == theme } else null
+
+/** Nom lisible d'un thème : thème de base ou ambiance. */
+fun themeName(theme: String): String = shopMode(theme)?.name ?: THEMES.firstOrNull { it.first == theme }?.second ?: "Auto"
+
+/** Thème de base équivalent (pour le serveur et la version web, qui ne connaissent que les thèmes de base). */
+fun baseTheme(theme: String): String = shopMode(theme)?.let { if (it.dark) "dark" else "light" } ?: theme.takeIf { it in setOf("system", "light", "dark", "oled", "weather") } ?: "system"

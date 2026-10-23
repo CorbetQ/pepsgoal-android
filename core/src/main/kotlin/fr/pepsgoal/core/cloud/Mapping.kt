@@ -110,7 +110,7 @@ object Mapping {
 
     /* ---------- réglages du compte ---------- */
     private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "hardDays", "essentials", "flameSkin", "shop", "places", "rewards", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams")
-    private val SETTING_KEYS = listOf("browser", "defaultVis", "bg", "accentCustom", "noSuggest", "weather", "wxCard", "glassBlur", "hideOngoing", "fx")
+    private val SETTING_KEYS = listOf("browser", "defaultVis", "bg", "accentCustom", "noSuggest", "weather", "wxCard", "glassBlur", "hideOngoing", "fx", "themeMode")
 
     private fun strArr(l: List<String>) = JsonArray(l.map(::JsonPrimitive))
 
@@ -136,8 +136,10 @@ object Mapping {
         extra["accentCustom"] = s.accentCustom?.let(::strArr) ?: JsonNull
         extra["noSuggest"] = JsonPrimitive(s.noSuggest); extra["weather"] = s.weather?.let { JSON.encodeToJsonElement(it) } ?: JsonNull
         extra["wxCard"] = JsonPrimitive(s.wxCard); extra["glassBlur"] = JsonPrimitive(s.glassBlur); extra["fx"] = JsonPrimitive(s.fx); extra["hideOngoing"] = JsonPrimitive(s.hideOngoing)
+        // Ambiance (thème acheté) : le serveur ne garde que le thème de base, l'ambiance voyage dans les extras
+        extra["themeMode"] = if (s.theme.startsWith("m:")) JsonPrimitive(s.theme) else JsonNull
         return buildJsonObject {
-            put("theme", if (s.theme in setOf("system", "light", "dark", "oled", "weather")) s.theme else "system"); put("accent", s.accent.coerceIn(0, 31)); put("social", s.social)
+            put("theme", fr.pepsgoal.core.baseTheme(s.theme)); put("accent", s.accent.coerceIn(0, 31)); put("social", s.social)
             put("defaultVisibility", if (s.defaultVis in setOf("private", "friends", "public")) s.defaultVis else "friends")
             put("morning", buildJsonObject { put("on", s.morning.on); put("time", s.morning.time) }); put("evening", buildJsonObject { put("on", s.evening.on); put("time", s.evening.time) })
             put("extra", JsonObject(extra))
@@ -157,6 +159,7 @@ object Mapping {
         bool("browser")?.let { s.browser = it }
         x["defaultVis"]?.let { s.defaultVis = it.strOr(s.defaultVis) }
         x["bg"]?.let { s.bg = it.strOr(s.bg) }
+        (x["themeMode"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.startsWith("m:") && fr.pepsgoal.core.shopMode(it) != null }?.let { s.theme = it }
         if (x.containsKey("accentCustom")) s.accentCustom = strs("accentCustom")
         bool("noSuggest")?.let { s.noSuggest = it }
         if (x.containsKey("weather")) s.weather = try { (x["weather"] as? JsonObject)?.let { JSON.decodeFromJsonElement(Place.serializer(), it) } } catch (e: Exception) { null }

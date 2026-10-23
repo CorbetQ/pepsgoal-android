@@ -131,7 +131,9 @@ private fun harmonize(c: Color, toward: Color, k: Float = .35f): Color {
 fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     val sysDark = isSystemInDarkTheme()
     val transp = input.transp || input.easy; val motion = input.motion || input.easy
-    val dark = when (input.theme) { "light" -> false; "dark", "oled" -> true; "weather" -> input.skyDark; else -> sysDark }
+    // Ambiance achetée (« m:<clé> ») : thème d'interface complet, clair ou sombre
+    val mode = fr.pepsgoal.core.shopMode(input.theme)
+    val dark = if (mode != null) mode.dark else when (input.theme) { "light" -> false; "dark", "oled" -> true; "weather" -> input.skyDark; else -> sysDark }
     val oled = input.theme == "oled"
     val ctx = LocalContext.current
     val dyn: ColorScheme? = if (input.materialYou && Build.VERSION.SDK_INT >= 31) (if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)) else null
@@ -151,6 +153,10 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         glass = dyn.surfaceContainerLow.copy(alpha = .78f); glassStrong = dyn.surfaceContainerHigh.copy(alpha = .92f)
     }
     if (oled) { bg = Color.Black; glass = Color(255, 255, 255, 14); glassStrong = Color(20, 20, 24, 240) }
+    if (mode != null) {
+        bg = hex(mode.bg); ink = hex(mode.ink); ink2 = mix(ink, bg, .2f); ink3 = mix(ink, bg, .4f)
+        val g = hex(mode.glass); glass = g.copy(alpha = .62f); glassStrong = g.copy(alpha = if (dark) .92f else .88f)
+    }
     // Opacité du verre : réglage séparé du flou (Paramètres › Apparence)
     val alpha = when (input.glassOpacity) { "low" -> .38f; "high" -> .86f; else -> .62f }
     glass = glass.copy(alpha = if (oled) glass.alpha else minOf(.95f, alpha + if (dyn != null) .08f else 0f))
@@ -174,7 +180,7 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         if (dark) Color(3, 3, 14, 160) else Color(13, 14, 43, 97),
         ac[0], ac[1], ac[2], if (dyn != null) (if (dark) dyn.onPrimaryContainer else dyn.onPrimary) else hex("#10102A"),
         if (dark) hex("#5BE38A") else hex("#1E8E3E"), if (dark) hex("#FF6B81") else hex("#C8102E"), if (dark) hex("#6FE3FF") else hex("#0057D9"),
-        if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
+        if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: mode?.let { m -> m.blobs.map(::hex) + ac[1] } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
         if (oled) .22f else if (dark) .42f else .55f, types, dyn != null, input.contrast, transp, input.mono, motion,
         when (input.glassBlur) { "xlow" -> 20f; "low" -> 40f; "high" -> 110f; else -> 70f },
         input.easy, input.big || input.easy, input.oneHand
@@ -183,10 +189,10 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     val base = dyn ?: if (dark) darkColorScheme() else lightColorScheme()
     val scheme = base.copy(
         primary = pal.flame, onPrimary = pal.onAccent, secondary = pal.pink, tertiary = pal.flame2,
-        background = bg, onBackground = ink, surface = if (oled) Color.Black else if (dyn != null) dyn.surface else (if (dark) hex("#10122E") else hex("#F7F7FF")),
+        background = bg, onBackground = ink, surface = if (oled) Color.Black else if (mode != null) mix(bg, hex(mode.glass), .5f) else if (dyn != null) dyn.surface else (if (dark) hex("#10122E") else hex("#F7F7FF")),
         onSurface = ink, onSurfaceVariant = ink2, outline = ink3, outlineVariant = line, error = pal.danger,
         surfaceContainerLow = glass, surfaceContainer = glassStrong, surfaceContainerHigh = glassStrong,
-        surfaceContainerHighest = if (dark) hex("#1C1F4A") else hex("#FFFFFF")
+        surfaceContainerHighest = mode?.let { hex(it.glass) } ?: if (dark) hex("#1C1F4A") else hex("#FFFFFF")
     ).let { if (dyn != null) it.copy(primary = dyn.primary, onPrimary = dyn.onPrimary, primaryContainer = dyn.primaryContainer, secondary = dyn.secondary, tertiary = dyn.tertiary, surface = dyn.surface) else it }
 
     val t = Typography()

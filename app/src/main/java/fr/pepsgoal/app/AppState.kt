@@ -139,6 +139,10 @@ class AppState(val app: PepsApp) : Hooks {
     var postLimit by mutableStateOf(20)
     /** Thème recalculé (réglages de l'appareil modifiés). */
     var themeTick by mutableLongStateOf(0L)
+    /** Essai d'une ambiance de la boutique (quelques secondes, jamais enregistré). */
+    var themePreview by mutableStateOf<String?>(null)
+    /** Onglet ouvert de la boutique (icons, themes, modes, bgs). */
+    var shopTab by mutableStateOf("icons")
     private var bumpJob: Job? = null
 
     val pg get() = app.pg
