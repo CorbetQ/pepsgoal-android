@@ -52,7 +52,7 @@ fun StatsScreen(ui: AppState) {
         item("health") { HealthStatsCard(ui) }
         item("insights") { InsightsCard(ui) }
         item("pixels") { YearPixels(ui) }
-        item("hours") { fr.pepsgoal.app.ui.sheets.HourHeatCard(ui) }
+        item("hourheat") { fr.pepsgoal.app.ui.sheets.HourHeatCard(ui) }
         // Raisons notées les jours manqués (« Je n'ai pas pu ») — calcul mémorisé dans l'élément (contexte Compose)
         item("why") {
             val why = remember(ui.rev) { pg.missStats() }

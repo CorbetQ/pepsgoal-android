@@ -10,7 +10,11 @@ import fr.pepsgoal.app.ui.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,40 +35,175 @@ import kotlinx.coroutines.delay
 fun FriendsScreen(ui: AppState) {
     ui.watch()
     val pg = ui.pg; val u = pg.me() ?: return
-    val incoming = pg.db.friendships.filter { it.to == u.id && it.status == "pending" }
-    val outgoing = pg.db.friendships.filter { it.from == u.id && it.status == "pending" }
-    val friends = pg.friendsOf(u.id).mapNotNull { pg.userById(it) }.sortedByDescending { pg.globalStreak(it.id).n }
+    val incoming = remember(ui.rev) { pg.db.friendships.filter { it.to == u.id && it.status == "pending" } }
+    val outgoing = remember(ui.rev) { pg.db.friendships.filter { it.from == u.id && it.status == "pending" } }
+    // Amis et leur série, calculés une fois par changement de la base
+    val friends = remember(ui.rev, u.id) { pg.friendsOf(u.id).mapNotNull { pg.userById(it) }.map { it to pg.globalStreak(it.id) }.sortedByDescending { it.second.n } }
+    val unread = Social.unreadMsgs(ui)
+    val searching = ui.friendQuery.isNotBlank()
     ScreenList {
-        item("msgs") { MessagesCard(ui, u) }
-        if (incoming.isNotEmpty()) item("in") {
-            Glass {
-                CardHead("Demandes reçues") { Count(incoming.size) }
-                incoming.forEach { f -> pg.userById(f.from)?.let { x -> PersonRow(ui, x) {
-                    PButton("Accepter", { ui.run("Vous êtes maintenant amis.", "users") { ui.cloud.acceptRequest(f.id) } }, kind = "primary", small = true)
-                    PButton("Refuser", { ui.run { ui.cloud.declineRequest(f.id) } }, small = true)
-                } } }
+        item("search") { Field(ui.friendQuery, { ui.friendQuery = it }, "", placeholder = "Rechercher un nom ou un @pseudo", max = 40, icon = "search") }
+        if (searching) { item("results") { SearchCard(ui, u) }; return@ScreenList }
+        if (incoming.isNotEmpty()) item("in") { RequestsCard(ui, incoming) }
+        item("tabs") {
+            Seg(listOf("friends" to (if (friends.isEmpty()) "Amis" else "Amis · ${friends.size}"), "msgs" to (if (unread > 0) "Messages · $unread" else "Messages"), "discover" to "Découvrir"),
+                ui.friendsTab, { ui.friendsTab = it }, Modifier.fillMaxWidth(), icons = listOf("users", "comment", "compass"))
+        }
+        when (ui.friendsTab) {
+            "msgs" -> item("msgs") { MessagesCard(ui, u, always = true) }
+            "discover" -> {
+                item("invite") { InviteCard(ui, u) }
+                item("sugg") { SuggestCard(ui, u) }
+                if (outgoing.isNotEmpty()) item("out") {
+                    Glass {
+                        CardHead("Demandes envoyées") { Count(outgoing.size) }
+                        outgoing.forEach { f -> pg.userById(f.to)?.let { x -> PersonRow(ui, x) { PButton("Annuler", { ui.run { ui.cloud.declineRequest(f.id) } }, kind = "ghost", small = true) } } }
+                    }
+                }
+            }
+            else -> {
+                if (friends.isEmpty()) item("empty") {
+                    Glass { Empty("Pas encore d’amis", "Ajoute des amis pour suivre vos séries ensemble, vous encourager et vous défier.", icon = "users") { PButton("Trouver des amis", { ui.friendsTab = "discover" }, icon = "userplus", kind = "primary", small = true) } }
+                } else {
+                    item("today") { FriendsTodayCard(ui, u, friends) }
+                    if (friends.size >= 2) item("podium") { PodiumCard(ui, u, friends) }
+                    item("league") { LeagueCard(ui) }
+                    item("list") {
+                        Glass(pad = 12.dp) {
+                            CardHead("Mes amis", Modifier.padding(start = 6.dp, top = 4.dp)) { Count(friends.size) }
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { friends.forEach { (x, st) -> FriendRow(ui, x, st) } }
+                        }
+                    }
+                }
             }
         }
-        item("league") { LeagueCard(ui) }
-        item("friends") {
-            Glass {
-                CardHead("Mes amis") { Count(friends.size) }
-                if (friends.isEmpty()) Empty("Pas encore d'amis", "Cherche des personnes ci-dessous pour suivre vos séries ensemble.", icon = "users")
-                friends.forEach { x -> PersonRow(ui, x) {
-                    val n = Social.unreadFrom(ui, x.id)
-                    PButton(if (n > 0) "Message · $n" else "Message", { ui.push(Screen.Chat(with = x.id)) }, icon = "comment", small = true)
-                    IconBtn("x", "Retirer ${x.name}", { ui.confirm("Retirer ${first(x.name)} de tes amis ?", "Vous ne verrez plus vos objectifs réservés aux amis. Tu pourras l'ajouter à nouveau plus tard.", "Retirer") { ui.close(); ui.run { ui.cloud.unfriend(x.id) } } }, plain = true, size = 36.dp)
-                } }
+    }
+}
+
+/** Demandes d'amis reçues : cartes avec accepter / refuser. */
+@Composable
+private fun RequestsCard(ui: AppState, incoming: List<fr.pepsgoal.core.model.Friendship>) {
+    val p = LocalPal.current; val pg = ui.pg
+    Glass(border = p.flame.copy(alpha = .45f)) {
+        CardHead("Demandes reçues") { Count(incoming.size) }
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            incoming.forEach { f -> pg.userById(f.from)?.let { x ->
+                Column(Modifier.width(148.dp).clip(RoundedCornerShape(20.dp)).background(p.glassStrong).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.clip(CircleShape).clickable { ui.open(Sheet.User(x.id)) }) { Av(x, 56.dp) }
+                    Text(x.name, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Muted("@${x.username}", small = true, maxLines = 1)
+                    PButton("Accepter", { ui.run("Vous êtes maintenant amis.", "users") { ui.cloud.acceptRequest(f.id) } }, Modifier.fillMaxWidth(), kind = "primary", small = true)
+                    PButton("Refuser", { ui.run { ui.cloud.declineRequest(f.id) } }, Modifier.fillMaxWidth(), small = true, kind = "ghost")
+                }
+            } }
+        }
+    }
+}
+
+/** Qui a validé aujourd'hui : avatars cerclés de flamme (ou de gris), toi en premier. */
+@Composable
+private fun FriendsTodayCard(ui: AppState, u: User, friends: List<Pair<User, Streak>>) {
+    val p = LocalPal.current; val pg = ui.pg
+    val me = remember(ui.rev) { pg.globalStreak(u.id) }
+    val all = listOf(u to me) + friends.sortedByDescending { it.second.lit }
+    val lit = friends.count { it.second.lit }
+    Glass {
+        CardHead("Aujourd’hui") { Count("$lit / ${friends.size}") }
+        Muted(when { lit == 0 -> "Personne n’a encore validé : montre l’exemple !"; lit == friends.size -> "Tous tes amis ont validé aujourd’hui 🔥"; else -> "${pl(lit, "ami a", "amis ont")} déjà validé aujourd’hui." }, small = true)
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            all.forEach { (x, st) ->
+                Column(Modifier.width(64.dp).clip(RoundedCornerShape(16.dp)).clickable { if (x.id == u.id) ui.nav("profile") else ui.open(Sheet.User(x.id)) },
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box(Modifier.size(62.dp).clip(CircleShape).background(if (st.lit) Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)) else Brush.linearGradient(listOf(p.line, p.line))).padding(3.dp)
+                        .clip(CircleShape).background(p.bg).padding(2.dp), contentAlignment = Alignment.Center) {
+                        Av(x, 52.dp, modifier = if (st.lit) Modifier else Modifier.alpha(.55f))
+                    }
+                    Text(if (x.id == u.id) "Toi" else first(x.name), fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically) { Flame(12.dp, dim = !st.lit); Text("${st.n}", fontSize = 11.sp, color = p.ink2, fontWeight = FontWeight.ExtraBold) }
+                }
             }
         }
-        if (outgoing.isNotEmpty()) item("out") {
-            Glass {
-                CardHead("Demandes envoyées")
-                outgoing.forEach { f -> pg.userById(f.to)?.let { x -> PersonRow(ui, x) { PButton("Annuler", { ui.run { ui.cloud.declineRequest(f.id) } }, kind = "ghost", small = true) } } }
+    }
+}
+
+/** Podium des séries entre amis (toi compris). */
+@Composable
+private fun PodiumCard(ui: AppState, u: User, friends: List<Pair<User, Streak>>) {
+    val p = LocalPal.current
+    val me = remember(ui.rev) { ui.pg.globalStreak(u.id) }
+    val top = (friends + (u to me)).sortedByDescending { it.second.n }.take(3)
+    if (top.size < 2) return
+    val order = if (top.size == 3) listOf(1, 0, 2) else listOf(1, 0)
+    val heights = listOf(84.dp, 62.dp, 48.dp)
+    val medals = listOf("🥇", "🥈", "🥉")
+    Glass {
+        CardHead("Podium des séries") { Muted("jours d’affilée", small = true) }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
+            order.forEach { i ->
+                val (x, st) = top[i]
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable { if (x.id == u.id) ui.nav("profile") else ui.open(Sheet.User(x.id)) }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Av(x, if (i == 0) 58.dp else 48.dp)
+                    Text(if (x.id == u.id) "Toi" else first(x.name), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Box(Modifier.fillMaxWidth().height(heights[i]).clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 6.dp, bottomEnd = 6.dp))
+                        .background(Brush.verticalGradient(if (i == 0) listOf(p.flame, p.pink) else listOf(p.flame.copy(alpha = .45f - i * .1f), p.pink.copy(alpha = .3f - i * .08f)))), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(medals[i], fontSize = 18.sp)
+                            Text("${st.n}", fontFamily = fr.pepsgoal.app.ui.theme.Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = if (i == 0) Color.White else p.ink)
+                        }
+                    }
+                }
             }
         }
-        item("sugg") { SuggestCard(ui, u) }
-        item("search") { SearchCard(ui, u) }
+    }
+}
+
+/** Ligne d'un ami : avatar avec pastille de série, état du jour et bouton message. */
+@Composable
+private fun FriendRow(ui: AppState, x: User, st: Streak) {
+    val p = LocalPal.current; val pg = ui.pg
+    val n = Social.unreadFrom(ui, x.id)
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable { ui.open(Sheet.User(x.id)) }.padding(horizontal = 6.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box {
+            Av(x, 50.dp)
+            Row(Modifier.align(Alignment.BottomEnd).offset(x = 6.dp, y = 4.dp).clip(CircleShape).background(p.bg).padding(horizontal = 5.dp, vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
+                Flame(12.dp, dim = !st.lit); Text("${st.n}", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+            }
+        }
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(x.name, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (pg.isOfficial(x)) Verified()
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(Modifier.size(7.dp).clip(CircleShape).background(if (st.lit) p.ok else p.ink3.copy(alpha = .5f)))
+                Text(if (st.lit) "A validé aujourd’hui" else "Pas encore validé", fontSize = 13.sp, color = if (st.lit) p.ok else p.ink2, maxLines = 1)
+            }
+        }
+        IconBtn("comment", "Écrire à ${x.name}", { ui.push(Screen.Chat(with = x.id)) }, badge = n, size = 40.dp)
+        IconBtn("x", "Retirer ${x.name}", { ui.confirm("Retirer ${first(x.name)} de tes amis ?", "Vous ne verrez plus vos objectifs réservés aux amis. Tu pourras l'ajouter à nouveau plus tard.", "Retirer") { ui.close(); ui.run { ui.cloud.unfriend(x.id) } } }, plain = true, size = 32.dp)
+    }
+}
+
+/** Inviter des amis : partage d'un message avec ton pseudo. */
+@Composable
+private fun InviteCard(ui: AppState, u: User) {
+    val p = LocalPal.current; val pg = ui.pg; val ctx = androidx.compose.ui.platform.LocalContext.current
+    if (pg.isGuest(u)) return
+    Glass {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconTile("userplus", p.flame, p.pink, 44.dp, 14.dp)
+            Column(Modifier.weight(1f)) {
+                Text("Invite tes proches", fontWeight = FontWeight.ExtraBold)
+                Muted("À plusieurs, les séries tiennent plus longtemps.", small = true)
+            }
+        }
+        PButton("Partager une invitation", {
+            val text = tr("Rejoins-moi sur PepsGoal pour tenir nos objectifs ensemble 🔥") + "\n" + tr("Mon pseudo") + " : @${u.username}\nhttps://github.com/CorbetQ/pepsgoal-android/releases/latest"
+            val i = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
+            try { ctx.startActivity(android.content.Intent.createChooser(i, tr("Inviter des amis")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {}
+        }, Modifier.padding(top = 12.dp).fillMaxWidth(), icon = "share", kind = "primary", small = true)
     }
 }
 
@@ -92,7 +231,7 @@ fun PersonRow(ui: AppState, x: User, size: Int = 44, acts: @Composable RowScope.
 fun Verified() { val p = LocalPal.current; Pi("check", Modifier.clip(RoundedCornerShape(50)).background(p.type("objective").c).padding(2.dp), size = 14.dp, tint = p.onAccent) }
 
 @Composable
-private fun MessagesCard(ui: AppState, u: User) {
+private fun MessagesCard(ui: AppState, u: User, always: Boolean = false) {
     val p = LocalPal.current; val pg = ui.pg
     class Row0(val dm: User?, val grp: fr.pepsgoal.core.model.Chat?, val last: Message?, val n: Int)
     val dms = pg.db.messages.filter { it.chat == null && (it.from == u.id || it.to == u.id) }.map { if (it.from == u.id) it.to ?: "" else it.from }.distinct()
@@ -101,7 +240,7 @@ private fun MessagesCard(ui: AppState, u: User) {
         pg.db.chats.filter { it.members.contains(u.id) }.map { g -> Row0(null, g, Social.groupConvo(ui, g.id).lastOrNull(), Social.unreadGroup(ui, g.id)) })
         .sortedWith(compareByDescending<Row0> { it.dm != null && pg.isOfficial(it.dm) }.thenByDescending { it.last?.at ?: it.grp?.at ?: 0L })
     val canGroup = pg.socialOn(u) && !pg.isGuest(u) && !pg.isBanned(u) && pg.friendsOf(u.id).isNotEmpty()
-    if (rows.isEmpty() && !canGroup) return
+    if (rows.isEmpty() && !canGroup && !always) return
     val total = Social.unreadMsgs(ui)
     val cut = { s: String -> if (s.length > 60) s.take(60) + "…" else s }
     Glass {
@@ -200,9 +339,7 @@ private fun SearchCard(ui: AppState, u: User) {
     val list = (results ?: pg.db.users)
         .filter { x -> x.id != u.id && !x.guest && !pg.isAdmin(x) && !pg.isOfficial(x) && pg.friendship(u.id, x.id) == null && !pg.isBlockedPair(u.id, x.id) && (results != null || q.isEmpty() || x.name.lowercase().contains(q) || x.username.contains(q)) }
     Glass {
-        CardHead("Trouver des amis")
-        Field(ui.friendQuery, { ui.friendQuery = it }, "Rechercher", placeholder = "Nom ou @utilisateur", max = 40)
-        Spacer(Modifier.height(8.dp))
+        CardHead("Résultats") { if (results != null || !pg.store.acct) Count(list.size.coerceAtMost(30)) }
         Err(err)
         if (list.isEmpty()) Muted(when { pg.store.acct && q.length < 2 -> "Tape au moins 2 caractères pour chercher une personne."; q.isNotEmpty() -> "Aucun résultat pour cette recherche."; else -> "Tu connais déjà tout le monde ici." }, small = true)
         list.take(30).forEach { x -> PersonRow(ui, x) { PButton("Ajouter", { ui.run("Demande envoyée à ${first(x.name)}.", "userplus") { ui.cloud.sendFriendRequest(x.id) } }, icon = "userplus", small = true) } }

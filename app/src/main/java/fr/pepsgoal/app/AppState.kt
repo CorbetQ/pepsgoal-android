@@ -133,6 +133,9 @@ class AppState(val app: PepsApp) : Hooks {
     var feedTab by mutableStateOf("friends")
     var modTab by mutableStateOf("accounts")
     var friendQuery by mutableStateOf("")
+    /** Onglets mémorisés des pages Profil et Amis. */
+    var profileTab by mutableStateOf("overview")
+    var friendsTab by mutableStateOf("friends")
     var postLimit by mutableStateOf(20)
     /** Thème recalculé (réglages de l'appareil modifiés). */
     var themeTick by mutableLongStateOf(0L)

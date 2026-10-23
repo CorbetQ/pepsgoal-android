@@ -199,7 +199,7 @@ private fun Board(ui: AppState) {
                 Text(if (x.id == u.id) "Toi" else x.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Flame(18.dp); Text("$n", fontWeight = FontWeight.ExtraBold)
             }
-        } else Empty("", "Ajoute des amis pour comparer vos séries.") { PButton("Trouver des amis", { ui.nav("friends") }, icon = "userplus", small = true) }
+        } else Empty("", "Ajoute des amis pour comparer vos séries.") { PButton("Trouver des amis", { ui.friendsTab = "discover"; ui.nav("friends") }, icon = "userplus", small = true) }
     }
 }
 

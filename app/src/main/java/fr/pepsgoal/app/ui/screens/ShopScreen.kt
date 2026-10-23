@@ -77,6 +77,7 @@ fun ShopScreen(ui: AppState) {
                 Muted("Chaque validation rapporte des flammes. Les dépenser ne fait jamais baisser ton niveau ni ta série.", Modifier.padding(top = 8.dp), small = true)
             }
         }
+        item("quests") { FlameQuestsCard(ui) }
         item("tabs") {
             Row(Modifier.fillMaxWidth().clip(CircleShape).background(p.ink.copy(alpha = .06f)).padding(4.dp)) {
                 listOf("icons" to "Icônes", "themes" to "Thèmes", "bgs" to "Fonds").forEach { (k, l) ->
@@ -186,4 +187,30 @@ private fun SeasonTag(season: String, owned: Boolean) {
     }
     Text(txt, Modifier.padding(top = 6.dp).clip(CircleShape).background(if (w != null) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .06f)).padding(horizontal = 8.dp, vertical = 3.dp),
         fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (w != null) p.ink else p.ink2, maxLines = 1)
+}
+
+
+/** « Gagner des flammes » : bonus du jour, de la semaine et de la série, avec leur progression. */
+@Composable
+fun FlameQuestsCard(ui: AppState, modifier: Modifier = Modifier) {
+    val p = LocalPal.current; val pg = ui.pg
+    val qs = remember(ui.rev) { pg.flameQuests() }
+    if (qs.isEmpty()) return
+    Glass(modifier) {
+        CardHead("Gagner des flammes")
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            qs.forEach { q ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    IconTile(q.icon, if (q.done) p.ok else p.flame, if (q.done) p.type("routine").c else p.flame2, 38.dp, 12.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(q.title, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                        Bar(q.progress * 100, height = 6.dp, color = if (q.done) p.ok else null)
+                        Muted(q.sub, small = true, maxLines = 1)
+                    }
+                    if (q.done) Chip("Gagné", "check", p.ok) else Chip("+${q.reward} 🔥", color = p.flame.copy(alpha = .18f), ink = p.ink)
+                }
+            }
+        }
+        Muted("Et toujours : chaque validation (8 à 40 flammes selon le type) et chaque palier de badge (25 à 400 flammes).", Modifier.padding(top = 10.dp), small = true)
+    }
 }
