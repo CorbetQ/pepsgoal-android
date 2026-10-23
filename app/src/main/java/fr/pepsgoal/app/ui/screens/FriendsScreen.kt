@@ -86,7 +86,7 @@ private fun RequestsCard(ui: AppState, incoming: List<fr.pepsgoal.core.model.Fri
     val p = LocalPal.current; val pg = ui.pg
     Glass(border = p.flame.copy(alpha = .45f)) {
         CardHead("Demandes reçues") { Count(incoming.size) }
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             incoming.forEach { f -> pg.userById(f.from)?.let { x ->
                 Column(Modifier.width(148.dp).clip(RoundedCornerShape(20.dp)).background(p.glassStrong).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(Modifier.clip(CircleShape).clickable { ui.open(Sheet.User(x.id)) }) { Av(x, 56.dp) }
@@ -111,7 +111,7 @@ private fun FriendsTodayCard(ui: AppState, u: User, friends: List<Pair<User, Str
         CardHead("Aujourd’hui") { Count("$lit / ${friends.size}") }
         Muted(when { lit == 0 -> "Personne n’a encore validé : montre l’exemple !"; lit == friends.size -> "Tous tes amis ont validé aujourd’hui 🔥"; else -> "${pl(lit, "ami a", "amis ont")} déjà validé aujourd’hui." }, small = true)
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             all.forEach { (x, st) ->
                 Column(Modifier.width(64.dp).clip(RoundedCornerShape(16.dp)).clickable { if (x.id == u.id) ui.nav("profile") else ui.open(Sheet.User(x.id)) },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -305,7 +305,7 @@ private fun SuggestCard(ui: AppState, u: User) {
         if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Pi("sparkle", size = 15.dp, tint = p.flame); Muted(if (aiPicks == null) "Le coach cherche les meilleurs partenaires pour toi…" else "Classées par ton coach selon tes objectifs", small = true)
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             shown.forEach { (x, s) ->
                 val mutual = s.int("mutual"); val via = s.strs("via")
                 val why = aiWhy[x.id] ?: if (mutual > 0) pl(mutual, "ami en commun", "amis en commun") + (if (via.isNotEmpty()) " · " + via.take(2).joinToString(", ") { first(it) } else "") else if (s.int("groups") > 0) "Dans un de tes groupes" else "Nouveau sur PepsGoal"

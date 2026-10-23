@@ -156,10 +156,7 @@ fun RewardSheet(ui: AppState, id: String?) {
     SectionTitle("Quand ?")
     FlowRowCompat(gap = 6.dp) { listOf(7, 14, 21, 30, 60, 100, 365).forEach { n -> FChip("$n jours", target == n, { target = n }) } }
     SectionTitle("Série comptée")
-    FlowRowCompat(gap = 6.dp) {
-        FChip("🔥 Ma série globale", goal == null, { goal = null })
-        goals.forEach { g -> FChip("${g.icon} ${g.title.take(20)}", goal == g.id, { goal = g.id }) }
-    }
+    GoalChips(goals, goal, { goal = it }, none = "🔥 Ma série globale", bleed = 20.dp)
     SheetFoot {
         if (edit != null) PButton("Supprimer", { u.rewards.remove(edit); pg.store.commit(); ui.close() }, kind = "danger")
         PButton("Enregistrer", {

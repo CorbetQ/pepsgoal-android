@@ -331,6 +331,14 @@ private fun fmtUptime(s0: Double?): String {
 
 @Composable
 private fun ModServer(ui: AppState) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        ServerUpdateCard(ui)
+        ModServerStats(ui)
+    }
+}
+
+@Composable
+private fun ModServerStats(ui: AppState) {
     val p = LocalPal.current; val cloud = ui.cloud
     LaunchedEffect(Unit) { while (true) { cloud.loadStats(); delay(30_000) } }
     val d = cloud.stats

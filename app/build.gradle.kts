@@ -13,8 +13,8 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 480
-        versionName = "4.8.0"
+        versionCode = 490
+        versionName = "4.9.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
@@ -68,7 +68,11 @@ android {
         buildConfig = true
     }
 
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    packaging {
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        // Manifestes OSGi en double (JSch et jspecify), inutiles sur Android
+        resources.excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+    }
 }
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
@@ -117,6 +121,8 @@ dependencies {
     // Play Store seulement : mises à jour et avis sans quitter l'application
     // Codes QR des objectifs partagés : génération (ZXing) et lecture (scanner Google, sans permission caméra)
     implementation("com.google.zxing:core:3.5.3")
+    // Modération › Serveur : mise à jour du serveur en SSH
+    implementation("com.github.mwiede:jsch:0.2.20")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     "playImplementation"("com.google.android.play:app-update-ktx:2.1.0")
     "playImplementation"("com.google.android.play:review-ktx:2.0.2")

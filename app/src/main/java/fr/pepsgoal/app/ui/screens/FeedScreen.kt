@@ -106,7 +106,7 @@ fun StoriesBar(ui: AppState, u: User) {
     val p = LocalPal.current; val pg = ui.pg
     val groups = pg.storyUsers(u.id); val mine = groups.firstOrNull { it.u.id == u.id }; val others = groups.filter { it.u.id != u.id }
     Glass(pad = 14.dp) {
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(Modifier.fillMaxWidth().bleed(14.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             StoryBubble("Ta story", u, if (mine != null) "ring" else "none", { if (mine != null) openStories(ui, u.id) else if (!pg.socialBlocked("de publier une story")) ui.open(Sheet.StoryNew()) }) {
                 Box(Modifier.size(24.dp).clip(CircleShape).background(p.ink).border(2.dp, p.bg, CircleShape).clickable { if (!pg.socialBlocked("de publier une story")) ui.open(Sheet.StoryNew()) }, contentAlignment = Alignment.Center) { Pi("plus", size = 14.dp, tint = p.bg) }
             }

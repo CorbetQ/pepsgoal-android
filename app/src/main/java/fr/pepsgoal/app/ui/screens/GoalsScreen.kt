@@ -26,9 +26,7 @@ import fr.pepsgoal.core.TYPE_GROUPS
 import fr.pepsgoal.core.model.Goal
 
 @Composable
-fun ChipsRow(content: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), content = content)
-}
+fun ChipsRow(content: @Composable RowScope.() -> Unit) = ChipScroller(bleed = 16.dp, content = content)
 
 /**
  * Onglet Objectifs : vue d'ensemble, recherche, filtres par état et par type, tri, regroupement et deux affichages
