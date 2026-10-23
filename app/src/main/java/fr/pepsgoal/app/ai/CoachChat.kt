@@ -73,7 +73,11 @@ object CoachChat {
         job = scope.launch {
             var out: String? = null
             try {
-                if (LocalAi.on(ctx)) out = LocalAi.generate(ctx, maxTokens(ctx), .75f, onPartial = { partial = visible(it) }) { lvl -> prompt(ctx, text, lvl) }
+                if (LocalAi.on(ctx)) {
+                    // Données Santé lues avant de construire la consigne
+                    val health = try { fr.pepsgoal.app.sys.Health.summary(ctx) } catch (e: Exception) { "" }
+                    out = LocalAi.generate(ctx, maxTokens(ctx), .75f, onPartial = { partial = visible(it) }) { lvl -> prompt(ctx, text, lvl, health) }
+                }
             } catch (e: CancellationException) { out = partial }
             // Arrêtée avant d'avoir rien écrit : pas de réponse
             if (stopped && out.isNullOrBlank()) { busy = false; partial = null; return@launch }
@@ -143,8 +147,8 @@ object CoachChat {
         return sb.toString()
     }
 
-    private fun prompt(ctx: Context, text: String, lvl: Int): String {
-        val health = if (lvl == 0) try { fr.pepsgoal.app.sys.Health.summary(ctx) } catch (e: Exception) { "" } else ""
+    private fun prompt(ctx: Context, text: String, lvl: Int, health0: String): String {
+        val health = if (lvl == 0) health0 else ""
         val hist = all(ctx)
         // Le dernier message (celui de l'utilisateur) est déjà dans l'historique enregistré
         val turns = hist.takeLast(when (lvl) { 0 -> 8; 1 -> 4; else -> 1 }).joinToString("\n") { (if (it.role == "user") "Utilisateur : " else "${Personas.coachName(ctx)} : ") + it.text.take(if (lvl == 0) 500 else 250) }
