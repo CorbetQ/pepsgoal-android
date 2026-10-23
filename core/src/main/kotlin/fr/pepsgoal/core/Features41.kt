@@ -126,7 +126,7 @@ fun Pg.rate30(g: Goal): Int {
 
 /* ---------------------------------------------------------------- Réactions du feed */
 
-val REACTIONS = listOf("fire" to "🔥", "muscle" to "💪", "clap" to "👏", "party" to "🎉")
+val REACTIONS = listOf("fire" to "🔥", "muscle" to "💪", "clap" to "👏", "party" to "🎉", "laugh" to "😂", "heart" to "❤️")
 fun reactionEmoji(k: String?) = REACTIONS.firstOrNull { it.first == k }?.second ?: "🔥"
 
 /** Réactions d'une publication, de la plus fréquente à la plus rare : (emoji, nombre). */

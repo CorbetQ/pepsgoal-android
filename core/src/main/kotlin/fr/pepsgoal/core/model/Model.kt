@@ -94,7 +94,7 @@ class SavedPlace(val id: String, var name: String, var icon: String = "📍", va
 class Reward(val id: String, var title: String, var emoji: String = "🎁", var goalId: String? = null, var target: Int = 30, val createdAt: Long = 0, var reachedAt: Long? = null, var claimedAt: Long? = null)
 
 @Serializable
-class GoalGroup(val id: String, var name: String, var icon: String = "📁")
+class GoalGroup(val id: String, var name: String, var icon: String = "📁", var color: String? = null)
 
 @Serializable
 class Ban(val until: Long?, val reason: String = "", val at: Long = 0)

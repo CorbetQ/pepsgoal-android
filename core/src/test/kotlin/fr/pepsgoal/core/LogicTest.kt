@@ -336,4 +336,42 @@ class LogicTest {
         assertTrue(st.n >= 20); assertTrue(sl.any { s -> s.parts.any { it is Part.Months } })
         val x = Recaps.yearExtras(pg, "me", st.r); assertEquals(g.id, x.podium.first().first.id); assertEquals(12, x.months.size)
     }
+
+    @Test fun pauseKeepsStreakAndHidesGoal() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        for (i in 1..5) pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        assertEquals(null, pg.pauseGoal(g, ymd(todayDate().plusDays(3))))
+        assertTrue(pg.isPaused(g)); assertTrue(pg.todayPlan().due.none { it.g.id == g.id })
+        at(2026, 10, 24); assertEquals(5, pg.goalStreak(g))   // les jours de pause ne cassent pas la série
+        at(2026, 10, 25); pg.checkResumes(); assertEquals(null, g.pausedUntil)
+        pg.resumeGoal(g); assertTrue(!pg.isPaused(g, today()))
+    }
+
+    @Test fun ladderClimbsAfterPerfectWeek() {
+        val g = goal("duration", ago = 10) { minutes = 10.0; ladder = true; ladderStep = 5.0; ladderMax = 30.0; ladderMin = 5.0 }
+        for (i in 1..7) pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusDays(i.toLong())))
+        assertTrue(pg.checkLadder(g) != null); assertEquals(15.0, g.minutes)
+        assertEquals(null, pg.checkLadder(g)) // une fois par semaine au plus
+    }
+
+    @Test fun catchUpYesterdayRefundsFreeze() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        val u = pg.me()!!; u.frozenDays.add(yday()); u.freezes = 1
+        at(2026, 10, 21, 9); assertTrue(pg.missedYesterday().any { it.id == g.id })
+        assertTrue(pg.catchUp(g)); assertTrue(pg.hasCheck(g.id, yday())); assertEquals(2, u.freezes)
+        assertTrue(!pg.catchUp(g))
+    }
+
+    @Test fun secretsQuestsPetAndSeasons() {
+        val g = goal("routine") { mode = "days"; days = (0..6).toList() }
+        at(2026, 11, 11, 4); pg.addCheck(g, "done", 1.0, 10, today())
+        assertTrue("twin" in pg.secretsEarned()); val f = pg.checkSecrets(); assertTrue(f.any { it.key == "twin" }); assertTrue(pg.checkSecrets().isEmpty())
+        // Quête : un chapitre par journée active
+        val st = pg.questState()!!; assertEquals(0, st.done); assertTrue(st.canUnlock)
+        assertEquals(1, pg.unlockChapter()); assertEquals(null, pg.unlockChapter())
+        assertEquals("egg", pg.pet().stage.key); assertEquals("happy", pg.pet().mood)
+        assertEquals(1, fr.pepsgoal.core.cloud.LeagueSeason.move(listOf(0.0, .2), 0)); assertEquals(-1, fr.pepsgoal.core.cloud.LeagueSeason.move(listOf(1.0, .9), 2))
+        assertEquals(2, fr.pepsgoal.core.cloud.LeagueSeason.division(listOf("season:2026-09:1:1:0.10")))
+        assertEquals(80, shopPriceOf("acc:beret"))
+    }
 }

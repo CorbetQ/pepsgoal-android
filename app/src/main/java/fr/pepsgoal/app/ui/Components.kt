@@ -10,6 +10,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -40,6 +41,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
@@ -97,17 +99,43 @@ fun Pi(name: String, modifier: Modifier = Modifier, size: Dp = 20.dp, tint: Colo
 private const val FLAME_OUT = "M12 22.5c-4.4 0-7.6-3.1-7.6-7.3 0-3.6 2.4-5.8 4-7.8.4 1.9 1.3 3.2 2.6 3.7-.4-3.2.7-6.4 3.6-8.6-.3 3.5 1.6 5.5 3.2 7.7 1.2 1.6 1.8 3.3 1.8 5.2 0 4.2-3.2 7.1-7.6 7.1z"
 private const val FLAME_IN = "M12 21.6c-2 0-3.4-1.4-3.4-3.3 0-1.6 1-2.7 2-3.7.2 1 .7 1.6 1.3 1.8.1-1.7.8-3 2.1-3.9 0 1.7.6 2.7 1.1 3.6.3.6.5 1.2.5 2.1 0 1.9-1.6 3.4-3.6 3.4z"
 
+/** Style de la flamme choisi dans le profil : forme (classique, ronde, effilée, jumelle) et effet (étincelles, braises, halo). */
+@androidx.compose.runtime.Immutable
+data class FlameStyle(val shape: String = "classic", val fx: String = "none")
+val LocalFlameStyle = staticCompositionLocalOf { FlameStyle() }
+val FLAME_SHAPES = listOf("classic" to "Classique", "round" to "Ronde", "sharp" to "Effilée", "twin" to "Jumelle")
+val FLAME_FX = listOf("none" to "Aucun", "sparks" to "Étincelles", "embers" to "Braises", "halo" to "Halo")
+
 @Composable
-fun Flame(size: Dp, modifier: Modifier = Modifier, dim: Boolean = false, colors: List<Color>? = null) {
+fun Flame(size: Dp, modifier: Modifier = Modifier, dim: Boolean = false, colors: List<Color>? = null, style: FlameStyle? = null) {
     val p = LocalPal.current
     val cs = colors ?: LocalFlame.current ?: listOf(p.pink, p.flame, p.flame2)
+    val st = style ?: LocalFlameStyle.current
     val outer = remember { PathParser().parsePathString(FLAME_OUT).toPath() }
     val inner = remember { PathParser().parsePathString(FLAME_IN).toPath() }
+    // Effets animés réservés aux grandes flammes (accueil, profil, Focus) : rien à calculer pour les petites icônes
+    val fxOn = st.fx != "none" && size >= 40.dp && !dim && !p.motion && Perf.flags.fx
+    val ph = if (fxOn) slowPhaseState(2600, 15) else null
+    val a = if (dim) .35f else 1f
     Canvas(modifier.size(size)) {
         val k = this.size.minDimension / 24f
-        scale(k, k, pivot = Offset.Zero) {
-            drawPath(outer, Brush.verticalGradient(cs, startY = 22f, endY = 1f), alpha = if (dim) .35f else 1f)
-            drawPath(inner, Brush.verticalGradient(listOf(cs.last(), Color(0xFFFFF6CC)), startY = 22f, endY = 12f), alpha = if (dim) .35f else 1f)
+        val t = ph?.value ?: 0f
+        if (fxOn && st.fx == "halo") { val pulse = .5f + .5f * kotlin.math.sin(t * 6.2832f); drawCircle(Brush.radialGradient(listOf(cs[1].copy(alpha = .35f + .2f * pulse), Color.Transparent), center = Offset(12f * k, 14f * k), radius = 13f * k), 13f * k, Offset(12f * k, 14f * k)) }
+        fun body(dx: Float, sx: Float, sy: Float) = withTransform({ scale(k, k, pivot = Offset.Zero); translate(dx, 0f); scale(sx, sy, pivot = Offset(12f, 22.5f)) }) {
+            drawPath(outer, Brush.verticalGradient(cs, startY = 22f, endY = 1f), alpha = a)
+            drawPath(inner, Brush.verticalGradient(listOf(cs.last(), Color(0xFFFFF6CC)), startY = 22f, endY = 12f), alpha = a)
+        }
+        when (st.shape) {
+            "round" -> body(0f, 1.16f, .9f)
+            "sharp" -> body(0f, .8f, 1.04f)
+            "twin" -> { body(-3.6f, .62f, .7f); body(2f, .86f, .92f) }
+            else -> body(0f, 1f, 1f)
+        }
+        if (fxOn) when (st.fx) {
+            "sparks" -> for (i in 0 until 6) { val q = (t * 1.6f + i / 6f) % 1f; val x = (12f + kotlin.math.sin(i * 2.1f + q * 6f) * (3f + i % 3)) * k; val y = (6f - q * 7f) * k
+                drawCircle(Color(0xFFFFF2B0).copy(alpha = (1f - q) * .9f), (.55f - q * .35f) * k, Offset(x, y)) }
+            "embers" -> for (i in 0 until 7) { val q = (t + i / 7f) % 1f; val side = if (i % 2 == 0) -1f else 1f; val x = (12f + side * (4f + q * 4f) + kotlin.math.sin(q * 9f + i) * 1.2f) * k; val y = (20f - q * 18f) * k
+                drawCircle(cs[1].copy(alpha = (1f - q) * .85f), (.7f - q * .45f) * k, Offset(x, y)) }
         }
     }
 }
@@ -170,6 +198,9 @@ fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink
  * Apparition en cascade des cartes : à l'ouverture d'un onglet ou d'une page, les cartes arrivent l'une après
  * l'autre (léger décalage), en glissant vers le haut avec un rebond.
  */
+/** Marge intérieure par défaut des cartes (l'accueil compact ou aéré la change). */
+val LocalGlassPad = staticCompositionLocalOf { 18.dp }
+
 /** Onglet touché alors qu'il est déjà ouvert : signal de « retour en haut » pour la liste de la page. */
 object TabReTap { var n by mutableIntStateOf(0) }
 
@@ -356,8 +387,10 @@ fun Modifier.bounce(inter: MutableInteractionSource, pressed: Float = .94f): Mod
 
 /** Zone cliquable avec effet ressort et ondulation (à placer après le clip/fond de l'élément). */
 @Composable
-fun Modifier.springClick(inter: MutableInteractionSource, enabled: Boolean = true, label: String? = null, role: Role? = null, onClick: () -> Unit): Modifier =
-    this.clickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role) { Feedback.tap(); onClick() }
+fun Modifier.springClick(inter: MutableInteractionSource, enabled: Boolean = true, label: String? = null, role: Role? = null, onLongClick: (() -> Unit)? = null, onClick: () -> Unit): Modifier =
+    if (onLongClick == null) this.clickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role) { Feedback.tap(); onClick() }
+    else this.combinedClickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role,
+        onLongClick = { Feedback.armed(); onLongClick() }) { Feedback.tap(); onClick() }
 
 /** Fond « verre givré » : arrière-plan flouté et teinté (backdrop-filter de la version web), sinon simple teinte. */
 @Composable
@@ -376,7 +409,7 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
 }
 
 @Composable
-fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = 18.dp, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = LocalGlassPad.current, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     val shape = RoundedCornerShape(radius)
     val inter = remember { MutableInteractionSource() }

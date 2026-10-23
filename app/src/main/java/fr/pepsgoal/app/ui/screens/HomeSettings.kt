@@ -1,6 +1,7 @@
 package fr.pepsgoal.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,9 @@ val HOME_CARDS = linkedMapOf(
     "hero" to Triple("Bonjour et série", "Date, message du jour, flamme et semaine", "sun"),
     "aipromo" to Triple("Présentation du coach IA", "Tant que l’assistant n’est pas installé", "sparkle"),
     "day" to Triple("Ta journée", "Anneau du jour, niveau et flammes", "gauge"),
+    "timeline" to Triple("Heure par heure", "Tes objectifs placés à l’heure où tu les fais d’habitude", "clock"),
+    "quest" to Triple("Quête", "Une histoire en 7 chapitres, un par journée active", "book"),
+    "evening" to Triple("Bilan express du soir", "À partir de 20 h 30 : humeur, une phrase, reporter ou passer", "moon"),
     "tools" to Triple("Raccourcis", "Focus, Stats, Journal, Coach", "bolt"),
     "tip" to Triple("Conseil du coach", "Avec l’assistant IA activé", "sparkle"),
     "mood" to Triple("Humeur du jour", "Note ton humeur en un geste", "smile"),
@@ -71,6 +75,7 @@ fun HomeSettings(ui: AppState) {
             Chip("Ordre personnalisé", "grip", p.type("routine").c)
             list.firstOrNull { it.second }?.let { (k, _) -> Chip("En haut : ${HOME_CARDS[k]?.first ?: k}", HOME_CARDS[k]?.third ?: "sun", p.type("objective").c) }
         })
+        LayoutPicker(ui)
         Glass {
             CardHead("Cartes de l’accueil") { Count(list.count { it.second }) }
             Muted("Fais glisser la poignée pour changer l’ordre. L’interrupteur affiche ou masque la carte.", Modifier.padding(bottom = 10.dp), small = true)
@@ -154,6 +159,43 @@ fun ComfortSettings(ui: AppState) {
                 Box(Modifier.padding(start = 60.dp, end = 12.dp, bottom = 12.dp)) { Seg(listOf("off" to "Aucune", "light" to "Légères", "strong" to "Fortes"), pr.haptics, { pr.haptics = it; upd(); Feedback.success() }) }
             }
             SetToggle("Sons", "Petit carillon à la validation, note grave quand tu annules.", "music", p.type("period").c, pr.sounds, { pr.sounds = it; upd(); if (it) Feedback.success() })
+        }
+    }
+}
+
+/** Disposition de l'accueil (compact, normal, aéré) avec un aperçu schématique qui change en direct. */
+@Composable
+private fun LayoutPicker(ui: AppState) {
+    val p = LocalPal.current
+    var lay by remember { mutableStateOf(ui.prefs.homeLayout) }
+    val gap by androidx.compose.animation.core.animateFloatAsState(when (lay) { "compact" -> 5f; "airy" -> 13f; else -> 9f }, label = "gap")
+    val pad by androidx.compose.animation.core.animateFloatAsState(when (lay) { "compact" -> 6f; "airy" -> 12f; else -> 9f }, label = "pad")
+    val hero by androidx.compose.animation.core.animateFloatAsState(when (lay) { "compact" -> 34f; "airy" -> 70f; else -> 58f }, label = "hero")
+    Glass {
+        CardHead("Disposition") { Chip(when (lay) { "compact" -> "Compact"; "airy" -> "Aéré"; else -> "Normal" }, "gauge", p.type("objective").c) }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Aperçu : un téléphone et ses cartes
+            androidx.compose.foundation.Canvas(Modifier.width(96.dp).height(170.dp)) {
+                val r = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx())
+                drawRoundRect(p.ink.copy(alpha = .08f), cornerRadius = r); drawRoundRect(p.ink.copy(alpha = .25f), cornerRadius = r, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+                var y = 10.dp.toPx(); val x = 7.dp.toPx(); val w = size.width - 2 * x
+                val cards = listOf(hero, 40f, 30f, 46f, 30f, 40f)
+                for ((i, h) in cards.withIndex()) {
+                    val hh = h.dp.toPx() * (if (i == 0) 1f else (.7f + pad / 30f)); if (y + hh > size.height - 6.dp.toPx()) break
+                    drawRoundRect(if (i == 0) p.flame.copy(alpha = .35f) else p.glassStrong, androidx.compose.ui.geometry.Offset(x, y), androidx.compose.ui.geometry.Size(w, hh), androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))
+                    drawRoundRect(p.ink.copy(alpha = .3f), androidx.compose.ui.geometry.Offset(x + pad.dp.toPx() * .6f, y + pad.dp.toPx() * .6f), androidx.compose.ui.geometry.Size(w * .5f, 3.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
+                    y += hh + gap.dp.toPx()
+                }
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("compact" to ("Compact" to "Plus de cartes à l’écran, en-tête réduit."), "comfy" to ("Normal" to "L’équilibre par défaut."), "airy" to ("Aéré" to "Plus d’espace, pour respirer.")).forEach { (k, v) ->
+                    val on = lay == k
+                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (on) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f))
+                        .clickable { lay = k; ui.prefs.homeLayout = k; Feedback.tick(); ui.bump() }.padding(10.dp)) {
+                        Text(v.first, fontWeight = FontWeight.ExtraBold, color = if (on) p.ink else p.ink2); Muted(v.second, small = true)
+                    }
+                }
+            }
         }
     }
 }

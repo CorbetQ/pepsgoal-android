@@ -108,6 +108,28 @@ object Agenda {
         ctx.peps.prefs.raw.edit().remove(key(goalId)).apply()
     }
 
+    /**
+     * Créneaux du jour cochés : quand l'objectif est validé, l'occurrence du jour devient « ✅ … » dans l'agenda
+     * (exception de l'événement récurrent, une seule fois par jour).
+     */
+    fun syncDone(ctx: Context) {
+        if (!granted(ctx)) return
+        val pg = ctx.peps.pg; val t = today(); val raw = ctx.peps.prefs.raw
+        for (k in raw.all.keys.filter { it.startsWith("agenda:") }) {
+            val id = k.removePrefix("agenda:"); val s = slot(ctx, id) ?: continue; val g = pg.goalById(id) ?: continue
+            val dk = "agendaDone:$id"
+            if (raw.getString(dk, "") == t || !pg.hasCheck(g.id, t)) continue
+            val z = ZoneId.systemDefault()
+            val inst = todayDate().atStartOfDay(z).toInstant().toEpochMilli() + hmMinutes(s.time) * 60_000L
+            val v = ContentValues().apply {
+                put(CalendarContract.Events.ORIGINAL_INSTANCE_TIME, inst)
+                put(CalendarContract.Events.TITLE, "✅ ${g.icon} ${g.title}")
+                put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CONFIRMED)
+            }
+            try { ctx.contentResolver.insert(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_EXCEPTION_URI, s.eventId), v); raw.edit().putString(dk, t).apply() } catch (e: Exception) {}
+        }
+    }
+
     /** Objectif supprimé, archivé ou terminé : son créneau disparaît de l'agenda. */
     fun prune(ctx: Context) {
         val pg = ctx.peps.pg

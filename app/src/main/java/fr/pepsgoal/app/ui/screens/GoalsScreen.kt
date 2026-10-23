@@ -60,7 +60,9 @@ fun GoalsScreen(ui: AppState) {
     val types = TYPE_GROUPS.flatMap { it.second }.filter { t -> base.any { it.type == t } }
     if (type != "all" && type !in types) type = "all"
     val q = query.trim().lowercase()
-    val list = base.filter { (type == "all" || it.type == type) && (q.isEmpty() || it.title.lowercase().contains(q) || it.note.lowercase().contains(q)) }
+    val gf = ui.groupFilter.takeIf { f -> f == "none" || u.goalGroups.any { it.id == f } } ?: "all"
+    val list = base.filter { (type == "all" || it.type == type) && (q.isEmpty() || it.title.lowercase().contains(q) || it.note.lowercase().contains(q)) &&
+        (gf == "all" || (gf == "none" && pg.groupOfGoal(u, it.id) == null) || pg.groupOfGoal(u, it.id)?.id == gf) }
         .let { l -> when (sort) {
             "az" -> l.sortedBy { it.title.lowercase() }
             "progress" -> l.sortedByDescending { pg.barPct(it) ?: -1.0 }
@@ -95,6 +97,13 @@ fun GoalsScreen(ui: AppState) {
                     if (u.goalGroups.isNotEmpty()) FChip("Par groupe", grouped, { grouped = !grouped; ui.prefs.goalGroupBy = grouped }, leading = { Pi("folder", size = 15.dp) })
                     FChip(if (u.goalGroups.isNotEmpty()) "Gérer les groupes" else "Créer des groupes", false, { ui.open(Sheet.GoalGroups) }, leading = { Pi(if (u.goalGroups.isNotEmpty()) "edit" else "plus", size = 15.dp) }, dashed = true)
                 }
+                // Dossiers : filtre en un geste, avec leur couleur
+                if (u.goalGroups.isNotEmpty()) ChipsRow {
+                    FChip("Tous les dossiers", gf == "all", { ui.groupFilter = "all" }, leading = { Pi("folder", size = 15.dp) })
+                    u.goalGroups.forEach { gr -> FChip("${gr.icon} ${gr.name}", gf == gr.id, { ui.groupFilter = if (gf == gr.id) "all" else gr.id },
+                        leading = gr.color?.let { c -> { Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(fr.pepsgoal.app.ui.theme.hex(c))) } }) }
+                    FChip("Sans dossier", gf == "none", { ui.groupFilter = if (gf == "none") "all" else "none" })
+                }
                 if (types.size > 1) ChipsRow {
                     FChip("Tous les types", type == "all", { type = "all" })
                     types.forEach { t -> FChip(TYPES.getValue(t).label, type == t, { type = t }, leading = { Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(p.type(t).c)) }) }
@@ -123,7 +132,8 @@ fun GoalsScreen(ui: AppState) {
                         val (ic, name) = label.split("|", limit = 2)
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { collapsed = if (c) collapsed - key else collapsed + key; ui.prefs.collapsed = collapsed }.padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) { Emoji(ic, 20.dp) }
+                            val gc = u.goalGroups.firstOrNull { it.id == key }?.color?.let { fr.pepsgoal.app.ui.theme.hex(it) }
+                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(gc?.copy(alpha = .25f) ?: p.glassStrong).border(1.dp, gc ?: p.line, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) { Emoji(ic, 20.dp) }
                             Text(name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Count(items.size)
                             Spacer(Modifier.weight(1f))

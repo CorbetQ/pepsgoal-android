@@ -93,7 +93,9 @@ fun UserSheet(ui: AppState, id: String) {
     if (!self) FlowRowCompat(gap = 8.dp) {
         when {
             f == null -> PButton("Ajouter", { if (!pg.socialBlocked("d'ajouter des amis")) ui.run("Demande envoyée à ${first(x.name)}.", "userplus") { ui.cloud.sendFriendRequest(x.id) } }, icon = "userplus", kind = "primary", small = true)
-            f.status == "accepted" -> { Chip("Amis", "check", p.type("routine").c); PButton("Message", { ui.push(Screen.Chat(with = x.id)) }, icon = "comment", small = true) }
+            f.status == "accepted" -> { Chip("Amis", "check", p.type("routine").c); PButton("Message", { ui.push(Screen.Chat(with = x.id)) }, icon = "comment", small = true)
+                // Défi en un geste : duel prérempli contre cet ami
+                PButton("Défier", { ui.open(Sheet.GoalForm(preType = "duel", preTitle = "Duel avec ${first(x.name)}", preIcon = "⚔️", preFields = mapOf("opponent" to x.id))) }, icon = "duel", small = true) }
             f.to == u.id -> PButton("Accepter la demande", { ui.run("Vous êtes maintenant amis.", "users") { ui.cloud.acceptRequest(f.id) } }, kind = "primary", small = true)
             else -> Chip("Demande envoyée")
         }

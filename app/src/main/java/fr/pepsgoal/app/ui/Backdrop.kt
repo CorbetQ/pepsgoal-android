@@ -363,3 +363,19 @@ private fun DrawScope.cloud(x: Float, y: Float, w: Float, h: Float, c: Color) {
         drawCircle(Brush.radialGradient(listOf(c, c.copy(alpha = c.alpha * .7f), Color.Transparent), Offset(px, py - rr * .2f), rr), rr, Offset(px, py))
     }
 }
+
+/**
+ * Fond qui réagit à la journée : une lueur chaude monte du bas de l'écran au fil des validations ([progress] de 0 à 1),
+ * et des confettis tombent doucement au fond les journées parfaites.
+ */
+@Composable
+fun ReactiveBg(progress: Float, perfect: Boolean) {
+    val p = LocalPal.current
+    if (p.transp || p.contrast) return
+    val k by androidx.compose.animation.core.animateFloatAsState(progress.coerceIn(0f, 1f), androidx.compose.animation.core.tween(if (p.motion) 0 else 1200), label = "reactive")
+    if (k > .01f) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+        val c = androidx.compose.ui.geometry.Offset(size.width * .5f, size.height * 1.05f); val r = size.height * (.35f + .45f * k)
+        drawRect(androidx.compose.ui.graphics.Brush.radialGradient(0f to p.flame.copy(alpha = .26f * k), .5f to p.pink.copy(alpha = .1f * k), 1f to Color.Transparent, center = c, radius = r))
+    }
+    if (perfect && Perf.flags.fx && !p.motion) ThemeFx("confetti")
+}

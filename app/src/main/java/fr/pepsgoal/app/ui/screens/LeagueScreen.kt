@@ -35,6 +35,7 @@ fun LeagueScreen(ui: AppState) {
     var err by remember(from) { mutableStateOf<String?>(null) }
     LaunchedEffect(from) { try { rows = ui.cloud.leagueWeek(from) } catch (e: ApiError) { err = if (e.status == 404) "La ligue arrive avec la prochaine mise à jour du serveur." else e.message } catch (e: Exception) { err = "Ligue indisponible pour le moment." } }
     ScreenFrame(ui, "Ligue", "Retour", { ui.back() }, icon = "trophy", color = p.type("challenge").c, color2 = p.type("deadline").c) {
+        item("season") { SeasonCard(ui) }
         item("seg") { Seg(listOf(false to "Cette semaine", true to "Semaine dernière"), last, { last = it }) }
         val l = rows
         when {

@@ -113,7 +113,10 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
     var photo by remember { mutableStateOf<android.net.Uri?>(null) }
     var big by remember { mutableStateOf<Proof?>(null) }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { u -> if (u != null) photo = u }
-    SectionTitle(if (list.isEmpty()) "Preuve du jour" else "Preuves · ${list.size}")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) { SectionTitle(if (list.isEmpty()) "Preuve du jour" else "Preuves · ${list.size}") }
+        if (list.size >= 2) PButton("Galerie", { ui.close(); ui.push(fr.pepsgoal.app.Screen.Gallery(g.id)) }, icon = "image", small = true, kind = "ghost")
+    }
     ProofStory(list)
     if (list.isEmpty() && !editing) Muted("Garde une trace de ta réussite : une photo ou quelques mots, gardés sur ton téléphone.", small = true)
     Row(Modifier.fillMaxWidth().bleed(20.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

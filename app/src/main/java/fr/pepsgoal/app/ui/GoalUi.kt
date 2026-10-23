@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Sheet
+import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
@@ -207,6 +208,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
             right = { MiniBtn("+ Progrès", tc.c) { doValidate(ui, g.id) } } }
         else -> { val s = pg.statBig(g); meta = "${metaOverride ?: pg.metaLine(g)} · ${s.v} ${s.l}" }
     }
+    if (pg.isPaused(g)) meta = "⏸️ En pause jusqu’au ${g.pausedUntil?.let { fmtDateShort(it) } ?: ""} · $meta"
     // Sous-tâches, enchaînement et duo
     if (g.steps.isNotEmpty() && g.type in STEP_TYPES && !done) { val n = pg.stepsDone(g).size; meta = "$n/${g.steps.size} sous-tâches · $meta"; if (bar == null) bar = n * 100.0 / g.steps.size }
     if (!done) pg.goalById(g.after)?.let { prev -> meta = "Après ${prev.icon} ${prev.title.take(20)} · $meta" }
@@ -231,7 +233,8 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
                 .swipeTilt(sw)
                 .bounce(inter, .97f).fillMaxWidth().clip(rowShape)
                 .background(if (done) tc.c.copy(alpha = .14f) else if (sw.dx != 0f) p.glassStrong else Color.Transparent)
-                .springClick(inter, label = "Ouvrir les détails") { ui.open(Sheet.Goal(g.id)) }
+                // Objectif de durée : un appui long lance tout de suite une session Focus plein écran
+                .springClick(inter, label = "Ouvrir les détails", onLongClick = if (g.type == "duration" && !done) ({ quickFocus(ui, g) }) else null) { ui.open(Sheet.Goal(g.id)) }
                 .semantics {
                     stateDescription = status
                     customActions = listOf(
@@ -485,4 +488,12 @@ fun QtyChart(g: Goal, target: Double, unit: String, valueOf: (String) -> Double)
     val vals = pts.map { it.second }
     val hits = if (range == "30") vals.count { it >= target } else null
     Muted("Moyenne ${fmtNum(Math.round(vals.average() * 10) / 10.0)} $unit · meilleur ${fmtNum(Math.round((vals.maxOrNull() ?: 0.0) * 10) / 10.0)} $unit${hits?.let { " · cap atteint ${pl(it, "jour", "jours")} sur 30" } ?: " par jour (moyenne hebdomadaire)"} · ligne : cap de ${fmtNum(target)} $unit", small = true)
+}
+
+/** Concentration rapide : session Focus du temps restant de l'objectif de durée, en plein écran (Ne pas déranger si autorisé). */
+fun quickFocus(ui: AppState, g: Goal) {
+    val ctx = ui.app; val pg = ui.pg
+    val left = kotlin.math.ceil(g.minutes - pg.durationLiveMins(g)).toInt().coerceIn(5, 180)
+    if (!fr.pepsgoal.app.sys.Focus.running(ctx)) fr.pepsgoal.app.sys.Focus.start(ctx, left, g.id)
+    ui.fs = Fs.Focus(g.id); ui.toast("Focus : $left min pour « ${g.title} ».", "timer")
 }

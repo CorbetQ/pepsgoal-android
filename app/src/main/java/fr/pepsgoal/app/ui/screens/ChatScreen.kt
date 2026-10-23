@@ -58,6 +58,7 @@ import fr.pepsgoal.core.*
 import fr.pepsgoal.core.cloud.*
 import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.User
+import fr.pepsgoal.core.model.unit
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
@@ -269,6 +270,20 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                                 .clickable(onClickLabel = a.name) { pick(i) }.semantics { contentDescription = a.name; selected = colorIdx == i })
                         }
                     }
+                }
+            }
+            // Duel en cours avec cet ami : mini tableau des scores en haut de la conversation
+            if (x != null && sel.isEmpty()) pg.db.goals.firstOrNull { it.type == "duel" && it.completedAt == null && it.members?.containsAll(listOf(u.id, x.id)) == true }?.let { dg ->
+                val a = pg.duelScore(dg, u.id); val b = pg.duelScore(dg, x.id)
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(16.dp))
+                    .clickable(onClickLabel = "Ouvrir le duel") { ui.open(Sheet.Goal(dg.id)) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("⚔️", fontSize = 18.sp)
+                    Column(Modifier.weight(1f)) {
+                        Text("${dg.title} · ${dg.unit}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("Toi ${fmtNum(round1(a))} – ${fmtNum(round1(b))} ${first(x.name)}", fontWeight = FontWeight.ExtraBold, color = if (a >= b) p.ok else p.ink)
+                    }
+                    Text(if (a > b) "En tête" else if (a < b) "À rattraper" else "Égalité", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3)
                 }
             }
             if (pinId != null && sel.isEmpty()) {

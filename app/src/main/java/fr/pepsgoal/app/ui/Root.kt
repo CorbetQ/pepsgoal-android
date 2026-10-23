@@ -134,12 +134,17 @@ fun PepsRoot(ui: AppState) {
                     Backdrop(k[0] as String, skies[k], k[4] as Boolean, k[5] as Long, k[7] as String)
                 }
                 LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
+                // Fond qui réagit à l'avancement du jour (réglage Apparence › Effets et saisons)
+                if (u != null && ui.prefs.bgReactive) {
+                    val prog = remember(rev, u.id) { val pl = pg.todayPlan(u.id); if (pl.due.isEmpty()) 0f else pl.due.count { it.done }.toFloat() / pl.due.size }
+                    ReactiveBg(prog, prog >= 1f)
+                }
             } } }
             // Flamme de collection choisie (si elle est toujours débloquée par la meilleure série)
             val skinKey = u?.flameSkin ?: "classic"
             // Jour de fête (Halloween, 1er avril) : la flamme change de couleurs pour la journée
             val flame = remember(skinKey, u?.id, rev) { fr.pepsgoal.core.Eggs.flameColors()?.map(::hex) ?: FLAME_SKINS.firstOrNull { it.key == skinKey && it.colors != null && u != null && pg.bestStreak(u.id) >= it.min }?.colors?.map(::hex) }
-            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame) {
+            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx)) {
                 Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                     when {
@@ -181,6 +186,9 @@ fun PepsRoot(ui: AppState) {
                         is Screen.Week -> WeekScreen(ui)
                         is Screen.Shop -> ShopScreen(ui)
                         is Screen.League -> LeagueScreen(ui)
+                        is Screen.Gallery -> GalleryScreen(ui, sc.goalId)
+                        is Screen.Pet -> PetScreen(ui)
+                        is Screen.Quest -> QuestScreen(ui)
                         null -> {}
                     }
                 }

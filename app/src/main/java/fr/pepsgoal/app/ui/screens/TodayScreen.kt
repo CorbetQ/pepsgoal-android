@@ -35,14 +35,14 @@ import kotlinx.coroutines.launch
 import fr.pepsgoal.core.*
 
 @Composable
-fun ScreenList(content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+fun ScreenList(gap: androidx.compose.ui.unit.Dp = 14.dp, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
     val bars = LocalBars.current
     // Toucher l'onglet déjà ouvert : la page remonte en douceur tout en haut
     val state = androidx.compose.foundation.lazy.rememberLazyListState()
     val tap = TabReTap.n
     LaunchedEffect(tap) { if (tap > 0 && (state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 0)) state.animateScrollToItem(0) }
     LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 14.dp, bottom = bars.calculateBottomPadding() + 86.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
+        verticalArrangement = Arrangement.spacedBy(gap), content = content)
 }
 
 @Composable
@@ -56,7 +56,10 @@ fun TodayScreen(ui: AppState) {
     val done = plan.due.count { it.done }; val total = plan.due.size
     val hasGoals = remember(ui.rev, u.id) { pg.myGoals(u.id).any { !it.archived } }
     val cards = remember(ui.rev) { homeOrder(ui.prefs).filter { it.second }.map { it.first } }
-    ScreenList {
+    // Disposition choisie (Paramètres › Accueil) : écart entre les cartes et marge intérieure
+    val layout = ui.prefs.homeLayout
+    CompositionLocalProvider(LocalGlassPad provides when (layout) { "compact" -> 13.dp; "airy" -> 24.dp; else -> 18.dp }) {
+    ScreenList(gap = when (layout) { "compact" -> 8.dp; "airy" -> 22.dp; else -> 14.dp }) {
         if (!hasGoals) {
             item("hero") { Hero(ui) }
             item("aipromo") { AiPromoCard(ui) }
@@ -66,6 +69,8 @@ fun TodayScreen(ui: AppState) {
         }
         // Fin d'année : la rétrospective est prête (du 15 décembre au 10 janvier)
         if (Recaps.wrappedOpen()) item("wrapped") { WrappedCard(ui) }
+        // Le matin : rattrapage des oublis de la veille
+        item("catchup") { CatchUpCard(ui) }
         // Cartes dans l'ordre choisi (Paramètres › Accueil)
         for (k in cards) when (k) {
             "hero" -> { item("hero") { Hero(ui) }; item("ctx") { ContextCards(ui) } }
@@ -89,6 +94,9 @@ fun TodayScreen(ui: AppState) {
                     }
                 }
             }
+            "timeline" -> item("timeline") { TimelineCard(ui, plan) }
+            "evening" -> item("evening") { EveningQuickCard(ui, plan) }
+            "quest" -> item("quest") { QuestCard(ui) }
             "tools" -> item("tools") { QuickTools(ui) }
             "tip" -> item("tip") { AiTipCard(ui) }
             "mood" -> item("mood") { MoodCard(ui) }
@@ -132,6 +140,7 @@ fun TodayScreen(ui: AppState) {
             }
         }
     }
+    }
 }
 
 /** En-tête de l'accueil : date, salutation, message et flamme de la série. */
@@ -144,17 +153,17 @@ private fun Hero(ui: AppState) {
         else if (pg.isRest()) "Jour de repos 😴 : ta série est protégée aujourd’hui, sans dépenser de gel. Valide quand même si l’envie te prend."
         else if (p.easy) (if (st.lit) "Bravo, tu as validé aujourd’hui." else "Valide un objectif aujourd’hui pour garder ta série.")
         else if (st.lit) "Ta flamme brûle aujourd'hui. Continue sur ta lancée." else if (st.n > 0) "Valide une action avant minuit pour prolonger ta série de ${pl(st.n, "jour", "jours")}." else "Valide ta première action pour allumer ta flamme."
-    Glass(strong = false, pad = 20.dp) {
+    val compact = ui.prefs.homeLayout == "compact"
+    Glass(strong = false, pad = if (compact) 14.dp else if (ui.prefs.homeLayout == "airy") 26.dp else 20.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 6.dp)) {
                 Eyebrow(cap(weekdayLongDate(todayDate())))
-                Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
-                Muted(msg)
+                Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (compact) 20.sp else 26.sp)
+                if (!compact) Muted(msg)
             }
-            HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") }
+            Box(Modifier.graphicsLayer { val k = if (compact) .62f else 1f; scaleX = k; scaleY = k }) { HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") } }
         }
-        Spacer(Modifier.height(12.dp))
-        WeekStrip(pg, u.id)
+        if (!compact) { Spacer(Modifier.height(12.dp)); WeekStrip(pg, u.id) }
     }
 }
 

@@ -33,7 +33,7 @@ fun FocusFs(ui: AppState, preGoal: String?) {
     BackHandler { ui.closeFs() }
     var running by remember { mutableStateOf(Focus.running(ctx)) }
     var left by remember { mutableLongStateOf(Focus.left(ctx)) }
-    var total by remember { mutableLongStateOf(0L) }
+    var total by remember { mutableLongStateOf(if (Focus.running(ctx)) Focus.left(ctx) else 0L) }
     LaunchedEffect(running) { while (running) { left = Focus.left(ctx); if (left <= 0) { running = false; ui.bump() }; delay(500) } }
     var dndOk by remember { mutableStateOf(Focus.canDnd(ctx)) }
     LifecycleResumeEffect(Unit) { dndOk = Focus.canDnd(ctx); running = Focus.running(ctx); onPauseOrDispose {} }
@@ -57,6 +57,8 @@ fun FocusFs(ui: AppState, preGoal: String?) {
                     drawArc(Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)), -90f, 360f * frac, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw, cap = StrokeCap.Round))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // La flamme se consume au fil de la session
+                    if (running) Box(Modifier.size(64.dp), contentAlignment = Alignment.BottomCenter) { Flame((24 + 40 * frac).dp, dim = frac < .05f) }
                     val shown = if (running) left else minutes * 60_000L
                     Text("%02d:%02d".format(shown / 60_000, (shown / 1000) % 60), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 48.sp)
                     Muted(if (running) (g?.let { "${it.icon} ${it.title}" } ?: "Session libre") else "prêt à démarrer", small = true)

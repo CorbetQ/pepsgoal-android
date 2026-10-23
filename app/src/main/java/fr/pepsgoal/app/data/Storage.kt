@@ -171,6 +171,16 @@ class DevicePrefs(context: Context) {
     /** Couleurs de saison (Halloween, Noël, printemps…) sur l'arrière-plan. */
     var seasonal get() = p.getBoolean("seasonal", true); set(v) = p.edit().putBoolean("seasonal", v).apply()
     /** Fonds illustrés éclairés selon l'heure réelle (aube, jour, crépuscule, nuit). */
+    /** Disposition de l'accueil : compact, normal ou aéré. */
+    var homeLayout get() = p.getString("homeLayout", "comfy") ?: "comfy"; set(v) = p.edit().putString("homeLayout", v).apply()
+    /** Fond qui réagit : lueur selon l'avancement du jour, confettis les journées parfaites. */
+    var bgReactive get() = p.getBoolean("bgReactive", true); set(v) = p.edit().putBoolean("bgReactive", v).apply()
+    /** Flamme personnalisée : forme et effet animé. */
+    var flameShape get() = p.getString("flameShape", "classic") ?: "classic"; set(v) = p.edit().putString("flameShape", v).apply()
+    var flameFx get() = p.getString("flameFx", "none") ?: "none"; set(v) = p.edit().putString("flameFx", v).apply()
+    /** Compagnon : nom et accessoires portés. */
+    var petName get() = p.getString("petName", "Braisou") ?: "Braisou"; set(v) = p.edit().putString("petName", v).apply()
+    var petAcc: Set<String> get() = p.getStringSet("petAcc", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("petAcc", v).apply()
     var bgClock get() = p.getBoolean("bgClock", true); set(v) = p.edit().putBoolean("bgClock", v).apply()
     /** Sauvegarde automatique : dossier choisi (URI d'arborescence), dernière réussite, dernière erreur. */
     var backupUri get() = p.getString("backupUri", "") ?: ""; set(v) = p.edit().putString("backupUri", v).apply()
