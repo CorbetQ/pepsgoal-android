@@ -107,7 +107,7 @@ fun SearchScreen(ui: AppState, initial: String) {
         // Amis (et autres profils connus)
         if (pg.socialOn(u)) {
             val friends = pg.friendsOf(u.id).toSet()
-            val people = pg.db.users.filter { it.id != u.id && hit(it.name) }.sortedByDescending { it.id in friends }.take(12)
+            val people = pg.db.users.filter { it.id != u.id && (hit(it.name) || hit(it.realName) || hit(it.username)) }.sortedByDescending { it.id in friends }.take(12)
             if (people.isNotEmpty()) item("people") {
                 Glass(pad = 10.dp) {
                     Box(Modifier.padding(6.dp)) { CardHead("Personnes") { Count(people.size) } }

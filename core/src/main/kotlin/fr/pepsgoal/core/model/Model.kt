@@ -144,6 +144,10 @@ class User(
     var tutoBonus: Boolean = false,
     var goalGroups: MutableList<GoalGroup> = mutableListOf(),
     var goalGroupOf: MutableMap<String, String> = mutableMapOf(),
+    /** Surnoms donnés à ses amis (id → surnom), visibles par soi seul. */
+    var nicknames: MutableMap<String, String> = mutableMapOf(),
+    /** Nom choisi par la personne elle-même, quand un surnom le remplace à l'affichage. */
+    var realName: String? = null,
     var milestones: MutableList<String> = mutableListOf(),
     var badges: MutableList<String>? = null,
     var badgeFams: MutableList<String>? = null,

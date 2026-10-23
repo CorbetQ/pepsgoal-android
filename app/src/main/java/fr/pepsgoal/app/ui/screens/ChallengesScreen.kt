@@ -118,7 +118,7 @@ fun ChallengesScreen(ui: AppState) {
                             Text(when (r.rank) { 1 -> "🥇"; 2 -> "🥈"; 3 -> "🥉"; else -> "${r.rank}" }, Modifier.width(28.dp), fontFamily = Unbounded, fontWeight = FontWeight.Bold)
                             val av = remember(r.userId) { try { JSON.decodeFromJsonElement(Avatar.serializer(), r.avatar) } catch (e: Exception) { null } }
                             Av(pg.userById(r.userId), 30.dp, a = av)
-                            Text(if (meRow) "Toi" else r.name, Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(if (meRow) "Toi" else pg.shownName(r.userId, r.name), Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1)
                             Text("${r.days} j", fontWeight = FontWeight.ExtraBold)
                         }
                     }

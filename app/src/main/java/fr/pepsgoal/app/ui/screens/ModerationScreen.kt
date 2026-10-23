@@ -98,14 +98,14 @@ private fun ModAccounts(ui: AppState) {
             Field(q, { q = it }, "", placeholder = "Rechercher un compte : nom ou @utilisateur", max = 40, icon = "search")
             val ql = q.trim().lowercase()
             val list = pg.db.users.filter { !pg.isOfficial(it) }.filter { x -> fl == "all" || (fl == "banned" && pg.isBanned(x)) || (fl == "warned" && x.warned != null) || (fl == "muted" && x.noComments) || (fl == "new" && nowMs() - x.createdAt < 7 * DAY_MS) }
-                .filter { ql.isEmpty() || it.name.lowercase().contains(ql) || it.username.contains(ql) }
+                .filter { ql.isEmpty() || pg.realName(it).lowercase().contains(ql) || it.username.contains(ql) }
                 .sortedWith(compareByDescending<User> { (if (pg.isBanned(it)) 1 else 0) + (if (it.warned != null) 1 else 0) }.thenBy { it.name.lowercase() })
             if (list.isEmpty()) Muted("Aucun compte ne correspond.", Modifier.padding(top = 8.dp), small = true)
             list.take(80).forEach { x ->
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { ui.open(Sheet.ModUser(x.id)) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Av(x, 40.dp)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(x.name, fontWeight = FontWeight.ExtraBold)
+                        Text(pg.realName(x), fontWeight = FontWeight.ExtraBold)
                         Muted("@${x.username} · ${pl(pg.db.posts.count { it.userId == x.id }, "publication", "publications")}", small = true)
                         FlowRowCompat(gap = 4.dp) { StatusChips(ui, x) }
                     }
@@ -187,7 +187,7 @@ private fun ModAppeals(ui: AppState) {
                 val x = pg.userById(a.userId)!!
                 var ans by remember(a.id) { mutableStateOf("") }
                 Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 30.dp); Text(x.name, fontWeight = FontWeight.ExtraBold); Muted("${ago(a.at)} · banni ${pg.banText(x).ifEmpty { "(ban expiré)" }}", small = true) }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 30.dp); Text(pg.realName(x), fontWeight = FontWeight.ExtraBold); Muted("${ago(a.at)} · banni ${pg.banText(x).ifEmpty { "(ban expiré)" }}", small = true) }
                     x.ban?.reason?.takeIf { it.isNotEmpty() }?.let { Muted("Motif du ban : $it", small = true) }
                     Text("« ${a.text} »")
                     Field(ans, { ans = it }, "Réponse à la personne (optionnelle)", max = 200)
@@ -206,7 +206,7 @@ private fun ModAppeals(ui: AppState) {
                 val x = pg.userById(a.userId)!!
                 Column(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Av(x, 26.dp); Text(x.name, fontWeight = FontWeight.ExtraBold)
+                        Av(x, 26.dp); Text(pg.realName(x), fontWeight = FontWeight.ExtraBold)
                         Chip(if (a.status == "accepted") "Acceptée" else "Refusée", color = if (a.status == "accepted") p.type("routine").c else p.danger)
                         Muted(ago(a.doneAt ?: a.at), small = true)
                     }
@@ -283,13 +283,13 @@ private fun ModNews(ui: AppState) {
         }
         Glass {
             CardHead("PepsGoal Officiel") { Muted("Rattaché à ton compte admin", small = true) }
-            SetRow("Destinataire", to?.let { pg.userById(it)?.let { x -> "${x.name} (@${x.username})" } } ?: "Tout le monde (annonce)") {
+            SetRow("Destinataire", to?.let { pg.userById(it)?.let { x -> "${pg.realName(x)} (@${x.username})" } } ?: "Tout le monde (annonce)") {
                 PButton("Choisir", { pickTo = !pickTo }, small = true); if (to != null) PButton("Tous", { to = null }, kind = "ghost", small = true)
             }
             if (pickTo) {
                 Field(q, { q = it }, "", placeholder = "Rechercher : nom ou @utilisateur", max = 40, icon = "search")
-                pg.db.users.filter { it.role == null && (q.isBlank() || it.name.lowercase().contains(q.lowercase()) || it.username.contains(q.lowercase())) }.sortedBy { it.name.lowercase() }.take(12).forEach { x ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { to = x.id; pickTo = false }.padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 28.dp); Text("${x.name} (@${x.username})") }
+                pg.db.users.filter { it.role == null && (q.isBlank() || pg.realName(it).lowercase().contains(q.lowercase()) || it.username.contains(q.lowercase())) }.sortedBy { it.name.lowercase() }.take(12).forEach { x ->
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { to = x.id; pickTo = false }.padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 28.dp); Text("${pg.realName(x)} (@${x.username})") }
                 }
             }
             Spacer(Modifier.height(6.dp))
