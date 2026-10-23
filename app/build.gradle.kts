@@ -68,7 +68,11 @@ android {
         buildConfig = true
     }
 
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    packaging {
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        // Manifestes OSGi en double (JSch et jspecify), inutiles sur Android
+        resources.excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+    }
 }
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
