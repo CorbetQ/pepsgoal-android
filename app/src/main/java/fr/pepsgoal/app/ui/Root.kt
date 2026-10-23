@@ -433,7 +433,6 @@ private fun TopBar(ui: AppState) {
             RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 21.dp, tint = p.ink) }
             RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 21.dp, tint = p.ink) }
         }
-        if (!ui.pg.store.online) Note(if (ui.cloud.forceOffline && pg.store.acct) "**Mode hors ligne activé.** Tes objectifs restent disponibles ; tes modifications partiront quand tu repasseras en ligne." else "**Hors ligne.** Tes objectifs restent disponibles sur cet appareil ; les fonctions sociales reviennent avec la connexion.", "cloudoff")
         if (pg.db.sandbox) Note("**Mode démonstration.** Données d’exemple : rien n’est enregistré. Déconnecte-toi pour revenir à ton profil.", "star")
         val now = pg.maintNow(); val next = pg.maintNext()
         if (now != null) Note("**Maintenance en cours**${now.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[now.mode]}${if (now.message.isNotEmpty()) ". ${now.message}" else ""}${if (pg.isAdmin(u)) " (en tant qu’admin, tu n’es pas bloqué)" else ""}", "gauge")
