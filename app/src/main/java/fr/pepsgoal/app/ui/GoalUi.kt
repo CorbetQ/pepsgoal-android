@@ -208,6 +208,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
             right = { MiniBtn("+ Progrès", tc.c) { doValidate(ui, g.id) } } }
         else -> { val s = pg.statBig(g); meta = "${metaOverride ?: pg.metaLine(g)} · ${s.v} ${s.l}" }
     }
+    if (pg.isPaused(g)) meta = "⏸️ En pause jusqu’au ${g.pausedUntil?.let { fmtDateShort(it) } ?: ""} · $meta"
     // Sous-tâches, enchaînement et duo
     if (g.steps.isNotEmpty() && g.type in STEP_TYPES && !done) { val n = pg.stepsDone(g).size; meta = "$n/${g.steps.size} sous-tâches · $meta"; if (bar == null) bar = n * 100.0 / g.steps.size }
     if (!done) pg.goalById(g.after)?.let { prev -> meta = "Après ${prev.icon} ${prev.title.take(20)} · $meta" }

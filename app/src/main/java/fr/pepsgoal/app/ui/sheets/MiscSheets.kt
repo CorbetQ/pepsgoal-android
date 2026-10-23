@@ -162,6 +162,14 @@ fun GoalGroupsSheet(ui: AppState) {
             IconBtn("trash", "Supprimer le groupe ${gr.name}", { u.goalGroups.removeAll { it.id == gr.id }; u.goalGroupOf.entries.removeAll { it.value == gr.id }; if (ui.groupFilter == gr.id) ui.groupFilter = "all"; pg.store.commit(); ui.toast("Groupe supprimé : ses objectifs sont conservés.", "trash") }, plain = true)
         }
         if (pickFor == gr.id) FlowRowCompat(gap = 4.dp) { GROUP_ICONS.forEach { e -> Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).clickable { gr.icon = e; pickFor = null; pg.store.commit() }, contentAlignment = Alignment.Center) { Emoji(e, 24.dp) } } }
+        // Couleur du dossier (pastille dans les filtres et en-tête de section)
+        Row(Modifier.padding(start = 50.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            (listOf<String?>(null) + GROUP_COLORS).forEach { c ->
+                val on = gr.color == c
+                Box(Modifier.size(24.dp).clip(RoundedCornerShape(12.dp)).background(c?.let { fr.pepsgoal.app.ui.theme.hex(it) } ?: p.ink.copy(alpha = .08f))
+                    .border(if (on) 2.5.dp else 1.dp, if (on) p.ink else p.line, RoundedCornerShape(12.dp)).clickable(onClickLabel = c ?: "Sans couleur") { gr.color = c; pg.store.commit(); ui.bump() })
+            }
+        }
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         IconPick(icon, "new") {}
@@ -174,3 +182,6 @@ fun GoalGroupsSheet(ui: AppState) {
     if (pickFor == "new") FlowRowCompat(gap = 4.dp) { GROUP_ICONS.forEach { e -> Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).clickable { icon = e; pickFor = null }, contentAlignment = Alignment.Center) { Emoji(e, 24.dp) } } }
     SheetFoot { PButton("Terminé", { ui.close() }) }
 }
+
+/** Couleurs proposées pour les dossiers d'objectifs. */
+val GROUP_COLORS = listOf("#FF5A5F", "#FF9A3D", "#FFD23F", "#2EC27E", "#22D3FF", "#4D7CFF", "#9B5CFF", "#FF7AD9")

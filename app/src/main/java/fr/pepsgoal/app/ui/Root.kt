@@ -144,7 +144,7 @@ fun PepsRoot(ui: AppState) {
             val skinKey = u?.flameSkin ?: "classic"
             // Jour de fête (Halloween, 1er avril) : la flamme change de couleurs pour la journée
             val flame = remember(skinKey, u?.id, rev) { fr.pepsgoal.core.Eggs.flameColors()?.map(::hex) ?: FLAME_SKINS.firstOrNull { it.key == skinKey && it.colors != null && u != null && pg.bestStreak(u.id) >= it.min }?.colors?.map(::hex) }
-            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame) {
+            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx)) {
                 Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                     when {
@@ -186,6 +186,9 @@ fun PepsRoot(ui: AppState) {
                         is Screen.Week -> WeekScreen(ui)
                         is Screen.Shop -> ShopScreen(ui)
                         is Screen.League -> LeagueScreen(ui)
+                        is Screen.Gallery -> GalleryScreen(ui, sc.goalId)
+                        is Screen.Pet -> PetScreen(ui)
+                        is Screen.Quest -> QuestScreen(ui)
                         null -> {}
                     }
                 }

@@ -52,7 +52,8 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     var title by remember { mutableStateOf(d.title) }; var icon by remember { mutableStateOf(d.icon) }; var note by remember { mutableStateOf(d.note) }; var vis by remember { mutableStateOf(d.visibility) }
     var buddy by remember { mutableStateOf(g0?.buddy) }; var bVerify by remember { mutableStateOf(g0?.buddyVerify ?: false) }; var bMiss by remember { mutableStateOf(g0?.buddyMiss ?: true) }
     var grp by remember { mutableStateOf(g0?.let { pg.groupOfGoal(u, it.id)?.id }) }
-    var members by remember { mutableStateOf(g0?.members?.filter { it != u.id } ?: emptyList()) }
+    // Défi lancé depuis la fiche d'un ami : adversaire déjà choisi
+    var members by remember { mutableStateOf(g0?.members?.filter { it != u.id } ?: s.preFields?.get("opponent")?.let { listOf(it) } ?: emptyList()) }
     var err by remember { mutableStateOf<String?>(null) }
     var showIcons by remember { mutableStateOf(false) }
     val social = pg.socialOn(u)
@@ -504,6 +505,7 @@ fun GoalSheet(ui: AppState, id: String) {
         Emoji(g.icon, 46.dp, Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -25f })
         Column { Text(s.v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp, color = tc.ink); Text(s.l, fontWeight = FontWeight.Bold, color = p.ink2) }
     }
+    if (own) PauseBanner(ui, g)
     if (!g.archived) FlowRowCompat(gap = 8.dp) {
         GoalActions(ui, g, doneToday, running)
         // Version mini : garde la série les jours sans énergie
@@ -542,6 +544,8 @@ fun GoalSheet(ui: AppState, id: String) {
         RemindRow(ui, g, divider = false)
         MiniRow(ui, g)
         TrialRow(ui, g)
+        PauseRow(ui, g)
+        LadderRow(ui, g)
         ChainRow(ui, g)
         AutoPlaceRow(ui, g)
         NfcRow(ui, g)
@@ -550,6 +554,7 @@ fun GoalSheet(ui: AppState, id: String) {
         DuoRow(ui, g)
         AgendaRow(ui, g)
         GeoRow(ui, g)
+        PinRow(ui, g)
     }
     if (g.type == "objective") Bar(minOf(100.0, pg.objProgress(g) / g.target * 100), color = tc.c)
     if (g.type != "deadline" && pg.hasCalendar(g.type)) { SectionTitle("5 dernières semaines"); GoalCalendar(pg, g) }

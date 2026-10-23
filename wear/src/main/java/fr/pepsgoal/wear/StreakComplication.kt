@@ -20,6 +20,10 @@ class StreakComplication : SuspendingComplicationDataSourceService() {
         val n = d?.streak ?: 0
         val desc = PlainComplicationText.Builder("Série de $n jours").build()
         return when (type) {
+            // Texte long : la série et ce qu'il reste à valider aujourd'hui
+            ComplicationType.LONG_TEXT -> { val left = ((d?.total ?: 0) - (d?.done ?: 0)).coerceAtLeast(0)
+                LongTextComplicationData.Builder(PlainComplicationText.Builder(if (d == null) "PepsGoal" else if (left == 0) "$n j · tout est validé" else "$n j · encore $left").build(), desc)
+                    .setTitle(PlainComplicationText.Builder("Série 🔥").build()).setMonochromaticImage(icon()).setTapAction(tap()).build() }
             ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(PlainComplicationText.Builder("$n").build(), desc)
                 .setTitle(PlainComplicationText.Builder(if (d?.lit == true) "🔥" else "jours").build()).setMonochromaticImage(icon()).setTapAction(tap()).build()
             ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder((d?.done ?: 0).toFloat(), 0f, (d?.total ?: 0).coerceAtLeast(1).toFloat(), desc)

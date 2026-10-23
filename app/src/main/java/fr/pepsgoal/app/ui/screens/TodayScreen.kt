@@ -96,6 +96,7 @@ fun TodayScreen(ui: AppState) {
             }
             "timeline" -> item("timeline") { TimelineCard(ui, plan) }
             "evening" -> item("evening") { EveningQuickCard(ui, plan) }
+            "quest" -> item("quest") { QuestCard(ui) }
             "tools" -> item("tools") { QuickTools(ui) }
             "tip" -> item("tip") { AiTipCard(ui) }
             "mood" -> item("mood") { MoodCard(ui) }

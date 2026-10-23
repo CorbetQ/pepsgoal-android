@@ -65,6 +65,8 @@ class WearActivity : ComponentActivity() {
                                 scope.launch {
                                     val ok = when { cap -> Today.send(ctx, "/pepsgoal/cap", g.id); g.simple -> Today.send(ctx, "/pepsgoal/validate", g.id); else -> { note = "À saisir sur le téléphone"; return@launch } }
                                     note = if (ok) null else "Téléphone injoignable"
+                                    // Vibration de réussite (double impulsion) quand la validation part vers le téléphone
+                                    if (ok && !g.done) try { ctx.getSystemService(android.os.Vibrator::class.java)?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 40, 70, 60), intArrayOf(0, 180, 0, 255), -1)) } catch (e: Exception) {}
                                 }
                             },
                             label = { Text("${g.icon} ${g.title}", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold) },

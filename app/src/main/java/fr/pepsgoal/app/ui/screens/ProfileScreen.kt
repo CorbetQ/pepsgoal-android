@@ -71,6 +71,7 @@ fun ProfileScreen(ui: AppState) {
         when (ui.profileTab) {
             "badges" -> {
                 item("near") { NearBadgesCard(ui, u) }
+                item("secrets") { SecretsCard(ui) }
                 item("badges") { BadgeGridCard(ui, u) }
             }
             "collection" -> {
@@ -80,6 +81,8 @@ fun ProfileScreen(ui: AppState) {
                 item("eggs") { EggsCard(ui, u) }
             }
             else -> {
+                item("pet") { PetCard(ui) }
+                item("quest") { QuestCard(ui) }
                 item("recap") { RecapCard(ui) }
                 item("quests") { FlameQuestsCard(ui) }
                 item("gel") { GelCard(ui, u, false) }
@@ -503,6 +506,18 @@ private fun FlameSkinsCard(ui: AppState, u: fr.pepsgoal.core.model.User) {
                     Text(sk.name, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
                     Text(if (open) (if (on) "Choisie" else "Débloquée") else "${sk.min} j", fontSize = 11.sp, color = p.ink2)
                 }
+            }
+        }
+        // Forme et effet : appliqués à toutes les flammes de l'application
+        var shape by remember { mutableStateOf(ui.prefs.flameShape) }; var fx by remember { mutableStateOf(ui.prefs.flameFx) }
+        Spacer(Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.size(84.dp).clip(RoundedCornerShape(22.dp)).background(p.flame.copy(alpha = .1f)), contentAlignment = Alignment.Center) { Flame(64.dp, style = FlameStyle(shape, fx)) }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Eyebrow("Forme")
+                FlowRowCompat(gap = 4.dp) { FLAME_SHAPES.forEach { (k, l) -> FChip(l, shape == k, { shape = k; ui.prefs.flameShape = k; ui.themeTick++ }) } }
+                Eyebrow("Effet")
+                FlowRowCompat(gap = 4.dp) { FLAME_FX.forEach { (k, l) -> FChip(l, fx == k, { fx = k; ui.prefs.flameFx = k; ui.themeTick++ }) } }
             }
         }
     }
