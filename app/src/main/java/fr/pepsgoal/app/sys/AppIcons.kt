@@ -47,6 +47,18 @@ object AppIcons {
         Icon("cafe", "Café", "IconCafe", listOf(0xFFE8C9A0, 0xFFA8744A), R.drawable.ic_launcher_foreground_cafe, 120),
         Icon("foret", "Forêt", "IconForet", listOf(0xFF0B2A3A, 0xFF06140F), R.drawable.ic_launcher_foreground_foret, 150),
         Icon("kawaii", "Kawaii", "IconKawaii", listOf(0xFFFFD6E8, 0xFFFFC2A8), R.drawable.ic_launcher_foreground_kawaii, 150),
+        Icon("metro", "Métro", "IconMetro", listOf(0xFF2A3A52, 0xFF070A12), R.drawable.ic_launcher_foreground_metro, 200),
+        Icon("loire", "Loire", "IconLoire", listOf(0xFF6FA6DA, 0xFFFCE4C2), R.drawable.ic_launcher_foreground_loire, 200),
+        Icon("phare", "Phare", "IconPhare", listOf(0xFF0A1230, 0xFF1E3358), R.drawable.ic_launcher_foreground_phare, 200),
+        Icon("montgolfiere", "Montgolfière", "IconMontgolfiere", listOf(0xFF7FB2E6, 0xFFFFD2B0), R.drawable.ic_launcher_foreground_montgolfiere, 200),
+        Icon("meduse", "Méduse", "IconMeduse", listOf(0xFF0E2A5A, 0xFF020818), R.drawable.ic_launcher_foreground_meduse, 200),
+        Icon("bambou", "Bambou", "IconBambou", listOf(0xFFE6F4D8, 0xFF9FD08A), R.drawable.ic_launcher_foreground_bambou, 150),
+        Icon("velo", "Vélo", "IconVelo", listOf(0xFFBDEAD8, 0xFF5EC2A8), R.drawable.ic_launcher_foreground_velo, 150),
+        Icon("vinyle", "Vinyle", "IconVinyle", listOf(0xFF5A2A86, 0xFF1E0F3A), R.drawable.ic_launcher_foreground_vinyle, 150),
+        Icon("boussole", "Boussole", "IconBoussole", listOf(0xFF0E2A4A, 0xFF051424), R.drawable.ic_launcher_foreground_boussole, 200),
+        Icon("glace", "Glace", "IconGlace", listOf(0xFFFFE0EC, 0xFFFFB8D2), R.drawable.ic_launcher_foreground_glace, 150),
+        Icon("chat", "Chat", "IconChat", listOf(0xFF2A1E5A, 0xFF0E0A24), R.drawable.ic_launcher_foreground_chat, 150),
+        Icon("chateau", "Château d’Angers", "IconChateau", listOf(0xFF7FB8E8, 0xFFD6EAFA), R.drawable.ic_launcher_foreground_chateau, 250),
     )
 
     fun current(ctx: Context): String {

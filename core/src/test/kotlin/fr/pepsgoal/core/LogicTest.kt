@@ -296,7 +296,7 @@ class LogicTest {
     }
 
     @Test fun ambiancesAreInterfaceThemes() {
-        assertEquals(16, SHOP_MODES.size)
+        assertEquals(28, SHOP_MODES.size); assertEquals(SHOP_MODES.size, SHOP_MODES.map { it.key }.toSet().size)
         assertEquals("dark", baseTheme("m:neon")); assertEquals("light", baseTheme("m:paper")); assertEquals("oled", baseTheme("oled"))
         assertEquals("Néon", themeName("m:neon")); assertEquals("Sombre", themeName("dark"))
         assertEquals(250, shopPriceOf("mode:neon"))
@@ -316,5 +316,13 @@ class LogicTest {
         assertEquals(null, shopPriceOf("mode:angers"))
         assertEquals(false, pg.findEgg("angers")); assertEquals(Eggs.BONUS, u.shopBonus)
         assertEquals(false, pg.findEgg("nope")); assertEquals(setOf("angers"), pg.eggsFound(u))
+    }
+
+    @Test fun shop54Catalog() {
+        assertEquals(SHOP_BGS.size, SHOP_BGS.map { it.key }.toSet().size)
+        for (k in listOf("tunnel", "loire", "lighthouse", "vineyard", "balloons", "jellyfish", "bamboo", "nighttrain", "rooftops", "canyon", "savanna", "lanterns", "icefield")) assertTrue(SHOP_BGS.any { it.key == k }, k)
+        // Les thèmes spéciaux pointent vers un paysage existant
+        for (t in SHOP_THEMES.filter { it.bg.startsWith("s:") }) assertTrue(SHOP_BGS.any { "s:${it.key}" == t.bg }, t.key)
+        assertEquals("s:tunnel", SHOP_THEMES.first { it.key == "tunnel" }.bg); assertEquals("Loire", SHOP_THEMES.first { it.key == "loire" }.name)
     }
 }

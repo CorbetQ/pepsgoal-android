@@ -30,6 +30,9 @@ val SHOP_THEMES = listOf(
     ShopTheme("blaze", "Brasier", "Braises qui s’envolent sur fond sombre", listOf("#FFC14D", "#FF5A1F", "#B3122E"), "mesh", 250, dark = true, fx = "embers"),
     ShopTheme("zen", "Zen", "Sable, sauge et calme", listOf("#F3E9D2", "#C6B38E", "#88A096"), "plain", 120),
     ShopTheme("retro", "Rétro 80", "Coucher de soleil néon sur la grille", listOf("#FFB86C", "#FF5E9C", "#7A5CFF"), "grid", 200, dark = true),
+    // Thèmes spéciaux : un paysage illustré exclusif et ses couleurs
+    ShopTheme("tunnel", "Tunnel Express", "Le métro de Rennes file dans son tunnel : phares chauds, néons bleutés", listOf("#FFE2A0", "#FFB000", "#5FA8FF"), "s:tunnel", 300, dark = true),
+    ShopTheme("loire", "Loire", "Les bords de Loire en Anjou : tuffeau, ardoise et sable blond", listOf("#FFD49A", "#E9873A", "#3E6E8E"), "s:loire", 300, dark = false),
     // Éditions limitées de saison
     ShopTheme("t-halloween", "Nuit d’Halloween", "Citrouille, violet sorcière et braises", listOf("#FF8A00", "#8B3DFF", "#3DFF8A"), "stars", 200, dark = true, fx = "embers", season = "halloween"),
     ShopTheme("t-noel", "Noël enneigé", "Rouge, sapin et neige qui tombe", listOf("#FF4D4D", "#1E8E3E", "#FFD166"), "blob", 200, fx = "snow", season = "noel"),
@@ -65,6 +68,19 @@ val SHOP_BGS = listOf(
     ShopBg("rainwindow", "Pluie sur la vitre", "Gouttes qui glissent, lumières floues", 150, listOf("#2A3142", "#3E4A63", "#5A6B88"), dark = true),
     ShopBg("planet", "Planète", "Géante aux anneaux et lunes", 250, listOf("#05030F", "#140A2E", "#2A1554"), dark = true),
     ShopBg("lagoon", "Lagon", "Plage, palmiers et eau turquoise", 150, listOf("#7FD8FF", "#BFF3F0", "#F7E3B5")),
+    ShopBg("loire", "Loire", "Bords de Loire en Anjou : tuffeau, bancs de sable et toue", 250, listOf("#5E93CF", "#F2D3B6", "#9CC0DE")),
+    ShopBg("lighthouse", "Phare", "Nuit étoilée, faisceau qui balaie la mer", 200, listOf("#060B1E", "#15244A", "#2E4670"), dark = true),
+    ShopBg("vineyard", "Vignes d’Anjou", "Rangs de vigne et chai au soleil couchant", 200, listOf("#5A6FA8", "#E8A27A", "#B9925A")),
+    ShopBg("balloons", "Montgolfières", "Ballons colorés au-dessus de la brume", 200, listOf("#7FB2E6", "#CFE2F2", "#FFE2C8")),
+    ShopBg("jellyfish", "Méduses", "Méduses lumineuses dans les profondeurs", 200, listOf("#0E2A5A", "#071838", "#020818"), dark = true),
+    ShopBg("bamboo", "Bambouseraie", "Tiges vertes, rayons de lumière et feuilles", 150, listOf("#E6F4D8", "#BFE0A6", "#7FB86A")),
+    ShopBg("nighttrain", "Train de nuit", "Un train illuminé traverse le viaduc sous la lune", 250, listOf("#0A0F2A", "#1E2A5A", "#3A3A6A"), dark = true),
+    ShopBg("rooftops", "Toits de Paris", "Zinc, cheminées et lucarnes au crépuscule", 200, listOf("#3A3F7A", "#A06A9A", "#F2A07A")),
+    ShopBg("canyon", "Canyon", "Mesas rouges, strates et rivière turquoise", 200, listOf("#3E8AD8", "#D98A6A", "#A84A2A")),
+    ShopBg("savanna", "Savane", "Acacias et girafes devant le soleil couchant", 200, listOf("#4A2A6A", "#FF8A4A", "#5A2A22")),
+    ShopBg("lanterns", "Lanternes célestes", "Des lanternes s’envolent au-dessus du lac", 250, listOf("#0A0A24", "#241A4A", "#4A2A5A"), dark = true),
+    ShopBg("icefield", "Banquise", "Icebergs, plaques de glace et ciel polaire", 150, listOf("#9EC9F2", "#D6EAFA", "#5E9CC8")),
+    ShopBg("tunnel", "Tunnel Express", "Le métro de Rennes file dans son tunnel", 250, listOf("#0B0F17", "#1A2230", "#3A4250"), dark = true),
     // Éditions limitées de saison
     ShopBg("haunted", "Manoir hanté", "Pleine lune, chauves-souris et citrouilles", 200, listOf("#120A24", "#2C1550", "#4A1F3A"), dark = true, season = "halloween"),
     ShopBg("snowvillage", "Village enneigé", "Maisons illuminées sous la neige", 200, listOf("#1B2A4A", "#3B4F7A", "#DCE6F5"), dark = true, season = "noel"),
@@ -176,6 +192,19 @@ val SHOP_MODES = listOf(
     ShopMode("nordic", "Nordique", "Gris bleuté, épuré et calme", 150, false, "#E8EDF2", "#1A2633", "#F8FAFC", listOf("#BFD3E6", "#D8E2EC", "#A7C4D9"), listOf("#3D7EA6", "#5A9BC2", "#2E5A88")),
     ShopMode("sakura", "Sakura", "Rose cerisier et pétales", 200, false, "#FBE8EF", "#3A1626", "#FFF6F9", listOf("#FFB7CE", "#FFD6E5", "#E8B4FF"), listOf("#FF5C8A", "#E8559D", "#B85CFF")),
     ShopMode("sand", "Sable", "Beige doré des dunes", 150, false, "#F3EBDD", "#2E271C", "#FFFBF3", listOf("#EBD3A8", "#F5C98A", "#DDE6C8"), listOf("#C98A2E", "#E0A43A", "#8A6A2E")),
+    // 5.4.0
+    ShopMode("ink", "Encre", "Bleu-noir profond, reflets saphir", 180, true, "#070B14", "#E8EEFA", "#141C2E", listOf("#2E5BFF", "#00B3FF", "#5A3DFF"), listOf("#8FB4FF", "#3D7BFF", "#00C2FF")),
+    ShopMode("basalt", "Basalte", "Roche volcanique et braises", 200, true, "#111012", "#F2ECE8", "#262224", listOf("#FF5A1F", "#7A2A1A", "#FFB04A"), listOf("#FFB04A", "#FF5A1F", "#E8412C")),
+    ShopMode("emerald", "Émeraude", "Vert précieux et lagon nocturne", 200, true, "#04140F", "#E2FAF0", "#0F2E24", listOf("#00A86B", "#2EF2B0", "#0E6B5A"), listOf("#7CFFC8", "#00C98A", "#00A3C4")),
+    ShopMode("cosmos", "Cosmos", "Violet galactique et poussière rose", 220, true, "#0A0820", "#EEE8FF", "#1E1844", listOf("#7B2BFF", "#FF4FD8", "#2E6BFF"), listOf("#C9A8FF", "#8C5CFF", "#FF5CD6")),
+    ShopMode("steel", "Acier", "Gris bleuté, métal brossé", 150, true, "#0E1318", "#E6ECF2", "#1E2832", listOf("#4A6A8A", "#8FB0CC", "#2E4A66"), listOf("#BFD6EA", "#7FA6C9", "#4D7FA8")),
+    ShopMode("metro", "Métro", "Tunnel de nuit, phares chauds et signaux bleus", 220, true, "#0B0F17", "#EEF2F8", "#1C2430", listOf("#FFD27A", "#5FA8FF", "#E8412C"), listOf("#FFE2A0", "#FFB000", "#5FA8FF")),
+    ShopMode("cotton", "Coton", "Blanc doux et pastels poudrés", 150, false, "#F4F6FA", "#1C2230", "#FFFFFF", listOf("#DCE4F2", "#F2DCE8", "#DCF2EA"), listOf("#7FA6FF", "#5A7DFF", "#B47CFF")),
+    ShopMode("pistachio", "Pistache", "Vert tendre et gourmand", 180, false, "#EEF6E2", "#1E2A14", "#FAFFF2", listOf("#C8E6A0", "#E6F2B8", "#A8D8B0"), listOf("#8CC63F", "#5EA82E", "#2E8A5A")),
+    ShopMode("lemon", "Citron", "Jaune soleil et zeste vert", 180, false, "#FFF9DC", "#2A2410", "#FFFEF4", listOf("#FFE98A", "#FFD25A", "#C8F0A0"), listOf("#FFD000", "#FFB000", "#7CC43A")),
+    ShopMode("sky", "Ciel", "Bleu azur et nuages de lait", 180, false, "#E6F3FF", "#102438", "#F8FCFF", listOf("#A8D8FF", "#CDE9FF", "#FFE0C8"), listOf("#3DA5FF", "#1E7FE0", "#7FD3FF")),
+    ShopMode("coral", "Corail", "Corail vif et rose saumon", 200, false, "#FFEDE8", "#3A1612", "#FFF8F6", listOf("#FFB8A8", "#FFD6C8", "#FFC2D9"), listOf("#FF7A59", "#FF4F5E", "#FFB000")),
+    ShopMode("linen", "Lin", "Lin naturel, bois clair et sauge", 150, false, "#F2EEE6", "#2A2620", "#FCFAF6", listOf("#E2D8C6", "#D8E0D0", "#EAD6CC"), listOf("#A8865A", "#8A6A44", "#5E7A6A")),
 )
 
 fun shopMode(theme: String?): ShopMode? = if (theme != null && theme.startsWith("m:")) (SHOP_MODES + Eggs.SECRET_MODES).firstOrNull { "m:${it.key}" == theme } else null
