@@ -32,6 +32,8 @@ interface CloudEvents {
     /** Nouvelles publications d'amis apparues dans le feed depuis la dernière relève. */
     fun newPosts(fresh: List<Post>) {}
     fun error(message: String) {}
+    /** Envoi terminé : [pushed] modifications locales arrivées sur le serveur. */
+    fun synced(pushed: Int) {}
 }
 
 /**
@@ -295,6 +297,36 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     }
     fun pendingCount() = try { if (store.acct) collectOps().first.size else 0 } catch (e: Exception) { 0 }
 
+    /** Modification locale pas encore envoyée : [kind] goal / checkin / settings, [action] new / edit / delete. */
+    class Pending(val kind: String, val action: String, val label: String, val sub: String)
+
+    /** Ce qui partira au prochain envoi, en clair (page « Modifications en attente »). */
+    fun pendingList(): List<Pending> = try {
+        if (!store.acct) emptyList() else {
+            val cs = cloudState()
+            fun snapField(json: String?, k: String) = try { json?.let { (JSON.parseToJsonElement(it).jsonObject[k] as? JsonPrimitive)?.contentOrNull } } catch (e: Exception) { null }
+            collectOps().first.map { o ->
+                val id = o.str("id"); val del = o.str("action") == "delete"
+                when (o.str("entity")) {
+                    "goal" -> {
+                        val g = db.goals.firstOrNull { it.id == id }
+                        val title = g?.title ?: snapField(cs.snapGoals[id], "title") ?: "Objectif"
+                        Pending("goal", if (del) "delete" else if (cs.snapGoals[id] == null) "new" else "edit", title,
+                            if (del) "Objectif supprimé" else if (cs.snapGoals[id] == null) "Nouvel objectif" else "Objectif modifié")
+                    }
+                    "checkin" -> {
+                        val c = db.checkins.firstOrNull { it.id == id }
+                        val gid = c?.goalId ?: snapField(cs.snapCheckins[id], "goalId"); val date = c?.date ?: snapField(cs.snapCheckins[id], "date") ?: ""
+                        val title = db.goals.firstOrNull { it.id == gid }?.title ?: "Objectif"
+                        Pending("checkin", if (del) "delete" else if (cs.snapCheckins[id] == null) "new" else "edit", title,
+                            (if (del) "Validation annulée" else if (cs.snapCheckins[id] == null) "Validation" else "Validation modifiée") + if (date.isNotEmpty()) " · ${fmtDate(date)}" else "")
+                    }
+                    else -> Pending("settings", "edit", "Réglages", "Thème, rappels et préférences")
+                }
+            }
+        }
+    } catch (e: Exception) { emptyList() }
+
     private fun markSynced(m: Mark) {
         val cs = cloudState()
         when (m.kind) {
@@ -325,6 +357,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
                 }
                 pull()
                 lastSync = nowMs(); syncError = ""
+                if (ops.isNotEmpty()) events.synced(ops.size)
             } catch (e: ApiError) { syncError = e.message ?: "Erreur de synchronisation" }
             catch (e: Exception) { syncError = e.message ?: "Erreur de synchronisation" }
             finally { store.changed() }

@@ -170,6 +170,8 @@ class DevicePrefs(context: Context) {
     var geoPlaces get() = p.getString("geoPlaces", "") ?: ""; set(v) = p.edit().putString("geoPlaces", v).apply()
     /** Couleurs de saison (Halloween, Noël, printemps…) sur l'arrière-plan. */
     var seasonal get() = p.getBoolean("seasonal", true); set(v) = p.edit().putBoolean("seasonal", v).apply()
+    /** Fonds illustrés éclairés selon l'heure réelle (aube, jour, crépuscule, nuit). */
+    var bgClock get() = p.getBoolean("bgClock", true); set(v) = p.edit().putBoolean("bgClock", v).apply()
     /** Sauvegarde automatique : dossier choisi (URI d'arborescence), dernière réussite, dernière erreur. */
     var backupUri get() = p.getString("backupUri", "") ?: ""; set(v) = p.edit().putString("backupUri", v).apply()
     var backupLast get() = p.getLong("backupLast", 0L); set(v) = p.edit().putLong("backupLast", v).apply()

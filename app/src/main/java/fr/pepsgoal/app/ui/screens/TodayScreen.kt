@@ -64,6 +64,8 @@ fun TodayScreen(ui: AppState) {
             item("wx") { WeatherCard(ui) }
             return@ScreenList
         }
+        // Fin d'année : la rétrospective est prête (du 15 décembre au 10 janvier)
+        if (Recaps.wrappedOpen()) item("wrapped") { WrappedCard(ui) }
         // Cartes dans l'ordre choisi (Paramètres › Accueil)
         for (k in cards) when (k) {
             "hero" -> { item("hero") { Hero(ui) }; item("ctx") { ContextCards(ui) } }
@@ -424,5 +426,25 @@ private fun ContextCards(ui: AppState) {
         LaunchedEffect(ui.rev) { pg.checkRewards().forEach { r -> Feedback.success(); ui.toast("Récompense débloquée : ${r.emoji} ${r.title} ! Tu l’as bien méritée.", "star") } }
         val ready = u.rewards.filter { it.claimedAt == null && pg.rewardProgress(it) >= it.target }
         if (ready.isNotEmpty()) fr.pepsgoal.app.ui.sheets.RewardsCard(ui, compact = true)
+    }
+}
+
+/** Carte d'accueil de fin d'année : ouvre la rétrospective « PepsGoal Wrapped ». */
+@Composable
+fun WrappedCard(ui: AppState) {
+    val pg = ui.pg; val r = remember { Recaps.wrappedRange() }; val year = parseYmd(r.s).year
+    val ph = slowPhase(3600, 12)
+    val shape = RoundedCornerShape(24.dp)
+    Column(Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(hex("#241552"), hex("#7A2A8A"), hex("#FF6A3A"))))
+        .clickable(onClickLabel = "Ouvrir ma rétrospective") { val (sl, st) = Recaps.wrapped(pg, pg.meId()); ui.fs = Fs.Recap("year", sl, st) }.padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.graphicsLayer { val k = 1f + .06f * kotlin.math.sin(ph * 2f * kotlin.math.PI.toFloat()); scaleX = k; scaleY = k; rotationZ = 6f * kotlin.math.sin(ph * 2f * kotlin.math.PI.toFloat()) }) { Emoji("🎁", 46.dp) }
+            Column(Modifier.weight(1f)) {
+                Text("PEPSGOAL WRAPPED", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .8f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
+                Text("Ton année $year est prête", color = androidx.compose.ui.graphics.Color.White, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+            }
+        }
+        Text("Ton meilleur mois, ton podium, ton profil de l’année… à revivre en story et à partager.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .9f), fontSize = 14.sp)
     }
 }
