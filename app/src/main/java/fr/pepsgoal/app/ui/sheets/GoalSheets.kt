@@ -550,6 +550,7 @@ fun GoalSheet(ui: AppState, id: String) {
         AutoPlaceRow(ui, g)
         NfcRow(ui, g)
         OutdoorRow(ui, g)
+        PlanBRow(ui, g)
         SavingsRow(ui, g)
         DuoRow(ui, g)
         AgendaRow(ui, g)

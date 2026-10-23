@@ -144,7 +144,16 @@ fun PepsRoot(ui: AppState) {
             val skinKey = u?.flameSkin ?: "classic"
             // Jour de fête (Halloween, 1er avril) : la flamme change de couleurs pour la journée
             val flame = remember(skinKey, u?.id, rev) { fr.pepsgoal.core.Eggs.flameColors()?.map(::hex) ?: FLAME_SKINS.firstOrNull { it.key == skinKey && it.colors != null && u != null && pg.bestStreak(u.id) >= it.min }?.colors?.map(::hex) }
-            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx)) {
+            // Statuts du jour (moins de 24 h) : emoji sur les avatars
+            val statuses = remember(rev) { pg.db.stories.filter { it.kind == "status" && fr.pepsgoal.core.nowMs() - it.at < fr.pepsgoal.core.STORY_TTL }.sortedBy { it.at }
+                .mapNotNull { s -> (s.data?.get("e") as? kotlinx.serialization.json.JsonPrimitive)?.content?.takeIf { it.isNotBlank() }?.let { s.userId to it } }.toMap() }
+            // Briefing du matin lu à voix haute à la première ouverture de la journée (option du briefing)
+            val bctx = androidx.compose.ui.platform.LocalContext.current
+            LaunchedEffect(u?.id) {
+                val t = fr.pepsgoal.core.today(); val h = java.time.LocalTime.now().hour
+                if (u != null && ui.prefs.briefAuto && ui.prefs.briefDay != t && h in 5..11) { ui.prefs.briefDay = t; kotlinx.coroutines.delay(1200); fr.pepsgoal.app.sys.Speaker.briefing(bctx) }
+            }
+            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses) {
                 Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                     when {

@@ -45,7 +45,7 @@ object WidgetUpdater {
     fun update(ctx: Context) {
         scope.launch {
             val c = ctx.applicationContext
-            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget(), FlameWidget())) try { w.updateAll(c) } catch (e: Exception) {}
+            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget(), FlameWidget(), TimelineWidget())) try { w.updateAll(c) } catch (e: Exception) {}
             WearSync.push(c)
         }
     }
@@ -59,6 +59,7 @@ object WidgetUpdater {
         listOf(CapWidgetReceiver::class.java, "Cap du jour", "Jauge de ton cap quotidien (10 000 pas…) et bouton « + »", "2 × 2", "cap"),
         listOf(WeekWidgetReceiver::class.java, "Ma semaine", "Les 7 jours de la semaine et ce que tu as validé chaque jour", "4 × 1", "week"),
         listOf(FlameWidgetReceiver::class.java, "Flamme", "Ta série en tout petit ; un appui valide ton prochain objectif du jour", "1 × 1", "flame"),
+        listOf(TimelineWidgetReceiver::class.java, "Frise du jour", "Tes objectifs du jour placés à l’heure où tu les fais d’habitude", "4 × 2", "timeline"),
     )
 
     /** Demande au lanceur d'ajouter le widget sur l'écran d'accueil (false si le lanceur ne le permet pas). */
@@ -435,6 +436,72 @@ class FlameWidget : GlanceAppWidget() {
             Image(ImageProvider(if (st?.lit == true) R.drawable.ic_flame else R.drawable.ic_flame_dim), "Flamme", GlanceModifier.size(if (tiny) 20.dp else 28.dp))
             Text("${st?.n ?: 0}", style = TextStyle(color = s.ink, fontWeight = FontWeight.Bold, fontSize = if (tiny) 15.sp else 20.sp), maxLines = 1)
             if (next != null && !tiny) Text("✓ ${next.g.icon}", style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ Frise du jour */
+
+class TimelineWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = TimelineWidget() }
+
+/** Pastille de la frise : emoji, heure habituelle, couleur du type, validé ou non. */
+private class TlItem(val icon: String, val h: Float, val color: Int, val done: Boolean)
+
+/** Image de la frise : axe de 6 h à minuit, créneaux, repère « maintenant », objectifs sur trois rangs. */
+private fun timelineBitmap(items: List<TlItem>, nowH: Float, dark: Boolean, w: Int = 960, h: Int = 300): android.graphics.Bitmap {
+    val b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888); val c = android.graphics.Canvas(b)
+    val pad = 34f; val axisY = h - 58f; val W = w - pad * 2
+    fun x(hh: Float) = pad + W * ((hh - 6f) / 18f).coerceIn(0f, 1f)
+    val ink = if (dark) 0xFFFFFFFF.toInt() else 0xFF0D0E2B.toInt()
+    val slot = android.graphics.Paint().apply { color = ink; alpha = if (dark) 16 else 12 }
+    listOf(6f to 11f, 14f to 18f).forEach { (a, z) -> c.drawRoundRect(android.graphics.RectF(x(a), 6f, x(z), axisY), 18f, 18f, slot) }
+    c.drawLine(pad, axisY, w - pad, axisY, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = ink; alpha = 70; strokeWidth = 5f; strokeCap = android.graphics.Paint.Cap.ROUND })
+    val lbl = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = ink; alpha = 170; textSize = 30f; isFakeBoldText = true; textAlign = android.graphics.Paint.Align.CENTER }
+    for (hh in listOf(6, 9, 12, 15, 18, 21)) c.drawText("$hh h", x(hh.toFloat()).coerceAtLeast(pad + 26f), h - 14f, lbl)
+    if (nowH in 6f..24f) {
+        val nx = x(nowH); val flame = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFF6A2A.toInt(); strokeWidth = 5f; pathEffect = android.graphics.DashPathEffect(floatArrayOf(14f, 10f), 0f) }
+        c.drawLine(nx, 4f, nx, axisY, flame); c.drawCircle(nx, axisY, 11f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFF6A2A.toInt() })
+    }
+    val r = 36f; val lanes = FloatArray(3) { -99f }
+    val emo = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textSize = 38f; textAlign = android.graphics.Paint.Align.CENTER }
+    for (it in items.sortedBy { it.h }) {
+        val lane = (0 until 3).firstOrNull { l -> it.h - lanes[l] >= 1.7f } ?: (0 until 3).minBy { l -> lanes[l] }
+        lanes[lane] = it.h
+        val cx = x(it.h).coerceIn(pad + r, w - pad - r); val cy = 10f + r + lane * (r * 2 + 6f)
+        c.drawCircle(cx, cy, r, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = if (it.done) it.color else if (dark) 0xFF262A4A.toInt() else 0xFFFFFFFF.toInt() })
+        c.drawCircle(cx, cy, r - 2.5f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.STROKE; strokeWidth = 5f; color = it.color })
+        c.drawText(it.icon, cx, cy + 13f, emo)
+        if (it.done) {
+            c.drawCircle(cx + r * .72f, cy + r * .72f, 14f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF2EC27E.toInt() })
+            c.drawText("✓", cx + r * .72f, cy + r * .72f + 8f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); textSize = 22f; isFakeBoldText = true; textAlign = android.graphics.Paint.Align.CENTER })
+        }
+    }
+    return b
+}
+
+/** Widget « Frise du jour » : les objectifs du jour placés à l'heure habituelle, et le prochain à faire. */
+class TimelineWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Exact
+    override suspend fun provideGlance(context: Context, id: GlanceId) { provideContent { GlanceTheme { Content(context) } } }
+
+    @Composable
+    private fun Content(ctx: Context) {
+        val app = ctx.peps; val pg = app.pg; val u = pg.me(); val s = style(ctx)
+        val tr = { t: String -> fr.pepsgoal.app.ui.I18n.tr(t) }
+        Column(GlanceModifier.fillMaxSize().wBg(s).padding(horizontal = 12.dp, vertical = 10.dp).clickable(open(ctx) { putExtra(MainActivity.EXTRA_TAB, "today") })) {
+            if (u == null) { Text(tr("Connecte-toi à PepsGoal."), style = TextStyle(color = s.ink)); return@Column }
+            val due = pg.todayPlan(u.id).due
+            val now = java.time.LocalTime.now().let { it.hour + it.minute / 60f }
+            val items = due.map { d -> TlItem(d.g.icon, pg.usualHour(d.g).coerceIn(6f, 23.8f), typeColor(d.g.type).let { col -> android.graphics.Color.argb(255, (col.red * 255).toInt(), (col.green * 255).toInt(), (col.blue * 255).toInt()) }, d.done) }
+            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("Ta journée heure par heure"), GlanceModifier.defaultWeight(), style = TextStyle(color = s.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                Text("${due.count { it.done }}/${due.size}", style = TextStyle(color = s.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold))
+            }
+            if (due.isEmpty()) { Text(tr("Rien n’est prévu aujourd’hui."), GlanceModifier.padding(top = 8.dp), style = TextStyle(color = s.ink2, fontSize = 12.sp)); return@Column }
+            Image(ImageProvider(timelineBitmap(items, now, s.dark)), tr("Ta journée heure par heure"), GlanceModifier.fillMaxWidth().defaultWeight().padding(vertical = 4.dp), contentScale = ContentScale.Fit)
+            val next = due.filter { !it.done }.map { it to pg.usualHour(it.g) }.sortedBy { it.second }.let { l -> l.firstOrNull { it.second >= now - .5f } ?: l.firstOrNull() }
+            if (LocalSize.current.height >= 120.dp) Text(if (next != null) tr("Prochain : ${next.first.g.icon} ${next.first.g.title} vers ${next.second.toInt()} h") else tr("Tout est validé pour aujourd’hui 🔥"),
+                style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
         }
     }
 }

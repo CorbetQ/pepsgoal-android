@@ -33,6 +33,8 @@ val SHOP_THEMES = listOf(
     // Thèmes spéciaux : un paysage illustré exclusif et ses couleurs
     ShopTheme("tunnel", "Tunnel Express", "Le métro de Rennes file dans son tunnel : phares chauds, néons bleutés", listOf("#FFE2A0", "#FFB000", "#5FA8FF"), "s:tunnel", 300, dark = true),
     ShopTheme("loire", "Loire", "Les bords de Loire en Anjou : tuffeau, ardoise et sable blond", listOf("#FFD49A", "#E9873A", "#3E6E8E"), "s:loire", 300, dark = false),
+    ShopTheme("angers", "Tramway d’Angers", "Le tram traverse la Maine au pied du château aux tours rayées, à l’heure réelle", listOf("#FFE2A6", "#E8412C", "#2DA9E1"), "s:angers", 300, dark = false),
+    ShopTheme("angevine", "Douceur angevine", "Ardoise, tuffeau et vignes du Layon, au pied d’un moulin cavier", listOf("#F3E2C4", "#C9A24A", "#5E6E86"), "s:angevine", 300, dark = false),
     // Éditions limitées de saison
     ShopTheme("t-halloween", "Nuit d’Halloween", "Citrouille, violet sorcière et braises", listOf("#FF8A00", "#8B3DFF", "#3DFF8A"), "stars", 200, dark = true, fx = "embers", season = "halloween"),
     ShopTheme("t-noel", "Noël enneigé", "Rouge, sapin et neige qui tombe", listOf("#FF4D4D", "#1E8E3E", "#FFD166"), "blob", 200, fx = "snow", season = "noel"),
@@ -81,6 +83,8 @@ val SHOP_BGS = listOf(
     ShopBg("lanterns", "Lanternes célestes", "Des lanternes s’envolent au-dessus du lac", 250, listOf("#0A0A24", "#241A4A", "#4A2A5A"), dark = true),
     ShopBg("icefield", "Banquise", "Icebergs, plaques de glace et ciel polaire", 150, listOf("#9EC9F2", "#D6EAFA", "#5E9CC8")),
     ShopBg("tunnel", "Tunnel Express", "Le métro de Rennes file dans son tunnel", 250, listOf("#0B0F17", "#1A2230", "#3A4250"), dark = true),
+    ShopBg("angers", "Tramway d’Angers", "La ligne A sur la Maine, le château et la cathédrale", 250, listOf("#4F86C6", "#9CC2E6", "#F6D6B8")),
+    ShopBg("angevine", "Douceur angevine", "Vignes du Layon, logis de tuffeau et moulin cavier", 250, listOf("#7FA8D8", "#F6DCC0", "#C9A87A")),
     // Éditions limitées de saison
     ShopBg("haunted", "Manoir hanté", "Pleine lune, chauves-souris et citrouilles", 200, listOf("#120A24", "#2C1550", "#4A1F3A"), dark = true, season = "halloween"),
     ShopBg("snowvillage", "Village enneigé", "Maisons illuminées sous la neige", 200, listOf("#1B2A4A", "#3B4F7A", "#DCE6F5"), dark = true, season = "noel"),

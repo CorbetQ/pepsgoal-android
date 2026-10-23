@@ -64,6 +64,7 @@ fun WidgetsSettings(ui: AppState) {
                         "cap" -> PreviewCap(dark)
                         "week" -> PreviewWeek(dark)
                         "flame" -> PreviewFlame(dark)
+                        "timeline" -> PreviewTimeline(dark)
                         else -> PreviewQuick(dark)
                     }
                 }
@@ -158,6 +159,23 @@ private fun PreviewWeek(dark: Boolean) = Frame(dark, 280.dp) { c ->
                 }
                 Text(fr.pepsgoal.core.WD[i], fontSize = 10.sp, color = c.ink2)
             }
+        }
+    }
+}
+
+@Composable
+private fun PreviewTimeline(dark: Boolean) = Frame(dark, 280.dp) { c ->
+    Text("Ta journée heure par heure", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.ink)
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().height(70.dp).padding(top = 6.dp)) {
+        val w = maxWidth
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val y = size.height - 6.dp.toPx()
+            drawLine(c.ink2.copy(alpha = .4f), androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 3.dp.toPx())
+            val nx = size.width * .45f
+            drawLine(Color(0xFFFF6A2A), androidx.compose.ui.geometry.Offset(nx, 0f), androidx.compose.ui.geometry.Offset(nx, y), 2.dp.toPx())
+        }
+        listOf(Triple("🧘", .08f, 0), Triple("🏃", .2f, 1), Triple("📚", .55f, 0), Triple("💧", .7f, 1), Triple("🛏️", .9f, 0)).forEachIndexed { i, (e, f, lane) ->
+            Box(Modifier.offset(x = w * f - 13.dp, y = (4 + lane * 26).dp).size(26.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (i < 2) Color(0xFF2EC27E) else c.ink2.copy(alpha = .15f)), contentAlignment = Alignment.Center) { Text(e, fontSize = 12.sp) }
         }
     }
 }

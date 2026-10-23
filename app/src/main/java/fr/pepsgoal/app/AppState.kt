@@ -49,6 +49,7 @@ sealed class Sheet {
     object Notes : Sheet()
     /** Modifications locales en attente d'envoi (hors ligne). */
     object Pending : Sheet()
+    object Status : Sheet()
     object GroupNew : Sheet()
     class GroupInfo(val gid: String) : Sheet()
     object DeleteAccount : Sheet()
@@ -139,6 +140,8 @@ class AppState(val app: PepsApp) : Hooks {
     var touch = Offset(540f, 1100f)
     var goalFilter by mutableStateOf("all")
     var groupFilter by mutableStateOf("all")
+    /** Message prérempli pour la prochaine conversation ouverte (bravo pour une série…). */
+    var chatDraft: String? = null
     var feedTab by mutableStateOf("friends")
     var modTab by mutableStateOf("accounts")
     var friendQuery by mutableStateOf("")

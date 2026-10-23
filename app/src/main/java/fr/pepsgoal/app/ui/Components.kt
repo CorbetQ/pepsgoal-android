@@ -624,6 +624,22 @@ fun accentBrush(i: Int): Brush { val a = (ACCENTS.getOrNull(i) ?: ACCENTS[0]).c.
 
 @Composable
 fun Av(u: User?, size: Dp = 40.dp, a: Avatar? = null, modifier: Modifier = Modifier) {
+    // Statut du jour : petit emoji en bas à droite (avatars de 34 dp et plus)
+    val st = if (size >= 34.dp && u != null) LocalStatuses.current[u.id] else null
+    if (st == null) AvFace(u, size, a, modifier)
+    else Box(modifier.size(size)) {
+        AvFace(u, size, a)
+        Box(Modifier.align(Alignment.BottomEnd).offset(x = size * .08f, y = size * .06f).size(size * .44f).clip(CircleShape).background(LocalPal.current.glassStrong.copy(alpha = 1f)), contentAlignment = Alignment.Center) {
+            Emoji(st, size * .3f)
+        }
+    }
+}
+
+/** Statuts du jour (id → emoji) des personnes visibles, fournis par la racine de l'interface. */
+val LocalStatuses = compositionLocalOf<Map<String, String>> { emptyMap() }
+
+@Composable
+private fun AvFace(u: User?, size: Dp, a: Avatar?, modifier: Modifier = Modifier) {
     val av = a ?: u?.avatar ?: Avatar()
     val ink = Color(0xFF10102A)
     Box(modifier.size(size).clip(CircleShape).background(accentBrush(av.color)), contentAlignment = Alignment.Center) {

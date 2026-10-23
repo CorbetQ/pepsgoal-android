@@ -87,6 +87,16 @@ fun Cloud.viewStory(s: Story) {
     if (!s.seenBy.contains(meId())) { s.seenBy.add(meId()); store.rawSave() }
     scope.launch0 { api.post("/v1/stories/${s.id}/view") }
 }
+/** Statut du jour : remplace le précédent (un seul à la fois), visible par les amis pendant 24 h. */
+suspend fun Cloud.setStatus(e: String, l: String) {
+    clearStatus()
+    api.post("/v1/stories", buildJsonObject { put("kind", "status"); put("data", buildJsonObject { put("e", e.take(16)); put("l", l.trim().take(40)) }); put("text", "") }); refreshSocial()
+}
+suspend fun Cloud.clearStatus() {
+    val mine = db.stories.filter { it.kind == "status" && it.userId == meId() }
+    for (s in mine) { db.stories.removeAll { it.id == s.id }; try { api.delete("/v1/stories/${s.id}") } catch (e: Exception) {} }
+    store.rawSave()
+}
 suspend fun Cloud.deleteStory(id: String) { db.stories.removeAll { it.id == id }; store.rawSave(); api.delete("/v1/stories/$id") }
 
 /* ---------- messagerie ---------- */

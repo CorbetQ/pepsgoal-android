@@ -181,6 +181,11 @@ class DevicePrefs(context: Context) {
     /** Compagnon : nom et accessoires portés. */
     var petName get() = p.getString("petName", "Braisou") ?: "Braisou"; set(v) = p.edit().putString("petName", v).apply()
     var petAcc: Set<String> get() = p.getStringSet("petAcc", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("petAcc", v).apply()
+    /** Briefing du matin lu à voix haute à la première ouverture de la journée (avant midi). */
+    var briefAuto get() = p.getBoolean("briefAuto", false); set(v) = p.edit().putBoolean("briefAuto", v).apply()
+    var briefDay get() = p.getString("briefDay", "") ?: ""; set(v) = p.edit().putString("briefDay", v).apply()
+    /** Bravos déjà envoyés ou écartés (« id:palier »), pour ne pas reproposer le même palier. */
+    var cheeredMilestones: Set<String> get() = p.getStringSet("cheeredMs", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("cheeredMs", v).apply()
     var bgClock get() = p.getBoolean("bgClock", true); set(v) = p.edit().putBoolean("bgClock", v).apply()
     /** Sauvegarde automatique : dossier choisi (URI d'arborescence), dernière réussite, dernière erreur. */
     var backupUri get() = p.getString("backupUri", "") ?: ""; set(v) = p.edit().putString("backupUri", v).apply()

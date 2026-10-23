@@ -206,6 +206,8 @@ object Notifier {
         val b = base(app, CH_REMIND).setContentTitle(title).setContentText(text).setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomBigContentView(big).setOnlyAlertOnce(true).setGroup("pg.reminders").setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(open(app, id) { putExtra(MainActivity.EXTRA_TAB, "today") })
+            // Briefing lu à voix haute : ouvre l'application sur l'accueil et lance la lecture
+            .addAction(R.drawable.ic_notif, tr("Écouter mon briefing"), open(app, id + 7) { action = MainActivity.ACTION_BRIEFING })
         post(app, id, b.build())
     }
 
