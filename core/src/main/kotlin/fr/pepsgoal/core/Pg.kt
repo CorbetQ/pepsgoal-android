@@ -63,6 +63,32 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
     fun userById(id: String?): User? = if (id == null) null else db.users.firstOrNull { it.id == id }
     fun goalById(id: String?): Goal? = if (id == null) null else db.goals.firstOrNull { it.id == id }
 
+    /* ---------------------------------------------------------------- surnoms des amis */
+    /** Surnom donné à cette personne, ou null. */
+    fun nickname(id: String?): String? = me()?.nicknames?.get(id ?: "")?.takeIf { it.isNotBlank() }
+    /** Nom que la personne s'est choisi (même si un surnom s'affiche à la place). */
+    fun realName(u: User): String = u.realName ?: u.name
+    /** Nom à afficher pour une ligne venue du serveur (classements, ligues) : le surnom s'il y en a un. */
+    fun shownName(id: String?, name: String): String = nickname(id) ?: name
+    /** Donne (ou retire, si vide) un surnom à un ami. Il remplace son nom partout dans l'app, pour soi seul. */
+    fun setNickname(id: String, nick: String) {
+        val me = me() ?: return; if (id == me.id) return
+        val n = nick.trim().take(40)
+        if (n.isEmpty()) me.nicknames.remove(id) else me.nicknames[id] = n
+        applyNicknames(); store.commit(); hooks.liveChanged()
+    }
+    /** Applique les surnoms aux fiches des personnes (le vrai nom reste dans realName). */
+    fun applyNicknames() {
+        val me = me() ?: return
+        for (u in db.users) {
+            if (u.id == me.id) continue
+            val real = u.realName ?: u.name
+            val nick = me.nicknames[u.id]?.takeIf { it.isNotBlank() }
+            u.realName = if (nick != null) real else null
+            u.name = nick ?: real
+        }
+    }
+
     /* ---------------------------------------------------------------- index des validations */
     private class Ckx(val arr: List<Checkin>, val len: Int, val last: Checkin?, val keys: Set<String>, val byUser: Map<String, List<Checkin>>, val days: Map<String, Set<String>>)
     private var ckx: Ckx? = null

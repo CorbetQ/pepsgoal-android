@@ -71,7 +71,7 @@ fun LeagueScreen(ui: AppState) {
                                 Text(when (i) { 0 -> "🥇"; 1 -> "🥈"; 2 -> "🥉"; else -> "${i + 1}" }, Modifier.width(28.dp), fontFamily = Unbounded, fontWeight = FontWeight.Bold)
                                 val av = remember(r.userId) { try { JSON.decodeFromJsonElement(Avatar.serializer(), r.avatar) } catch (e: Exception) { null } }
                                 Av(pg.userById(r.userId), 36.dp, a = av)
-                                Column(Modifier.weight(1f)) { Text(if (meRow) "Toi" else r.name, fontWeight = FontWeight.ExtraBold, maxLines = 1); Muted("$te $tn · ${pl(r.days, "jour", "jours")}", small = true) }
+                                Column(Modifier.weight(1f)) { Text(if (meRow) "Toi" else pg.shownName(r.userId, r.name), fontWeight = FontWeight.ExtraBold, maxLines = 1); Muted("$te $tn · ${pl(r.days, "jour", "jours")}", small = true) }
                                 Text("${r.points}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold)
                                 Flame(18.dp)
                             }

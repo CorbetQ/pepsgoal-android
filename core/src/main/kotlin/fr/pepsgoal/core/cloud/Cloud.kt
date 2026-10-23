@@ -124,7 +124,10 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
             val hue = p.obj("avatar").int("color")
             u = User(id, p.str("username"), p.str("displayName"), hue, createdAt = nowMs()); db.users.add(u)
         }
-        u.username = p.str("username", u.username); u.name = p.str("displayName", u.name); u.avatar = Mapping.mapAvatar(p.obj("avatar")); u.srv = true; u.stub = false
+        u.username = p.str("username", u.username)
+        val real = p.str("displayName", u.realName ?: u.name); val nick = if (id == pg.meId()) null else pg.nickname(id)
+        u.realName = if (nick != null) real else null; u.name = nick ?: real
+        u.avatar = Mapping.mapAvatar(p.obj("avatar")); u.srv = true; u.stub = false
         val role = p.str("role"); u.role = if (role == "admin" || role == "official") role else null
         if (role == "official") { u.tutorialDone = true; u.avatar = Avatar("picto", 0, "", "flameo", "") }
         apply(u)
@@ -145,7 +148,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         val u = upsertUser(user) { it.bio = user.str("bio"); it.freezes = user.int("freezes") }!!
         Mapping.applyServerSettings(u, user.obj("settings"))
         db.users.removeAll { it.role == "official" && !it.srv }
-        cloudState(); db.session = u.id
+        cloudState(); db.session = u.id; pg.applyNicknames()
         store.rawSave(); events.sessionChanged()
     }
 
@@ -394,7 +397,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
                 if (d.str("entity") == "checkin") { db.checkins = db.checkins.filter { it.id != id }.toMutableList(); cs.snapCheckins.remove(id); changed = true }
             }
             val st = r.obj("settings")
-            if (st != null) pg.me()?.let { Mapping.applyServerSettings(it, st); cs.snapSettings = Mapping.toServerSettings(it).toString(); changed = true }
+            if (st != null) pg.me()?.let { Mapping.applyServerSettings(it, st); pg.applyNicknames(); cs.snapSettings = Mapping.toServerSettings(it).toString(); changed = true }
             cs.cursor = (r as JsonObject)["cursor"]?.jsonPrimitive?.longOrNull ?: cs.cursor
             if (!r.bool("hasMore")) break
         }

@@ -82,14 +82,21 @@ fun UserSheet(ui: AppState, id: String) {
         return
     }
     val lv = pg.level(pg.points(x.id)); val st = pg.globalStreak(x.id)
+    var renaming by remember(id) { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
         LevelRing(lv.idx, 64.dp) { Av(x, 64.dp) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { Text(x.name, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp); if (x.demo) Chip("démo") }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(x.name, Modifier.weight(1f, fill = false), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis); if (x.demo) Chip("démo")
+                if (!self && x.role != "official") IconBtn("edit", "Renommer ${x.name}", { renaming = !renaming }, plain = true, size = 34.dp)
+            }
+            // Surnom : on rappelle le nom que la personne s'est choisi
+            if (pg.nickname(x.id) != null) Muted("Surnom · son nom : ${pg.realName(x)}", small = true)
             Muted("@${x.username} · ${lv.name}", small = true)
             if (x.bio.isNotEmpty()) Text(x.bio)
         }
     }
+    if (renaming) NicknameEditor(ui, x) { renaming = false }
     if (!self) FlowRowCompat(gap = 8.dp) {
         when {
             f == null -> PButton("Ajouter", { if (!pg.socialBlocked("d'ajouter des amis")) ui.run("Demande envoyée à ${first(x.name)}.", "userplus") { ui.cloud.sendFriendRequest(x.id) } }, icon = "userplus", kind = "primary", small = true)
@@ -124,6 +131,26 @@ fun UserSheet(ui: AppState, id: String) {
     if (posts.isNotEmpty()) {
         SectionTitle("Dernières publications")
         posts.forEach { post -> Glass(pad = 12.dp, radius = 16.dp) { Muted("${ago(post.at)} · ${VIS[post.visibility]?.first ?: ""}${if (post.photo != null) " · 📷 photo" else ""}", small = true); if (post.text.isNotEmpty()) Text(post.text) } }
+    }
+}
+
+/** Renommer un ami : un surnom que toi seul vois, partout dans l'app (fil, messages, classements, duels). */
+@Composable
+fun NicknameEditor(ui: AppState, x: fr.pepsgoal.core.model.User, done: () -> Unit) {
+    val pg = ui.pg; val has = pg.nickname(x.id) != null
+    var v by remember(x.id) { mutableStateOf(pg.nickname(x.id) ?: "") }
+    Glass(pad = 12.dp, radius = 16.dp) {
+        Field(v, { v = it }, "Surnom", placeholder = pg.realName(x), max = 40, icon = "edit")
+        Muted("Toi seul le vois : ${first(pg.realName(x))} garde son nom pour les autres.", small = true)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PButton("Enregistrer", {
+                val n = v.trim(); pg.setNickname(x.id, n); ui.bump(); done(); Feedback.tick()
+                ui.toast(if (n.isEmpty()) "Surnom retiré : ${pg.realName(x)} retrouve son nom." else "${pg.realName(x)} s’appelle maintenant « $n » pour toi.", "check")
+            }, icon = "check", kind = "primary", small = true)
+            if (has) PButton("Retirer le surnom", { pg.setNickname(x.id, ""); ui.bump(); done(); ui.toast("Surnom retiré : ${pg.realName(x)} retrouve son nom.", "x") }, kind = "ghost", small = true)
+            else PButton("Annuler", done, kind = "ghost", small = true)
+        }
     }
 }
 

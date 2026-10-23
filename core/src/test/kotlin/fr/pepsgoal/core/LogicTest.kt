@@ -374,4 +374,17 @@ class LogicTest {
         assertEquals(2, fr.pepsgoal.core.cloud.LeagueSeason.division(listOf("season:2026-09:1:1:0.10")))
         assertEquals(80, shopPriceOf("acc:beret"))
     }
+
+    @Test fun friendNicknames() {
+        pg.db.users.add(User("f1", "sam", "Samuel Martin"))
+        pg.setNickname("f1", "  Sam le boss  ")
+        val f = pg.userById("f1")!!
+        assertEquals("Sam le boss", f.name); assertEquals("Samuel Martin", pg.realName(f)); assertEquals("Sam le boss", pg.shownName("f1", "Samuel Martin"))
+        // Le surnom voyage dans les réglages synchronisés, pas le vrai nom de l'ami
+        val st = Mapping.toServerSettings(pg.me()!!)
+        val back = User("me", "camille", "Camille Roux"); Mapping.applyServerSettings(back, st)
+        assertEquals("Sam le boss", back.nicknames["f1"])
+        pg.setNickname("me", "Moi"); assertEquals("Camille Roux", pg.me()!!.name)
+        pg.setNickname("f1", ""); assertEquals("Samuel Martin", f.name); assertEquals(null, f.realName)
+    }
 }

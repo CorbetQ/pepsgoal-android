@@ -585,7 +585,7 @@ private fun Composer(ui: AppState, u: User, members: List<String>?, replyTo: Mes
             val before = tv.text.substring(0, tv.selection.min.coerceAtMost(tv.text.length))
             Regex("(^|\\s)@([\\w.]{0,30})$").find(before)?.let { mt ->
                 val q = mt.groupValues[2].lowercase()
-                val opts = members.filter { it != u.id }.mapNotNull { pg.userById(it) }.filter { it.username.startsWith(q) || it.name.lowercase().contains(q) }.take(6)
+                val opts = members.filter { it != u.id }.mapNotNull { pg.userById(it) }.filter { it.username.startsWith(q) || it.name.lowercase().contains(q) || pg.realName(it).lowercase().contains(q) }.take(6)
                 opts.forEach { x ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable {
                         val pre = before.replace(Regex("@([\\w.]{0,30})$"), "@${x.username} "); val t = pre + tv.text.substring(before.length)
