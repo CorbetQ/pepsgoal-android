@@ -199,7 +199,8 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         val g = hex(mode.glass); glass = g.copy(alpha = .62f); glassStrong = g.copy(alpha = if (dark) .92f else .88f)
     }
     // Opacité du verre : réglage séparé du flou (Paramètres › Apparence)
-    val alpha = when (input.glassOpacity) { "low" -> .38f; "high" -> .86f; else -> .62f }
+    // Clair : verre un peu plus transparent, les couleurs du fond transparaissent davantage à travers le givre
+    val alpha = when (input.glassOpacity) { "low" -> .38f; "high" -> .86f; else -> if (dark) .62f else .56f }
     glass = glass.copy(alpha = if (oled) glass.alpha else minOf(.95f, alpha + if (dyn != null) .08f else 0f))
     if (!oled) glassStrong = glassStrong.copy(alpha = when (input.glassOpacity) { "low" -> .7f; "high" -> .96f; else -> glassStrong.alpha })
     if (transp || input.contrast) { glass = if (dark) (if (oled) Color(12, 12, 14) else hex("#14163A")) else Color.White; glassStrong = glass }
@@ -227,7 +228,7 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         ac2[0], ac2[1], ac2[2], onAc, flameInk,
         if (dark) hex("#5BE38A") else hex("#1E8E3E"), if (dark) hex("#FF6B81") else hex("#C8102E"), if (dark) hex("#6FE3FF") else hex("#0057D9"),
         if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: mode?.let { m -> m.blobs.map(::hex) + ac[1] } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
-        if (oled) .22f else if (dark) .42f else .55f, types, dyn != null, input.contrast, transp, input.mono, motion,
+        if (oled) .22f else if (dark) .48f else .6f, types, dyn != null, input.contrast, transp, input.mono, motion,
         when (input.glassBlur) { "xlow" -> 20f; "low" -> 40f; "high" -> 110f; else -> 70f },
         input.easy, input.big || input.easy, input.oneHand
     )

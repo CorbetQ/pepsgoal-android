@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -56,40 +57,46 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
         st.n > 0 -> "Valide une action avant minuit pour prolonger ta série."
         else -> "Valide ta première action pour allumer ta flamme."
     }
-    Glass(pad = 18.dp) {
+    // Carte vedette : lavis de l'accent, salutation avec un emoji du moment, flamme de la série sur son halo
+    val hello = when (java.time.LocalTime.now().hour) { in 5..10 -> "☀️"; in 11..17 -> "👋"; in 18..21 -> "🌆"; else -> "🌙" }
+    Glass(pad = 18.dp, wash = listOf(p.flame, p.pink)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Eyebrow(cap(weekdayLongDate(todayDate())))
-                Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Salut ${first(u.name)}", Modifier.weight(1f, fill = false), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Emoji(hello, 26.dp)
+                }
                 Muted(msg, maxLines = 2)
             }
             Box(Modifier.graphicsLayer { scaleX = .74f; scaleY = .74f }) { HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") } }
         }
         // Avancement du jour, niveau et flammes en un coup d'œil
         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Ring(done, total, 64.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Ring(done, total, 68.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(if (total == 0) "Rien de prévu aujourd’hui" else "$done sur $total validés aujourd’hui", fontWeight = FontWeight.ExtraBold)
-                Bar(lv.pct * 100, height = 6.dp)
+                Bar(lv.pct * 100, height = 8.dp)
                 Muted("Niveau ${lv.idx} · ${lv.name} · ${fmtNum(pg.wallet())} flammes à dépenser", small = true, maxLines = 1)
             }
         }
         // Objectif du mois
         pg.monthFocusGoal()?.let { g ->
             val (d, n) = remember(ui.rev, g.id) { pg.monthFocusProgress(g) }
-            Row(Modifier.padding(top = 10.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.flame.copy(alpha = .1f)).clickable { ui.open(Sheet.Goal(g.id)) }.padding(10.dp),
+            val well = smoothShape(20.dp)
+            Row(Modifier.padding(top = 12.dp).fillMaxWidth().clip(well).background(Brush.horizontalGradient(listOf(p.flame.copy(alpha = .2f), p.pink.copy(alpha = .06f)))).clickable { ui.open(Sheet.Goal(g.id)) }.padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Emoji(g.shownIcon(), 24.dp)
-                Column(Modifier.weight(1f)) {
+                EmojiTile(g.shownIcon(), p.flame, 38.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Objectif du mois : ${g.shownTitle()}", fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Bar(d * 100.0 / maxOf(1, n), height = 5.dp)
+                    Bar(d * 100.0 / maxOf(1, n), height = 7.dp)
                 }
                 Text("$d/$n j", fontWeight = FontWeight.ExtraBold, color = p.ink2, fontSize = 13.sp)
             }
         }
-        Spacer(Modifier.height(10.dp)); WeekStrip(pg, u.id)
+        Spacer(Modifier.height(12.dp)); WeekStrip(pg, u.id)
         // Actions de la journée
-        Row(Modifier.padding(top = 10.dp).fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.padding(top = 12.dp).fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (total > 0 && done == total) FChip("✨ Journée parfaite", false, { ui.fs = Fs.Celebrate(pg.perfectCelebration()) })
             if (nowHM() >= "18:00") FChip("🌙 Bilan du soir", false, { ui.open(Sheet.Evening) })
             FChip(if (vac != null) "🏖️ En vacances" else if (pg.isRest()) "😴 Jour de repos" else "😴 Repos", vac != null || pg.isRest(), { ui.open(Sheet.Rest) })
@@ -140,18 +147,21 @@ fun rememberMoments(ui: AppState, keys: List<String>): List<MomentTile> {
 @Composable
 fun MomentsRow(ui: AppState, tiles: List<MomentTile>, showAdd: Boolean = true) {
     val p = LocalPal.current
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        tiles.forEach { t ->
-            Column(Modifier.width(152.dp).height(118.dp).clip(RoundedCornerShape(20.dp)).glassBg(RoundedCornerShape(20.dp)).border(1.dp, p.glassEdge, RoundedCornerShape(20.dp))
-                .clickable(onClickLabel = t.title) { ui.open(Sheet.HomeCard(t.key)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Emoji(t.emoji, 28.dp)
+    val tones = listOf(p.flame, p.type("objective").c, p.type("abstinence").c, p.type("routine").c, p.pink, p.type("monthly").c)
+    // La rangée va jusqu'aux bords de l'écran ; les ombres des tuiles ne sont pas coupées
+    Row(Modifier.fillMaxWidth().bleed(16.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        tiles.forEachIndexed { i, t ->
+            val shape = smoothShape(24.dp); val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            Column(Modifier.bounce(inter, .94f).width(156.dp).height(126.dp).depth(shape, p, 1).glassBg(shape).sheen(shape, p.dark, .8f)
+                .clip(shape).springClick(inter, label = t.title) { ui.open(Sheet.HomeCard(t.key)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                EmojiTile(t.emoji, tones[i % tones.size], 38.dp)
                 Text(t.title, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(t.sub, fontSize = 12.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(t.sub, fontSize = 12.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
             }
         }
-        if (showAdd) Column(Modifier.width(120.dp).height(118.dp).clip(RoundedCornerShape(20.dp)).border(1.5.dp, p.line, RoundedCornerShape(20.dp)).clickable(onClickLabel = "Nouveau compte à rebours") { ui.open(Sheet.HomeCard("countdown")) }.padding(12.dp),
-            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Pi("plus", size = 22.dp, tint = p.ink2); Text("Compte à rebours", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink2)
+        if (showAdd) Column(Modifier.width(120.dp).height(126.dp).clip(smoothShape(24.dp)).border(1.5.dp, p.ink3.copy(alpha = .35f), smoothShape(24.dp)).clickable(onClickLabel = "Nouveau compte à rebours") { ui.open(Sheet.HomeCard("countdown")) }.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
+            IconTile("plus", p.flame2, p.pink, 34.dp); Text("Compte à rebours", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }
@@ -173,12 +183,14 @@ fun HomeCardSheet(ui: AppState, key: String) {
 @Composable
 fun HomeSectionHead(title: String, icon: String, collapsed: Boolean, onToggle: () -> Unit) {
     val p = LocalPal.current
-    val rot by animateFloatAsState(if (collapsed) -90f else 0f, label = "secRot")
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClickLabel = if (collapsed) "Déplier $title" else "Replier $title", onClick = onToggle).padding(horizontal = 4.dp, vertical = 2.dp).semantics { heading() },
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Pi(icon, size = 16.dp, tint = p.flameInk)
-        Text(title.uppercase(), Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, color = p.ink2)
-        Pi("down", size = 16.dp, tint = p.ink3, modifier = Modifier.graphicsLayer { rotationZ = rot })
+    val rot by animateFloatAsState(if (collapsed) -90f else 0f, androidx.compose.animation.core.spring(dampingRatio = .5f, stiffness = 500f), label = "secRot")
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp).clip(smoothShape(16.dp)).clickable(onClickLabel = if (collapsed) "Déplier $title" else "Replier $title", onClick = onToggle).padding(horizontal = 4.dp, vertical = 4.dp).semantics { heading() },
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        IconTile(icon, p.flame2, p.pink, 28.dp)
+        Text(title, Modifier.weight(1f), fontFamily = Unbounded, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = p.ink)
+        Box(Modifier.size(30.dp).clip(CircleShape).background(p.ink.copy(alpha = if (p.dark) .1f else .06f)), contentAlignment = Alignment.Center) {
+            Pi("down", size = 16.dp, tint = p.ink2, modifier = Modifier.graphicsLayer { rotationZ = rot })
+        }
     }
 }
 

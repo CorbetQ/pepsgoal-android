@@ -48,15 +48,21 @@ fun SheetHost(ui: AppState) {
     // La fenêtre s'arrête sous la barre d'état ; ses cartes n'ont pas de flou (autre fenêtre que l'arrière-plan)
     val slot = remember(s) { FootSlot() }
     ModalBottomSheet(onDismissRequest = { ui.back() }, modifier = Modifier.statusBarsPadding(), sheetState = state, containerColor = if (p.transp || p.contrast) p.bg else p.glassStrong.copy(alpha = 1f), contentColor = p.ink,
-        scrimColor = p.scrim, shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        scrimColor = p.scrim.copy(alpha = p.scrim.alpha * .8f), shape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp),
         // Poignée bien visible : on comprend qu'un glissement vers le bas ferme la fenêtre
-        dragHandle = { Box(Modifier.padding(top = 10.dp, bottom = 2.dp).size(42.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink3.copy(alpha = .45f))) }) {
+        dragHandle = { Box(Modifier.padding(top = 10.dp, bottom = 2.dp).size(44.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink3.copy(alpha = .5f))) }) {
         key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true, LocalFootSlot provides slot) {
             val foot = slot.content
             // Contenu d'une fenêtre (ou de l'étape suivante dans la même fenêtre) : fondu et léger glissement vers le haut
             val shown = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else 0f) }
-            LaunchedEffect(Unit) { if (shown.value < 1f) shown.animateTo(1f, androidx.compose.animation.core.tween(260, easing = Motion.Emphasized)) }
-            Column(Modifier.fillMaxWidth().imePadding().graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 14.dp.toPx() }) {
+            LaunchedEffect(Unit) { if (shown.value < 1f) shown.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .7f, stiffness = 300f)) }
+            // Lumière en haut de la fenêtre : lavis de l'accent et reflet du bord, comme une plaque de verre
+            Column(Modifier.fillMaxWidth().drawBehind {
+                if (p.contrast || p.transp) return@drawBehind
+                val w = size.width; val h = minOf(size.height, 260.dp.toPx())
+                drawRect(androidx.compose.ui.graphics.Brush.radialGradient(listOf(p.flame.copy(alpha = if (p.dark) .14f else .1f), androidx.compose.ui.graphics.Color.Transparent), androidx.compose.ui.geometry.Offset(w * .1f, 0f), w * .7f), size = androidx.compose.ui.geometry.Size(w, h))
+                drawRect(androidx.compose.ui.graphics.Brush.radialGradient(listOf(p.pink.copy(alpha = if (p.dark) .1f else .07f), androidx.compose.ui.graphics.Color.Transparent), androidx.compose.ui.geometry.Offset(w * .95f, 0f), w * .55f), size = androidx.compose.ui.geometry.Size(w, h))
+            }.imePadding().graphicsLayer { alpha = shown.value.coerceIn(0f, 1f); translationY = (1f - shown.value) * 18.dp.toPx() }) {
                 Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()).then(if (foot == null) Modifier.navigationBarsPadding() else Modifier)
                     .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = if (foot == null) 24.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SheetBody(ui, s)
@@ -126,9 +132,9 @@ private fun SheetBody(ui: AppState, s: Sheet) {
 @Composable
 fun SheetHead(ui: AppState, title: String, right: @Composable RowScope.() -> Unit = {}) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         right()
-        IconBtn("x", "Fermer", { ui.close() }, plain = true)
+        IconBtn("x", "Fermer", { ui.close() }, size = 38.dp)
     }
 }
 
