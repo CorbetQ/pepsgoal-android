@@ -56,7 +56,7 @@ fun Pg.checkSecrets(): List<Secret> {
     val have = secretsFound(u); val fresh = SECRETS.filter { it.key in secretsEarned(u.id) && it.key !in have }
     if (fresh.isEmpty()) return fresh
     for (s in fresh) {
-        u.shopClaimed = (u.shopClaimed + "secret:${s.key}").takeLast(400).toMutableList(); u.shopBonus += SECRET_BONUS
+        u.shopClaimed = trimClaimed(u.shopClaimed + "secret:${s.key}"); u.shopBonus += SECRET_BONUS
         notify(u.id, "Succès caché débloqué : « ${s.name} » ${s.emoji} +$SECRET_BONUS flammes.", "badge")
     }
     store.commit(); return fresh

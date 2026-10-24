@@ -118,7 +118,7 @@ class WalletBreakdown(val earned: Int, val bonus: Int, val received: Int, val sp
 /** D'où viennent les flammes du porte-monnaie et où elles sont parties. */
 fun Pg.walletBreakdown(): WalletBreakdown {
     val u = me() ?: return WalletBreakdown(0, 0, 0, 0, 0, 0)
-    val given = flamesGiven()
+    val given = giftsOut()
     val received = u.shopClaimed.filter { it.startsWith("giftin:") }.sumOf { it.substringAfterLast(':').toIntOrNull() ?: 0 }
     return WalletBreakdown(points(u.id), u.shopBonus - received, received, u.shopSpent - given, given, wallet(u))
 }

@@ -1,6 +1,7 @@
 package fr.pepsgoal.core.cloud
 
 import kotlinx.serialization.json.*
+import fr.pepsgoal.core.trimClaimed
 
 /** Ligne de la ligue de la semaine (serveur : /v1/leagues/week). */
 class LeagueRow(val userId: String, val name: String, val avatar: JsonObject, val points: Int, val days: Int)
@@ -68,7 +69,7 @@ suspend fun Cloud.closeLeagueSeason(): LeagueSeason.Result? {
     val div = LeagueSeason.division(u.shopClaimed); val me = u.id
     val scores = LeagueSeason.mondaysOf(key).mapNotNull { m -> try { LeagueSeason.weekScore(leagueWeek(fr.pepsgoal.core.ymd(m)), me) } catch (e: Exception) { null } }
     val mv = LeagueSeason.move(scores, div); val avg = if (scores.isEmpty()) 1.0 else scores.average()
-    u.shopClaimed = (u.shopClaimed + "season:$key:$div:$mv:${"%.2f".format(java.util.Locale.ROOT, avg)}").takeLast(400).toMutableList()
+    u.shopClaimed = trimClaimed(u.shopClaimed + "season:$key:$div:$mv:${"%.2f".format(java.util.Locale.ROOT, avg)}")
     val (dn, de, _) = LeagueSeason.DIVISIONS[(div + mv).coerceIn(0, LeagueSeason.DIVISIONS.lastIndex)]
     pg.notify(me, when (mv) { 1 -> "Saison terminée : promotion en division $dn $de !"; -1 -> "Saison terminée : retour en division $dn $de. La prochaine sera la bonne."; else -> "Saison terminée : maintien en division $dn $de." }, "badge")
     store.commit()

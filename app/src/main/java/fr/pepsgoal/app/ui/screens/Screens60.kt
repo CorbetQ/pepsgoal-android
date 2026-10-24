@@ -59,12 +59,29 @@ fun sendGift(ui: AppState, to: User, n: Int, note: String) {
 }
 
 @Composable
-fun GiftSheet(ui: AppState, id: String) {
+fun GiftSheet(ui: AppState, id: String, item0: String? = null) {
     val p = LocalPal.current; val pg = ui.pg
     val x = pg.userById(id) ?: run { LaunchedEffect(Unit) { ui.close() }; return }
     var n by remember { mutableIntStateOf(25) }; var note by remember { mutableStateOf("") }
+    // Flammes ou article de la boutique
+    var mode by remember { mutableStateOf(if (item0 != null) "item" else "flames") }
+    var item by remember { mutableStateOf(item0?.let { shopItem(it) }) }
     val w = pg.wallet()
-    SheetHead(ui, "Offrir des flammes")
+    SheetHead(ui, if (mode == "item") "Offrir un article" else "Offrir des flammes")
+    Seg(listOf("flames" to "Des flammes", "item" to "Un article de la boutique"), mode, { mode = it }, icons = listOf("flameo", "gift"))
+    if (mode == "item") {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Av(x, 44.dp)
+            Column(Modifier.weight(1f)) { Text("Pour ${x.name}", fontWeight = FontWeight.ExtraBold); Muted("Ton porte-monnaie : ${fmtNum(w)} flammes", small = true) }
+        }
+        ShopItemPicker(ui, item?.key) { item = it }
+        Field(note, { note = it }, "Petit mot (facultatif)", placeholder = "Il t’ira bien !", max = 140, icon = "comment")
+        Muted("S’il possède déjà l’article, ${first(x.name)} reçoit sa valeur en flammes.", small = true)
+        val it0 = item; val err = it0?.let { pg.giftItemError(it.key) }
+        PButton(when { it0 == null -> "Choisis un article"; err != null -> err; else -> "Offrir « ${it0.name} » (🔥 ${it0.price})" }, { it0?.let { ui.close(); sendItemGift(ui, x, it, note) } },
+            Modifier.fillMaxWidth(), icon = "gift", kind = "primary", enabled = it0 != null && err == null && pg.store.online)
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Av(x, 52.dp)
         Column(Modifier.weight(1f)) { Text("Pour ${x.name}", fontWeight = FontWeight.ExtraBold); Muted("Ton porte-monnaie : ${fmtNum(w)} flammes", small = true) }

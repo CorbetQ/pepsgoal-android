@@ -115,7 +115,7 @@ fun Pg.eggsFound(u: fr.pepsgoal.core.model.User? = me()): Set<String> =
 fun Pg.findEgg(key: String): Boolean {
     val u = me() ?: return false
     if (Eggs.ALL.none { it.key == key } || "egg:$key" in u.shopClaimed) return false
-    u.shopClaimed = (u.shopClaimed + "egg:$key").takeLast(400).toMutableList()
+    u.shopClaimed = trimClaimed(u.shopClaimed + "egg:$key")
     u.shopBonus += Eggs.BONUS
     if (key == "angers" && "mode:angers" !in u.shopOwned) u.shopOwned = (u.shopOwned + "mode:angers").toMutableList()
     val e = Eggs.ALL.first { it.key == key }

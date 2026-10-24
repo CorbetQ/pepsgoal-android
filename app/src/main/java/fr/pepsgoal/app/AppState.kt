@@ -50,7 +50,9 @@ sealed class Sheet {
     /** Modifications locales en attente d'envoi (hors ligne). */
     object Pending : Sheet()
     object Status : Sheet()
-    class Gift(val id: String) : Sheet()
+    class Gift(val id: String, val item: String? = null) : Sheet()
+    /** Offrir un article de la boutique : choix de l'ami. */
+    class GiftItem(val key: String) : Sheet()
     object Breath : Sheet()
     object GroupNew : Sheet()
     class GroupInfo(val gid: String) : Sheet()

@@ -283,7 +283,7 @@ fun WalletSheet(ui: AppState) {
         Line("🏅", "Bonus (badges, défis, coffres, Avent…)", maxOf(0, w.bonus), true)
         Line("🎁", "Reçues en cadeau", w.received, true)
         Line("🛍️", "Dépensées dans la boutique", maxOf(0, w.spent), false)
-        Line("💝", "Offertes à des amis", w.given, false)
+        Line("💝", "Offertes à des amis (flammes et articles)", w.given, false)
     }
     Muted("Ton niveau compte toutes les flammes gagnées : dépenser ou offrir ne le fait jamais baisser.", small = true)
     PButton("Ouvrir la boutique", { ui.close(); ui.push(Screen.Shop) }, Modifier.fillMaxWidth(), icon = "star")

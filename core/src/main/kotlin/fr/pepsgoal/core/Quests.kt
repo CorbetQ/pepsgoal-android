@@ -49,7 +49,7 @@ fun Pg.unlockChapter(): Int? {
     val u = me() ?: return null; val st = questState() ?: return null
     if (!st.canUnlock || st.finished) return null
     val n = st.done + 1
-    u.shopClaimed = (u.shopClaimed + "quest:${st.quest.key}:$n:${today()}").takeLast(400).toMutableList()
+    u.shopClaimed = trimClaimed(u.shopClaimed + "quest:${st.quest.key}:$n:${today()}")
     if (n == st.quest.chapters.size) { u.shopBonus += st.quest.reward; notify(u.id, "Quête terminée : « ${st.quest.title} » ${st.quest.emoji} +${st.quest.reward} flammes.", "badge") }
     store.commit(); return n
 }
