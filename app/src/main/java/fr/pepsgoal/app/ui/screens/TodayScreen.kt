@@ -214,7 +214,7 @@ private fun Hero(ui: AppState) {
                 Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (compact) 20.sp else 26.sp)
                 if (!compact) Muted(msg)
             }
-            Box(Modifier.graphicsLayer { val k = if (compact) .62f else 1f; scaleX = k; scaleY = k }) { HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") } }
+            Box(Modifier.graphicsLayer { val k = if (compact) .62f else 1f; scaleX = k; scaleY = k }) { HeroFlame(st.n, st.lit, onTickle = { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") }) }
         }
         if (!compact) { Spacer(Modifier.height(12.dp)); WeekStrip(pg, u.id) }
     }

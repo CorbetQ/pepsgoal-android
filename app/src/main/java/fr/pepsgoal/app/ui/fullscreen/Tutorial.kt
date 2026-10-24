@@ -36,7 +36,7 @@ import fr.pepsgoal.app.sys.Poller
 import fr.pepsgoal.app.sys.Reminders
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.screens.CheerButton
-import fr.pepsgoal.app.ui.screens.HeroFlame
+import fr.pepsgoal.app.ui.HeroFlame
 import fr.pepsgoal.app.ui.screens.TimeButton
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
