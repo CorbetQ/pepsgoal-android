@@ -28,7 +28,7 @@ import fr.pepsgoal.core.model.mode
 @Composable
 private fun MiniGoal(ui: AppState, g: Goal, done: Boolean, right: (@Composable () -> Unit)? = null) {
     val p = LocalPal.current; val tc = p.type(g.type)
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (done) tc.c.copy(alpha = .14f) else p.ink.copy(alpha = .035f)).padding(horizontal = 12.dp, vertical = 8.dp),
+    Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(if (done) tc.c.copy(alpha = .14f) else p.ink.copy(alpha = .035f)).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         GoalIcon(g, 36.dp)
         Text(g.title, Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (done) p.ink2 else p.ink)

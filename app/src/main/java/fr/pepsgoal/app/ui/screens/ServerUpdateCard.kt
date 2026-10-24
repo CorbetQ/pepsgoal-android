@@ -91,7 +91,7 @@ private fun UpdateProgress(pr: fr.pepsgoal.core.UpdateLog.Progress, running: Boo
         }
         Bar(maxOf(2, pr.pct).toDouble(), height = 10.dp, color = if (pr.done && !pr.ok) p.danger else null)
         if (pr.done) Text(if (pr.ok) "Mise à jour terminée." else "Échec (code ${pr.exit}) : voir le journal ci-dessous.", fontSize = 14.sp, color = if (pr.ok) p.ok else p.danger, fontWeight = FontWeight.Bold)
-        if (pr.lines.isNotEmpty()) Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.ink.copy(alpha = .06f)).padding(10.dp)) {
+        if (pr.lines.isNotEmpty()) Box(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .06f)).padding(10.dp)) {
             Text(pr.lines.takeLast(10).joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = p.ink2, lineHeight = 15.sp)
         }
         if (running) Muted("Tu peux quitter cet écran : la mise à jour continue sur le serveur.", small = true)
@@ -103,7 +103,7 @@ private fun UpdateProgress(pr: fr.pepsgoal.core.UpdateLog.Progress, running: Boo
 private fun HostKeyBox(type: String, fp: String, onTrust: () -> Unit, onCancel: () -> Unit) {
     val p = LocalPal.current
     val file = when { "ed25519" in type -> "ed25519"; "ecdsa" in type -> "ecdsa"; else -> "rsa" }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.flame.copy(alpha = .1f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(p.flame.copy(alpha = .1f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Première connexion à ce serveur", fontWeight = FontWeight.ExtraBold)
         Muted("Vérifie que l’empreinte ci-dessous est celle de ton serveur. Sur le VPS : ssh-keygen -lf /etc/ssh/ssh_host_${file}_key.pub", small = true)
         Text(fp, fontFamily = FontFamily.Monospace, fontSize = 13.sp, fontWeight = FontWeight.Bold)

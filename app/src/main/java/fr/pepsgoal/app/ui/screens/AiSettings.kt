@@ -101,7 +101,7 @@ private fun PersonaGroup(ui: AppState) {
         Personas.ALL.forEach { ps ->
             val on = ps.key == persona
             val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Row(Modifier.fillMaxWidth().bounce(inter, .98f).clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+            Row(Modifier.fillMaxWidth().bounce(inter, .98f).clip(fr.pepsgoal.app.ui.smoothShape(18.dp))
                 .background(if (on) p.flame.copy(alpha = .1f) else androidx.compose.ui.graphics.Color.Transparent)
                 .springClick(inter, role = androidx.compose.ui.semantics.Role.RadioButton) { persona = ps.key; pr.aiPersona = ps.key }.padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

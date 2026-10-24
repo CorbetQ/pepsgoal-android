@@ -113,7 +113,7 @@ fun ChallengesScreen(ui: AppState) {
                     else if (d.board.isEmpty()) Muted("Personne pour l’instant : sois le premier !", small = true)
                     else d.board.forEach { r ->
                         val meRow = r.userId == u.id
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (meRow) p.flame.copy(alpha = .14f) else Color.Transparent).padding(6.dp),
+                        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (meRow) p.flame.copy(alpha = .14f) else Color.Transparent).padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(when (r.rank) { 1 -> "🥇"; 2 -> "🥈"; 3 -> "🥉"; else -> "${r.rank}" }, Modifier.width(28.dp), fontFamily = Unbounded, fontWeight = FontWeight.Bold)
                             val av = remember(r.userId) { try { JSON.decodeFromJsonElement(Avatar.serializer(), r.avatar) } catch (e: Exception) { null } }
@@ -135,7 +135,7 @@ private fun NewChallenge(ui: AppState, done: () -> Unit) {
     var start by remember { mutableStateOf(today()) }; var end by remember { mutableStateOf(ymd(todayDate().plusDays(29))) }
     var showIcons by remember { mutableStateOf(false) }
     Glass {
-        CardHead("Nouveau défi")
+        CardHead("Nouveau défi", emoji = "⚔️")
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PButton(emoji, { showIcons = !showIcons }, small = true)
             Field(title, { title = it }, "Titre", Modifier.weight(1f), placeholder = "Octobre sans sucre", max = 60)

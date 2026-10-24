@@ -153,6 +153,8 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
             if (!low) head(Modifier.drawBehind {
                 // Barre givrée qui apparaît avec le titre compact, fine ligne de séparation en bas
                 drawRect(p.glassStrong.copy(alpha = p.glassStrong.alpha * k))
+                // Reflet clair sous le bord de la barre (verre), puis fine ligne de séparation
+                drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = (if (p.dark) .05f else .3f) * k), Color.Transparent)))
                 drawRect(p.line.copy(alpha = p.line.alpha * k), androidx.compose.ui.geometry.Offset(0f, size.height - 1.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
             }.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
             // Grand écran : colonne de lecture centrée, à largeur confortable
@@ -164,8 +166,8 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
                         val f = (off / 44.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
                     }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
-                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp)
+                        if (icon != null) IconTile(icon, c1, c2, 56.dp)
+                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, lineHeight = 32.sp)
                     }
                 }
                 content()
@@ -203,7 +205,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                                 Divided(inset = 66.dp) {
                                     list.forEach { (k, l, d, i) ->
                                         val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                                        Row(Modifier.fillMaxWidth().bounce(inter, .98f).clip(RoundedCornerShape(18.dp)).springClick(inter) { ui.screens[ui.screens.lastIndex] = Screen.Settings(k) }.padding(horizontal = 12.dp, vertical = 11.dp),
+                                        Row(Modifier.fillMaxWidth().bounce(inter, .98f).clip(smoothShape(18.dp)).springClick(inter) { ui.screens[ui.screens.lastIndex] = Screen.Settings(k) }.padding(horizontal = 12.dp, vertical = 11.dp),
                                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                             val (k1, k2) = SET_COLORS[k] ?: ("routine" to "duration")
                                             IconTile(i, p.type(k1).c, p.type(k2).c, 42.dp, 13.dp)
@@ -610,7 +612,7 @@ private fun DataSettings(ui: AppState, u: User) {
             // Mes données en chiffres
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Objectifs", "Validations", "Publications", "Messages").forEachIndexed { i, l ->
-                    Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.weight(1f).clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         FitText(fmtNum(mine[i]), Modifier.fillMaxWidth(), size = 17, min = 11, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
                         FitText(l, Modifier.fillMaxWidth().padding(horizontal = 4.dp), size = 11, min = 8, color = p.ink2, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Center)
                     }
@@ -705,7 +707,7 @@ private fun HelpSettings(ui: AppState) {
         var taps by remember { mutableIntStateOf(0) }
         val spin by androidx.compose.animation.core.animateFloatAsState(taps * 51.4f, Motion.emphasis(), label = "verSpin")
         CatHero("help", "PepsGoal $APP_VERSION · application Android native${if (ui.pg.db.sandbox) " · démonstration" else ""}", leading = {
-            Box(Modifier.size(52.dp).graphicsLayer { rotationZ = spin }.clip(RoundedCornerShape(17.dp)).background(Brush.linearGradient(listOf(p.flame2.copy(alpha = .3f), p.pink.copy(alpha = .22f))))
+            Box(Modifier.size(52.dp).graphicsLayer { rotationZ = spin }.clip(smoothShape(17.dp)).background(Brush.linearGradient(listOf(p.flame2.copy(alpha = .3f), p.pink.copy(alpha = .22f))))
                 .clickable(onClickLabel = "PepsGoal $APP_VERSION") {
                     taps++; Feedback.tick()
                     when {

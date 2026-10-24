@@ -75,7 +75,7 @@ fun SearchScreen(ui: AppState, initial: String) {
         if (n.length < 2) {
             item("help") {
                 Glass {
-                    CardHead("Commande vocale")
+                    CardHead("Commande vocale", emoji = "🎙️")
                     Muted("Touche le micro et parle : PepsGoal comprend des phrases simples, même sans connexion quand ton téléphone le permet.", small = true)
                     Spacer(Modifier.height(10.dp))
                     FlowRowCompat(gap = 6.dp) { VoiceCmd.EXAMPLES.forEach { e -> FChip("« $e »", false, { VoiceCmd.run(ui, ctx, e.replace("’", "'")) }) } }
@@ -118,7 +118,7 @@ fun SearchScreen(ui: AppState, initial: String) {
             val msgs = pg.db.messages.asReversed().asSequence().filter { Social.body(ui, it)?.str("k") !in fr.pepsgoal.core.cloud.Msg.SILENT && it.id !in ui.prefs.hiddenMsgs }.mapNotNull { m -> Social.preview(ui, m).takeIf { hit(it) }?.let { m to it } }.take(12).toList()
             if (msgs.isNotEmpty()) item("msgs") {
                 Glass(pad = 10.dp) {
-                    Box(Modifier.padding(6.dp)) { CardHead("Messages") { Count(msgs.size) } }
+                    Box(Modifier.padding(6.dp)) { CardHead("Messages", emoji = "💬") { Count(msgs.size) } }
                     msgs.forEach { (m, txt) ->
                         val grp = m.chat?.let { id -> pg.db.chats.firstOrNull { it.id == id } }
                         val other = pg.userById(if (m.from == u.id) m.to ?: "" else m.from)
@@ -133,7 +133,7 @@ fun SearchScreen(ui: AppState, initial: String) {
         val pages = journal.filter { hit(it.text) }.sortedByDescending { it.date }.take(10)
         if (pages.isNotEmpty()) item("journal") {
             Glass(pad = 10.dp) {
-                Box(Modifier.padding(6.dp)) { CardHead("Journal") { Count(pages.size) } }
+                Box(Modifier.padding(6.dp)) { CardHead("Journal", emoji = "📝") { Count(pages.size) } }
                 pages.forEach { e -> Result(title = cap(weekdayLongDate(parseYmd(e.date))), sub = e.text, lead = { Emoji(Journal.MOODS.getOrNull(e.mood - 1)?.second ?: "😐", 32.dp) }) { ui.push(Screen.Journal) } }
             }
         }
@@ -164,7 +164,7 @@ fun SearchScreen(ui: AppState, initial: String) {
 private fun Result(title: String, sub: String, lead: @Composable () -> Unit, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bounce(inter, .97f).clip(RoundedCornerShape(16.dp)).springClick(inter, onClick = onClick).padding(8.dp),
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bounce(inter, .97f).clip(smoothShape(16.dp)).springClick(inter, onClick = onClick).padding(8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         lead()
         Column(Modifier.weight(1f)) {

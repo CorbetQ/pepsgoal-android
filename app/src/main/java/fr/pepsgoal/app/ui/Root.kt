@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -124,8 +125,12 @@ fun PepsRoot(ui: AppState) {
             LaunchedEffect(covered) { if (covered) { kotlinx.coroutines.delay(700); settled.value = true } else settled.value = false }
             val hidden = covered && settled.value
             val hideLayer = Modifier.graphicsLayer { alpha = if (hidden) 0f else 1f }
+            // Fenêtre du bas ouverte : l'écran derrière se floute en douceur (verre dépoli), la fenêtre passe au premier plan
+            val sheetOpen = ui.sheet != null && !(ui.sheet is Sheet.Goal && androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 900 && ui.screens.isEmpty() && ui.fs == null)
+            val backBlur by animateDpAsState(if (sheetOpen && Perf.flags.blur && !p.transp && !p.contrast && !p.motion) 14.dp else 0.dp, tween(if (sheetOpen) 320 else 220, easing = Motion.Emphasized), label = "backBlur")
+            val blurLayer = if (backBlur > .3.dp) Modifier.blur(backBlur) else Modifier
             // Arrière-plan : source du flou des panneaux en verre (niveau 0)
-            Box(Modifier.fillMaxSize().background(p.bg).hazeSource(haze, zIndex = 0f)) { Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
+            Box(Modifier.fillMaxSize().then(blurLayer).background(p.bg).hazeSource(haze, zIndex = 0f)) { Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                 // Changement d'arrière-plan ou de ciel (jour → crépuscule → nuit, pluie…) : fondu enchaîné
                 val kind = if (s?.theme == "weather") "sky" else s?.bg ?: "blob"
                 val sky = if (s?.theme == "weather") Weather.sky(wx?.data) else null
@@ -159,7 +164,7 @@ fun PepsRoot(ui: AppState) {
                 if (u != null && ui.prefs.briefAuto && ui.prefs.briefDay != t && h in 5..11) { ui.prefs.briefDay = t; kotlinx.coroutines.delay(1200); fr.pepsgoal.app.sys.Speaker.briefing(bctx) }
             }
             CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses) {
-                Reachable(ui) {
+                Box(Modifier.fillMaxSize().then(blurLayer)) { Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                     when {
                         u == null -> AuthScreen(ui)
@@ -174,8 +179,8 @@ fun PepsRoot(ui: AppState) {
                 AnimatedContent(top, transitionSpec = {
                     // Page qui avance : arrive de la droite en grandissant légèrement, la précédente recule et s'estompe ;
                     // au retour, le mouvement inverse. Ressorts sans rebond pour un glissement net.
-                    val sp = spring<IntOffset>(dampingRatio = .9f, stiffness = 420f)
-                    val sc = spring<Float>(dampingRatio = .9f, stiffness = 420f)
+                    val sp = spring<IntOffset>(dampingRatio = .84f, stiffness = 420f)
+                    val sc = spring<Float>(dampingRatio = .7f, stiffness = 380f)
                     when {
                         p.motion -> fadeIn(tween(120)) togetherWith fadeOut(tween(90))
                         // Transitions simples (Paramètres › Performance) : fondu court, sans glissement ni mise à l'échelle
@@ -206,7 +211,7 @@ fun PepsRoot(ui: AppState) {
                         null -> {}
                     }
                 }
-                }
+                } }
                 SheetHost(ui)
                 FullscreenHost(ui)
                 EggOverlay(ui)
@@ -304,7 +309,7 @@ private fun Shell(ui: AppState) {
             Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).nestedScroll(fabConn).then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier), contentAlignment = Alignment.TopCenter) {
                 Box(Modifier.fillMaxHeight().then(if (wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth())) {
                 remember(ui.tab) { Stagger.reset() }
-                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion || !Perf.flags.rich) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .86f, stiffness = 460f), initialScale = .965f) + slideInVertically(spring(dampingRatio = .88f, stiffness = 460f)) { it / 28 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.015f)) }, label = "tab") { tab ->
+                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion || !Perf.flags.rich) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .68f, stiffness = 420f), initialScale = .94f) + slideInVertically(spring(dampingRatio = .7f, stiffness = 420f)) { it / 22 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.02f)) }, label = "tab") { tab ->
                     // Tirer pour actualiser sur l'accueil, le feed et les amis
                     if (tab in setOf("today", "feed", "friends")) PullRefresh(ui, with(d) { topH.toDp() }) {
                         when (tab) { "feed" -> FeedScreen(ui); "friends" -> FriendsScreen(ui); else -> TodayScreen(ui) }
@@ -320,7 +325,7 @@ private fun Shell(ui: AppState) {
         }
         // Volet latéral de la fiche (grand écran)
         if (side != null) Box(Modifier.align(Alignment.TopEnd).padding(top = with(d) { topH.toDp() } + 8.dp, bottom = with(d) { botH.toDp() } + 8.dp, end = 12.dp).width(440.dp).fillMaxHeight()
-            .shadow(18.dp.ifShadows(), RoundedCornerShape(28.dp)).clip(RoundedCornerShape(28.dp)).background(p.glassStrong.copy(alpha = 1f))) {
+            .shadow(18.dp.ifShadows(), smoothShape(28.dp)).clip(smoothShape(28.dp)).background(p.glassStrong.copy(alpha = 1f))) {
             CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true) {
                 Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     key(side.id) { fr.pepsgoal.app.ui.sheets.GoalSheet(ui, side.id) }
@@ -331,14 +336,12 @@ private fun Shell(ui: AppState) {
         EdgeFrost(Modifier.align(Alignment.TopCenter), top = true, cover = with(d) { topH.toDp() })
         EdgeFrost(Modifier.align(Alignment.BottomCenter), top = false, cover = with(d) { botH.toDp() })
         Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topH = it.height }) { TopBar(ui) }
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) { BottomNav(ui, nav, badges) }
-        val fabK by animateFloatAsState(if (fabShown) 1f else 0f, if (p.motion) snap() else spring(dampingRatio = .8f, stiffness = 420f), label = "fab")
-        val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = with(d) { botH.toDp() } + 14.dp)
-            .graphicsLayer { alpha = fabK; translationX = (1f - fabK) * 110.dp.toPx(); val sc = .7f + .3f * fabK; scaleX = sc; scaleY = sc }
-        if (fabK > .02f) {
-            if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabMod) { ui.open(Sheet.GoalForm()) }
-            else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabMod) { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) {
+            NavBar(nav, ui.tab, badges, { ui.nav(it) }, if (p.easy) EASY_NAV else emptyMap(), Modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp))
         }
+        val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = with(d) { botH.toDp() } + 12.dp)
+        if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabShown, { ui.open(Sheet.GoalForm()) }, fabMod)
+        else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabShown, { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }, fabMod, icon = "edit")
     }
 }
 
@@ -378,7 +381,7 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
         Box(Modifier.align(Alignment.TopCenter).padding(top = top + 6.dp).graphicsLayer {
             val f = if (refreshing) 1f else st.distanceFraction.coerceIn(0f, 1.3f)
             alpha = f.coerceAtMost(1f); translationY = (f - 1f) * 24.dp.toPx(); val sc = .6f + .4f * f.coerceAtMost(1f); scaleX = sc; scaleY = sc
-        }.size(46.dp).shadow(10.dp.ifShadows(), CircleShape, spotColor = p.flame.copy(alpha = .5f)).clip(CircleShape).background(p.glassStrong.copy(alpha = 1f)), contentAlignment = Alignment.Center) {
+        }.size(48.dp).glow(CircleShape, p.flame, p, 10.dp).background(p.glassStrong.copy(alpha = 1f), CircleShape).sheen(CircleShape, p.dark, .8f).clip(CircleShape), contentAlignment = Alignment.Center) {
             Box(Modifier.graphicsLayer {
                 // Flamme qui vacille pendant le chargement
                 val w = if (refreshing) kotlin.math.sin(spin.value * 2f * kotlin.math.PI.toFloat()) else 0f
@@ -389,68 +392,15 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
     }) { content() }
 }
 
-/** Barre de navigation PepsGoal : pilule en verre flottante, onglet actif repéré par une pastille qui glisse. */
-@Composable
-private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>, badges: Map<String, Int>) {
-    val p = LocalPal.current
-    val idx = items.indexOfFirst { it.first == ui.tab }.coerceAtLeast(0)
-    val shape = RoundedCornerShape(24.dp)
-    Box(Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 10.dp).fillMaxWidth()
-        .shadow((if (p.oled || p.transp) 0.dp else 14.dp).ifShadows(), shape, ambientColor = Color(0x6628186E), spotColor = Color(0x4428186E))
-        .glassBg(shape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, shape).padding(6.dp)) {
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val w = maxWidth / items.size
-            // Pastille de l'onglet actif : le bord avant part le premier et le bord arrière suit, d'où un léger
-            // étirement pendant le glissement (effet « goutte »), puis elle reprend sa largeur
-            val prev = remember { intArrayOf(idx) }
-            val right = idx >= prev[0]; SideEffect { prev[0] = idx }
-            val lead = spring<Dp>(dampingRatio = .72f, stiffness = 620f); val lag = spring<Dp>(dampingRatio = .8f, stiffness = 260f)
-            val l by animateDpAsState(w * idx, if (p.motion) snap() else if (right) lag else lead, label = "navL")
-            val r by animateDpAsState(w * (idx + 1), if (p.motion) snap() else if (right) lead else lag, label = "navR")
-            Box(Modifier.offset(x = l).width((r - l).coerceAtLeast(w * .6f)).height(56.dp).shadow((if (p.transp) 0.dp else 6.dp).ifShadows(), RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
-            Row(Modifier.fillMaxWidth()) {
-                items.forEachIndexed { i, (k, l0, ic) ->
-                    // Lecture facile : libellés en mots courants
-                    val l = if (p.easy) EASY_NAV[k] ?: l0 else l0
-                    val sel = i == idx
-                    val col by animateColorAsState(if (sel) p.bg else p.ink2, tween(if (p.motion) 0 else 200), label = "navc")
-                    val pop by animateFloatAsState(if (sel && !p.motion) 1.12f else 1f, Motion.emphasis(), label = "navi")
-                    val n = badges[k] ?: 0
-                    val inter = remember { MutableInteractionSource() }
-                    Column(Modifier.weight(1f).bounce(inter, .86f).height(56.dp).clip(RoundedCornerShape(18.dp)).springClick(inter, label = l) { ui.nav(k) }
-                        .semantics { selected = sel; role = Role.Tab; contentDescription = if (n > 0) "$l, $n" else l },
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Box(Modifier.graphicsLayer { scaleX = pop; scaleY = pop }) {
-                            Pi(ic, size = 22.dp, tint = col)
-                            if (n > 0) Badge(n, Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-6).dp))
-                        }
-                        Spacer(Modifier.height(2.dp))
-                        FitText(l, size = 11, min = 8, color = col, weight = FontWeight.ExtraBold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Fab(desc: String, modifier: Modifier, onClick: () -> Unit) {
-    val p = LocalPal.current
-    val inter = remember { MutableInteractionSource() }
-    Box(modifier.bounce(inter, .84f).size(58.dp).shadow((if (p.transp) 0.dp else 16.dp).ifShadows(), CircleShape, ambientColor = p.flame, spotColor = p.flame).clip(CircleShape).background(p.accent)
-        .springClick(inter, label = desc, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) { Pi("plus", size = 28.dp, tint = p.onAccent) }
-}
-
 @Composable
 private fun TopBar(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val st = pg.globalStreak(u.id)
     // Barre du haut posée sur le flou progressif : titre de la page, puis pastilles et boutons ronds en verre
-    Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 14.dp, top = 8.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.weight(1f)) {
                 AnimatedContent(ui.tab, transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(Motion.fadeIn(200)) + slideInVertically(spring(dampingRatio = .8f, stiffness = 520f)) { it / 2 }) togetherWith (fadeOut(Motion.fadeOut(100)) + slideOutVertically(tween(140, easing = Motion.Exit)) { -it / 3 }) }, label = "title") { t ->
-                    // Titre entier : sa taille s'adapte à la place laissée par les boutons
-                    FitText(NAV_TITLES[t] ?: "PepsGoal", size = 24, min = 14, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
+                    TabTitle(NAV_TITLES[t] ?: "PepsGoal")
                 }
                 // Hors ligne : modifications en attente d'envoi (touchée : explication)
                 if (!ui.pg.store.online) fr.pepsgoal.app.ui.sheets.OfflineChip(ui)
@@ -458,35 +408,14 @@ private fun TopBar(ui: AppState) {
             }
             val bump = remember { Animatable(1f) }
             LaunchedEffect(st.n) { if (!p.motion) { bump.snapTo(1.35f); bump.animateTo(1f, spring(dampingRatio = .4f)) } }
-            val inter = remember { MutableInteractionSource() }
-            val pill = RoundedCornerShape(50)
-            Row(Modifier.bounce(inter, .9f).height(46.dp).shadow((if (p.transp || p.oled) 0.dp else 10.dp).ifShadows(), pill, ambientColor = Color(0x4428186E), spotColor = Color(0x3328186E))
-                .glassBg(pill, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, pill).springClick(inter, label = "Ouvrir le profil") { ui.nav("profile") }.semantics(mergeDescendants = true) { contentDescription = "Série de ${pl(st.n, "jour", "jours")}${if (u.freezes > 0) ", ${u.freezes} gel${if (u.freezes > 1) "s" else ""} de série" else ""}" }.padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(Modifier.graphicsLayer { scaleX = bump.value; scaleY = bump.value }, verticalAlignment = Alignment.CenterVertically) { Flame(22.dp); Text("${st.n}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp) }
-                if (u.freezes > 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { Pi("snow", size = 16.dp, tint = p.type("objective").ink); Text("${u.freezes}", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp) }
-            }
-            RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 21.dp, tint = p.ink) }
-            RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 21.dp, tint = p.ink) }
+            StreakPill(st.n, u.freezes, "Série de ${pl(st.n, "jour", "jours")}${if (u.freezes > 0) ", ${u.freezes} gel${if (u.freezes > 1) "s" else ""} de série" else ""}", { ui.nav("profile") }, bump.value)
+            RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 20.dp, tint = p.ink) }
+            RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 20.dp, tint = p.ink) }
         }
         if (pg.db.sandbox) Note("**Mode démonstration.** Données d’exemple : rien n’est enregistré. Déconnecte-toi pour revenir à ton profil.", "star")
         val now = pg.maintNow(); val next = pg.maintNext()
         if (now != null) Note("**Maintenance en cours**${now.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[now.mode]}${if (now.message.isNotEmpty()) ". ${now.message}" else ""}${if (pg.isAdmin(u)) " (en tant qu’admin, tu n’es pas bloqué)" else ""}", "gauge")
         else if (next != null && next.start - nowMs() < 7 * DAY_MS) Note("Maintenance prévue le ${fmtDT(next.start)}${next.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[next.mode]}.", "clock")
-    }
-}
-
-/** Bouton rond en verre clair avec ombre portée (barre du haut). */
-@Composable
-private fun RoundGlass(desc: String, onClick: () -> Unit, badge: Int = 0, content: @Composable BoxScope.() -> Unit) {
-    val p = LocalPal.current
-    val inter = remember { MutableInteractionSource() }
-    Box {
-        Box(Modifier.bounce(inter, .86f).size(46.dp).shadow((if (p.transp || p.oled) 0.dp else 12.dp).ifShadows(), CircleShape, ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
-            .glassBg(CircleShape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, CircleShape).springClick(inter, label = desc, onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = if (badge > 0) "$desc, $badge non lus" else desc; role = Role.Button },
-            contentAlignment = Alignment.Center, content = content)
-        if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-2).dp))
     }
 }
 
@@ -526,23 +455,22 @@ private fun Toasts(ui: AppState) {
                     val tint = if (t.icon == "flame") p.flame else kind
                     val left = remember { Animatable(1f) }
                     LaunchedEffect(Unit) { left.animateTo(0f, tween(if (t.action != null || p.easy) 5000 else 3600, easing = LinearEasing)) }
-                    val shape = RoundedCornerShape(26.dp)
-                    Row(Modifier.shadow((if (p.transp) 0.dp else 14.dp).ifShadows(), shape, ambientColor = Color(0x4428186E), spotColor = tint.copy(alpha = .45f)).clip(shape)
-                        .background(p.glassStrong.copy(alpha = 1f)).border(1.dp, tint.copy(alpha = .35f), shape)
+                    val shape = smoothShape(26.dp)
+                    Row(Modifier.depth(shape, p, 3, tint = androidx.compose.ui.graphics.lerp(p.shade, tint, .35f)).clip(shape)
+                        .background(p.glassStrong.copy(alpha = 1f)).then(if (p.contrast) Modifier.border(1.dp, tint.copy(alpha = .6f), shape) else Modifier.sheen(shape, p.dark, .8f))
                         .drawWithContent { drawContent(); drawRect(tint.copy(alpha = .85f), topLeft = Offset(0f, size.height - 3.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width * left.value, 3.dp.toPx())) }
                         .semantics { liveRegion = LiveRegionMode.Polite }
                         .then(if (t.action == null) Modifier.clickable(onClickLabel = "Fermer") { ui.toasts.remove(t) } else Modifier)
                         .padding(start = 8.dp, end = if (t.action != null) 6.dp else 16.dp, top = 6.dp, bottom = 7.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Box(Modifier.size(34.dp).clip(CircleShape).background(tint.copy(alpha = .16f)), contentAlignment = Alignment.Center) {
-                            if (t.icon == "flame") Flame(20.dp) else Pi(t.icon, size = 18.dp, tint = tint)
-                        }
+                        if (t.icon == "flame") Box(Modifier.size(36.dp).clip(CircleShape).background(tint.copy(alpha = .16f)), contentAlignment = Alignment.Center) { Flame(22.dp) }
+                        else IconTile(t.icon, tint.lift(.15f), tint, 36.dp, 18.dp)
                         Text(t.text, Modifier.weight(1f, fill = false).padding(vertical = 4.dp), fontWeight = FontWeight.Bold, fontSize = if (p.easy) 16.sp else 14.sp, color = p.ink)
                         if (t.action != null) {
                             val inter = remember { MutableInteractionSource() }
-                            Box(Modifier.bounce(inter, .9f).heightIn(min = 40.dp).clip(RoundedCornerShape(20.dp)).background(tint)
+                            Box(Modifier.bounce(inter, .9f).heightIn(min = 40.dp).candy(CircleShape, candyOf(tint), p, glow = false).clip(CircleShape)
                                 .springClick(inter, label = t.action, role = Role.Button) { ui.toasts.remove(t); t.onAction?.invoke() }.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
-                                Text(t.action, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = readable(tint))
+                                Text(t.action, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = fr.pepsgoal.app.ui.theme.onColors(candyOf(tint)))
                             }
                         }
                     }

@@ -39,7 +39,7 @@ fun TimelineCard(ui: AppState, plan: Plan) {
     val items = remember(ui.rev) { plan.due.map { it to pg.usualHour(it.g).coerceIn(6f, 23.8f) }.sortedBy { it.second } }
     val nowH = remember(ui.rev) { java.time.LocalTime.now().let { it.hour + it.minute / 60f } }
     Glass {
-        CardHead("Ta journée heure par heure") { Muted(nowHM(), small = true) }
+        CardHead("Ta journée heure par heure", emoji = "🕐") { Muted(nowHM(), small = true) }
         BoxWithConstraints(Modifier.fillMaxWidth().height(132.dp)) {
             val w = maxWidth
             fun x(h: Float) = w * ((h - 6f) / 18f).coerceIn(0f, 1f)
@@ -114,13 +114,13 @@ fun EveningQuickCard(ui: AppState, plan: Plan) {
     var note by remember(e?.date) { mutableStateOf(e?.text ?: "") }
     val left = plan.due.filter { !it.done }
     Glass {
-        CardHead("Bilan express") { IconBtn("x", "Fermer le bilan", { closed = true; ui.prefs.raw.edit().putString("eveningQuick", t).apply() }, plain = true, size = 34.dp) }
+        CardHead("Bilan express", emoji = "🌙") { IconBtn("x", "Fermer le bilan", { closed = true; ui.prefs.raw.edit().putString("eveningQuick", t).apply() }, plain = true, size = 34.dp) }
         Muted("Ta journée en trois touches. Le bilan complet reste dans « Ta journée ».", small = true)
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Journal.MOODS.forEachIndexed { i, (l, em) ->
                 val on = e?.mood == i + 1
-                Column(Modifier.clip(RoundedCornerShape(14.dp)).background(if (on) p.flame.copy(alpha = .18f) else androidx.compose.ui.graphics.Color.Transparent)
+                Column(Modifier.clip(smoothShape(14.dp)).background(if (on) p.flame.copy(alpha = .18f) else androidx.compose.ui.graphics.Color.Transparent)
                     .clickable(onClickLabel = l) { Feedback.tick(); Journal.put(ctx, t, i + 1, note) }.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Emoji(em, if (on) 34.dp else 28.dp); Text(l, fontSize = 10.sp, color = if (on) p.ink else p.ink3, fontWeight = FontWeight.Bold)
                 }

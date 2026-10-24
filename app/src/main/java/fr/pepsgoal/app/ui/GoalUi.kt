@@ -108,62 +108,6 @@ fun tickingNow(active: Boolean): Long {
 }
 
 @Composable
-fun GoalIcon(g: Goal, size: Dp = 44.dp, masked: Boolean = false) {
-    val tc = LocalPal.current.type(g.type)
-    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(tc.c.copy(alpha = .22f)), contentAlignment = Alignment.Center) { Emoji(if (masked) g.shownIcon() else g.icon, size * .58f) }
-}
-
-@Composable
-fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disabled: Boolean = false, icon: String = "check", running: Boolean = false, onClick: () -> Unit) {
-    val p = LocalPal.current
-    val pop = remember { Animatable(1f) }
-    // Coche dessinée au trait et onde de choc qui s'élargit autour du bouton au moment de la validation
-    val draw = remember { Animatable(if (done) 1f else 0f) }
-    val wave = remember { Animatable(1f) }
-    LaunchedEffect(just, done) {
-        if (just && done && !p.motion) {
-            draw.snapTo(0f); wave.snapTo(0f)
-            launch { pop.snapTo(.72f); pop.animateTo(1f, spring(dampingRatio = .38f, stiffness = 520f)) }
-            launch { wave.animateTo(1f, tween(520, easing = Motion.Emphasized)) }
-            kotlinx.coroutines.delay(70); draw.animateTo(1f, tween(300, easing = Motion.Emphasized))
-        } else { draw.snapTo(if (done) 1f else 0f); wave.snapTo(1f) }
-    }
-    val filled = done || running
-    // Couleurs du type lisibles dans les deux thèmes : foncées sur fond clair, vives sur fond sombre
-    val line = readable(color)
-    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Box(
-        Modifier.drawBehind {
-            val w = wave.value
-            if (w < 1f) drawCircle(color.copy(alpha = (1f - w) * .55f), size.minDimension / 2f * (1f + w * .75f), style = androidx.compose.ui.graphics.drawscope.Stroke((1f - w) * 4.dp.toPx() + 1f))
-        }.bounce(inter, .8f).scale(pop.value).size(44.dp).clip(CircleShape).background(if (filled) color else color.copy(alpha = if (disabled) .06f else .16f))
-            .border(2.5.dp, if (disabled) p.ink3.copy(alpha = .45f) else if (filled) line.copy(alpha = .35f) else line, CircleShape)
-            .springClick(inter, label = label, onClick = onClick).semantics { contentDescription = label },
-        contentAlignment = Alignment.Center
-    ) {
-        if (done && !running && icon == "check") DrawnCheck(draw.value, Color(0xFF10102A), 26.dp, 3.dp)
-        else Pi(icon, size = 22.dp, tint = if (filled) Color(0xFF10102A) else if (disabled) p.ink3.copy(alpha = .55f) else line)
-    }
-}
-
-/** Couleur d'accent assombrie en thème clair (contraste suffisant sur le verre), inchangée en thème sombre. */
-@Composable
-fun readable(c: Color): Color {
-    val p = LocalPal.current
-    if (p.dark) return c
-    return androidx.compose.ui.graphics.lerp(c, Color(0xFF10102A), if (p.contrast) .7f else .42f)
-}
-
-@Composable
-fun MiniBtn(text: String, color: Color, onClick: () -> Unit) {
-    val p = LocalPal.current
-    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Box(Modifier.bounce(inter, .88f).clip(CircleShape).background(color.copy(alpha = .22f)).border(1.5.dp, readable(color).copy(alpha = .55f), CircleShape).springClick(inter, onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = p.ink, maxLines = 1)
-    }
-}
-
-@Composable
 fun AvStack(pg: Pg, ids: List<String>, size: Dp = 22.dp) {
     Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) { ids.mapNotNull { pg.userById(it) }.take(4).forEach { Av(it, size, modifier = Modifier.border(2.dp, LocalPal.current.glassStrong, CircleShape)) } }
 }
@@ -224,7 +168,10 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
     val sw = rememberSwipe()
     val rightLabel = if (g.type == "duration") (if (running) "Pause" else "Minuteur") else if (done && g.type in setOf("routine", "abstinence", "limit", "timed", "challenge")) "Annuler" else if (g.type == "cap") "Ajouter" else "Valider"
     val status = when { running -> "minuteur en cours"; done -> "validé aujourd’hui"; urgent -> "à faire, urgent"; else -> "à faire" }
-    val rowShape = RoundedCornerShape(18.dp)
+    val rowShape = smoothShape(22.dp)
+    // Chaque objectif repose dans un creux de verre clair ; validé, il prend un lavis de la couleur de son type
+    val well = if (LocalInSheet.current) p.ink.copy(alpha = .045f) else if (p.dark) Color.White.copy(alpha = .055f) else Color.White.copy(alpha = .42f)
+    val inSheet = LocalInSheet.current
     Box(Modifier.fillMaxWidth()) {
         SwipeReveal(sw, rowShape, right = SwipeAction(if (rightLabel == "Annuler") "x" else if (g.type == "duration") "play" else "check", rightLabel, if (rightLabel == "Annuler") p.ink2 else p.ok),
             left = SwipeAction("list", "Actions", p.focus), modifier = Modifier.matchParentSize())
@@ -232,7 +179,8 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
             Modifier.swipeable(sw, left = true, right = true, enabled = swipe) { dir -> if (dir > 0) doValidate(ui, g.id) else ui.open(Sheet.Quick(g.id)) }
                 .swipeTilt(sw)
                 .bounce(inter, .97f).fillMaxWidth().clip(rowShape)
-                .background(if (done) tc.c.copy(alpha = .14f) else if (sw.dx != 0f) p.glassStrong else Color.Transparent)
+                .background(if (sw.dx != 0f) androidx.compose.ui.graphics.SolidColor(if (inSheet) p.bg else p.glassStrong.copy(alpha = 1f))
+                    else if (done) Brush.horizontalGradient(listOf(tc.c.copy(alpha = if (p.dark) .26f else .3f), tc.c.copy(alpha = .07f))) else androidx.compose.ui.graphics.SolidColor(well))
                 // Objectif de durée : un appui long lance tout de suite une session Focus plein écran
                 .springClick(inter, label = "Ouvrir les détails", onLongClick = if (g.type == "duration" && !done) ({ quickFocus(ui, g) }) else null) { ui.open(Sheet.Goal(g.id)) }
                 .semantics {
@@ -241,11 +189,11 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
                         CustomAccessibilityAction(rightLabel) { doValidate(ui, g.id); true },
                         CustomAccessibilityAction("Actions rapides") { ui.open(Sheet.Quick(g.id)); true }
                     )
-                }.padding(8.dp),
+                }.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Objectif discret : titre et icône masqués dans les listes (visibles dans sa fiche)
-            GoalIcon(g, masked = true)
+            GoalIcon(g, 46.dp, masked = true)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     FavStar(pg, g)
@@ -259,7 +207,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
                     if (pend) Chip("En attente de ${first(pg.userById(g.buddy)?.name)}", "clock")
                     extra?.invoke()
                 }
-                bar?.let { Bar(it, Modifier.padding(top = 3.dp), tc.c, 6.dp) }
+                bar?.let { Bar(it, Modifier.padding(top = 3.dp), tc.c, 7.dp) }
             }
             right()
         }
@@ -289,7 +237,7 @@ fun QuickSheet(ui: AppState, id: String) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         acts.forEach { (l, ic, go) ->
             val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bounce(inter, .97f).clip(RoundedCornerShape(16.dp)).background(p.ink.copy(alpha = .05f)).springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = go).padding(horizontal = 14.dp, vertical = 10.dp),
+            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bounce(inter, .97f).clip(smoothShape(16.dp)).background(p.ink.copy(alpha = .05f)).springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = go).padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Pi(ic, size = 22.dp, tint = p.ink); Text(l, fontWeight = FontWeight.ExtraBold)
             }
@@ -305,7 +253,7 @@ fun Last7(pg: Pg, g: Goal) {
         for (i in 6 downTo 0) {
             val k = ymd(todayDate().minusDays(i.toLong()))
             val on = pg.db.checkins.any { it.goalId == g.id && it.date == k && pg.isWin(it) }; val rel = pg.hasCheck(g.id, k, "relapse")
-            Box(Modifier.size(9.dp).clip(CircleShape).background(if (rel) p.danger else if (on) tc.c else p.ink.copy(alpha = .12f)))
+            Box(Modifier.size(10.dp).clip(CircleShape).background(if (rel) androidx.compose.ui.graphics.SolidColor(p.danger) else if (on) Brush.verticalGradient(listOf(tc.c.lift(.35f), tc.c)) else androidx.compose.ui.graphics.SolidColor(p.ink.copy(alpha = .12f))))
         }
     }
 }
@@ -315,13 +263,13 @@ fun Last7(pg: Pg, g: Goal) {
 fun GoalCard(ui: AppState, g: Goal, modifier: Modifier = Modifier) {
     val p = LocalPal.current; val pg = ui.pg; val tc = p.type(g.type); val s = pg.statBig(g)
     // Balayage, comme dans « À valider » : vers la droite pour valider, vers la gauche pour les actions rapides
-    val sw = rememberSwipe(); val shape = RoundedCornerShape(24.dp)
+    val sw = rememberSwipe(); val shape = smoothShape(28.dp)
     val canDo = g.userId == pg.meId() && !g.archived && !pg.isClosedGoal(g)
     Box(modifier) {
     SwipeReveal(sw, shape, right = if (canDo) SwipeAction("check", "Valider", p.ok) else null, left = SwipeAction("list", "Actions", p.focus), modifier = Modifier.matchParentSize())
     Glass(Modifier.swipeable(sw, left = true, right = canDo, enabled = ui.prefs.swipe) { dir -> if (dir > 0) doValidate(ui, g.id) else ui.open(Sheet.Quick(g.id)) }.swipeTilt(sw), pad = 16.dp, onClick = { ui.open(Sheet.Goal(g.id)) }) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            GoalIcon(g, 46.dp)
+            GoalIcon(g, 50.dp)
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { FavStar(pg, g); Text(g.title, fontWeight = FontWeight.ExtraBold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(6.dp))
@@ -333,10 +281,10 @@ fun GoalCard(ui: AppState, g: Goal, modifier: Modifier = Modifier) {
             }
         }
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(s.v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, color = tc.ink)
+            Text(s.v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp, color = tc.ink)
             Text(s.l, fontWeight = FontWeight.Bold, color = p.ink2, modifier = Modifier.padding(bottom = 4.dp))
         }
-        pg.barPct(g)?.takeIf { g.type !in setOf("limit", "duration") }?.let { Bar(it, Modifier.padding(top = 8.dp), tc.c) }
+        pg.barPct(g)?.takeIf { g.type !in setOf("limit", "duration") }?.let { Bar(it, Modifier.padding(top = 8.dp), tc.c, 9.dp) }
         if (g.type == "group") Box(Modifier.padding(top = 6.dp)) { AvStack(pg, g.members ?: emptyList()) }
         if (g.type == "measure") MeasureSpark(pg, g)
         if (g.type == "monthly" && g.cumulate) Muted("Cumul : ${fmtNum(pg.objProgress(g))} ${g.unit} · ${pl(pg.goalStreak(g), "mois réussi d’affilée", "mois réussis d’affilée")}", small = true)
@@ -451,7 +399,9 @@ fun WeekStrip(pg: Pg, id: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         for (i in 0 until 7) {
             val k = ymd(ws.plusDays(i.toLong())); val fut = k > t; val on = days.contains(k); val fz = !on && frozen.contains(k)
-            Column(Modifier.clip(RoundedCornerShape(14.dp)).background(if (k == t) p.ink.copy(alpha = .07f) else Color.Transparent).padding(horizontal = 6.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            val day = smoothShape(16.dp)
+            Column(Modifier.then(if (k == t) Modifier.depth(day, p, 1).background(if (p.dark) androidx.compose.ui.graphics.lerp(p.card, Color.White, .12f) else Color.White, day).sheen(day, p.dark, .5f) else Modifier)
+                .padding(horizontal = 7.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (fz) Pi("snow", size = 22.dp, tint = p.type("objective").ink) else Flame(22.dp, dim = !on)
                 Text(WD[i], fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = if (fut) p.ink3 else p.ink2)
             }

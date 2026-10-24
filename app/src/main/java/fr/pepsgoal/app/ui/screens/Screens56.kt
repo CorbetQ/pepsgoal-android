@@ -86,9 +86,9 @@ fun GalleryScreen(ui: AppState, goalId: String) {
     if (mode == "lapse" && photos.size >= 2) TimelapseDialog(photos) { mode = null }
     big?.let { pr ->
         androidx.compose.ui.window.Dialog({ big = null }) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.fillMaxWidth().clip(smoothShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-                if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 440.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Fit)
+                if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 440.dp).clip(smoothShape(16.dp)), contentScale = ContentScale.Fit)
                 Text(cap(weekdayLongDate(parseYmd(pr.date))), fontWeight = FontWeight.ExtraBold)
                 if (pr.note.isNotBlank()) Text(pr.note, color = p.ink2)
                 PButton("Fermer", { big = null }, Modifier.fillMaxWidth())
@@ -101,7 +101,7 @@ fun GalleryScreen(ui: AppState, goalId: String) {
 private fun GalleryTile(pr: Proof, modifier: Modifier, onClick: () -> Unit) {
     val ctx = LocalContext.current; val p = LocalPal.current
     val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f -> val o = BitmapFactory.Options().apply { inSampleSize = 4 }; BitmapFactory.decodeFile(f.path, o)?.asImageBitmap() } }
-    Box(modifier.aspectRatio(.8f).clip(RoundedCornerShape(16.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(16.dp)).clickable(onClick = onClick)) {
+    Box(modifier.aspectRatio(.8f).clip(smoothShape(16.dp)).background(p.glassStrong).border(1.dp, p.line, smoothShape(16.dp)).clickable(onClick = onClick)) {
         if (bmp != null) Image(bmp, "Preuve du ${fmtDate(pr.date)}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Text("“${pr.note.take(70)}”", Modifier.padding(8.dp), fontSize = 12.sp, color = p.ink2, maxLines = 5)
         Text(fmtDateShort(pr.date), Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = if (bmp != null) .55f else 0f)))).padding(6.dp),
@@ -242,12 +242,12 @@ fun PetScreen(ui: AppState) {
         }
         item("acc") {
             Glass {
-                CardHead("Accessoires") { Count("${pg.wallet(u)} 🔥") }
+                CardHead("Accessoires", emoji = "🎀") { Count("${pg.wallet(u)} 🔥") }
                 PET_ACCESSORIES.chunked(2).forEach { row ->
                     Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         row.forEach { a ->
                             val owned = pg.owns("acc:${a.key}", a.price, u); val on = a.key in worn
-                            Row(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(if (on) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .04f)).border(if (on) 2.dp else 1.dp, if (on) p.flame else p.line, RoundedCornerShape(16.dp))
+                            Row(Modifier.weight(1f).clip(smoothShape(16.dp)).background(if (on) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .04f)).border(if (on) 2.dp else 1.dp, if (on) p.flame else p.line, smoothShape(16.dp))
                                 .clickable {
                                     if (owned) { worn = if (on) worn - a.key else worn + a.key; ui.prefs.petAcc = worn; ui.bump() }
                                     else pg.buy("acc:${a.key}", a.price)?.let { ui.toast(it, "x") } ?: run { Feedback.success(); worn = worn + a.key; ui.prefs.petAcc = worn; ui.toast("${a.emoji} ${a.name} pour ${ui.prefs.petName} !", "star"); ui.bump() }
@@ -329,13 +329,13 @@ fun QuestScreen(ui: AppState) {
 fun SecretsCard(ui: AppState) {
     val p = LocalPal.current; val found = remember(ui.rev) { ui.pg.secretsFound() }
     Glass {
-        CardHead("Succès cachés") { Count("${found.size} / ${SECRETS.size}") }
+        CardHead("Succès cachés", emoji = "🔒") { Count("${found.size} / ${SECRETS.size}") }
         Muted("Des badges secrets à débusquer (+$SECRET_BONUS flammes chacun). Seul un indice les trahit…", small = true)
         Spacer(Modifier.height(10.dp))
         SECRETS.chunked(3).forEach { row ->
             Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { s -> val ok = s.key in found
-                    Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(if (ok) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f)).border(1.dp, if (ok) p.flame.copy(alpha = .5f) else p.line, RoundedCornerShape(16.dp))
+                    Column(Modifier.weight(1f).clip(smoothShape(16.dp)).background(if (ok) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f)).border(1.dp, if (ok) p.flame.copy(alpha = .5f) else p.line, smoothShape(16.dp))
                         .clickable { ui.toast(if (ok) "${s.emoji} ${s.name} : ${s.desc}" else "Indice : ${s.hint}", if (ok) "star" else "lock") }.padding(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (ok) Emoji(s.emoji, 30.dp) else Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) { Pi("lock", size = 20.dp, tint = p.ink3) }
@@ -361,7 +361,7 @@ fun SeasonCard(ui: AppState) {
     val d = todayDate(); val left = d.lengthOfMonth() - d.dayOfMonth
     Glass {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(60.dp).clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(hex(dc), hex(dc).copy(alpha = .5f)))), contentAlignment = Alignment.Center) { Emoji(de, 34.dp) }
+            Box(Modifier.size(60.dp).clip(smoothShape(20.dp)).background(Brush.linearGradient(listOf(hex(dc), hex(dc).copy(alpha = .5f)))), contentAlignment = Alignment.Center) { Emoji(de, 34.dp) }
             Column(Modifier.weight(1f)) {
                 Eyebrow("Saison de ${Recaps.MONTHS_LONG[d.monthValue - 1]}")
                 Text("Division $dn", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)

@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -41,6 +42,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -223,11 +225,12 @@ fun Modifier.enter(): Modifier {
     // Hors de la fenêtre d'ouverture (carte qui revient en faisant défiler la liste) : affichée directement,
     // l'animation ne se rejoue pas à chaque défilement
     val a = remember { Animatable(if (motionOff || !Stagger.active()) 1f else 0f) }
-    LaunchedEffect(Unit) { if (a.value < 1f) { kotlinx.coroutines.delay(Stagger.next()); a.animateTo(1f, spring(dampingRatio = .82f, stiffness = 240f)) } }
+    LaunchedEffect(Unit) { if (a.value < 1f) { kotlinx.coroutines.delay(Stagger.next()); a.animateTo(1f, spring(dampingRatio = .66f, stiffness = 260f)) } }
+    // Arrivée en ressort : la carte monte, grandit et dépasse à peine sa place avant de s'y poser
     return this.graphicsLayer {
         val v = a.value
-        alpha = (v * 1.4f).coerceIn(0f, 1f); translationY = (1f - v) * 22.dp.toPx()
-        val s = .965f + .035f * v; scaleX = s; scaleY = s
+        alpha = (v * 1.6f).coerceIn(0f, 1f); translationY = (1f - v) * 30.dp.toPx()
+        val s = .93f + .07f * v; scaleX = s; scaleY = s
     }
 }
 
@@ -243,21 +246,43 @@ fun PageBackdrop(c1: Color, c2: Color, modifier: Modifier = Modifier) {
         if (p.contrast || p.transp) return@Canvas
         val w = size.width; val h = size.height; val k = if (p.dark) .8f else 1f
         fun halo(c: Color, x: Float, y: Float, r: Float, a: Float) = drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a * k), c.copy(alpha = a * k * .35f), Color.Transparent), Offset(x, y), r), r, Offset(x, y))
-        halo(c1, w * .08f, h * .02f, w * 1.05f, .55f)
-        halo(c2, w * 1.02f, h * .3f, w * .85f, .38f)
-        halo(androidx.compose.ui.graphics.lerp(c1, c2, .5f), w * .25f, h * 1.02f, w * .95f, .32f)
-        drawRect(Brush.verticalGradient(0f to c1.copy(alpha = .18f * k), .35f to Color.Transparent))
+        halo(c1, w * .08f, h * .02f, w * 1.1f, .68f)
+        halo(c2, w * 1.02f, h * .3f, w * .9f, .5f)
+        halo(androidx.compose.ui.graphics.lerp(c1, c2, .5f), w * .25f, h * 1.02f, w * 1f, .42f)
+        drawRect(Brush.verticalGradient(0f to c1.copy(alpha = .24f * k), .35f to Color.Transparent))
     }
 }
 
-/** Pastille d'icône colorée (dégradé, icône foncée) : en-têtes et listes des pages secondaires. */
+/** Pastille d'icône « bonbon » (dégradé vif, reflet, halo coloré) : en-têtes, sections et listes. */
 @Composable
-fun IconTile(icon: String, c1: Color, c2: Color, size: Dp = 40.dp, radius: Dp = 13.dp) {
+fun IconTile(icon: String, c1: Color, c2: Color, size: Dp = 40.dp, radius: Dp = size * .32f) {
     val p = LocalPal.current
-    Box(Modifier.size(size).shadow((if (p.transp) 0.dp else 8.dp).ifShadows(), RoundedCornerShape(radius), ambientColor = c1, spotColor = c1).clip(RoundedCornerShape(radius))
-        .background(if (p.contrast) SolidColor(p.ink) else Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
-        Pi(icon, size = size * .5f, tint = if (p.contrast) p.bg else Color(0xFF10102A))
+    val shape = smoothShape(radius)
+    Box(Modifier.size(size).then(if (p.contrast) Modifier.background(p.ink, shape) else Modifier.candy(shape, listOf(c1.lift(.22f), c1, c2), p, elevation = if (size >= 40.dp) 10.dp else 6.dp)),
+        contentAlignment = Alignment.Center) {
+        Pi(icon, size = size * .5f, tint = if (p.contrast) p.bg else fr.pepsgoal.app.ui.theme.onColors(listOf(c1, c2)))
     }
+}
+
+/**
+ * Pastille d'emoji en « pâte » colorée : dégradé doux de la couleur sur le fond de la carte, reflet en haut, liseré
+ * clair et ombre teintée. L'emoji Fluent 3D y est posé comme un objet.
+ */
+@Composable
+fun EmojiTile(e: String, c: Color, size: Dp = 44.dp, radius: Dp = size * .32f) = EmojiTileBox(c, size, radius) { Emoji(e, size * .62f) }
+
+/** Même pastille en « pâte » colorée, avec un contenu libre (flamme, illustration…). */
+@Composable
+fun EmojiTileBox(c: Color, size: Dp = 32.dp, radius: Dp = size * .32f, content: @Composable BoxScope.() -> Unit) {
+    val p = LocalPal.current
+    val shape = smoothShape(radius)
+    // Fond opaque (calculé sur le fond de la carte) : l'ombre ne transparaît pas à travers la pastille
+    val base = if (LocalInSheet.current) p.bg else p.card
+    val top = androidx.compose.ui.graphics.lerp(base, c.lift(if (p.dark) .12f else .4f), if (p.dark) .52f else .62f)
+    val bottom = androidx.compose.ui.graphics.lerp(base, c, if (p.dark) .36f else .4f)
+    Box(Modifier.size(size).then(if (p.contrast) Modifier.border(1.5.dp, p.line, shape) else Modifier.glow(shape, c.copy(alpha = .9f), p, if (size >= 40.dp) 7.dp else 4.dp))
+        .background(Brush.linearGradient(listOf(top, bottom), start = Offset.Zero, end = Offset.Infinite), shape)
+        .then(if (p.contrast) Modifier else Modifier.sheen(shape, p.dark, .9f)), contentAlignment = Alignment.Center, content = content)
 }
 
 /**
@@ -302,7 +327,7 @@ fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.
 fun PollOption(text: String, pct: Float, show: Boolean, mine: Boolean, top: Boolean, enabled: Boolean, onClick: () -> Unit, sub: String? = null, count: String? = null) {
     val p = LocalPal.current
     val v by animateFloatAsState(if (show) pct.coerceIn(0f, 1f) else 0f, if (p.motion) tween(0) else Springs.bar, label = "poll")
-    val shape = RoundedCornerShape(16.dp)
+    val shape = smoothShape(16.dp)
     val inter = remember { MutableInteractionSource() }
     Box(Modifier.fillMaxWidth().bounce(inter, .97f).clip(shape).background(p.ink.copy(alpha = if (p.dark) .08f else .045f))
         .border(1.5.dp, if (mine) p.flame else ctlEdge(p), shape).springClick(inter, enabled = enabled, onClick = onClick)) {
@@ -355,8 +380,8 @@ fun Modifier.aiGlow(radius: Dp): Modifier {
 
 /** Ressorts communs : réponses vives avec un léger rebond. */
 object Springs {
-    val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .42f, stiffness = 520f)
-    val bar = androidx.compose.animation.core.spring<Float>(dampingRatio = .62f, stiffness = 140f)
+    val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .4f, stiffness = 520f)
+    val bar = androidx.compose.animation.core.spring<Float>(dampingRatio = .55f, stiffness = 130f)
 }
 
 /**
@@ -402,41 +427,50 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
     // à travers le verre et dessine un rectangle plus clair à l'intérieur
     // Verre givré coupé (Paramètres › Performance) : même teinte, sans flou
     if (h == null || p.transp || p.contrast || p.oled || !Perf.flags.blur) return this.clip(shape).then(if (p.transp || p.oled) Modifier else Modifier.background(p.bg)).background(tint)
-    return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.6f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
+    return this.clip(shape).hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(tint)), blurRadius = (p.blur / 3.1f).dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
         // Flou calculé sur une image réduite de moitié : même rendu, bien moins de travail pour le GPU
         inputScale = HazeInputScale.Fixed(.5f)
     }
 }
 
 @Composable
-fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = LocalGlassPad.current, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 28.dp, pad: Dp = LocalGlassPad.current, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false,
+          wash: List<Color>? = null, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
-    val shape = RoundedCornerShape(radius)
+    val shape = smoothShape(radius)
     val inter = remember { MutableInteractionSource() }
     Column(
         // Toute la largeur disponible par défaut : une carte au contenu court reste alignée sur les autres
-        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).enter().then(if (onClick != null) Modifier.bounce(inter, .97f) else Modifier)
+        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).enter().then(if (onClick != null) Modifier.bounce(inter, .965f) else Modifier)
             .then(if (ai && !p.easy) Modifier.aiGlow(radius) else if (ai) Modifier.border(2.dp, p.flame, shape) else Modifier)
-            .shadow((if (p.oled || p.transp) 0.dp else 18.dp).ifShadows(), shape, ambientColor = Color(0x4428186E), spotColor = Color(0x5528186E))
+            // Profondeur : ombre de contact et grande ombre teintée, verre givré, reflets et liseré qui accroche la lumière
+            .depth(shape, p, 2)
             .glassBg(shape, strong)
-            // Profondeur : reflet en haut de la carte et liseré lumineux dégradé (plus vif en haut, discret en bas)
-            .then(if (p.contrast || p.transp) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .07f else .3f), .45f to Color.Transparent)))
-            .border(1.dp, if (border != null) SolidColor(border) else if (p.contrast) SolidColor(p.line) else Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .3f else .95f), p.glassEdge.copy(alpha = p.glassEdge.alpha * .35f))), shape)
+            // Carte vedette : lavis de couleurs qui irradie depuis les coins (dégradé présent, mais doux)
+            .then(if (wash != null && !p.contrast && !p.transp) Modifier.washOf(wash, p.dark) else Modifier)
+            .then(if (p.contrast || p.transp) Modifier else Modifier.sheen(shape, p.dark))
+            .then(if (border != null) Modifier.border(1.5.dp, border, shape) else if (p.contrast) Modifier.border(1.dp, p.line, shape) else Modifier)
             .then(if (onClick != null) Modifier.springClick(inter, onClick = onClick) else Modifier).padding(pad),
         content = content
     )
 }
 
+/** Titre de carte, avec un emoji Fluent facultatif devant (repère visuel de la carte). */
 @Composable
-fun CardHead(title: String, modifier: Modifier = Modifier, right: @Composable RowScope.() -> Unit = {}) {
-    Row(modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).semantics { heading() })
+fun CardHead(title: String, modifier: Modifier = Modifier, emoji: String? = null, right: @Composable RowScope.() -> Unit = {}) {
+    Row(modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (emoji != null) Emoji(emoji, 26.dp)
+        Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp), modifier = Modifier.weight(1f).semantics { heading() })
         right()
     }
 }
 
+/** Compteur d'un titre de carte : petite pastille creusée, chiffres en gras. */
 @Composable
-fun Count(n: Any) = Text("$n", fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink2)
+fun Count(n: Any) {
+    val p = LocalPal.current
+    Text("$n", Modifier.clip(CircleShape).background(p.ink.copy(alpha = if (p.dark) .1f else .06f)).padding(horizontal = 10.dp, vertical = 3.dp), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = p.ink2, maxLines = 1)
+}
 
 @Composable
 fun Eyebrow(text: String, color: Color = LocalPal.current.ink2) = Text(tr(text).uppercase(), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = color)
@@ -454,18 +488,19 @@ fun PButton(
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
     val shape = CircleShape
+    // Principal : « bonbon » aux couleurs de l'accent, avec halo ; normal : pastille de verre éclairée
     val bg: Modifier = when (kind) {
-        "primary" -> Modifier.background(if (p.contrast) SolidColor(p.ink) else p.accent, shape)
-        "ghost", "danger" -> Modifier
-        else -> Modifier.background(p.glassStrong, shape).border(1.dp, ctlEdge(p), shape)
+        "primary" -> if (p.contrast) Modifier.background(p.ink, shape) else Modifier.candy(shape, listOf(p.flame2, p.flame, p.pink), p, glow = enabled, elevation = if (small) 8.dp else 12.dp)
+        "ghost" -> Modifier
+        "danger" -> Modifier.background(p.danger.copy(alpha = .1f), shape).border(1.dp, p.danger.copy(alpha = .4f), shape)
+        else -> Modifier.depth(shape, p, 1).background(if (p.dark) p.glassStrong else Color.White.copy(alpha = .86f), shape).then(if (p.contrast) Modifier.border(1.dp, ctlEdge(p), shape) else Modifier.sheen(shape, p.dark, .6f))
     }
     val fg = when (kind) { "primary" -> if (p.contrast) p.bg else p.onAccent; "ghost" -> p.ink2; "danger" -> p.danger; else -> p.ink }
     Row(
-        modifier.bounce(inter, .92f).alpha(if (enabled) 1f else .45f).clip(shape).then(bg)
-            .then(if (kind == "danger") Modifier.border(1.dp, p.danger.copy(alpha = .4f), shape) else Modifier)
+        modifier.bounce(inter, .9f).alpha(if (enabled) 1f else .45f).then(bg).clip(shape)
             .clickable(enabled = enabled, interactionSource = inter, indication = LocalIndication.current, role = Role.Button) { Feedback.tap(); onClick() }
-            .then(if (p.big) Modifier.heightIn(min = 48.dp) else Modifier)
-            .padding(horizontal = if (small) 14.dp else 18.dp, vertical = if (small) 8.dp else 11.dp),
+            .heightIn(min = if (p.big) 48.dp else if (small) 36.dp else 46.dp)
+            .padding(horizontal = if (small) 15.dp else 20.dp, vertical = if (small) 8.dp else 11.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
     ) {
         leading?.invoke()
@@ -478,24 +513,31 @@ private val LocalIndication = androidx.compose.foundation.LocalIndication
 private fun Modifier.alpha(a: Float) = this.graphicsLayer { alpha = a }
 
 @Composable
-fun IconBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier, plain: Boolean = false, badge: Int = 0, tint: Color? = null, size: Dp = 42.dp) {
+fun IconBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier, plain: Boolean = false, badge: Int = 0, tint: Color? = null, size: Dp = 42.dp, primary: Boolean = false) {
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
     // Grandes cibles (TalkBack, Lecture facile) : zone tactile d'au moins 48 dp
     Box(modifier.then(if (p.big) Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp) else Modifier), contentAlignment = Alignment.Center) {
         Box(
-            Modifier.semantics { contentDescription = desc; role = Role.Button }.bounce(inter, .86f).size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(p.glassStrong).border(1.dp, ctlEdge(p), CircleShape))
+            Modifier.semantics { contentDescription = desc; role = Role.Button }.bounce(inter, .84f).size(if (plain) size - 6.dp else size)
+                .then(if (primary && !p.contrast) Modifier.candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 8.dp).clip(CircleShape)
+                    else if (plain) Modifier.clip(CircleShape) else Modifier.depth(CircleShape, p, 1).background(if (p.dark) p.glassStrong else Color.White.copy(alpha = .86f), CircleShape)
+                    .then(if (p.contrast) Modifier.border(1.dp, ctlEdge(p), CircleShape) else Modifier.sheen(CircleShape, p.dark, .6f)).clip(CircleShape))
                 .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center
-        ) { Pi(icon, size = 20.dp, tint = tint ?: if (plain) p.ink2 else p.ink) }
+        ) { Pi(icon, size = 20.dp, tint = tint ?: if (primary && !p.contrast) p.onAccent else if (plain) p.ink2 else p.ink) }
         if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp))
     }
 }
 
+/** Pastille de compteur : bonbon rose cerclé du fond, qui rebondit quand le nombre change. */
 @Composable
 fun Badge(n: Int, modifier: Modifier = Modifier) {
     val p = LocalPal.current
-    Box(modifier.defaultMinSize(20.dp, 20.dp).clip(CircleShape).background(p.pink).border(2.dp, p.bg, CircleShape).padding(horizontal = 5.dp), contentAlignment = Alignment.Center) {
-        Text(if (n > 9) "9+" else "$n", color = p.onAccent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+    val pop = remember { Animatable(1f) }
+    LaunchedEffect(n) { if (!p.motion && n > 0) { pop.snapTo(1.3f); pop.animateTo(1f, spring(dampingRatio = .38f, stiffness = 600f)) } }
+    Box(modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value }.border(2.dp, p.bg, CircleShape).padding(1.dp).defaultMinSize(19.dp, 19.dp)
+        .candy(CircleShape, listOf(p.pink.lift(.2f), p.pink), p, elevation = 4.dp).padding(horizontal = 5.dp), contentAlignment = Alignment.Center) {
+        Text(if (n > 9) "9+" else "$n", color = fr.pepsgoal.app.ui.theme.onColors(listOf(p.pink)), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -504,9 +546,10 @@ fun Chip(text: String, icon: String? = null, color: Color? = null, ink: Color? =
     val p = LocalPal.current
     val c = color ?: p.ink3
     // Fond réel de la puce (teinte posée sur une carte) : le texte est ajusté pour toujours s'y lire
-    val fill = c.copy(alpha = .2f)
+    val fill = c.copy(alpha = if (p.dark) .22f else .2f)
     val fg = remember(ink, c, p) { readable(ink ?: if (color != null) c else p.ink2, fill.over(p.glass.over(p.bg)), 4.6f) }
-    Row(modifier.clip(CircleShape).background(fill).padding(horizontal = 9.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(modifier.clip(CircleShape).background(Brush.horizontalGradient(listOf(c.copy(alpha = fill.alpha * 1.25f), c.copy(alpha = fill.alpha * .75f))))
+        .border(1.dp, c.copy(alpha = if (p.dark) .3f else .34f), CircleShape).padding(horizontal = 9.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (icon != null) Pi(icon, size = 13.dp, tint = fg)
         Text(text, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -541,11 +584,17 @@ fun TypeChip(type: String) {
 @Composable
 fun FChip(text: String, on: Boolean, onClick: () -> Unit, leading: (@Composable () -> Unit)? = null, dashed: Boolean = false) {
     val p = LocalPal.current
-    val sc by animateFloatAsState(if (on && !p.motion) 1.05f else 1f, Motion.emphasis(), label = "chip")
+    val sc by animateFloatAsState(if (on && !p.motion) 1.06f else 1f, spring(dampingRatio = .45f, stiffness = 520f), label = "chip")
     val inter = remember { MutableInteractionSource() }
+    // Choisie : bonbon de l'accent avec halo ; sinon pastille de verre clair
+    val look = when {
+        on && p.contrast -> Modifier.background(p.ink, CircleShape)
+        on -> Modifier.candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 7.dp)
+        dashed -> Modifier.border(1.dp, ctlEdge(p), CircleShape)
+        else -> Modifier.background(if (p.dark) p.glassStrong else Color.White.copy(alpha = .78f), CircleShape).border(1.dp, if (p.contrast) ctlEdge(p) else if (p.dark) Color.White.copy(alpha = .14f) else Color.White, CircleShape)
+    }
     Row(
-        Modifier.bounce(inter, .9f).scale(sc).clip(CircleShape).background(if (on) (if (p.contrast) SolidColor(p.ink) else p.accent) else SolidColor(if (dashed) Color.Transparent else p.glassStrong))
-            .border(1.dp, if (on) Color.Transparent else ctlEdge(p), CircleShape).springClick(inter, onClick = onClick).semantics { selected = on }.then(if (p.big) Modifier.heightIn(min = 48.dp) else Modifier).padding(horizontal = 14.dp, vertical = 8.dp),
+        Modifier.bounce(inter, .88f).scale(sc).then(look).clip(CircleShape).springClick(inter, onClick = onClick).semantics { selected = on }.heightIn(min = if (p.big) 48.dp else 36.dp).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         leading?.invoke()
@@ -591,18 +640,37 @@ fun GoalChips(goals: List<fr.pepsgoal.core.model.Goal>, selected: String?, onPic
     }
 }
 
-/** Barre de progression aux couleurs du type (ou de l'accent). */
+/**
+ * Barre de progression : rainure légèrement creusée, remplissage dégradé (couleur du type ou accent) avec un reflet
+ * brillant et un point de lumière à son extrémité. Elle se remplit en ressort.
+ */
 @Composable
 fun Bar(pct: Double, modifier: Modifier = Modifier, color: Color? = null, height: Dp = 8.dp) {
     val p = LocalPal.current
     val target = (pct / 100.0).coerceIn(0.0, 1.0).toFloat()
     val v by animateFloatAsState(target, if (p.motion) tween(0) else Springs.bar, label = "bar")
-    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(p.ink.copy(alpha = .09f))) {
-        Box(Modifier.fillMaxWidth(v).fillMaxHeight().clip(CircleShape).background(if (color != null) SolidColor(color) else p.accent))
-    }
+    val cols = if (color != null) listOf(color.lift(.3f), color) else listOf(p.flame2, p.flame, p.pink)
+    Box(modifier.fillMaxWidth().height(height).drawBehind {
+        val h = size.height; val r = CornerRadius(h / 2)
+        drawRoundRect(p.ink.copy(alpha = if (p.dark) .13f else .08f), cornerRadius = r)
+        // Rainure : ombre intérieure en haut
+        if (!p.contrast) drawRoundRect(Brush.verticalGradient(0f to Color.Black.copy(alpha = if (p.dark) .22f else .07f), .7f to Color.Transparent, endY = h), cornerRadius = r)
+        val w = size.width * v.coerceIn(0f, 1.04f)
+        if (w > .5f) {
+            val fw = maxOf(w, h)
+            drawRoundRect(Brush.horizontalGradient(cols, endX = maxOf(fw, size.width * .5f)), Offset.Zero, Size(fw, h), r)
+            if (!p.contrast) {
+                drawRoundRect(Brush.verticalGradient(0f to Color.White.copy(alpha = .42f), .55f to Color.White.copy(alpha = 0f), endY = h), Offset.Zero, Size(fw, h), r)
+                if (h >= 6.dp.toPx()) drawCircle(Color.White.copy(alpha = .75f), h * .2f, Offset(fw - h * .5f, h * .42f))
+            }
+        }
+    })
 }
 
-/** Anneau de la journée : validations faites sur prévues. */
+/**
+ * Anneau de la journée : validations faites sur prévues. Arc dégradé de l'accent posé sur un halo de la même couleur,
+ * avec un reflet clair sur le bord extérieur ; il se remplit en ressort.
+ */
 @Composable
 fun Ring(done: Int, total: Int, size: Dp = 108.dp) {
     val p = LocalPal.current
@@ -610,12 +678,21 @@ fun Ring(done: Int, total: Int, size: Dp = 108.dp) {
     val v by animateFloatAsState(pct, if (p.motion) tween(0) else Springs.bar, label = "ring")
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            val sw = this.size.minDimension * .11f
-            val r = Size(this.size.width - sw, this.size.height - sw)
-            drawArc(p.ink.copy(alpha = .1f), 0f, 360f, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw))
-            drawArc(Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)), -90f, 360f * v, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw, cap = StrokeCap.Round))
+            val sw = this.size.minDimension * .12f
+            val o = Offset(sw / 2, sw / 2); val r = Size(this.size.width - sw, this.size.height - sw)
+            drawArc(p.ink.copy(alpha = if (p.dark) .13f else .08f), 0f, 360f, false, o, r, style = Stroke(sw))
+            if (v > .001f) rotate(-90f) {
+                val sweep = Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2))
+                val a = 360f * v.coerceAtMost(1.05f)
+                if (!p.contrast && !p.transp) drawArc(sweep, 0f, a, false, o, r, style = Stroke(sw * 2.1f, cap = StrokeCap.Round), alpha = if (p.dark) .22f else .16f)
+                drawArc(sweep, 0f, a, false, o, r, style = Stroke(sw, cap = StrokeCap.Round))
+                if (!p.contrast) drawArc(Color.White.copy(alpha = .38f), 0f, a, false, Offset(sw * .3f, sw * .3f), Size(this.size.width - sw * .6f, this.size.height - sw * .6f), style = Stroke(sw * .22f, cap = StrokeCap.Round))
+            }
         }
-        Text("$done/$total", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = p.ink)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("$done", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (size.value * .22f).sp, color = p.ink)
+            Text("/$total", Modifier.padding(bottom = (size.value * .025f).dp), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = (size.value * .13f).sp, color = p.ink2)
+        }
     }
 }
 
@@ -791,8 +868,9 @@ fun SkeletonCard(lines: Int = 2, round: Boolean = false) {
 @Composable
 fun Note(text: String, icon: String = "bell", modifier: Modifier = Modifier) {
     val p = LocalPal.current
-    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(BorderStroke(1.5.dp, p.line), RoundedCornerShape(16.dp)).background(p.glass).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Pi(icon, size = 18.dp, tint = p.ink2)
+    val shape = smoothShape(18.dp)
+    Row(modifier.fillMaxWidth().glassBg(shape).sheen(shape, p.dark, .6f).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconTile(icon, p.flame2, p.pink, 28.dp)
         Text(rich(text), color = p.ink2, fontSize = 14.sp)
     }
 }
@@ -817,23 +895,47 @@ fun SetRow(title: String, sub: String? = null, modifier: Modifier = Modifier, ri
 @Composable
 fun PSwitch(on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     val p = LocalPal.current
-    // Clic net à l'activation, cran léger à la désactivation
-    Switch(on, { v -> if (v) Feedback.armed() else Feedback.disarmed(); onChange(v) }, enabled = enabled, colors = SwitchDefaults.colors(checkedTrackColor = p.flame, checkedThumbColor = p.onAccent, uncheckedTrackColor = p.ink.copy(alpha = .12f)))
+    // Rail « bonbon » de l'accent quand c'est activé, creusé quand c'est coupé ; la bille blanche glisse en rebondissant
+    // et s'étire pendant l'appui. Clic net à l'activation, cran léger à la désactivation.
+    val k by animateFloatAsState(if (on) 1f else 0f, if (p.motion) snap() else spring(dampingRatio = .55f, stiffness = 520f), label = "switch")
+    val inter = remember { MutableInteractionSource() }
+    val pressed by inter.collectIsPressedAsState()
+    val stretch by animateFloatAsState(if (pressed && !p.motion) 1f else 0f, spring(dampingRatio = .7f, stiffness = 900f), label = "switchPress")
+    Box(Modifier.alpha(if (enabled) 1f else .45f).size(54.dp, 32.dp)
+        .then(if (on) (if (p.contrast) Modifier.background(p.ink, CircleShape) else Modifier.candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 6.dp))
+            else Modifier.background(p.ink.copy(alpha = if (p.dark) .16f else .1f), CircleShape).border(1.dp, ctlEdge(p).copy(alpha = ctlEdge(p).alpha * .6f), CircleShape))
+        .clip(CircleShape)
+        .toggleableCompat(on, enabled, inter) { v -> if (v) Feedback.armed() else Feedback.disarmed(); onChange(v) }
+        .padding(3.dp)) {
+        val thumbW = 26.dp + 6.dp * stretch
+        Box(Modifier.offset(x = (54.dp - 6.dp - thumbW) * k.coerceIn(-.1f, 1.1f)).size(thumbW, 26.dp)
+            .shadow(if (p.transp) 0.dp else 3.dp, CircleShape, spotColor = Color(0x5534208A)).background(if (p.contrast && on) p.bg else Color.White, CircleShape)
+            .then(if (p.contrast) Modifier else Modifier.background(Brush.verticalGradient(listOf(Color.White, Color(0xFFE9E8F5))), CircleShape)))
+    }
 }
+
+/** Interrupteur accessible (rôle « interrupteur » annoncé par TalkBack). */
+private fun Modifier.toggleableCompat(on: Boolean, enabled: Boolean, inter: MutableInteractionSource, onChange: (Boolean) -> Unit): Modifier =
+    this.toggleable(value = on, interactionSource = inter, indication = null, enabled = enabled, role = Role.Switch, onValueChange = onChange)
 
 /** Choix segmenté (boutons radio côte à côte). */
 @Composable
 fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, modifier: Modifier = Modifier, icons: List<String>? = null) {
     val p = LocalPal.current
-    // Rail en verre givré : les options non choisies restent lisibles même sur un fond animé ou une image
-    val rail = RoundedCornerShape(18.dp)
-    FlowRowCompat(modifier.glassBg(rail).background(p.ink.copy(alpha = if (p.dark) .06f else .04f)).border(1.dp, ctlEdge(p).copy(alpha = ctlEdge(p).alpha * .6f), rail).padding(4.dp)) {
+    // Rail en verre givré creusé : les options non choisies restent lisibles même sur un fond animé ou une image
+    val rail = smoothShape(20.dp); val pill = smoothShape(16.dp)
+    FlowRowCompat(modifier.glassBg(rail).background(p.ink.copy(alpha = if (p.dark) .08f else .05f))
+        .drawBehind { if (!p.contrast) drawRect(Brush.verticalGradient(0f to Color.Black.copy(alpha = if (p.dark) .16f else .05f), .3f to Color.Transparent)) }
+        .border(1.dp, ctlEdge(p).copy(alpha = ctlEdge(p).alpha * .5f), rail).padding(4.dp)) {
         options.forEachIndexed { i, (k, l) ->
             val on = k == value
             val inter = remember { MutableInteractionSource() }
-            // Pastille choisie qui apparaît en fondu (et non d'un coup)
-            val sel by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, Motion.standard(), label = "seg")
-            Row(Modifier.bounce(inter, .9f).clip(RoundedCornerShape(14.dp)).background(p.glassStrong.copy(alpha = p.glassStrong.alpha * sel)).border(1.dp, ctlEdge(p).copy(alpha = ctlEdge(p).alpha * sel), RoundedCornerShape(14.dp)).springClick(inter, role = Role.RadioButton) { onChange(k) }.semantics { selected = on }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Pastille choisie : relief clair qui apparaît en ressort (léger dépassement)
+            val sel by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, if (p.motion) snap() else spring(dampingRatio = .55f, stiffness = 520f), label = "seg")
+            val raised = if (p.dark) androidx.compose.ui.graphics.lerp(p.card, Color.White, .14f) else Color.White
+            Row(Modifier.bounce(inter, .9f).graphicsLayer { val s = .92f + .08f * sel.coerceIn(0f, 1.2f); if (on) { scaleX = s; scaleY = s } }
+                .then(if (sel > .02f) Modifier.depth(pill, p, if (sel > .5f) 1 else 0).background(raised.copy(alpha = sel.coerceIn(0f, 1f)), pill).then(if (p.contrast) Modifier.border(1.dp, ctlEdge(p), pill) else Modifier.sheen(pill, p.dark, .5f * sel.coerceIn(0f, 1f))) else Modifier)
+                .clip(pill).springClick(inter, role = Role.RadioButton) { onChange(k) }.semantics { selected = on }.padding(horizontal = 13.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
                 Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) p.ink else p.ink2)
             }
@@ -867,7 +969,7 @@ fun Field(value: String, onChange: (String) -> Unit, label: String, modifier: Mo
     var reveal by remember { mutableStateOf(false) }
     // Pilule de verre : bord discret au repos, liseré et halo de l'accent quand le champ a le focus
     val k by androidx.compose.animation.core.animateFloatAsState(if (focused) 1f else 0f, if (p.motion) snap() else tween(220), label = "field")
-    val shape = RoundedCornerShape(if (singleLine) 20.dp else 18.dp)
+    val shape = smoothShape(if (singleLine) 22.dp else 20.dp)
     val edge = androidx.compose.ui.graphics.lerp(ctlEdge(p), p.focus, k)
     androidx.compose.foundation.text.BasicTextField(
         value, { if (it.length <= max) onChange(it) },
@@ -915,9 +1017,17 @@ fun Err(text: String?) { if (!text.isNullOrEmpty()) Text(text, color = LocalPal.
 @Composable
 fun SectionTitle(text: String) {
     val p = LocalPal.current
-    // Petit liseré dégradé aux couleurs de l'accent devant le titre
-    Row(Modifier.padding(bottom = 8.dp, top = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.size(4.dp, 15.dp).clip(RoundedCornerShape(2.dp)).background(Brush.verticalGradient(listOf(p.flame2, p.pink))))
-        Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp))
+    // Petite pastille dégradée aux couleurs de l'accent devant le titre
+    Row(Modifier.padding(bottom = 8.dp, top = 8.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Box(Modifier.size(6.dp, 18.dp).candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 3.dp))
+        Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp))
     }
+}
+
+/** Lavis coloré d'une carte vedette : halos des couleurs [cols] qui irradient depuis le haut à droite et le bas à gauche. */
+fun Modifier.washOf(cols: List<Color>, dark: Boolean): Modifier = this.drawBehind {
+    val w = size.width; val h = size.height; val k = if (dark) 1f else .85f
+    val a = cols.first(); val b = cols.last()
+    drawRect(Brush.radialGradient(listOf(a.copy(alpha = .44f * k), a.copy(alpha = .16f * k), Color.Transparent), Offset(w * .96f, h * .08f), maxOf(w, h) * .75f))
+    drawRect(Brush.radialGradient(listOf(b.copy(alpha = .3f * k), b.copy(alpha = .08f * k), Color.Transparent), Offset(w * .04f, h), maxOf(w, h) * .7f))
 }

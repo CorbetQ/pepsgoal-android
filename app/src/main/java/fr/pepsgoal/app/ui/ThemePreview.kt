@@ -81,8 +81,8 @@ private fun DrawScope.drawLook(l: ThemeLook, ac: List<Color>) {
 fun ThemeCard(key: String, label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, height: Dp = 112.dp, badge: String? = null) {
     val p = LocalPal.current
     val sc by androidx.compose.animation.core.animateFloatAsState(if (selected && !p.motion) 1f else .95f, Motion.emphasis(), label = "themeCard")
-    Column(modifier.clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = label, onClick = { Feedback.tap(); onClick() }).padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        val shape = RoundedCornerShape(16.dp)
+    Column(modifier.clip(smoothShape(18.dp)).clickable(onClickLabel = label, onClick = { Feedback.tap(); onClick() }).padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        val shape = smoothShape(16.dp)
         Box(Modifier.fillMaxWidth().height(height).graphicsLayer { scaleX = sc; scaleY = sc }.clip(shape).border(if (selected) 3.dp else 1.dp, if (selected) p.flame else p.line, shape)) {
             ThemePreview(themeLook(key), Modifier.fillMaxSize())
             if (badge != null) Text(badge, Modifier.align(Alignment.TopEnd).padding(5.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f)).padding(horizontal = 6.dp, vertical = 2.dp),

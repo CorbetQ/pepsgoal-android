@@ -67,7 +67,7 @@ fun PerformancePage(ui: AppState) {
             CardHead("Mode")
             Perf.MODES.forEach { (k, l) ->
                 val on = Perf.mode == k
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (on) p.flame.copy(alpha = .14f) else Color.Transparent)
+                Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(if (on) p.flame.copy(alpha = .14f) else Color.Transparent)
                     .clickable { Perf.setMode(ctx, k); ui.themeTick++ }.padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.size(20.dp).clip(CircleShape).background(if (on) p.flame else p.ink.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
@@ -134,7 +134,7 @@ private fun Bench(done: (fps: Double, jankPct: Double, refreshHz: Float) -> Unit
         done(fps, jank, hz)
     }
     Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Canvas(Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(18.dp))) {
+        Canvas(Modifier.fillMaxWidth().height(140.dp).clip(smoothShape(18.dp))) {
             val fr = frame.toFloat()
             drawRect(Brush.linearGradient(listOf(p.flame, p.pink, Color(0xFF7B5CFF)), Offset(0f, 0f), Offset(size.width * (.5f + .5f * sin(fr / 30f)), size.height)))
             for (i in 0 until 260) {

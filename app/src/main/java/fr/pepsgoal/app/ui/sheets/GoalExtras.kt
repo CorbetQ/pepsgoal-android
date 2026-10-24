@@ -121,7 +121,7 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
     if (list.isEmpty() && !editing) Muted("Garde une trace de ta réussite : une photo ou quelques mots, gardés sur ton téléphone.", small = true)
     Row(Modifier.fillMaxWidth().bleed(20.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         // Tuile d'ajout de la preuve du jour
-        if (own && doneNow && todayProof == null && !editing) Column(Modifier.width(104.dp).height(128.dp).clip(RoundedCornerShape(18.dp))
+        if (own && doneNow && todayProof == null && !editing) Column(Modifier.width(104.dp).height(128.dp).clip(smoothShape(18.dp))
             .background(Brush.linearGradient(listOf(tc.c.copy(alpha = .22f), p.pink.copy(alpha = .12f))))
             .dashedBorder(tc.c.copy(alpha = .7f), 18.dp).clickable { editing = true },
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -132,9 +132,9 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
         list.take(60).forEach { pr -> ProofTile(ctx, pr, pr.id == big?.id) { big = if (big?.id == pr.id) null else pr } }
     }
     big?.let { pr ->
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(20.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().clip(smoothShape(20.dp)).background(p.glassStrong).border(1.dp, p.line, smoothShape(20.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-            if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 380.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Fit)
+            if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 380.dp).clip(smoothShape(14.dp)), contentScale = ContentScale.Fit)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(cap(weekdayLongDate(parseYmd(pr.date))), Modifier.weight(1f), fontWeight = FontWeight.ExtraBold)
                 if (own && pr.date == k) PButton("Modifier", { note = pr.note; editing = true; big = null }, icon = "edit", small = true, kind = "ghost")
@@ -142,7 +142,7 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
             if (pr.note.isNotBlank()) Text(pr.note, color = p.ink2)
         }
     }
-    if (editing) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f)).border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(20.dp)).padding(12.dp),
+    if (editing) Column(Modifier.fillMaxWidth().clip(smoothShape(20.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f)).border(1.dp, p.line.copy(alpha = .6f), smoothShape(20.dp)).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Field(note, { note = it }, "", placeholder = "Ce que tu as fait, comment tu t’es senti…", singleLine = false, minLines = 2, max = 500, icon = "edit")
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -172,8 +172,8 @@ private fun ProofTile(ctx: android.content.Context, pr: Proof, on: Boolean, onCl
     val p = LocalPal.current
     val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f ->
         val o = BitmapFactory.Options().apply { inSampleSize = 4 }; BitmapFactory.decodeFile(f.path, o)?.asImageBitmap() } }
-    Box(Modifier.width(104.dp).height(128.dp).clip(RoundedCornerShape(18.dp)).background(p.glassStrong)
-        .border(if (on) 2.dp else 1.dp, if (on) p.focus else p.line, RoundedCornerShape(18.dp)).clickable(onClick = onClick)) {
+    Box(Modifier.width(104.dp).height(128.dp).clip(smoothShape(18.dp)).background(p.glassStrong)
+        .border(if (on) 2.dp else 1.dp, if (on) p.focus else p.line, smoothShape(18.dp)).clickable(onClick = onClick)) {
         if (bmp != null) Image(bmp, "Preuve du ${fmtDate(pr.date)}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Text("“${pr.note.take(80)}”", Modifier.padding(10.dp), fontSize = 12.sp, maxLines = 5, overflow = TextOverflow.Ellipsis, color = p.ink2, lineHeight = 16.sp)
         // Date sur un dégradé, lisible sur la photo
@@ -270,8 +270,8 @@ fun AgendaRow(ui: AppState, g: Goal, divider: Boolean = true) {
 fun OptionsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     SectionTitle(title)
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
-        .border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(22.dp)).padding(horizontal = 14.dp, vertical = 4.dp), content = content)
+    Column(Modifier.fillMaxWidth().clip(smoothShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
+        .border(1.dp, p.line.copy(alpha = .6f), smoothShape(22.dp)).padding(horizontal = 14.dp, vertical = 4.dp), content = content)
 }
 
 /** Ligne d'option : pastille d'icône, titre, état en sous-titre ; l'éditeur se déplie dessous. */
@@ -282,7 +282,7 @@ fun OptionRow(icon: String, c1: Color, c2: Color, title: String, sub: String?, o
     val rot by androidx.compose.animation.core.animateFloatAsState(if (open) 90f else 0f, label = "chev")
     Column {
         if (divider) Box(Modifier.fillMaxWidth().padding(start = 52.dp).height(1.dp).background(p.line.copy(alpha = .5f)))
-        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = if (open) "Replier" else "Modifier", onClick = onClick).padding(vertical = 10.dp),
+        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(smoothShape(16.dp)).clickable(onClickLabel = if (open) "Replier" else "Modifier", onClick = onClick).padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             IconTile(icon, c1, c2, 38.dp, 12.dp)
             Column(Modifier.weight(1f)) {
@@ -315,7 +315,7 @@ fun SavingsCard(ui: AppState, g: Goal) {
             Triple(fmtNum(Math.round(sv.units * 10) / 10.0), "${g.unit.ifBlank { "unités" }} évité${if (sv.units > 1) "s" else ""}", p.type("abstinence").c),
             if (g.saveMin > 0) Triple(duration(sv.minutes), "de temps gagné", p.type("duration").c) else null
         ).forEach { (v, l, c) ->
-            Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(18.dp)).background(Brush.verticalGradient(listOf(c.copy(alpha = .28f), c.copy(alpha = .12f)))).padding(12.dp)) {
+            Column(Modifier.weight(1f).fillMaxHeight().clip(smoothShape(18.dp)).background(Brush.verticalGradient(listOf(c.copy(alpha = .28f), c.copy(alpha = .12f)))).padding(12.dp)) {
                 Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
                 Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold)
             }

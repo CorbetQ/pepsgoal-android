@@ -39,7 +39,7 @@ fun ChatBgPicker(ui: AppState, current: String?, choices: List<Pair<ShopBg, List
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         @Composable fun Tile(label: String, sub: String?, on: Boolean, onClick: () -> Unit, content: @Composable BoxScope.() -> Unit) {
             Column(Modifier.width(72.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(width = 64.dp, height = 104.dp).clip(RoundedCornerShape(14.dp)).border(if (on) 3.dp else 1.dp, if (on) p.flameInk else p.line, RoundedCornerShape(14.dp))
+                Box(Modifier.size(width = 64.dp, height = 104.dp).clip(smoothShape(14.dp)).border(if (on) 3.dp else 1.dp, if (on) p.flameInk else p.line, smoothShape(14.dp))
                     .clickable(onClickLabel = label, onClick = onClick).semantics { contentDescription = label; selected = on }, content = content)
                 Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 3.dp))
                 if (sub != null) Text(sub, fontSize = 9.sp, color = p.ink3, maxLines = 1, textAlign = TextAlign.Center)

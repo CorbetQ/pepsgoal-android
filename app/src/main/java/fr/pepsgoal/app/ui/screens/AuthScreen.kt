@@ -1,6 +1,7 @@
 package fr.pepsgoal.app.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -64,6 +65,7 @@ fun AuthScreen(ui: AppState) {
             Box(Modifier.weight(1f)) { Logo() }
             PButton("Accessibilité", { ui.open(Sheet.A11y) }, icon = "eye", kind = "ghost", small = true)
         }
+        AuthHero()
         Text(buildAnnotatedString { append("Fixe le cap.\n"); withStyle(SpanStyle(brush = Brush.linearGradient(listOf(p.flame2, p.flame, p.pink)))) { append("Garde la flamme.") } },
             fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp, lineHeight = 40.sp)
         Muted("Planifie tes objectifs, tes deadlines, tes routines et tes abstinences. Valide chaque jour, fais grandir ta série et avance avec tes amis.")
@@ -140,5 +142,32 @@ fun MaintenanceScreen(ui: AppState) {
         Muted("PepsGoal est en maintenance${m.until?.let { " jusqu'au ${fr.pepsgoal.core.fmtDT(it)}" } ?: ""}. ${m.message.ifEmpty { "Tes objectifs, ta série et tes flammes sont en sécurité." }}")
         Muted("Ta série est protégée : les jours de maintenance ne la cassent pas.", small = true)
         PButton("Se déconnecter", { ui.run { ui.cloud.logout() } }, icon = "logout", enabled = ui.pg.store.online)
+    }
+}
+
+/**
+ * Illustration d'accueil : la flamme sur son halo, entourée de pastilles d'objectifs (emojis Fluent) qui flottent
+ * doucement, chacune à son rythme.
+ */
+@Composable
+private fun AuthHero() {
+    val p = LocalPal.current
+    val ph = slowPhaseState(4200, 20, running = fr.pepsgoal.app.sys.Perf.flags.fx)
+    val tiles = listOf(Triple("🎯", -.36f to .18f, p.type("deadline").c), Triple("🏃", .34f to .12f, p.type("routine").c), Triple("📚", -.3f to .78f, p.type("objective").c), Triple("💧", .36f to .74f, p.type("duration").c))
+    BoxWithConstraints(Modifier.fillMaxWidth().height(190.dp)) {
+        val w = maxWidth; val h = maxHeight
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            if (!p.contrast) drawCircle(Brush.radialGradient(listOf(p.flame.copy(alpha = if (p.dark) .45f else .32f), p.pink.copy(alpha = .12f), androidx.compose.ui.graphics.Color.Transparent), radius = size.height * .62f), size.height * .62f)
+        }
+        Box(Modifier.align(Alignment.Center).graphicsLayer {
+            val t = ph.value * 6.2832f; val k = 1f + .04f * kotlin.math.sin(t); scaleX = k; scaleY = k
+            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
+        }) { Flame(112.dp) }
+        tiles.forEachIndexed { i, (e, pos, c) ->
+            Box(Modifier.offset(x = w / 2 + w * pos.first - 26.dp, y = h * pos.second - 26.dp).graphicsLayer {
+                val t = ph.value * 6.2832f + i * 1.7f
+                translationY = kotlin.math.sin(t) * 6.dp.toPx(); rotationZ = kotlin.math.sin(t * .8f) * 7f
+            }) { EmojiTile(e, c, 52.dp) }
+        }
     }
 }

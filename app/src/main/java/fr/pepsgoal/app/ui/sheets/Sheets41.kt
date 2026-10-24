@@ -55,7 +55,7 @@ fun LikersSheet(ui: AppState, postId: String) {
     val list = post.likes.filter { filter == null || (post.reactions[it] ?: "fire") == filter }.mapNotNull { pg.userById(it) }
     if (list.isEmpty()) Muted("Personne pour l’instant.", small = true)
     list.forEach { u ->
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { ui.open(Sheet.User(u.id)) }.padding(vertical = 6.dp),
+        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable { ui.open(Sheet.User(u.id)) }.padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Av(u, 40.dp)
             Column(Modifier.weight(1f)) { Text(if (u.id == pg.meId()) "Toi" else u.name, fontWeight = FontWeight.ExtraBold); Muted("@${u.username}", small = true) }
@@ -74,7 +74,7 @@ fun HourHeatCard(ui: AppState) {
     val peak = hourPeak(grid)
     val max = grid.maxOf { r -> r.maxOrNull() ?: 0 }.coerceAtLeast(1)
     Glass {
-        CardHead("Tes heures de validation")
+        CardHead("Tes heures de validation", emoji = "🕐")
         if (peak == null) { Muted("Encore quelques validations et tu verras ici à quelle heure tu es le plus régulier.", small = true); return@Glass }
         Muted("Ton créneau fort : le ${WD_LONG[peak.first].lowercase()} vers ${peak.second} h (${pl(peak.third, "validation", "validations")} en 90 jours).", small = true)
         Spacer(Modifier.height(10.dp))
@@ -137,7 +137,7 @@ fun FriendsRankCard(ui: AppState, g: Goal) {
     SectionTitle("Entre amis · même objectif")
     ranks.take(8).forEachIndexed { i, r ->
         val me = r.user.id == pg.meId()
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (me) p.flame.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent)
+        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (me) p.flame.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent)
             .clickable { if (!me) ui.open(Sheet.User(r.user.id)) }.padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(listOf("🥇", "🥈", "🥉").getOrNull(i) ?: "${i + 1}", fontSize = 16.sp, modifier = Modifier.width(26.dp))
@@ -165,7 +165,7 @@ fun ProofStory(proofs: List<Proof>) {
         Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black).clickable { mode = null }) {
             if (mode == "compare") Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)) {
                 listOf(photos.first() to "Avant", photos.last() to "Après").forEach { (pr, l) ->
-                    ProofImage(pr, Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(18.dp)))
+                    ProofImage(pr, Modifier.weight(1f).fillMaxWidth().clip(smoothShape(18.dp)))
                     Text("$l · ${fmtDate(pr.date)}", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.ExtraBold, fontFamily = Unbounded)
                 }
             } else {

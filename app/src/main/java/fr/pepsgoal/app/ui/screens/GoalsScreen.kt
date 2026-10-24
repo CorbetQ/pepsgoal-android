@@ -7,6 +7,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import fr.pepsgoal.app.ui.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,9 +78,9 @@ fun GoalsScreen(ui: AppState) {
         // Vue d'ensemble : trois raccourcis
         item("overview") {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OverTile("${open.size}", "en cours", "target", ui.goalFilter == "active", Modifier.weight(1f)) { ui.goalFilter = "active" }
-                OverTile("$doneToday/${plan.due.size}", "aujourd’hui", "sun", ui.goalFilter == "today", Modifier.weight(1f)) { ui.goalFilter = "today" }
-                OverTile("${open.count { pg.isFav(it) }}", "favoris", "star", ui.goalFilter == "fav", Modifier.weight(1f)) { ui.goalFilter = "fav" }
+                OverTile("${open.size}", "en cours", "target", p.flame, ui.goalFilter == "active", Modifier.weight(1f)) { ui.goalFilter = "active" }
+                OverTile("$doneToday/${plan.due.size}", "aujourd’hui", "sun", p.type("monthly").c, ui.goalFilter == "today", Modifier.weight(1f)) { ui.goalFilter = "today" }
+                OverTile("${open.count { pg.isFav(it) }}", "favoris", "star", p.pink, ui.goalFilter == "fav", Modifier.weight(1f)) { ui.goalFilter = "fav" }
             }
         }
         // Recherche, affichage et tri
@@ -106,7 +110,7 @@ fun GoalsScreen(ui: AppState) {
                 }
                 if (types.size > 1) ChipsRow {
                     FChip("Tous les types", type == "all", { type = "all" })
-                    types.forEach { t -> FChip(TYPES.getValue(t).label, type == t, { type = t }, leading = { Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(p.type(t).c)) }) }
+                    types.forEach { t -> FChip(TYPES.getValue(t).label, type == t, { type = t }, leading = { Box(Modifier.size(11.dp).clip(CircleShape).background(Brush.verticalGradient(listOf(p.type(t).c.lift(.35f), p.type(t).c))).border(1.dp, Color.White.copy(alpha = .6f), CircleShape)) }) }
                 }
             }
         }
@@ -115,13 +119,13 @@ fun GoalsScreen(ui: AppState) {
             if (aiOpen) AiCreateCard(ui)
             else Glass(pad = 12.dp, onClick = { aiOpen = true }, ai = true) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Pi("sparkle", size = 18.dp, tint = p.flameInk); Text("Créer un objectif avec le coach…", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = p.ink2)
-                    Text("›", color = p.ink3, fontSize = 20.sp)
+                    IconTile("sparkle", p.flame2, p.pink, 32.dp); Text("Créer un objectif avec le coach…", Modifier.weight(1f), fontWeight = FontWeight.Bold, color = p.ink2)
+                    Pi("chevronleft", Modifier.graphicsLayer { rotationZ = 180f }, size = 18.dp, tint = p.ink3)
                 }
             }
         }
         when {
-            all.isEmpty() -> item("start") { Glass { CardHead("Que veux-tu suivre ?"); Starters(ui) } }
+            all.isEmpty() -> item("start") { Glass { CardHead("Que veux-tu suivre ?", emoji = "🎯"); Starters(ui) } }
             list.isEmpty() -> item("empty") { Glass { Empty(if (q.isNotEmpty()) "Aucun résultat pour « ${query.trim()} »" else "Rien ici pour l’instant", if (q.isNotEmpty()) "Essaie un autre mot ou change de filtre." else "Change de filtre ou crée un nouvel objectif.") { PButton("Nouvel objectif", { ui.open(Sheet.GoalForm(preType = type.takeIf { it in TYPES })) }, icon = "plus", kind = "primary") } } }
             else -> {
                 val secs = if (grouped && u.goalGroups.isNotEmpty()) u.goalGroups.map { gr -> Triple(gr.id, "${gr.icon}|${gr.name}", list.filter { pg.groupOfGoal(u, it.id)?.id == gr.id }) } +
@@ -130,10 +134,10 @@ fun GoalsScreen(ui: AppState) {
                     val c = key in collapsed
                     if (label.isNotEmpty()) item("sec-$key") {
                         val (ic, name) = label.split("|", limit = 2)
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { collapsed = if (c) collapsed - key else collapsed + key; ui.prefs.collapsed = collapsed }.padding(6.dp),
+                        Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).clickable { collapsed = if (c) collapsed - key else collapsed + key; ui.prefs.collapsed = collapsed }.padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             val gc = u.goalGroups.firstOrNull { it.id == key }?.color?.let { fr.pepsgoal.app.ui.theme.hex(it) }
-                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(gc?.copy(alpha = .25f) ?: p.glassStrong).border(1.dp, gc ?: p.line, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) { Emoji(ic, 20.dp) }
+                            EmojiTile(ic, gc ?: p.flame, 38.dp)
                             Text(name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Count(items.size)
                             Spacer(Modifier.weight(1f))
@@ -143,8 +147,8 @@ fun GoalsScreen(ui: AppState) {
                     if (!c) {
                         if (compact) item("list-$key") {
                             // Liste compacte : une carte par section, une ligne par objectif, validation en un geste
-                            Glass(pad = 8.dp) {
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Glass(pad = 10.dp) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items.forEach { g -> key(g.id) { Box(Modifier.animatePlacement()) { GoalRow(ui, g, dueIds[g.id] ?: false) } } }
                                 }
                             }
@@ -158,16 +162,17 @@ fun GoalsScreen(ui: AppState) {
 
 private val SORTS = listOf("fav" to "Pertinence", "az" to "A → Z", "progress" to "Progression", "recent" to "Récents")
 
-/** Tuile de la vue d'ensemble : chiffre, libellé, et filtre correspondant (enfoncée quand active). */
+/** Tuile de la vue d'ensemble : pastille colorée, chiffre, libellé ; active, elle s'illumine de sa couleur. */
 @Composable
-private fun OverTile(v: String, l: String, icon: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun OverTile(v: String, l: String, icon: String, c: Color, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val p = LocalPal.current
-    Glass(modifier.fillMaxHeight(), pad = 12.dp, fill = false, onClick = onClick, border = if (on) p.flame else null) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pi(icon, size = 16.dp, tint = if (on) p.flame else p.ink2)
-            Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
+    Glass(modifier.fillMaxHeight(), pad = 12.dp, radius = 24.dp, fill = false, onClick = onClick, border = if (on) c.copy(alpha = .85f) else null, wash = if (on) listOf(c, c.lift(.3f)) else null) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconTile(icon, c.lift(.2f), c, 30.dp)
+            FitText(v, size = 19, min = 12, weight = FontWeight.ExtraBold, family = Unbounded)
         }
-        Text(l, color = if (on) p.ink else p.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Spacer(Modifier.height(6.dp))
+        Text(l, color = if (on) p.ink else p.ink2, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 

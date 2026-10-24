@@ -68,7 +68,7 @@ fun PacksStep(ui: AppState, onBack: () -> Unit) {
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { k ->
                     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                    Column(Modifier.weight(1f).fillMaxHeight().bounce(inter, .96f).clip(RoundedCornerShape(18.dp)).background(p.ink.copy(alpha = .05f)).border(1.dp, p.line, RoundedCornerShape(18.dp))
+                    Column(Modifier.weight(1f).fillMaxHeight().bounce(inter, .96f).clip(smoothShape(18.dp)).background(p.ink.copy(alpha = .05f)).border(1.dp, p.line, smoothShape(18.dp))
                         .springClick(inter, label = k.name) { pack = k }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Emoji(k.emoji, 32.dp); Text(k.name, fontWeight = FontWeight.ExtraBold); Text(k.desc, fontSize = 12.sp, color = p.ink2)
                         Text(pl(k.goals.size, "objectif", "objectifs"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.flameInk)
@@ -87,7 +87,7 @@ fun PacksStep(ui: AppState, onBack: () -> Unit) {
     val built = cur.goals.map { x -> buildGoal0(ui, u, null, x.type, x.title, x.icon, "", u.settings.defaultVis, x.fields, emptyList()).first }
     cur.goals.forEachIndexed { i, x ->
         val g = built[i]; val on = i in pick; val tc = p.type(x.type)
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(tc.c.copy(alpha = if (on) .18f else .06f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(tc.c.copy(alpha = if (on) .18f else .06f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Checkbox(on, { if (it) pick.add(i) else pick.remove(i) }, colors = CheckboxDefaults.colors(checkedColor = p.flame))
             Emoji(x.icon, 28.dp)
             Column(Modifier.weight(1f)) { Text(x.title, fontWeight = FontWeight.ExtraBold); Muted("${typeInfo(x.type).label}${g?.let { " · " + pg.metaLine(it) } ?: ""}", small = true, maxLines = 2) }

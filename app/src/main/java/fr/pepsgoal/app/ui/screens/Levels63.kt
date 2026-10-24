@@ -38,8 +38,8 @@ fun LevelsSheet(ui: AppState) {
         LEVEL_TIERS.forEachIndexed { i, name ->
             val t = i + 1; val first = i * LEVELS_PER_TIER + 1; val at = levelThreshold(first)
             val reached = t <= lv.tier; val cur = t == lv.tier; val cols = tierColors(t)
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if (cur) Brush.linearGradient(cols.map { it.copy(alpha = .2f) }) else Brush.linearGradient(listOf(p.ink.copy(alpha = .04f), p.ink.copy(alpha = .04f))))
-                .then(if (cur) Modifier.border(1.5.dp, cols.last().copy(alpha = .7f), RoundedCornerShape(18.dp)) else Modifier).padding(horizontal = 12.dp, vertical = 10.dp),
+            Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(if (cur) Brush.linearGradient(cols.map { it.copy(alpha = .2f) }) else Brush.linearGradient(listOf(p.ink.copy(alpha = .04f), p.ink.copy(alpha = .04f))))
+                .then(if (cur) Modifier.border(1.5.dp, cols.last().copy(alpha = .7f), smoothShape(18.dp)) else Modifier).padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Flame(30.dp, dim = !reached, colors = cols)
                 Column(Modifier.weight(1f)) {

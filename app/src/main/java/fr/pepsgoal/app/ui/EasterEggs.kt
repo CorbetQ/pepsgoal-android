@@ -97,7 +97,7 @@ fun EggsCard(ui: AppState, u: User) {
     val p = LocalPal.current
     val found = remember(ui.rev, u.id) { ui.pg.eggsFound(u) }
     Glass {
-        CardHead("Surprises cachées") { Count("${found.size} / ${Eggs.ALL.size}") }
+        CardHead("Surprises cachées", emoji = "🎁") { Count("${found.size} / ${Eggs.ALL.size}") }
         Muted(if (found.isEmpty()) "PepsGoal cache quelques surprises. Chacune rapporte ${Eggs.BONUS} flammes la première fois." else "Chaque surprise rapporte ${Eggs.BONUS} flammes la première fois. Sauras-tu toutes les trouver ?", small = true)
         Spacer(Modifier.height(10.dp))
         Bar(found.size * 100.0 / Eggs.ALL.size, height = 6.dp)

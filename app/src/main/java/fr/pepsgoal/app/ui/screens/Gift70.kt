@@ -103,7 +103,7 @@ fun ShopItemPicker(ui: AppState, selected: String?, onPick: (ShopItem) -> Unit) 
             row.forEach { x ->
                 val on = x.key == selected
                 val ok = pg.giftItemError(x.key) == null
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).border(if (on) 2.5.dp else 1.dp, if (on) p.flame else p.line, RoundedCornerShape(18.dp))
+                Column(Modifier.weight(1f).clip(smoothShape(18.dp)).border(if (on) 2.5.dp else 1.dp, if (on) p.flame else p.line, smoothShape(18.dp))
                     .background(if (on) p.flame.copy(alpha = .1f) else Color.Transparent).clickable(onClickLabel = "Choisir « ${x.name} »") { onPick(x) }.padding(6.dp)
                     .graphicsLayer { alpha = if (ok || on) 1f else .5f }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     ShopItemPreview(x.key, Modifier.fillMaxWidth().aspectRatio(if (kind == "bg") .72f else 1f), 12.dp)
@@ -138,7 +138,7 @@ fun GiftItemSheet(ui: AppState, key: String) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             friends.forEach { f ->
                 val on = to == f.id
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (on) p.flame.copy(alpha = .12f) else Color.Transparent).clickable { to = f.id }.padding(8.dp),
+                Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(if (on) p.flame.copy(alpha = .12f) else Color.Transparent).clickable { to = f.id }.padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Av(f, 40.dp); Text(pg.shownName(f.id, f.name), Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Box(Modifier.size(22.dp).clip(CircleShape).background(if (on) p.flame else Color.Transparent).border(2.dp, if (on) p.flame else p.ink3, CircleShape), contentAlignment = Alignment.Center) {
@@ -164,11 +164,11 @@ fun GiftItemCard(ui: AppState, m: Message, b: JsonObject, mine: Boolean) {
     val converted = remember(m.id, ui.rev) { pg.me()?.shopClaimed?.any { it.startsWith("giftin:${m.id}:") } == true }
     val wiggle = if (!mine && !opened && !p.motion) rememberInfiniteTransition(label = "gifti").animateFloat(-5f, 5f, infiniteRepeatable(tween(520, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "giftiW").value else 0f
     val ink = Color(0xFF2A1408)
-    Column(Modifier.widthIn(min = 210.dp, max = 260.dp).clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFFFFE08A), Color(0xFFFF9A4A), Color(0xFFFF5E8A))))
+    Column(Modifier.widthIn(min = 210.dp, max = 260.dp).clip(smoothShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFFFFE08A), Color(0xFFFF9A4A), Color(0xFFFF5E8A))))
         .padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.fillMaxWidth().height(120.dp).graphicsLayer { rotationZ = if (opened || mine) 0f else wiggle * .4f }, contentAlignment = Alignment.Center) {
             if (opened || mine) ShopItemPreview(key, Modifier.fillMaxSize(), 16.dp)
-            else Box(Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .28f)), contentAlignment = Alignment.Center) {
+            else Box(Modifier.fillMaxSize().clip(smoothShape(16.dp)).background(Color.White.copy(alpha = .28f)), contentAlignment = Alignment.Center) {
                 Box(Modifier.graphicsLayer { rotationZ = wiggle }) { Emoji("🎁", 64.dp) }
             }
         }

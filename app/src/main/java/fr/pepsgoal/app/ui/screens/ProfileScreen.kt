@@ -59,10 +59,11 @@ fun ProfileScreen(ui: AppState) {
         item("hero") { ProfileHero(ui, u, lv) }
         item("tiles") {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ProfileTile("${st.n}", "série", "flameo", Modifier.weight(1f), lit = st.lit)
-                ProfileTile("$best", "record", "trophy", Modifier.weight(1f))
-                ProfileTile(fmtNum(wins), "validations", "check", Modifier.weight(1f))
-                ProfileTile("$done", "caps", "target", Modifier.weight(1f))
+                val p = LocalPal.current
+                ProfileTile("${st.n}", "série", "flameo", p.flame, Modifier.weight(1f), lit = st.lit)
+                ProfileTile("$best", "record", "trophy", p.type("monthly").c, Modifier.weight(1f))
+                ProfileTile(fmtNum(wins), "validations", "check", p.type("routine").c, Modifier.weight(1f))
+                ProfileTile("$done", "caps", "target", p.type("objective").c, Modifier.weight(1f))
             }
         }
         item("status") { StatusRow(ui) }
@@ -110,13 +111,14 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
     val flick = slowPhaseState(1700, 20, running = Perf.flags.fx)
     Glass(pad = 0.dp) {
         Box(Modifier.fillMaxWidth()) {
-            // Bannière : dégradé du niveau, halos et petites flammes dessinés une fois (aucune animation)
-            androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(118.dp)) {
-                drawRect(Brush.linearGradient(cols.map { it.copy(alpha = .9f) }, Offset.Zero, Offset(size.width, size.height)))
-                drawCircle(Color.White.copy(alpha = .16f), size.height * .9f, Offset(size.width * .92f, -size.height * .1f))
-                drawCircle(Color.White.copy(alpha = .1f), size.height * .55f, Offset(size.width * .08f, size.height * 1.05f))
-                drawCircle(Color.White.copy(alpha = .08f), size.height * .3f, Offset(size.width * .62f, size.height * .35f))
-                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .18f))))
+            // Bannière : dégradé du niveau, reflet brillant et bulles de lumière ; elle se fond dans la carte vers le bas
+            androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(132.dp).graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) {
+                drawRect(Brush.linearGradient(cols, Offset.Zero, Offset(size.width, size.height)))
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = .3f), .5f to Color.White.copy(alpha = 0f)))
+                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .34f), Color.Transparent), Offset(size.width * .9f, 0f), size.height), size.height, Offset(size.width * .9f, 0f))
+                drawCircle(Color.White.copy(alpha = .12f), size.height * .42f, Offset(size.width * .1f, size.height * .75f))
+                drawCircle(Color.White.copy(alpha = .1f), size.height * .2f, Offset(size.width * .6f, size.height * .28f))
+                drawRect(Brush.verticalGradient(0f to Color.Black, .55f to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
             }
             Row(Modifier.align(Alignment.TopEnd).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 HeroRound("share", "Partager mon profil") { shareProfile(ctx, ui, u, lv) }
@@ -125,8 +127,9 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
             Column(Modifier.fillMaxWidth().padding(top = 66.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.flameAura(aura.value, 55.dp, cols, { flick.value }, still = p.motion || !Perf.flags.fx)) {
                     Box(Modifier.clip(CircleShape).background(p.bg).padding(4.dp).clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) { LevelRing(lv.tier, 92.dp) { Av(u, 92.dp) } }
-                    Box(Modifier.align(Alignment.BottomEnd).offset(x = (-2).dp, y = (-2).dp).size(30.dp).clip(CircleShape).background(p.ink).border(2.dp, p.bg, CircleShape)
-                        .clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }, contentAlignment = Alignment.Center) { Pi("edit", size = 15.dp, tint = p.bg) }
+                    Box(Modifier.align(Alignment.BottomEnd).offset(x = (-2).dp, y = (-2).dp).border(2.5.dp, p.bg, CircleShape).padding(1.dp).size(30.dp)
+                        .candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 6.dp).clip(CircleShape)
+                        .clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }, contentAlignment = Alignment.Center) { Pi("edit", size = 15.dp, tint = p.onAccent) }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -145,7 +148,7 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
         // Niveau : nom, niveau suivant, barre de progression et les dix paliers (touché : le détail des paliers)
         Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Voir les paliers de niveau") { ui.open(Sheet.Levels) }.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.clip(CircleShape).background(Brush.linearGradient(cols)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                Box(Modifier.candy(CircleShape, cols, p, elevation = 6.dp).padding(horizontal = 11.dp, vertical = 5.dp)) {
                     Text("Niveau ${lv.idx}", color = fr.pepsgoal.app.ui.theme.onColors(cols), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                 }
                 Text(lv.name, Modifier.padding(start = 8.dp).weight(1f), fontWeight = FontWeight.ExtraBold)
@@ -159,7 +162,8 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Muted(lv.nextTierName?.let { "Palier ${lv.tierName} · ${Math.round(lv.tierPct * 100)} % vers ${it}" } ?: "Dernier palier atteint : ${lv.tierName}", Modifier.weight(1f), small = true, maxLines = 1)
-                Text("Paliers ›", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
+                Text("Paliers", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
+                Pi("chevronleft", Modifier.graphicsLayer { rotationZ = 180f }, size = 15.dp, tint = p.flameInk)
             }
         }
     }
@@ -167,7 +171,10 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
 
 @Composable
 private fun HeroRound(icon: String, desc: String, onClick: () -> Unit) {
-    Box(Modifier.size(38.dp).clip(CircleShape).background(Color.Black.copy(alpha = .22f)).clickable(onClickLabel = desc, onClick = onClick), contentAlignment = Alignment.Center) {
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    // Bouton de verre posé sur la bannière : voile blanc, reflet et liseré clair
+    Box(Modifier.bounce(inter, .84f).size(40.dp).background(Color.White.copy(alpha = .26f), CircleShape).sheen(CircleShape, false, .8f).clip(CircleShape)
+        .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center) {
         Pi(icon, size = 18.dp, tint = Color.White)
     }
 }
@@ -182,13 +189,13 @@ private fun shareProfile(ctx: android.content.Context, ui: AppState, u: User, lv
 
 /** Tuile de chiffre : icône colorée, grand nombre, libellé. */
 @Composable
-private fun ProfileTile(value: String, label: String, icon: String, modifier: Modifier, lit: Boolean = true) {
+private fun ProfileTile(value: String, label: String, icon: String, c: Color, modifier: Modifier, lit: Boolean = true) {
     val p = LocalPal.current
-    Glass(modifier, pad = 10.dp, radius = 20.dp) {
-        // Même hauteur d'icône partout (la flamme est plus haute que les pictos), textes centrés et ajustés à la tuile
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) { if (icon == "flameo") Flame(24.dp, dim = !lit) else Pi(icon, size = 20.dp, tint = p.flameInk) }
-            FitText(value, Modifier.fillMaxWidth(), size = 20, min = 12, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
+    Glass(modifier, pad = 10.dp, radius = 22.dp) {
+        // Pastille colorée (la flamme sur son halo), grand nombre, libellé : textes centrés et ajustés à la tuile
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            if (icon == "flameo") EmojiTileBox(c) { Flame(24.dp, dim = !lit) } else IconTile(icon, c.lift(.2f), c, 32.dp)
+            FitText(value, Modifier.fillMaxWidth(), size = 20, min = 12, weight = FontWeight.ExtraBold, family = Unbounded, align = androidx.compose.ui.text.style.TextAlign.Center)
             FitText(label, Modifier.fillMaxWidth(), size = 11, min = 8, color = p.ink2, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
@@ -201,7 +208,7 @@ private fun WalletStrip(ui: AppState, u: User) {
     // Toucher le solde : détail du porte-monnaie ; le bouton « Boutique » ouvre la boutique
     Glass(onClick = { ui.open(fr.pepsgoal.app.Sheet.Wallet) }, pad = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(p.flame.copy(alpha = .25f), p.pink.copy(alpha = .18f)))), contentAlignment = Alignment.Center) { Flame(28.dp) }
+            EmojiTileBox(p.flame, 46.dp) { Flame(30.dp) }
             Column(Modifier.weight(1f)) {
                 // Le solde défile jusqu'à sa nouvelle valeur après un achat ou un bonus
                 val w = pg.wallet(u); val shown = remember { androidx.compose.animation.core.Animatable(w.toFloat()) }
@@ -209,12 +216,7 @@ private fun WalletStrip(ui: AppState, u: User) {
                 FitText(fmtNum(shown.value.toInt()), size = 22, min = 14, weight = FontWeight.ExtraBold, family = Unbounded)
                 Muted("flammes à dépenser", small = true, maxLines = 1)
             }
-            // Bouton plein aux couleurs de l'accent : texte toujours contrasté (onAccent est choisi pour l'accent)
-            Row(Modifier.clip(CircleShape).background(if (p.contrast) SolidColor(p.ink) else p.accent).clickable(onClickLabel = "Ouvrir la boutique") { ui.push(Screen.Shop) }.padding(horizontal = 12.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                val fg = if (p.contrast) p.bg else p.onAccent
-                Pi("star", size = 14.dp, tint = fg); Text(tr("Boutique"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-            }
+            PButton("Boutique", { ui.push(Screen.Shop) }, icon = "star", kind = "primary", small = true)
         }
     }
 }
@@ -227,7 +229,7 @@ private fun LookCard(ui: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconTile("palette", p.flame, p.pink, 40.dp, 13.dp)
             Column(Modifier.weight(1f)) { Text("Thème, fond et icône", fontWeight = FontWeight.ExtraBold); Muted("Ce que tu as acheté dans la boutique s’applique ici", small = true) }
-            Text("›", color = p.ink3, fontSize = 22.sp)
+            Pi("chevronleft", Modifier.graphicsLayer { rotationZ = 180f }, size = 18.dp, tint = p.ink3)
         }
     }
 }
@@ -240,11 +242,11 @@ private fun NearBadgesCard(ui: AppState, u: User) {
     val near = st.filter { it.next != null }.sortedByDescending { it.pct }.take(3)
     if (near.isEmpty()) return
     Glass {
-        CardHead("Presque là") { Chip("+${BADGE_REWARDS.first()} à ${BADGE_REWARDS.last()} 🔥", color = p.flame.copy(alpha = .16f), ink = p.ink) }
+        CardHead("Presque là", emoji = "🏅") { Chip("+${BADGE_REWARDS.first()} à ${BADGE_REWARDS.last()} 🔥", color = p.flame.copy(alpha = .16f), ink = p.ink) }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             near.forEach { b ->
                 val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) },
+                Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) },
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Medal(b.f.e, b.tier + 1, true, 46, b.f.k)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -264,7 +266,7 @@ private fun BadgeGridCard(ui: AppState, u: User) {
     val p = LocalPal.current
     val st = remember(ui.rev) { Badges.state(ui.pg, u.id).sortedWith(compareByDescending<BadgeState> { it.tier }.thenByDescending { it.pct }) }
     Glass {
-        CardHead("Ma collection de badges") { Count("${Badges.keys(st).size} / ${Badges.total()}") }
+        CardHead("Ma collection de badges", emoji = "🎖️") { Count("${Badges.keys(st).size} / ${Badges.total()}") }
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             st.chunked(3).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -272,7 +274,7 @@ private fun BadgeGridCard(ui: AppState, u: User) {
                         val b = row.getOrNull(k)
                         if (b == null) { Spacer(Modifier.weight(1f)); continue }
                         val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                        Column(Modifier.weight(1f).bounce(inter, .95f).clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(vertical = 6.dp),
+                        Column(Modifier.weight(1f).bounce(inter, .95f).clip(smoothShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             BadgeMedal(b, 62)
                             Text(b.f.n, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -291,7 +293,7 @@ private fun StoryArchiveCard(ui: AppState, u: User) {
     if (pg.isGuest(u) || !pg.socialOn(u)) return
     val list = pg.myStoryArchive(u.id)
     Glass(onClick = if (list.size > 3) ({ ui.push(Screen.Stories) }) else null) {
-        CardHead("Mes stories") { Count(list.size) }
+        CardHead("Mes stories", emoji = "📸") { Count(list.size) }
         if (list.isEmpty()) Muted("Après leurs 24 heures en ligne, tes stories restent ici : toi seul peux les revoir.", small = true)
         else StoryRow(ui, u, list, 0, list.take(3))
         if (list.size > 3) PButton("Voir tout l’historique (${list.size})", { ui.push(Screen.Stories) }, icon = "clock", small = true, modifier = Modifier.padding(top = 12.dp).fillMaxWidth())
@@ -308,7 +310,7 @@ private fun StoryRow(ui: AppState, u: User, all: List<Story>, from: Int, row: Li
             if (s == null) { Spacer(Modifier.weight(1f)); continue }
             val live = nowMs() - s.at < STORY_TTL
             val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Column(Modifier.weight(1f).bounce(inter, .94f).clip(RoundedCornerShape(14.dp))
+            Column(Modifier.weight(1f).bounce(inter, .94f).clip(smoothShape(14.dp))
                 .springClick(inter) { ui.fs = Fs.Stories(listOf(Pg.StoryGroup(u, all, false, all.firstOrNull()?.at ?: 0L)), 0, from + k, archive = true) },
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Box { StoryThumb(s, Modifier.fillMaxWidth().aspectRatio(.62f)); if (live) Chip("En ligne", color = p.flame, ink = p.ink, modifier = Modifier.padding(6.dp)) }
@@ -346,7 +348,7 @@ fun StoryHistoryScreen(ui: AppState) {
 /** Miniature d'une story : photo, récap ou carte de progression colorée par type. */
 @Composable
 fun StoryThumb(s: Story, modifier: Modifier) {
-    val p = LocalPal.current; val shape = RoundedCornerShape(14.dp)
+    val p = LocalPal.current; val shape = smoothShape(14.dp)
     val recap = s.kind == "recap"; val type = s.data.str("type").takeIf { it in TYPES } ?: "routine"
     val bg = if (recap) Brush.linearGradient(SBG[0].map(::hex)) else Brush.linearGradient(listOf(p.type(type).c, p.type(type).c.copy(alpha = .55f)))
     Box(modifier.clip(shape).background(bg), contentAlignment = Alignment.Center) {
@@ -420,11 +422,11 @@ fun BadgesCard(ui: AppState, u: User) {
     val p = LocalPal.current
     val st = remember(ui.rev) { Badges.state(ui.pg, u.id) }
     Glass {
-        CardHead("Badges") { Count("${Badges.keys(st).size} / ${Badges.total()}") }
+        CardHead("Badges", emoji = "🎖️") { Count("${Badges.keys(st).size} / ${Badges.total()}") }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             st.forEach { b ->
                 val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                Row(Modifier.fillMaxWidth().bounce(inter, .97f).clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(4.dp),
+                Row(Modifier.fillMaxWidth().bounce(inter, .97f).clip(smoothShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     BadgeMedal(b, 52)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -473,7 +475,7 @@ fun BadgeScreen(ui: AppState, key: String) {
         }
         item("steps") {
             Glass {
-                CardHead("Étapes") { Count("${b.tier + 1} / ${b.f.t.size}") }
+                CardHead("Étapes", emoji = "🪜") { Count("${b.tier + 1} / ${b.f.t.size}") }
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     b.f.t.forEachIndexed { i, th ->
                         val got = i <= b.tier; val cur = i == b.tier + 1
@@ -503,14 +505,14 @@ private fun FlameSkinsCard(ui: AppState, u: fr.pepsgoal.core.model.User) {
     val p = LocalPal.current; val pg = ui.pg
     val best = remember(ui.rev) { pg.bestStreak(u.id) }
     Glass {
-        CardHead("Flammes de collection")
+        CardHead("Flammes de collection", emoji = "🔥")
         Muted("Ta meilleure série débloque de nouvelles couleurs de flamme : $best ${if (best > 1) "jours" else "jour"} pour l’instant.", small = true)
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FLAME_SKINS.forEach { sk ->
                 val open = best >= sk.min; val on = u.flameSkin == sk.key || (sk.key == "classic" && FLAME_SKINS.none { it.key == u.flameSkin })
-                Column(Modifier.width(84.dp).clip(RoundedCornerShape(18.dp)).background(if (on) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .04f))
-                    .border(if (on) 2.dp else 1.dp, if (on) p.flame else p.line, RoundedCornerShape(18.dp))
+                Column(Modifier.width(84.dp).clip(smoothShape(18.dp)).background(if (on) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .04f))
+                    .border(if (on) 2.dp else 1.dp, if (on) p.flame else p.line, smoothShape(18.dp))
                     .clickable(enabled = open) { u.flameSkin = sk.key; pg.store.commit(); ui.toast("Flamme « ${sk.name} » choisie.", "flame") }
                     .padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Box(contentAlignment = Alignment.Center) {
@@ -526,7 +528,7 @@ private fun FlameSkinsCard(ui: AppState, u: fr.pepsgoal.core.model.User) {
         var shape by remember { mutableStateOf(ui.prefs.flameShape) }; var fx by remember { mutableStateOf(ui.prefs.flameFx) }
         Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(84.dp).clip(RoundedCornerShape(22.dp)).background(p.flame.copy(alpha = .1f)), contentAlignment = Alignment.Center) { Flame(64.dp, style = FlameStyle(shape, fx)) }
+            Box(Modifier.size(84.dp).clip(smoothShape(22.dp)).background(p.flame.copy(alpha = .1f)), contentAlignment = Alignment.Center) { Flame(64.dp, style = FlameStyle(shape, fx)) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Eyebrow("Forme")
                 FlowRowCompat(gap = 4.dp) { FLAME_SHAPES.forEach { (k, l) -> FChip(l, shape == k, { shape = k; ui.prefs.flameShape = k; ui.themeTick++ }) } }
