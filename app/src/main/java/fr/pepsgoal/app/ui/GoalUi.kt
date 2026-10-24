@@ -108,62 +108,6 @@ fun tickingNow(active: Boolean): Long {
 }
 
 @Composable
-fun GoalIcon(g: Goal, size: Dp = 44.dp, masked: Boolean = false) {
-    val tc = LocalPal.current.type(g.type)
-    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(tc.c.copy(alpha = .22f)), contentAlignment = Alignment.Center) { Emoji(if (masked) g.shownIcon() else g.icon, size * .58f) }
-}
-
-@Composable
-fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disabled: Boolean = false, icon: String = "check", running: Boolean = false, onClick: () -> Unit) {
-    val p = LocalPal.current
-    val pop = remember { Animatable(1f) }
-    // Coche dessinée au trait et onde de choc qui s'élargit autour du bouton au moment de la validation
-    val draw = remember { Animatable(if (done) 1f else 0f) }
-    val wave = remember { Animatable(1f) }
-    LaunchedEffect(just, done) {
-        if (just && done && !p.motion) {
-            draw.snapTo(0f); wave.snapTo(0f)
-            launch { pop.snapTo(.72f); pop.animateTo(1f, spring(dampingRatio = .38f, stiffness = 520f)) }
-            launch { wave.animateTo(1f, tween(520, easing = Motion.Emphasized)) }
-            kotlinx.coroutines.delay(70); draw.animateTo(1f, tween(300, easing = Motion.Emphasized))
-        } else { draw.snapTo(if (done) 1f else 0f); wave.snapTo(1f) }
-    }
-    val filled = done || running
-    // Couleurs du type lisibles dans les deux thèmes : foncées sur fond clair, vives sur fond sombre
-    val line = readable(color)
-    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Box(
-        Modifier.drawBehind {
-            val w = wave.value
-            if (w < 1f) drawCircle(color.copy(alpha = (1f - w) * .55f), size.minDimension / 2f * (1f + w * .75f), style = androidx.compose.ui.graphics.drawscope.Stroke((1f - w) * 4.dp.toPx() + 1f))
-        }.bounce(inter, .8f).scale(pop.value).size(44.dp).clip(CircleShape).background(if (filled) color else color.copy(alpha = if (disabled) .06f else .16f))
-            .border(2.5.dp, if (disabled) p.ink3.copy(alpha = .45f) else if (filled) line.copy(alpha = .35f) else line, CircleShape)
-            .springClick(inter, label = label, onClick = onClick).semantics { contentDescription = label },
-        contentAlignment = Alignment.Center
-    ) {
-        if (done && !running && icon == "check") DrawnCheck(draw.value, Color(0xFF10102A), 26.dp, 3.dp)
-        else Pi(icon, size = 22.dp, tint = if (filled) Color(0xFF10102A) else if (disabled) p.ink3.copy(alpha = .55f) else line)
-    }
-}
-
-/** Couleur d'accent assombrie en thème clair (contraste suffisant sur le verre), inchangée en thème sombre. */
-@Composable
-fun readable(c: Color): Color {
-    val p = LocalPal.current
-    if (p.dark) return c
-    return androidx.compose.ui.graphics.lerp(c, Color(0xFF10102A), if (p.contrast) .7f else .42f)
-}
-
-@Composable
-fun MiniBtn(text: String, color: Color, onClick: () -> Unit) {
-    val p = LocalPal.current
-    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Box(Modifier.bounce(inter, .88f).clip(CircleShape).background(color.copy(alpha = .22f)).border(1.5.dp, readable(color).copy(alpha = .55f), CircleShape).springClick(inter, onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = p.ink, maxLines = 1)
-    }
-}
-
-@Composable
 fun AvStack(pg: Pg, ids: List<String>, size: Dp = 22.dp) {
     Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) { ids.mapNotNull { pg.userById(it) }.take(4).forEach { Av(it, size, modifier = Modifier.border(2.dp, LocalPal.current.glassStrong, CircleShape)) } }
 }
@@ -224,15 +168,18 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
     val sw = rememberSwipe()
     val rightLabel = if (g.type == "duration") (if (running) "Pause" else "Minuteur") else if (done && g.type in setOf("routine", "abstinence", "limit", "timed", "challenge")) "Annuler" else if (g.type == "cap") "Ajouter" else "Valider"
     val status = when { running -> "minuteur en cours"; done -> "validé aujourd’hui"; urgent -> "à faire, urgent"; else -> "à faire" }
-    val rowShape = RoundedCornerShape(18.dp)
+    val rowShape = RoundedCornerShape(20.dp)
     Box(Modifier.fillMaxWidth()) {
         SwipeReveal(sw, rowShape, right = SwipeAction(if (rightLabel == "Annuler") "x" else if (g.type == "duration") "play" else "check", rightLabel, if (rightLabel == "Annuler") p.ink2 else p.ok),
             left = SwipeAction("list", "Actions", p.focus), modifier = Modifier.matchParentSize())
-        Row(
+        val pendChip: (@Composable () -> Unit)? = if (pend) ({ Chip("En attente de ${first(pg.userById(g.buddy)?.name)}", "clock") }) else null
+        // Objectif discret : titre et icône masqués dans les listes (visibles dans sa fiche)
+        GoalRowLayout({ GoalIcon(g, 46.dp, masked = true) }, g.shownTitle(), typeInfo(g.type).label, tc.c, meta, done,
             Modifier.swipeable(sw, left = true, right = true, enabled = swipe) { dir -> if (dir > 0) doValidate(ui, g.id) else ui.open(Sheet.Quick(g.id)) }
                 .swipeTilt(sw)
-                .bounce(inter, .97f).fillMaxWidth().clip(rowShape)
-                .background(if (done) tc.c.copy(alpha = .14f) else if (sw.dx != 0f) p.glassStrong else Color.Transparent)
+                .bounce(inter, .98f).fillMaxWidth().clip(rowShape)
+                // Ligne en tuile : teintée de la couleur du type une fois validée
+                .background(if (done) tc.c.copy(alpha = if (p.dark) .18f else .14f) else if (sw.dx != 0f) p.glassStrong else p.tonal)
                 // Objectif de durée : un appui long lance tout de suite une session Focus plein écran
                 .springClick(inter, label = "Ouvrir les détails", onLongClick = if (g.type == "duration" && !done) ({ quickFocus(ui, g) }) else null) { ui.open(Sheet.Goal(g.id)) }
                 .semantics {
@@ -241,28 +188,11 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
                         CustomAccessibilityAction(rightLabel) { doValidate(ui, g.id); true },
                         CustomAccessibilityAction("Actions rapides") { ui.open(Sheet.Quick(g.id)); true }
                     )
-                }.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Objectif discret : titre et icône masqués dans les listes (visibles dans sa fiche)
-            GoalIcon(g, masked = true)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FavStar(pg, g)
-                    Text(g.shownTitle(), fontWeight = FontWeight.ExtraBold, color = p.ink, maxLines = if (p.easy) 3 else 1, overflow = TextOverflow.Ellipsis, textDecoration = null)
-                }
-                FlowRowCompat(gap = 6.dp) {
-                    // Lecture facile : l'état est écrit en toutes lettres
-                    if (p.easy) Chip(if (done) "Fait" else if (running) "En cours" else "À faire", if (done) "check" else "clock", if (done) p.ok else p.ink3)
-                    TypeChip(g.type)
-                    Text(meta, fontSize = 13.sp, color = if (urgent) p.danger else p.ink2, fontWeight = if (urgent) FontWeight.Bold else FontWeight.Medium)
-                    if (pend) Chip("En attente de ${first(pg.userById(g.buddy)?.name)}", "clock")
-                    extra?.invoke()
-                }
-                bar?.let { Bar(it, Modifier.padding(top = 3.dp), tc.c, 6.dp) }
-            }
-            right()
-        }
+                },
+            urgent = urgent, bar = bar, star = pg.isFav(g),
+            // Lecture facile : l'état est écrit en toutes lettres
+            easyState = if (p.easy) (if (done) "Fait" else if (running) "En cours" else "À faire") else null,
+            extra = if (extra != null || pendChip != null) ({ pendChip?.invoke(); extra?.invoke() }) else null, right = right)
     }
 }
 
@@ -321,9 +251,9 @@ fun GoalCard(ui: AppState, g: Goal, modifier: Modifier = Modifier) {
     SwipeReveal(sw, shape, right = if (canDo) SwipeAction("check", "Valider", p.ok) else null, left = SwipeAction("list", "Actions", p.focus), modifier = Modifier.matchParentSize())
     Glass(Modifier.swipeable(sw, left = true, right = canDo, enabled = ui.prefs.swipe) { dir -> if (dir > 0) doValidate(ui, g.id) else ui.open(Sheet.Quick(g.id)) }.swipeTilt(sw), pad = 16.dp, onClick = { ui.open(Sheet.Goal(g.id)) }) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            GoalIcon(g, 46.dp)
+            GoalIcon(g, 46.dp, masked = true)
             Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { FavStar(pg, g); Text(g.title, fontWeight = FontWeight.ExtraBold, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { FavStar(pg, g); Text(g.shownTitle(), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(6.dp))
                 FlowRowCompat(gap = 6.dp) {
                     TypeChip(g.type)
@@ -446,17 +376,11 @@ fun MeasureChart(pg: Pg, g: Goal) {
 /** Semaine en cours : flammes allumées, jours gelés, jours à venir. */
 @Composable
 fun WeekStrip(pg: Pg, id: String) {
-    val p = LocalPal.current
     val ws = weekStart(todayDate()); val days = pg.activeDays(id); val frozen = (pg.userById(id)?.frozenDays ?: emptyList()).toSet(); val t = today()
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        for (i in 0 until 7) {
-            val k = ymd(ws.plusDays(i.toLong())); val fut = k > t; val on = days.contains(k); val fz = !on && frozen.contains(k)
-            Column(Modifier.clip(RoundedCornerShape(14.dp)).background(if (k == t) p.ink.copy(alpha = .07f) else Color.Transparent).padding(horizontal = 6.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (fz) Pi("snow", size = 22.dp, tint = p.type("objective").ink) else Flame(22.dp, dim = !on)
-                Text(WD[i], fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = if (fut) p.ink3 else p.ink2)
-            }
-        }
-    }
+    WeekStripView((0 until 7).map { i ->
+        val k = ymd(ws.plusDays(i.toLong())); val on = days.contains(k)
+        WeekDay(WD[i], when { on -> 2; frozen.contains(k) -> 1; else -> 0 }, k > t, k == t)
+    })
 }
 
 /**

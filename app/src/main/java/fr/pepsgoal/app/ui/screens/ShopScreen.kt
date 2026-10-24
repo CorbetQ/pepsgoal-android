@@ -83,13 +83,7 @@ fun ShopScreen(ui: AppState) {
         }
         item("quests") { FlameQuestsCard(ui) }
         item("tabs") {
-            Row(Modifier.fillMaxWidth().clip(CircleShape).background(p.ink.copy(alpha = .06f)).padding(4.dp)) {
-                listOf("icons" to "Icônes", "themes" to "Thèmes", "modes" to "Ambiances", "bgs" to "Fonds").forEach { (k, l) ->
-                    Box(Modifier.weight(1f).clip(CircleShape).background(if (tab == k) p.glassStrong else Color.Transparent).clickable { tab = k; ui.shopTab = k }.padding(vertical = 10.dp, horizontal = 2.dp), contentAlignment = Alignment.Center) {
-                        FitText(tr(l), size = 14, min = 10, color = if (tab == k) p.ink else p.ink2, weight = if (tab == k) FontWeight.ExtraBold else FontWeight.Bold)
-                    }
-                }
-            }
+            Seg(listOf("icons" to "Icônes", "themes" to "Thèmes", "modes" to "Ambiances", "bgs" to "Fonds"), tab, { tab = it; ui.shopTab = it }, Modifier.fillMaxWidth(), fill = true)
         }
         if (tab == "icons") AppIcons.ALL.chunked(2).forEachIndexed { row, pair ->
             item("ic$row") {

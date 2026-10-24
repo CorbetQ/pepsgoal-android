@@ -142,9 +142,9 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
         val head = @Composable { mod: Modifier ->
             Box(mod.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    PButton(back, onBack, icon = "chevronleft", small = true)
+                    BackPill(back, onBack)
                     Text(title, Modifier.weight(1f).padding(horizontal = 6.dp).graphicsLayer { alpha = k; translationY = (1f - k) * 10.dp.toPx() }, fontFamily = Unbounded, fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        fontSize = 16.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     right()
                 }
             }
@@ -159,14 +159,11 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
             LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp), list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item("title") {
                     // Le grand titre s'efface et rétrécit en défilant (lu dans la phase de dessin : pas de recomposition)
-                    Row(Modifier.enter().graphicsLayer {
+                    PageTitle(title, icon, c1, c2, Modifier.enter().graphicsLayer {
                         val off = if (list.firstVisibleItemIndex == 0) list.firstVisibleItemScrollOffset.toFloat() else 200f
                         val f = (off / 44.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
-                    }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
-                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp)
-                    }
+                    }.padding(start = 4.dp, top = 4.dp, bottom = 8.dp))
                 }
                 content()
                 if (bottom == null && !low) item("nav") { Spacer(Modifier.navigationBarsPadding()) }

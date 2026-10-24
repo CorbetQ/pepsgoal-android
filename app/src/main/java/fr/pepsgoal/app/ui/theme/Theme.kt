@@ -76,7 +76,13 @@ data class Pal(
     /** Grandes cibles tactiles (48 dp) : TalkBack actif ou Lecture facile. */
     val big: Boolean = false,
     /** Mode une main. */
-    val oneHand: Boolean = false
+    val oneHand: Boolean = false,
+    /** Fond opaque d'une carte (verre posé sur le fond) : sert aux commandes posées sur les cartes. */
+    val surface: Color = Color.Unspecified,
+    /** Remplissage « tonal » des commandes secondaires (boutons, puces, champs, rails). */
+    val tonal: Color = Color.Unspecified,
+    /** Couleur des ombres portées (teinte de la marque, très légère). */
+    val shadow: Color = Color(0x3328186E)
 ) {
     val accent get() = Brush.linearGradient(listOf(flame2, flame, pink))
     fun type(t: String) = types[t] ?: types.getValue("routine")
@@ -184,11 +190,11 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         if (contrast(onAc, stop) >= 4.5f) stop
         else { val to = if (onAc == Color.White) Color.Black else Color.White; var c = stop; var k = .08f; while (contrast(onAc, c) < 4.5f && k < 1f) { c = lerp(stop, to, k); k += .08f }; c }
     }
-    var bg = if (dark) hex("#07081A") else hex("#ECEEFF")
+    var bg = if (dark) hex("#0A0B1C") else hex("#F0F1FA")
     var ink = if (dark) hex("#F4F5FF") else hex("#0D0E2B"); var ink2 = if (dark) hex("#D3D6F7") else hex("#34375F"); var ink3 = if (dark) hex("#AAADDB") else hex("#575A86")
     // Sombre : cartes un peu plus claires que le fond, pour mieux s'en détacher
-    var glass = if (dark) Color(31, 34, 80, (255 * .62).toInt()) else Color(255, 255, 255, (255 * .62).toInt())
-    var glassStrong = if (dark) Color(34, 37, 86, 230) else Color(255, 255, 255, 220)
+    var glass = if (dark) Color(30, 32, 70, (255 * .66).toInt()) else Color(255, 255, 255, (255 * .72).toInt())
+    var glassStrong = if (dark) Color(32, 35, 76, 236) else Color(255, 255, 255, 230)
     if (dyn != null) {
         bg = dyn.background; ink = dyn.onBackground; ink2 = dyn.onSurfaceVariant; ink3 = mix(dyn.onSurfaceVariant, dyn.background, .25f)
         glass = dyn.surfaceContainerLow.copy(alpha = .78f); glassStrong = dyn.surfaceContainerHigh.copy(alpha = .92f)
@@ -199,12 +205,12 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         val g = hex(mode.glass); glass = g.copy(alpha = .62f); glassStrong = g.copy(alpha = if (dark) .92f else .88f)
     }
     // Opacité du verre : réglage séparé du flou (Paramètres › Apparence)
-    val alpha = when (input.glassOpacity) { "low" -> .38f; "high" -> .86f; else -> .62f }
+    val alpha = when (input.glassOpacity) { "low" -> .42f; "high" -> .9f; else -> if (dark) .66f else .72f }
     glass = glass.copy(alpha = if (oled) glass.alpha else minOf(.95f, alpha + if (dyn != null) .08f else 0f))
     if (!oled) glassStrong = glassStrong.copy(alpha = when (input.glassOpacity) { "low" -> .7f; "high" -> .96f; else -> glassStrong.alpha })
     if (transp || input.contrast) { glass = if (dark) (if (oled) Color(12, 12, 14) else hex("#14163A")) else Color.White; glassStrong = glass }
     if (input.contrast) { ink = if (dark) Color.White else Color.Black; ink2 = ink; ink3 = if (dark) Color(0xFFDDDDDD) else Color(0xFF222222) }
-    val line = if (input.contrast) ink.copy(alpha = .7f) else ink.copy(alpha = .13f)
+    val line = if (input.contrast) ink.copy(alpha = .7f) else ink.copy(alpha = if (dark) .14f else .1f)
     // Fond réel d'une carte (verre posé sur le fond) : base de tous les calculs de lisibilité
     val card = glass.over(bg)
     ink2 = readable(ink2, card, 7f); ink3 = readable(ink3, card, 4.6f)
@@ -229,7 +235,9 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: mode?.let { m -> m.blobs.map(::hex) + ac[1] } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
         if (oled) .22f else if (dark) .42f else .55f, types, dyn != null, input.contrast, transp, input.mono, motion,
         when (input.glassBlur) { "xlow" -> 20f; "low" -> 40f; "high" -> 110f; else -> 70f },
-        input.easy, input.big || input.easy, input.oneHand
+        input.easy, input.big || input.easy, input.oneHand,
+        surface = card, tonal = if (input.contrast) ink.copy(alpha = .14f) else ink.copy(alpha = if (dark) .09f else .055f),
+        shadow = if (dark) Color(0x66000000) else Color(0x2628186E)
     )
 
     val base = dyn ?: if (dark) darkColorScheme() else lightColorScheme()
@@ -250,7 +258,7 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         displayLarge = t.displayLarge.merge(head).copy(fontWeight = FontWeight.Bold), displayMedium = t.displayMedium.merge(head).copy(fontWeight = FontWeight.Bold),
         displaySmall = t.displaySmall.merge(head).copy(fontWeight = FontWeight.Bold), headlineLarge = t.headlineLarge.merge(head).copy(fontWeight = FontWeight.Bold),
         headlineMedium = t.headlineMedium.merge(head).copy(fontWeight = FontWeight.Bold), headlineSmall = t.headlineSmall.merge(head).copy(fontWeight = FontWeight.Bold),
-        titleLarge = t.titleLarge.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 18.sp), titleMedium = t.titleMedium.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.sp),
+        titleLarge = t.titleLarge.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 18.sp), titleMedium = t.titleMedium.merge(body).copy(fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, letterSpacing = (-.1).sp),
         titleSmall = t.titleSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold), bodyLarge = t.bodyLarge.merge(body), bodyMedium = t.bodyMedium.merge(body).copy(fontSize = 15.sp),
         bodySmall = t.bodySmall.merge(body).copy(fontSize = 13.sp), labelLarge = t.labelLarge.merge(body).copy(fontWeight = FontWeight.ExtraBold),
         labelMedium = t.labelMedium.merge(body).copy(fontWeight = FontWeight.Bold), labelSmall = t.labelSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold)

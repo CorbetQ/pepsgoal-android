@@ -56,40 +56,12 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
         st.n > 0 -> "Valide une action avant minuit pour prolonger ta série."
         else -> "Valide ta première action pour allumer ta flamme."
     }
-    Glass(pad = 18.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Eyebrow(cap(weekdayLongDate(todayDate())))
-                Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
-                Muted(msg, maxLines = 2)
-            }
-            Box(Modifier.graphicsLayer { scaleX = .74f; scaleY = .74f }) { HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") } }
-        }
-        // Avancement du jour, niveau et flammes en un coup d'œil
-        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Ring(done, total, 64.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(if (total == 0) "Rien de prévu aujourd’hui" else "$done sur $total validés aujourd’hui", fontWeight = FontWeight.ExtraBold)
-                Bar(lv.pct * 100, height = 6.dp)
-                Muted("Niveau ${lv.idx} · ${lv.name} · ${fmtNum(pg.wallet())} flammes à dépenser", small = true, maxLines = 1)
-            }
-        }
-        // Objectif du mois
-        pg.monthFocusGoal()?.let { g ->
-            val (d, n) = remember(ui.rev, g.id) { pg.monthFocusProgress(g) }
-            Row(Modifier.padding(top = 10.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.flame.copy(alpha = .1f)).clickable { ui.open(Sheet.Goal(g.id)) }.padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Emoji(g.shownIcon(), 24.dp)
-                Column(Modifier.weight(1f)) {
-                    Text("Objectif du mois : ${g.shownTitle()}", fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Bar(d * 100.0 / maxOf(1, n), height = 5.dp)
-                }
-                Text("$d/$n j", fontWeight = FontWeight.ExtraBold, color = p.ink2, fontSize = 13.sp)
-            }
-        }
-        Spacer(Modifier.height(10.dp)); WeekStrip(pg, u.id)
+    val focus = pg.monthFocusGoal()?.let { g -> val (d, n) = remember(ui.rev, g.id) { pg.monthFocusProgress(g) }; g to FocusInfo(g.shownIcon(), g.shownTitle(), d, n) }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        HomeHeaderView(first(u.name), msg, st.n, st.lit, done, total, lv.idx, lv.name, lv.pct, fmtNum(pg.wallet()), focus?.second, { focus?.let { ui.open(Sheet.Goal(it.first.id)) } },
+            { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") }) { WeekStrip(pg, u.id) }
         // Actions de la journée
-        Row(Modifier.padding(top = 10.dp).fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        ActionChips {
             if (total > 0 && done == total) FChip("✨ Journée parfaite", false, { ui.fs = Fs.Celebrate(pg.perfectCelebration()) })
             if (nowHM() >= "18:00") FChip("🌙 Bilan du soir", false, { ui.open(Sheet.Evening) })
             FChip(if (vac != null) "🏖️ En vacances" else if (pg.isRest()) "😴 Jour de repos" else "😴 Repos", vac != null || pg.isRest(), { ui.open(Sheet.Rest) })
@@ -140,19 +112,9 @@ fun rememberMoments(ui: AppState, keys: List<String>): List<MomentTile> {
 @Composable
 fun MomentsRow(ui: AppState, tiles: List<MomentTile>, showAdd: Boolean = true) {
     val p = LocalPal.current
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        tiles.forEach { t ->
-            Column(Modifier.width(152.dp).height(118.dp).clip(RoundedCornerShape(20.dp)).glassBg(RoundedCornerShape(20.dp)).border(1.dp, p.glassEdge, RoundedCornerShape(20.dp))
-                .clickable(onClickLabel = t.title) { ui.open(Sheet.HomeCard(t.key)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Emoji(t.emoji, 28.dp)
-                Text(t.title, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(t.sub, fontSize = 12.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        if (showAdd) Column(Modifier.width(120.dp).height(118.dp).clip(RoundedCornerShape(20.dp)).border(1.5.dp, p.line, RoundedCornerShape(20.dp)).clickable(onClickLabel = "Nouveau compte à rebours") { ui.open(Sheet.HomeCard("countdown")) }.padding(12.dp),
-            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Pi("plus", size = 22.dp, tint = p.ink2); Text("Compte à rebours", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink2)
-        }
+    Row(Modifier.fillMaxWidth().bleed(16.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        tiles.forEach { t -> MomentTileView(t.emoji, t.title, t.sub) { ui.open(Sheet.HomeCard(t.key)) } }
+        if (showAdd) AddTileView("Compte à rebours") { ui.open(Sheet.HomeCard("countdown")) }
     }
 }
 
@@ -171,16 +133,7 @@ fun HomeCardSheet(ui: AppState, key: String) {
 
 /** Titre de section repliable de l'accueil. */
 @Composable
-fun HomeSectionHead(title: String, icon: String, collapsed: Boolean, onToggle: () -> Unit) {
-    val p = LocalPal.current
-    val rot by animateFloatAsState(if (collapsed) -90f else 0f, label = "secRot")
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClickLabel = if (collapsed) "Déplier $title" else "Replier $title", onClick = onToggle).padding(horizontal = 4.dp, vertical = 2.dp).semantics { heading() },
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Pi(icon, size = 16.dp, tint = p.flameInk)
-        Text(title.uppercase(), Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, color = p.ink2)
-        Pi("down", size = 16.dp, tint = p.ink3, modifier = Modifier.graphicsLayer { rotationZ = rot })
-    }
-}
+fun HomeSectionHead(title: String, icon: String, collapsed: Boolean, onToggle: () -> Unit) = SectionHead(title, icon, collapsed, onToggle)
 
 /* ------------------------------------------------------------------ Comptes à rebours */
 

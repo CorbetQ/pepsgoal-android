@@ -71,13 +71,10 @@ fun GoalsScreen(ui: AppState) {
         } }
 
     ScreenList {
-        // Vue d'ensemble : trois raccourcis
+        // Vue d'ensemble : onglets de filtre avec leur compteur
         item("overview") {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OverTile("${open.size}", "en cours", "target", ui.goalFilter == "active", Modifier.weight(1f)) { ui.goalFilter = "active" }
-                OverTile("$doneToday/${plan.due.size}", "aujourd’hui", "sun", ui.goalFilter == "today", Modifier.weight(1f)) { ui.goalFilter = "today" }
-                OverTile("${open.count { pg.isFav(it) }}", "favoris", "star", ui.goalFilter == "fav", Modifier.weight(1f)) { ui.goalFilter = "fav" }
-            }
+            FilterTabs(listOf(Triple("active", "En cours", "${open.size}"), Triple("today", "Aujourd’hui", "$doneToday/${plan.due.size}"),
+                Triple("fav", "Favoris", "${open.count { pg.isFav(it) }}"), Triple("done", "Terminés", "${all.size - open.size}")), ui.goalFilter, { ui.goalFilter = it })
         }
         // Recherche, affichage et tri
         item("tools") {
@@ -92,8 +89,7 @@ fun GoalsScreen(ui: AppState) {
         item("filters") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ChipsRow {
-                    FChip("Terminés et archivés", ui.goalFilter == "done", { ui.goalFilter = if (ui.goalFilter == "done") "active" else "done" }, leading = { Pi("archive", size = 15.dp) })
-                    SORTS.forEach { (k, l) -> FChip(l, sort == k, { sort = k }) }
+                    SortChip(SORTS, sort, { sort = it })
                     if (u.goalGroups.isNotEmpty()) FChip("Par groupe", grouped, { grouped = !grouped; ui.prefs.goalGroupBy = grouped }, leading = { Pi("folder", size = 15.dp) })
                     FChip(if (u.goalGroups.isNotEmpty()) "Gérer les groupes" else "Créer des groupes", false, { ui.open(Sheet.GoalGroups) }, leading = { Pi(if (u.goalGroups.isNotEmpty()) "edit" else "plus", size = 15.dp) }, dashed = true)
                 }
@@ -133,8 +129,8 @@ fun GoalsScreen(ui: AppState) {
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { collapsed = if (c) collapsed - key else collapsed + key; ui.prefs.collapsed = collapsed }.padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             val gc = u.goalGroups.firstOrNull { it.id == key }?.color?.let { fr.pepsgoal.app.ui.theme.hex(it) }
-                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(gc?.copy(alpha = .25f) ?: p.glassStrong).border(1.dp, gc ?: p.line, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) { Emoji(ic, 20.dp) }
-                            Text(name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(gc?.copy(alpha = .25f) ?: p.tonal), contentAlignment = Alignment.Center) { Emoji(ic, 20.dp) }
+                            Text(name, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
                             Count(items.size)
                             Spacer(Modifier.weight(1f))
                             Pi(if (c) "chevronleft" else "down", size = 18.dp, tint = p.ink3)
@@ -143,8 +139,8 @@ fun GoalsScreen(ui: AppState) {
                     if (!c) {
                         if (compact) item("list-$key") {
                             // Liste compacte : une carte par section, une ligne par objectif, validation en un geste
-                            Glass(pad = 8.dp) {
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Glass(pad = 10.dp) {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     items.forEach { g -> key(g.id) { Box(Modifier.animatePlacement()) { GoalRow(ui, g, dueIds[g.id] ?: false) } } }
                                 }
                             }
@@ -158,18 +154,6 @@ fun GoalsScreen(ui: AppState) {
 
 private val SORTS = listOf("fav" to "Pertinence", "az" to "A → Z", "progress" to "Progression", "recent" to "Récents")
 
-/** Tuile de la vue d'ensemble : chiffre, libellé, et filtre correspondant (enfoncée quand active). */
-@Composable
-private fun OverTile(v: String, l: String, icon: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val p = LocalPal.current
-    Glass(modifier.fillMaxHeight(), pad = 12.dp, fill = false, onClick = onClick, border = if (on) p.flame else null) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pi(icon, size = 16.dp, tint = if (on) p.flame else p.ink2)
-            Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
-        }
-        Text(l, color = if (on) p.ink else p.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-    }
-}
 
 private fun androidx.compose.foundation.lazy.LazyListScope.items(list: List<Goal>, key: ((Goal) -> Any)? = { it.id }, content: @Composable androidx.compose.foundation.lazy.LazyItemScope.(Goal) -> Unit) {
     items(list.size, key = key?.let { k -> { i: Int -> k(list[i]) } }) { i -> content(list[i]) }

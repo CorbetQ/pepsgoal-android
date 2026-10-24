@@ -47,8 +47,8 @@ fun FriendsScreen(ui: AppState) {
         item("status") { StatusRow(ui) }
         if (incoming.isNotEmpty()) item("in") { RequestsCard(ui, incoming) }
         item("tabs") {
-            Seg(listOf("friends" to (if (friends.isEmpty()) "Amis" else "Amis · ${friends.size}"), "msgs" to (if (unread > 0) "Messages · $unread" else "Messages"), "discover" to "Découvrir"),
-                ui.friendsTab, { ui.friendsTab = it }, Modifier.fillMaxWidth(), icons = listOf("users", "comment", "compass"))
+            FilterTabs(listOf(Triple("friends", "Amis", friends.size.takeIf { it > 0 }?.toString()), Triple("msgs", "Messages", unread.takeIf { it > 0 }?.toString()), Triple("discover", "Découvrir", null)),
+                ui.friendsTab, { ui.friendsTab = it })
         }
         when (ui.friendsTab) {
             "msgs" -> item("msgs") { MessagesCard(ui, u, always = true) }
