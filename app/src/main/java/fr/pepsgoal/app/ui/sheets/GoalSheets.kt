@@ -316,7 +316,7 @@ private fun ModeCard(icon: String, title: String, desc: String, ai: Boolean, onC
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         IconTile(icon, if (ai) p.type("program").c else p.type("routine").c, if (ai) p.type("measure").c else p.type("objective").c, 48.dp, 16.dp)
         Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp); Muted(desc, small = true) }
-        Text("›", color = p.ink3, fontSize = 24.sp)
+        Chevron()
     }
 }
 
@@ -515,8 +515,7 @@ fun GoalSheet(ui: AppState, id: String) {
         if (own && pg.todayPlan().due.any { it.g.id == g.id && !it.done }) PButton(g.missWhy()[today()]?.let { k -> MISS_REASONS.firstOrNull { it.first == k }?.second } ?: "Je n’ai pas pu", { ui.open(Sheet.Miss(g.id, today())) }, kind = "ghost")
     }
     // Informations
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
-        .border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(22.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.tonal).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Info("Type") { TypeChip(g.type) }
         if (own) Info("Groupe") {
             FlowRowCompat(gap = 4.dp) {

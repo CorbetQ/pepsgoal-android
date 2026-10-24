@@ -881,3 +881,7 @@ fun SectionTitle(text: String) {
         Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp), color = p.ink)
     }
 }
+
+/** Chevron « ouvrir » en fin de ligne ; [rot] : rotation supplémentaire (90° quand le volet est déplié). */
+@Composable
+fun Chevron(rot: Float = 0f, tint: Color = LocalPal.current.ink3) = Pi("chevronleft", Modifier.graphicsLayer { rotationZ = 180f + rot }, size = 18.dp, tint = tint)

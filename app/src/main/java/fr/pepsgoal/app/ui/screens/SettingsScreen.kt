@@ -142,7 +142,8 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
         val head = @Composable { mod: Modifier ->
             Box(mod.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    BackPill(back, onBack)
+                    // « Retour » générique : on affiche plutôt le nom de l'onglet d'où l'on vient
+                    BackPill(if (back == "Retour" && ui.screens.size <= 1) NAV_TITLES[ui.tab] ?: back else back, onBack)
                     Text(title, Modifier.weight(1f).padding(horizontal = 6.dp).graphicsLayer { alpha = k; translationY = (1f - k) * 10.dp.toPx() }, fontFamily = Unbounded, fontWeight = FontWeight.Bold,
                         fontSize = 16.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     right()
@@ -195,8 +196,8 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                     val list = keys.mapNotNull { k -> cats.firstOrNull { it[0] == k } }
                     if (list.isNotEmpty()) item("sec:$title") {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(title.uppercase(), Modifier.padding(start = 8.dp), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, letterSpacing = .8.sp)
-                            Glass(pad = 4.dp) {
+                            Text(title, Modifier.padding(start = 6.dp), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = p.ink)
+                            Glass(pad = 4.dp, radius = 24.dp) {
                                 Divided(inset = 66.dp) {
                                     list.forEach { (k, l, d, i) ->
                                         val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -205,8 +206,8 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                                             val (k1, k2) = SET_COLORS[k] ?: ("routine" to "duration")
                                             IconTile(i, p.type(k1).c, p.type(k2).c, 42.dp, 13.dp)
                                             // Sous le nom : l'état actuel de la catégorie quand il se résume en quelques mots
-                                            Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp); Muted(setSummary(ui, k) ?: d, small = true, maxLines = 2) }
-                                            Text("›", color = p.ink3, fontSize = 22.sp)
+                                            Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.Bold, fontSize = 16.sp); Muted(setSummary(ui, k) ?: d, small = true, maxLines = 2) }
+                                            Chevron()
                                         }
                                     }
                                 }
@@ -237,7 +238,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                 CatHero("a11y", setSummary(ui, "a11y") ?: "Réglages standard", chips = { Chip("Cet appareil", "lock", p.type("objective").c) })
                 ComfortSettings(ui)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("COULEURS ET EFFETS", Modifier.padding(start = 8.dp), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, letterSpacing = .8.sp)
+                    Text("Couleurs et effets", Modifier.padding(start = 6.dp), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = p.ink)
                     Glass(pad = 4.dp) { A11yRows(ui) }
                     Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(horizontal = 8.dp), small = true)
                 }

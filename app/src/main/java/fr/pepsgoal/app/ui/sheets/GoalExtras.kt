@@ -142,7 +142,7 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
             if (pr.note.isNotBlank()) Text(pr.note, color = p.ink2)
         }
     }
-    if (editing) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f)).border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(20.dp)).padding(12.dp),
+    if (editing) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.tonal).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Field(note, { note = it }, "", placeholder = "Ce que tu as fait, comment tu t’es senti…", singleLine = false, minLines = 2, max = 500, icon = "edit")
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -270,8 +270,7 @@ fun AgendaRow(ui: AppState, g: Goal, divider: Boolean = true) {
 fun OptionsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     SectionTitle(title)
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
-        .border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(22.dp)).padding(horizontal = 14.dp, vertical = 4.dp), content = content)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.tonal).padding(horizontal = 14.dp, vertical = 4.dp), content = content)
 }
 
 /** Ligne d'option : pastille d'icône, titre, état en sous-titre ; l'éditeur se déplie dessous. */
@@ -290,7 +289,7 @@ fun OptionRow(icon: String, c1: Color, c2: Color, title: String, sub: String?, o
                 sub?.let { Text(it, fontSize = 13.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 17.sp) }
             }
             right?.invoke()
-            Text("›", Modifier.graphicsLayer { rotationZ = rot }, color = p.ink3, fontSize = 22.sp)
+            Chevron(rot)
         }
         androidx.compose.animation.AnimatedVisibility(open, enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()) {
             Column(Modifier.fillMaxWidth().padding(start = 52.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = body)

@@ -668,7 +668,7 @@ private fun Composer(ui: AppState, u: User, key: String, members: List<String>?,
             IconBtn("smile", "Emojis et stickers", { panel = if (panel == "emoji" || panel == "stk") null else "emoji" }, plain = true, size = 40.dp)
             val composeInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val composeFocus by composeInter.collectIsFocusedAsState()
-            TextField(tv, { if (it.text.length <= 500) tv = it }, Modifier.weight(1f).border(if (composeFocus) 1.5.dp else 1.dp, if (composeFocus) p.focus else ctlEdge(p), RoundedCornerShape(24.dp)),
+            TextField(tv, { if (it.text.length <= 500) tv = it }, Modifier.weight(1f).border(if (composeFocus) 1.5.dp else 1.dp, if (composeFocus) p.focus else if (p.contrast) p.line else p.glassEdge, RoundedCornerShape(24.dp)),
                 placeholder = { Text("Écrire un message…", color = p.ink3) }, maxLines = 5, shape = RoundedCornerShape(24.dp), interactionSource = composeInter,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                 colors = TextFieldDefaults.colors(focusedContainerColor = p.glassStrong, unfocusedContainerColor = p.glassStrong, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,

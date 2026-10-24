@@ -100,7 +100,7 @@ fun SetItem(title: String, sub: String? = null, icon: String? = null, tint: Colo
                 if (sub != null) Text(sub, fontSize = 13.sp, color = p.ink2, lineHeight = 17.sp)
             }
             Row(Modifier.widthIn(max = half), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) { right() }
-            if (chevron) Pi("chevronleft", Modifier.graphicsLayer { rotationZ = 180f }, size = 18.dp, tint = p.ink3)
+            if (chevron) Chevron()
         }
     }
 }

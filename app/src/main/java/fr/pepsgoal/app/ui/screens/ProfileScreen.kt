@@ -194,7 +194,7 @@ private fun LookCard(ui: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconTile("palette", p.flame, p.pink, 40.dp, 13.dp)
             Column(Modifier.weight(1f)) { Text("Thème, fond et icône", fontWeight = FontWeight.ExtraBold); Muted("Ce que tu as acheté dans la boutique s’applique ici", small = true) }
-            Text("›", color = p.ink3, fontSize = 22.sp)
+            Chevron()
         }
     }
 }
