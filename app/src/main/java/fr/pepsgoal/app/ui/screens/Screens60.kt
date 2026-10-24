@@ -175,11 +175,14 @@ fun MemoriesCard(ui: AppState) {
 @Composable
 fun QuoteCard(ui: AppState) {
     val p = LocalPal.current
-    val (q, a) = remember(today()) { quoteOfDay() }
+    val (q, a) = remember(today(), ui.rev) { ui.pg.quoteToday() }
     Glass {
         Text("“", fontFamily = Unbounded, fontSize = 40.sp, color = p.flameInk, modifier = Modifier.height(30.dp))
         Text(q, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Muted("— $a", Modifier.padding(top = 6.dp), small = true)
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Muted("— $a", Modifier.weight(1f), small = true)
+            PButton("Mes citations", { ui.open(fr.pepsgoal.app.Sheet.Quotes) }, icon = "edit", small = true, kind = "ghost")
+        }
     }
 }
 

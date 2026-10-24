@@ -108,9 +108,9 @@ fun tickingNow(active: Boolean): Long {
 }
 
 @Composable
-fun GoalIcon(g: Goal, size: Dp = 44.dp) {
+fun GoalIcon(g: Goal, size: Dp = 44.dp, masked: Boolean = false) {
     val tc = LocalPal.current.type(g.type)
-    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(tc.c.copy(alpha = .22f)), contentAlignment = Alignment.Center) { Emoji(g.icon, size * .58f) }
+    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(tc.c.copy(alpha = .22f)), contentAlignment = Alignment.Center) { Emoji(if (masked) g.shownIcon() else g.icon, size * .58f) }
 }
 
 @Composable
@@ -179,13 +179,13 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
     val now = tickingNow(running)
     val just = done && pg.justDone == g.id
     var meta = ""; var urgent = false; var bar: Double? = null; var extra: @Composable (() -> Unit)? = null
-    var right: @Composable () -> Unit = { CheckButton(done, just, if (done) "Annuler la validation : ${g.title}" else "Valider : ${g.title}", tc.c) { doValidate(ui, g.id) } }
+    var right: @Composable () -> Unit = { CheckButton(done, just, if (done) "Annuler la validation : ${g.shownTitle()}" else "Valider : ${g.shownTitle()}", tc.c) { doValidate(ui, g.id) } }
     when (g.type) {
         "limit" -> { val used = pg.limitUsed(g); val over = used > g.max
             meta = "${fmtNum(used)}/${fmtNum(g.max)} ${g.unit} ${if (g.period == "week") "cette semaine" else "aujourd'hui"}${if (over) " · limite dépassée" else ""}"; urgent = over; bar = used / maxOf(g.max, 1.0) * 100
             right = { Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { MiniBtn("+1", tc.c) { pg.limitAdd(g.id) }; CheckButton(done, just, "Valider ma journée sous la limite", tc.c, over && !done) { doValidate(ui, g.id) } } } }
         "duration" -> { val m = pg.durationLiveMins(g).also { now.hashCode() }; meta = "${fmtClock(m * 60)} / ${fmtNum(g.minutes)} min"; bar = m / g.minutes * 100
-            right = { CheckButton(done && !running, just, if (running) "Mettre en pause : ${g.title}" else "Démarrer le minuteur : ${g.title}", tc.c, icon = if (running) "pause" else if (done) "check" else "play", running = running) { pg.toggleTimer(g) } } }
+            right = { CheckButton(done && !running, just, if (running) "Mettre en pause : ${g.shownTitle()}" else "Démarrer le minuteur : ${g.shownTitle()}", tc.c, icon = if (running) "pause" else if (done) "check" else "play", running = running) { pg.toggleTimer(g) } } }
         "measure" -> { meta = "Dernière : ${pg.measureStat(g).v}"; right = { MiniBtn("+ Mesure", tc.c) { doValidate(ui, g.id) } } }
         "cap" -> { val v = pg.capDay(g); meta = "${fmtNum(v)} / ${fmtNum(g.target)}${pg.unitSfx(g)} aujourd’hui"; bar = minOf(100.0, v / g.target * 100)
             right = { MiniBtn(if (done) "+ Encore" else "+ Ajouter", tc.c) { doValidate(ui, g.id) } } }
@@ -244,11 +244,12 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
                 }.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GoalIcon(g)
+            // Objectif discret : titre et icône masqués dans les listes (visibles dans sa fiche)
+            GoalIcon(g, masked = true)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     FavStar(pg, g)
-                    Text(g.title, fontWeight = FontWeight.ExtraBold, color = p.ink, maxLines = if (p.easy) 3 else 1, overflow = TextOverflow.Ellipsis, textDecoration = null)
+                    Text(g.shownTitle(), fontWeight = FontWeight.ExtraBold, color = p.ink, maxLines = if (p.easy) 3 else 1, overflow = TextOverflow.Ellipsis, textDecoration = null)
                 }
                 FlowRowCompat(gap = 6.dp) {
                     // Lecture facile : l'état est écrit en toutes lettres

@@ -837,6 +837,15 @@ private fun BackupCard(ui: AppState) {
         }
     }
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> restoreUri = uri; restorePass = "" }
+    // Import d'un historique CSV (Loop Habit Tracker ou tableau maison)
+    val pickCsv = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val txt = try { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } } catch (e: Exception) { null }
+        val r = txt?.let { ui.pg.importCsv(it) }
+        ui.bump()
+        ui.toast(when { r == null -> "Fichier illisible."; r.checks == 0 -> "Aucune validation trouvée : la première colonne doit être la date (AAAA-MM-JJ)."
+            else -> "Import terminé : ${pl(r.goals, "objectif créé", "objectifs créés")}, ${pl(r.checks, "validation", "validations")}." }, if (r != null && r.checks > 0) "check" else "x")
+    }
     SetGroup("Sauvegarde", note = "Les fichiers .pgbak sont chiffrés : sans le mot de passe, personne ne peut les lire, PepsGoal compris.") {
         SetItem("Sauvegarde automatique chiffrée", "Chaque jour, une copie de tes objectifs, validations et journal dans le dossier de ton choix (téléphone, Google Drive…). Les 7 dernières copies sont gardées.", "lock", p.type("routine").c) {
             if (on) Chip("Active", "check", p.ok)
@@ -858,6 +867,8 @@ private fun BackupCard(ui: AppState) {
             }, Modifier.fillMaxWidth(), icon = "lock", kind = "primary", small = true, enabled = !busy)
         }
         SetItem("Restaurer une sauvegarde", "Ajoute les objectifs, validations et pages du journal d’un fichier .pgbak (nouveau téléphone, profil sans compte…). Rien n’est effacé.", "down", p.type("project").c, onClick = { pickFile.launch(arrayOf("*/*")) })
+        SetItem("Importer un historique (CSV)", "Depuis Loop Habit Tracker (export « Checkmarks.csv ») ou un tableau : une colonne date, puis une colonne par habitude. Les validations importées ne rapportent pas de flammes.", "upload", p.type("measure").c,
+            onClick = { pickCsv.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "*/*")) })
         restoreUri?.let { uri ->
             SetBlock {
                 Field(restorePass, { restorePass = it }, "Mot de passe de la sauvegarde", password = true, max = 100)

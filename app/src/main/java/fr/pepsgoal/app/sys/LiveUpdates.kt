@@ -72,7 +72,7 @@ object LiveUpdates {
             val m = pg.durationLiveMins(g); val target = g.minutes; val leftMin = target - m
             val c = TYPE_COLORS.getValue("duration")
             val done = Math.floor(m).toInt()
-            out += Live(ID_TIMER, "timer", "${t.start}", g.title,
+            out += Live(ID_TIMER, "timer", "${t.start}", g.shownTitle(),
                 if (leftMin > 0) "Objectif du jour : ${fmtNum(target)} min · temps restant en direct" else "${fmtNum(target)} min atteintes · minuteur en marche",
                 if (leftMin > 0) "${Math.ceil(leftMin).toInt()} min" else "$done min", (m / target * 1000).toInt().coerceIn(0, 1000), listOf(1000 to c),
                 if (leftMin > 0) now + (leftMin * 60_000).toLong() else now - (m * 60_000).toLong(), leftMin > 0,
@@ -84,7 +84,7 @@ object LiveUpdates {
         plan.due.firstOrNull { it.g.type == "period" && !it.done && pg.periodWindow(it.g).live }?.let { x ->
             val g = x.g; val s = startOfDayMs(todayDate()) + hmMinutes(g.start) * 60_000L; val e = startOfDayMs(todayDate()) + hmMinutes(g.end) * 60_000L
             val c = TYPE_COLORS.getValue("period")
-            out += Live(ID_PERIOD, "period", g.id + today(), g.title, "${g.start}–${g.end} · valide dès que c’est fait", "→ ${g.end}",
+            out += Live(ID_PERIOD, "period", g.id + today(), g.shownTitle(), "${g.start}–${g.end} · valide dès que c’est fait", "→ ${g.end}",
                 ((now - s).toDouble() / maxOf(1L, e - s) * 1000).toInt().coerceIn(0, 1000), listOf(1000 to c), e, true,
                 listOf("Valider" to Notifier.action(ctx, ID_PERIOD, ActionReceiver.VALIDATE) { putExtra("goal", g.id); putExtra("keep", true) }),
                 Notifier.open(ctx, ID_PERIOD) { putExtra(MainActivity.EXTRA_GOAL, g.id) }, c)
@@ -98,11 +98,11 @@ object LiveUpdates {
             val segs = plan.due.sortedByDescending { it.done }.map { per to (TYPE_COLORS[it.g.type] ?: FLAME) }
             val quick = pending.firstOrNull { it.g.type in setOf("routine", "abstinence", "challenge", "timed") }
             val acts = mutableListOf<Pair<String, PendingIntent>>()
-            quick?.let { q -> acts += "✓ ${q.g.title.take(20)}" to Notifier.action(ctx, ID_STREAK, ActionReceiver.VALIDATE) { putExtra("goal", q.g.id); putExtra("keep", true) } }
+            quick?.let { q -> acts += "✓ ${q.g.shownTitle().take(20)}" to Notifier.action(ctx, ID_STREAK, ActionReceiver.VALIDATE) { putExtra("goal", q.g.id); putExtra("keep", true) } }
             acts += "Plus tard" to Notifier.action(ctx, ID_STREAK + 1, ActionReceiver.DISMISS_LIVE) { putExtra("which", "streak"); putExtra("token", today()) }
             val h = left / 3_600_000; val mi = (left / 60_000) % 60
             out += Live(ID_STREAK, "streak", today(), "Ta série de ${pl(st.n, "jour", "jours")} s’éteint à minuit",
-                "Encore ${pl(pending.size, "validation", "validations")} : ${pending.take(3).joinToString(", ") { it.g.icon + " " + it.g.title }}",
+                "Encore ${pl(pending.size, "validation", "validations")} : ${pending.take(3).joinToString(", ") { it.g.shownIcon() + " " + it.g.shownTitle() }}",
                 if (h > 0) "${h} h" else "$mi min", (plan.due.count { it.done } * per).coerceIn(0, 1000), segs, midnight, true, acts,
                 Notifier.open(ctx, ID_STREAK) { putExtra(MainActivity.EXTRA_TAB, "today") }, FLAME)
         }

@@ -73,6 +73,14 @@ sealed class Sheet {
     class Likers(val postId: String) : Sheet()
     /** Objectif reçu par lien ou code QR, à ajouter. */
     class ImportGoal(val link: String) : Sheet()
+    /** Détail d'une tuile « À la une » de l'accueil. */
+    class HomeCard(val key: String) : Sheet()
+    /** Commande rapide écrite (« j'ai couru 5 km »). */
+    object QuickCmd : Sheet()
+    /** Mes citations personnelles. */
+    object Quotes : Sheet()
+    /** Porte-monnaie détaillé. */
+    object Wallet : Sheet()
 }
 
 /** Plein écran : célébrations, récaps, stories. */

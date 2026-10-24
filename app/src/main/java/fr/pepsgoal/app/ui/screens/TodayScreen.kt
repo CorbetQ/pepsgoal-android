@@ -58,6 +58,7 @@ fun TodayScreen(ui: AppState) {
     val cards = remember(ui.rev) { homeOrder(ui.prefs).filter { it.second }.map { it.first } }
     // Disposition choisie (Paramètres › Accueil) : écart entre les cartes et marge intérieure
     val layout = ui.prefs.homeLayout
+    var collapsed by remember { mutableStateOf(ui.prefs.raw.getStringSet("homeCollapsed", emptySet())?.toSet() ?: emptySet()) }
     CompositionLocalProvider(LocalGlassPad provides when (layout) { "compact" -> 13.dp; "airy" -> 24.dp; else -> 18.dp }) {
     ScreenList(gap = when (layout) { "compact" -> 8.dp; "airy" -> 22.dp; else -> 14.dp }) {
         if (!hasGoals) {
@@ -67,89 +68,131 @@ fun TodayScreen(ui: AppState) {
             item("wx") { WeatherCard(ui) }
             return@ScreenList
         }
-        // Fin d'année : la rétrospective est prête (du 15 décembre au 10 janvier)
-        if (Recaps.wrappedOpen()) item("wrapped") { WrappedCard(ui) }
-        // Le matin : rattrapage des oublis de la veille
-        item("catchup") { CatchUpCard(ui) }
-        // Cartes dans l'ordre choisi (Paramètres › Accueil)
-        for (k in cards) when (k) {
-            "hero" -> { item("hero") { Hero(ui) }; item("ctx") { ContextCards(ui) } }
-            "aipromo" -> item("aipromo") { AiPromoCard(ui) }
-            "day" -> item("day") {
-                Glass {
-                    CardHead("Ta journée") { Count("${lv.pts} flammes") }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        Ring(done, total)
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Eyebrow("Niveau ${lv.idx}")
-                            Text(lv.name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                            Bar(lv.pct * 100)
-                            Muted(if (lv.next != null) "${lv.next!! - lv.pts} flammes avant « ${lv.nextName} »" else "Niveau maximum atteint", small = true)
-                            if (total > 0 && done == total) PButton("Journée parfaite", { ui.fs = Fs.Celebrate(pg.perfectCelebration()) }, icon = "star", small = true, kind = "primary")
-                            PButton(if (pg.vacationOf()?.let { today() >= it.first } == true) "🏖️ En vacances" else if (pg.isRest()) "😴 Jour de repos" else "Repos et vacances", { ui.open(Sheet.Rest) }, icon = if (pg.isRest()) null else "moon", small = true, kind = "ghost")
-                            PButton(if (pg.isHardDay()) "💛 Journée difficile" else "Journée difficile", { ui.open(Sheet.Hard) }, icon = if (pg.isHardDay()) null else "heart", small = true, kind = "ghost")
-                            // Bilan du soir, proposé à partir de 18 h
-                            if (nowHM() >= "18:00") PButton("Bilan du soir", { ui.open(Sheet.Evening) }, icon = "moon", small = true, kind = if (total > 0 && done < total) "primary" else "normal")
-                        }
-                    }
-                }
-            }
-            "timeline" -> item("timeline") { TimelineCard(ui, plan) }
-            "briefing" -> item("briefing") { BriefingCard(ui) }
-            "bday" -> item("bday") { BirthdayCard(ui) }
-            "advent" -> item("advent") { AdventCard(ui) }
-            "record" -> item("record") { RecordCard(ui) }
-            "challenge" -> item("challenge") { ChallengeCard(ui) }
-            "memories" -> item("memories") { MemoriesCard(ui) }
-            "wxweek" -> item("wxweek") { WeekWeatherCard(ui) }
-            "quote" -> item("quote") { QuoteCard(ui) }
-            "cheers" -> item("cheers") { FriendCheersCard(ui) }
-            "weekimg" -> item("weekimg") { WeekImageCard(ui) }
-            "evening" -> item("evening") { EveningQuickCard(ui, plan) }
-            "quest" -> item("quest") { QuestCard(ui) }
-            "tools" -> item("tools") { QuickTools(ui) }
-            "tip" -> item("tip") { AiTipCard(ui) }
-            "mood" -> item("mood") { MoodCard(ui) }
-            "wx" -> item("wx") { WeatherCard(ui) }
-            "board" -> if (pg.socialOn(u)) item("board") { Board(ui) }
-            "due" -> item("due") { DueCard(ui, plan, done, total) }
-            "verify" -> {
-                val verify = pg.db.checkins.filter { c -> c.pending && pg.goalById(c.goalId)?.buddy == u.id }
-                if (verify.isNotEmpty()) item("verify") {
-                    Glass {
-                        CardHead("À confirmer pour tes amis") { Count(verify.size) }
-                        verify.forEach { c ->
-                            val g = pg.goalById(c.goalId)!!; val o = pg.userById(c.userId)
-                            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Av(o, 36.dp)
-                                Column(Modifier.weight(1f)) {
-                                    Text("${o?.name ?: ""} · ${g.icon} ${g.title}", fontWeight = FontWeight.Bold)
-                                    Muted("${fmtDate(c.date)} · ${when (c.kind) { "done" -> "validé"; "measure" -> "mesure enregistrée"; else -> "+${fmtNum(c.value)} ${g.unit}" }}", small = true)
-                                }
-                                PButton("Confirmer", { ui.cloud.confirmCheck(c.id, true) }, kind = "primary", small = true)
-                                PButton("Refuser", { ui.cloud.confirmCheck(c.id, false) }, small = true)
-                            }
-                        }
-                    }
-                }
-            }
-            "ongoing" -> if (plan.ongoing.isNotEmpty() && !u.settings.hideOngoing) item("ongoing") {
-                Glass {
-                    CardHead("En cours") {
-                        Count(plan.ongoing.size)
-                        IconBtn("x", "Masquer la carte « En cours » (réactivable dans Paramètres › Apparence)", { u.settings.hideOngoing = true; pg.store.commit(); ui.toast("Carte « En cours » masquée. Réaffiche-la dans Paramètres › Apparence.", "list") }, plain = true, size = 36.dp)
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { plan.ongoing.forEach { key(it.id) { Box(Modifier.animatePlacement()) { GoalRow(ui, it, false) } } } }
-                }
-            }
-            "recap" -> item("recap") { RecapCard(ui) }
-        }
+        if (ui.prefs.homeStyle == "classic") {
+            // Fin d'année : la rétrospective est prête (du 15 décembre au 10 janvier)
+            if (Recaps.wrappedOpen()) item("wrapped") { WrappedCard(ui) }
+            // Le matin : rattrapage des oublis de la veille
+            item("catchup") { CatchUpCard(ui) }
+            // Accueil classique : toutes les cartes, dans l'ordre choisi (Paramètres › Accueil)
+            for (k in cards) homeCard(ui, k, plan, lv)
+        } else simpleHome(ui, cards, plan, st, lv, collapsed) { k -> collapsed = if (k in collapsed) collapsed - k else collapsed + k; ui.prefs.raw.edit().putStringSet("homeCollapsed", collapsed).apply() }
         item("custom") {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 PButton("Personnaliser l’accueil", { ui.push(Screen.Settings("home")) }, icon = "edit", kind = "ghost", small = true)
             }
         }
     }
+    }
+}
+
+/** Une carte de l'accueil, par sa clé (voir HOME_CARDS). */
+private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState, k: String, plan: Plan, lv: Level) {
+    val pg = ui.pg; val u = pg.me() ?: return
+    val done = plan.due.count { it.done }; val total = plan.due.size
+    when (k) {
+        "hero" -> { item("hero") { Hero(ui) }; item("ctx") { ContextCards(ui) } }
+        "aipromo" -> item("aipromo") { AiPromoCard(ui) }
+        "day" -> item("day") {
+            Glass {
+                CardHead("Ta journée") { Count("${lv.pts} flammes") }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    Ring(done, total)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Eyebrow("Niveau ${lv.idx}")
+                        Text(lv.name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Bar(lv.pct * 100)
+                        Muted(if (lv.next != null) "${lv.next!! - lv.pts} flammes avant « ${lv.nextName} »" else "Niveau maximum atteint", small = true)
+                        if (total > 0 && done == total) PButton("Journée parfaite", { ui.fs = Fs.Celebrate(pg.perfectCelebration()) }, icon = "star", small = true, kind = "primary")
+                        PButton(if (pg.vacationOf()?.let { today() >= it.first } == true) "🏖️ En vacances" else if (pg.isRest()) "😴 Jour de repos" else "Repos et vacances", { ui.open(Sheet.Rest) }, icon = if (pg.isRest()) null else "moon", small = true, kind = "ghost")
+                        PButton(if (pg.isHardDay()) "💛 Journée difficile" else "Journée difficile", { ui.open(Sheet.Hard) }, icon = if (pg.isHardDay()) null else "heart", small = true, kind = "ghost")
+                        // Bilan du soir, proposé à partir de 18 h
+                        if (nowHM() >= "18:00") PButton("Bilan du soir", { ui.open(Sheet.Evening) }, icon = "moon", small = true, kind = if (total > 0 && done < total) "primary" else "normal")
+                    }
+                }
+            }
+        }
+        "timeline" -> item("timeline") { TimelineCard(ui, plan) }
+        "briefing" -> item("briefing") { BriefingCard(ui) }
+        "bday" -> item("bday") { BirthdayCard(ui) }
+        "countdown" -> item("countdown") { CountdownSummary(ui) }
+        "advent" -> item("advent") { AdventCard(ui) }
+        "record" -> item("record") { RecordCard(ui) }
+        "challenge" -> item("challenge") { ChallengeCard(ui) }
+        "memories" -> item("memories") { MemoriesCard(ui) }
+        "wxweek" -> item("wxweek") { WeekWeatherCard(ui) }
+        "quote" -> item("quote") { QuoteCard(ui) }
+        "cheers" -> item("cheers") { FriendCheersCard(ui) }
+        "weekimg" -> item("weekimg") { WeekImageCard(ui) }
+        "evening" -> item("evening") { EveningQuickCard(ui, plan) }
+        "quest" -> item("quest") { QuestCard(ui) }
+        "tools" -> item("tools") { QuickTools(ui) }
+        "tip" -> item("tip") { AiTipCard(ui) }
+        "mood" -> item("mood") { MoodCard(ui) }
+        "wx" -> item("wx") { WeatherCard(ui) }
+        "board" -> if (pg.socialOn(u)) item("board") { Board(ui) }
+        "due" -> item("due") { DueCard(ui, plan, done, total) }
+        "verify" -> {
+            val verify = pg.db.checkins.filter { c -> c.pending && pg.goalById(c.goalId)?.buddy == u.id }
+            if (verify.isNotEmpty()) item("verify") {
+                Glass {
+                    CardHead("À confirmer pour tes amis") { Count(verify.size) }
+                    verify.forEach { c ->
+                        val g = pg.goalById(c.goalId)!!; val o = pg.userById(c.userId)
+                        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Av(o, 36.dp)
+                            Column(Modifier.weight(1f)) {
+                                Text("${o?.name ?: ""} · ${g.icon} ${g.title}", fontWeight = FontWeight.Bold)
+                                Muted("${fmtDate(c.date)} · ${when (c.kind) { "done" -> "validé"; "measure" -> "mesure enregistrée"; else -> "+${fmtNum(c.value)} ${g.unit}" }}", small = true)
+                            }
+                            PButton("Confirmer", { ui.cloud.confirmCheck(c.id, true) }, kind = "primary", small = true)
+                            PButton("Refuser", { ui.cloud.confirmCheck(c.id, false) }, small = true)
+                        }
+                    }
+                }
+            }
+        }
+        "ongoing" -> if (plan.ongoing.isNotEmpty() && !u.settings.hideOngoing) item("ongoing") {
+            Glass {
+                CardHead("En cours") {
+                    Count(plan.ongoing.size)
+                    IconBtn("x", "Masquer la carte « En cours » (réactivable dans Paramètres › Apparence)", { u.settings.hideOngoing = true; pg.store.commit(); ui.toast("Carte « En cours » masquée. Réaffiche-la dans Paramètres › Apparence.", "list") }, plain = true, size = 36.dp)
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { plan.ongoing.forEach { key(it.id) { Box(Modifier.animatePlacement()) { GoalRow(ui, it, false) } } } }
+            }
+        }
+        "recap" -> item("recap") { RecapCard(ui) }
+            }
+}
+
+/**
+ * Accueil simplifié : un en-tête qui réunit la série, la journée et les actions du jour ; l'essentiel à valider ;
+ * les cartes ponctuelles en tuiles « À la une » ; le reste rangé en sections repliables. Aucune carte n'est perdue :
+ * chacune garde son interrupteur dans Paramètres › Accueil.
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.simpleHome(ui: AppState, cards: List<String>, plan: Plan, st: Streak, lv: Level, collapsed: Set<String>, toggle: (String) -> Unit) {
+    val pg = ui.pg; val u = pg.me() ?: return
+    if ("hero" in cards || "day" in cards) { item("hero") { HomeHeader(ui, plan, st, lv) }; item("ctx") { ContextCards(ui) } }
+    if ("aipromo" in cards) homeCard(ui, "aipromo", plan, lv)
+    for (k in listOf("due", "verify", "ongoing")) if (k in cards) homeCard(ui, k, plan, lv)
+    val moments = cards.filter { it in MOMENT_KEYS }
+    item("moments") {
+        val tiles = rememberMoments(ui, moments)
+        if (tiles.isNotEmpty() || "countdown" in moments) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            HomeSectionHead("À la une", "star", "moments" in collapsed) { toggle("moments") }
+            androidx.compose.animation.AnimatedVisibility("moments" !in collapsed) { MomentsRow(ui, tiles, "countdown" in moments) }
+        }
+    }
+    val sections = listOf(
+        Triple("day", "Ta journée" to "clock", listOf("timeline", "mood", "tools")),
+        Triple("progress", "Progression" to "star", listOf("recap")),
+        Triple("out", "Dehors" to "cloud", listOf("wx")),
+        Triple("friends", "Entre amis" to "users", if (pg.socialOn(u)) listOf("board") else emptyList()),
+        Triple("coach", "Coach" to "sparkle", listOf("tip"))
+    )
+    for ((id, head, keys) in sections) {
+        val shown = keys.filter { it in cards }; if (shown.isEmpty()) continue
+        item("sec:$id") { HomeSectionHead(head.first, head.second, id in collapsed) { toggle(id) } }
+        if (id !in collapsed) for (k in shown) homeCard(ui, k, plan, lv)
     }
 }
 

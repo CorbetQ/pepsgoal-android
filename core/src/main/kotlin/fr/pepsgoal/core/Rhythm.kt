@@ -48,7 +48,7 @@ fun Pg.checkResumes() {
         val until = g.pausedUntil!!
         if (until < t) {
             g.pausedUntil = null; g.pauseReason = ""
-            notify(u.id, "« ${g.title} » reprend aujourd’hui après ta pause. On repart en douceur !", "reminder", g.id)
+            notify(u.id, "« ${g.shownTitle()} » reprend aujourd’hui après ta pause. On repart en douceur !", "reminder", g.id)
             store.commit()
         }
     }

@@ -65,6 +65,7 @@ fun WidgetsSettings(ui: AppState) {
                         "week" -> PreviewWeek(dark)
                         "flame" -> PreviewFlame(dark)
                         "timeline" -> PreviewTimeline(dark)
+                        "quote" -> PreviewQuote(dark)
                         else -> PreviewQuick(dark)
                     }
                 }
@@ -144,6 +145,12 @@ private fun PreviewFlame(dark: Boolean) = Frame(dark, 76.dp) { c ->
         Image(painterResource(R.drawable.ic_flame), null, Modifier.size(26.dp))
         Text("23", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = c.ink)
     }
+}
+
+@Composable
+private fun PreviewQuote(dark: Boolean) = Frame(dark, 250.dp) { c ->
+    Text("“ Le succès, c’est tomber sept fois, se relever huit. ”", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.ink)
+    Text("— Proverbe japonais", Modifier.padding(top = 4.dp), fontSize = 11.sp, color = c.ink2)
 }
 
 @Composable

@@ -48,7 +48,7 @@ object SmartReminders {
             val key = "smart|$t|${g.id}"
             if (now in at..(at + 25 * 60_000) && key !in sent) {
                 app.prefs.notifiedIds = app.prefs.notifiedIds + key
-                Notifier.simple(ctx, key.hashCode(), Notifier.CH_REMIND, "${g.icon} C’est ton moment habituel", "Tu valides souvent « ${g.title} » vers cette heure-ci. On s’y met ?", goalId = g.id)
+                Notifier.simple(ctx, key.hashCode(), Notifier.CH_REMIND, "${g.shownIcon()} C’est ton moment habituel", "Tu valides souvent « ${g.shownTitle()} » vers cette heure-ci. On s’y met ?", goalId = g.id)
             }
         }
         lastChance(ctx)?.let { at ->

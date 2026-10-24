@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.sys
 
+import fr.pepsgoal.core.shownTitle
+import fr.pepsgoal.core.shownIcon
 import android.app.NotificationChannel
 import android.app.NotificationChannelGroup
 import android.app.NotificationManager
@@ -192,7 +194,7 @@ object Notifier {
         val big = android.widget.RemoteViews(app.packageName, R.layout.notif_morning)
         due.sortedBy { it.done }.take(6).forEachIndexed { i, x ->
             val row = android.widget.RemoteViews(app.packageName, R.layout.notif_row)
-            row.setTextViewText(R.id.title, "${x.g.icon} ${x.g.title}")
+            row.setTextViewText(R.id.title, "${x.g.shownIcon()} ${x.g.shownTitle()}")
             row.setTextViewText(R.id.check, if (x.done) "✓" else "○")
             val oneTap = x.g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit") && x.g.steps.isEmpty()
             val pi = if (oneTap) action(app, id * 10 + i, ActionReceiver.VALIDATE) { putExtra("goal", x.g.id); putExtra("nid", id); putExtra("keep", true); putExtra("morning", true) }
@@ -240,7 +242,7 @@ object Notifier {
         if (n.view == "evening") b.addAction(R.drawable.ic_notif, fr.pepsgoal.app.ui.I18n.tr("Écouter le bilan"), open(app, id + 4) { putExtra("evening", true); putExtra("speak", true) })
         if (n.type == "reminder" && g == null) {
             val due = pg.todayPlan().due.filter { !it.done && it.g.type in setOf("routine", "abstinence", "challenge", "period", "timed") }
-            due.take(2).forEachIndexed { i, x -> b.addAction(R.drawable.ic_notif, "✓ ${x.g.title.take(18)}", action(app, id * 10 + i, ActionReceiver.VALIDATE) { putExtra("goal", x.g.id); putExtra("nid", id); putExtra("keep", true) }) }
+            due.take(2).forEachIndexed { i, x -> b.addAction(R.drawable.ic_notif, "✓ ${x.g.shownTitle().take(18)}", action(app, id * 10 + i, ActionReceiver.VALIDATE) { putExtra("goal", x.g.id); putExtra("nid", id); putExtra("keep", true) }) }
         }
         n.checkinId?.let { cid ->
             b.addAction(R.drawable.ic_notif, "Confirmer", action(app, id + 1, ActionReceiver.CONFIRM) { putExtra("checkin", cid); putExtra("ok", true); putExtra("nid", id) })
