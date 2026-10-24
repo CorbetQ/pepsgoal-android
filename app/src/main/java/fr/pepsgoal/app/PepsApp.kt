@@ -53,6 +53,7 @@ class PepsApp : Application() {
         fr.pepsgoal.app.sys.Perf.load(this)
         // Prix des icônes, pour rendre les flammes après la baisse des prix de la boutique
         fr.pepsgoal.core.shopExtraPrices = fr.pepsgoal.app.sys.AppIcons.ALL.associate { "icon:${it.key}" to it.price }
+        fr.pepsgoal.core.shopExtraNames = fr.pepsgoal.app.sys.AppIcons.ALL.associate { "icon:${it.key}" to it.label }
         fr.pepsgoal.app.ui.FluentEmoji.load(this)
         secrets = KeystoreSecrets(this)
         store = Store(FileDb(this))

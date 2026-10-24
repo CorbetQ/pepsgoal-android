@@ -13,7 +13,7 @@ object Msg {
     private const val RICH = "{\"pg\":1,"
     /** Messages de service, jamais affichés ni notifiés : votes, réactions, modification et suppression d'un message. */
     val SILENT = setOf("vote", "react", "edit", "del", "pin", "duoj", "duod", "duox", "bg", "bgs", "shot")
-    private val KINDS = setOf("photo", "voice", "goal", "text", "poll", "vote", "react", "edit", "del", "pin", "duo", "duoj", "duod", "duox", "bg", "bgs", "stk", "shot", "gift")
+    private val KINDS = setOf("photo", "voice", "goal", "text", "poll", "vote", "react", "edit", "del", "pin", "duo", "duoj", "duod", "duox", "bg", "bgs", "stk", "shot", "gift", "gifti")
 
     fun pack(o: JsonObject): String = JsonObject(mapOf("pg" to JsonPrimitive(1)) + o.filterKeys { it != "pg" }).toString()
 
@@ -48,6 +48,7 @@ object Msg {
             "stk" -> "${b.str("t", "🔥")} Sticker"
             "shot" -> "📸 A pris une capture d’écran"
             "gift" -> "🎁 ${b["n"]?.jsonPrimitive?.intOrNull ?: 0} flammes offertes"
+            "gifti" -> "🎁 Cadeau : ${b.str("nm", "article de la boutique")}"
             else -> b.str("t")
         }
     }

@@ -78,7 +78,7 @@ fun ShopScreen(ui: AppState) {
                         Muted("flammes à dépenser · ${pg.points(u.id)} gagnées au total", small = true)
                     }
                 }
-                Muted("Chaque validation rapporte des flammes. Les dépenser ne fait jamais baisser ton niveau ni ta série.", Modifier.padding(top = 8.dp), small = true)
+                Muted("Chaque validation rapporte des flammes. Les dépenser ne fait jamais baisser ton niveau ni ta série." + if (pg.socialOn()) " Touche 🎁 sur un article pour l’offrir à un ami." else "", Modifier.padding(top = 8.dp), small = true)
             }
         }
         item("quests") { FlameQuestsCard(ui) }
@@ -97,7 +97,10 @@ fun ShopScreen(ui: AppState) {
                     pair.forEach { ic ->
                         val owned = pg.owns("icon:${ic.key}", ic.price, u); val on = curIcon == ic.key
                         Glass(Modifier.weight(1f), pad = 14.dp, onClick = { purchase("icon:${ic.key}", ic.label, ic.price, ic.season) { AppIcons.set(ctx, ic.key); curIcon = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") } }) {
-                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { AppIconPreview(ic, 76.dp, on) }
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                AppIconPreview(ic, 76.dp, on)
+                                GiftBtn(ui, "icon:${ic.key}", ic.label, ic.price, Modifier.align(Alignment.TopEnd))
+                            }
                             Text(ic.label, Modifier.fillMaxWidth().padding(top = 10.dp), fontWeight = FontWeight.ExtraBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
                             ic.season?.let { SeasonTag(it, owned) }
                             PriceTag(owned, on, ic.price, wallet, pg.buyable("icon:${ic.key}", ic.price, ic.season))
@@ -117,6 +120,7 @@ fun ShopScreen(ui: AppState) {
                     val scene = t.bg.startsWith("s:")
                     Box(Modifier.fillMaxWidth().height(if (scene) 150.dp else 96.dp).background(Brush.linearGradient(t.colors.map(::hex)))) {
                         if (scene) SceneBg(t.bg.removePrefix("s:"), Modifier.fillMaxSize(), still = true)
+                        GiftBtn(ui, "theme:${t.key}", t.name, t.price, Modifier.align(Alignment.BottomEnd).padding(8.dp), onImage = true)
                         Row(Modifier.align(Alignment.BottomStart).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             t.colors.forEach { c -> Box(Modifier.size(22.dp).clip(CircleShape).background(hex(c)).border(2.dp, Color.White.copy(alpha = .8f), CircleShape)) }
                         }
@@ -173,6 +177,7 @@ fun ShopScreen(ui: AppState) {
                         Glass(Modifier.weight(1f), pad = 0.dp, border = if (on) p.flame else null, onClick = { purchase("bg:${b.key}", b.name, b.price, b.season) { pg.applyBg(b); ui.themeTick++; ui.toast("Fond « ${b.name} » appliqué.", "image") } }) {
                             Box(Modifier.fillMaxWidth().aspectRatio(.62f).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(Brush.verticalGradient(b.sky.map(::hex)))) {
                                 SceneBg(b.key, Modifier.fillMaxSize(), still = true)
+                                GiftBtn(ui, "bg:${b.key}", b.name, b.price, Modifier.align(Alignment.TopEnd).padding(6.dp), onImage = true)
                             }
                             Column(Modifier.padding(12.dp)) {
                                 Text(b.name, fontWeight = FontWeight.ExtraBold, maxLines = 1)
@@ -206,6 +211,7 @@ private fun ModeCard(ui: AppState, m: ShopMode, wallet: Int, modifier: Modifier,
             ThemePreview(themeLook("m:${m.key}"), Modifier.fillMaxSize(), accent = m.accent.map(::hex))
             Text(if (m.dark) "Sombre" else "Clair", Modifier.align(Alignment.TopStart).padding(8.dp).clip(CircleShape).background(Color.Black.copy(alpha = .4f)).padding(horizontal = 8.dp, vertical = 3.dp),
                 color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+            GiftBtn(ui, "mode:${m.key}", m.name, m.price, Modifier.align(Alignment.BottomEnd).padding(6.dp), onImage = true)
             if (trying) Text("Essai", Modifier.align(Alignment.TopEnd).padding(8.dp).clip(CircleShape).background(p.flame).padding(horizontal = 8.dp, vertical = 3.dp), color = p.onAccent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
         }
         Column(Modifier.padding(12.dp)) {
@@ -220,6 +226,15 @@ private fun ModeCard(ui: AppState, m: ShopMode, wallet: Int, modifier: Modifier,
             PriceTag(owned, on, m.price, wallet)
         }
     }
+}
+
+/** Bouton « Offrir » d'un article (fonctions sociales actives, article payant). */
+@Composable
+private fun GiftBtn(ui: AppState, key: String, name: String, price: Int, modifier: Modifier = Modifier, onImage: Boolean = false) {
+    if (price <= 0 || !ui.pg.socialOn()) return
+    val p = LocalPal.current
+    Box(modifier.size(36.dp).clip(CircleShape).background(if (onImage) Color.Black.copy(alpha = .38f) else p.glassStrong).clickable(onClickLabel = "Offrir « $name » à un ami") { ui.open(fr.pepsgoal.app.Sheet.GiftItem(key)) },
+        contentAlignment = Alignment.Center) { Pi("gift", size = 18.dp, tint = if (onImage) Color.White else p.ink) }
 }
 
 @Composable

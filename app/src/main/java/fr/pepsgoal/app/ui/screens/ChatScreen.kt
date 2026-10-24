@@ -397,7 +397,7 @@ private fun MessageRow(
     val kind = if (gone) "gone" else b?.str("k") ?: "text"
     // Un à quatre emojis seuls, ou un sticker : affichés en grand, sans bulle
     val jumbo = if (kind == "text" && b?.get("r") == null) Emo.only(b?.str("t").orEmpty()) else null
-    val bare = jumbo != null || kind == "stk" || kind == "gift"
+    val bare = jumbo != null || kind == "stk" || kind == "gift" || kind == "gifti"
     val canAct = !m.official && b != null && !pg.isBanned(pg.me()) && !gone
     val mentioned = b?.strs("mn")?.contains(me) == true
     // Glisser un message vers la droite pour y répondre (icône qui apparaît sous le doigt, clic net au seuil)
@@ -454,6 +454,7 @@ private fun MessageRow(
                 kind == "voice" -> { VoicePlayer(ui, m, b); VoiceTranscript(ui, m, Att.get(ui, m, b.obj("a"))) }
                 kind == "stk" -> StickerView(b.str("s"), b.str("t"), 132.dp)
                 kind == "gift" -> GiftCard(ui, m, b, mine)
+                kind == "gifti" -> GiftItemCard(ui, m, b, mine)
                 jumbo != null -> JumboEmojis(jumbo)
                 kind == "poll" -> ChatPoll(ui, m, b, votes ?: emptyMap(), onVote)
                 kind == "goal" -> {

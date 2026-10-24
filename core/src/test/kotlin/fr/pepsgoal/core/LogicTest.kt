@@ -452,6 +452,25 @@ class LogicTest {
         assertEquals("Il y a un mois", pg.memories().single().label)
     }
 
+    @Test fun shopItemGifts() {
+        val me = pg.me()!!; me.shopBonus = 500
+        val item = shopCatalog().first { it.kind == "mode" }
+        assertEquals(null, pg.giftItemError(item.key)); assertTrue(pg.giftItemError("theme:nope") != null)
+        val w0 = pg.wallet(); pg.spendItemGift(item.key, item.price)
+        assertEquals(w0 - item.price, pg.wallet()); assertEquals(item.price, pg.itemsGiven())
+        // Le recalcul des prix ne rend pas les flammes offertes
+        me.shopOwned = mutableListOf("theme:${SHOP_THEMES[0].key}"); me.shopSpent += SHOP_THEMES[0].price
+        pg.spendGift(30); val w1 = pg.wallet(); pg.repriceShop(); assertEquals(w1, pg.wallet())
+        assertEquals(item.price + 30, pg.walletBreakdown().given)
+        pg.refundItemGift(item.key, item.price); assertEquals(w1 + item.price, pg.wallet())
+        // Reçu : rejoint la collection, une seule fois ; déjà possédé : remboursé en flammes
+        assertEquals(ItemGift.ADDED, pg.openItemGift("g1", item.key, item.price)); assertTrue(item.key in me.shopOwned)
+        assertEquals(null, pg.openItemGift("g1", item.key, item.price))
+        val w2 = pg.wallet(); assertEquals(ItemGift.CONVERTED, pg.openItemGift("g2", item.key, item.price)); assertEquals(w2 + item.price, pg.wallet())
+        // Les marques des cadeaux survivent au nettoyage de shopClaimed
+        assertTrue(trimClaimed(listOf("giftiout:x:1") + List(500) { "perfect:$it" }).contains("giftiout:x:1"))
+    }
+
     @Test fun sunTheme() {
         val noon = java.time.LocalDateTime.of(2026, 10, 21, 13, 0); val night = java.time.LocalDateTime.of(2026, 10, 21, 22, 30)
         assertTrue(!sunDark(null, noon)); assertTrue(sunDark(null, night))

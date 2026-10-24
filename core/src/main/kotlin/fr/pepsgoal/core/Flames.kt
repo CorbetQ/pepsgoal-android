@@ -27,7 +27,7 @@ fun shopPriceOf(key: String): Int? = when {
 
 private fun Pg.claim(u: fr.pepsgoal.core.model.User, key: String, flames: Int, text: String): Boolean {
     if (key in u.shopClaimed) return false
-    u.shopClaimed = (u.shopClaimed + key).takeLast(400).toMutableList()
+    u.shopClaimed = trimClaimed(u.shopClaimed + key)
     if (flames > 0) { u.shopBonus += flames; notify(u.id, text, "badge") }
     return true
 }
@@ -40,7 +40,8 @@ fun Pg.repriceShop() {
     val u = me() ?: return
     if (u.shopOwned.isEmpty() || u.shopSpent <= 0) return
     if (shopExtraPrices.isEmpty() && u.shopOwned.any { it.startsWith("icon:") }) return
-    val now = u.shopOwned.sumOf { shopPriceOf(it) ?: 0 }
+    // Les flammes offertes (en flammes ou en articles) font partie de la dépense : elles ne sont pas rendues
+    val now = u.shopOwned.sumOf { shopPriceOf(it) ?: 0 } + giftsOut()
     if (u.shopSpent <= now) return
     val back = u.shopSpent - now
     u.shopSpent = now
