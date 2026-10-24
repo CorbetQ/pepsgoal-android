@@ -108,7 +108,7 @@ fun Pg.checkMonthRecap() {
     u.shopClaimed.add(mark); store.commit()
     if (n == 0) return
     val m = Recaps.MONTHS_LONG[prev.monthValue - 1]
-    notify(u.id, "🗓️ Ton mois ${if (m.first() in "aeiou") "d’" else "de "}$m est prêt : ${pl(n, "validation", "validations")}. Découvre ton récap !", "recap")
+    notify(u.id, "🗓️ Le bilan de ton mois est prêt ($m) : ${pl(n, "validation", "validations")}. Découvre ton récap !", "recap")
 }
 
 /* ---------------------------------------------------------------- Porte-monnaie détaillé */
