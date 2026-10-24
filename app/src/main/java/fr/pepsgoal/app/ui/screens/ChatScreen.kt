@@ -693,7 +693,7 @@ private fun Composer(ui: AppState, u: User, key: String, members: List<String>?,
                 }
                 send(if (o.size > 2) JsonObject(o) else JsonPrimitive(text), null, null)
                 tv = TextFieldValue(""); clearReply(); panel = null
-            }, size = 40.dp)
+            }, size = 40.dp, primary = true)
             }
         }
     }

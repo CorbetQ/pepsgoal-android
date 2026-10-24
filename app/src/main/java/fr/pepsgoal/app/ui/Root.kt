@@ -381,7 +381,7 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
         Box(Modifier.align(Alignment.TopCenter).padding(top = top + 6.dp).graphicsLayer {
             val f = if (refreshing) 1f else st.distanceFraction.coerceIn(0f, 1.3f)
             alpha = f.coerceAtMost(1f); translationY = (f - 1f) * 24.dp.toPx(); val sc = .6f + .4f * f.coerceAtMost(1f); scaleX = sc; scaleY = sc
-        }.size(46.dp).shadow(10.dp.ifShadows(), CircleShape, spotColor = p.flame.copy(alpha = .5f)).clip(CircleShape).background(p.glassStrong.copy(alpha = 1f)), contentAlignment = Alignment.Center) {
+        }.size(48.dp).glow(CircleShape, p.flame, p, 10.dp).background(p.glassStrong.copy(alpha = 1f), CircleShape).sheen(CircleShape, p.dark, .8f).clip(CircleShape), contentAlignment = Alignment.Center) {
             Box(Modifier.graphicsLayer {
                 // Flamme qui vacille pendant le chargement
                 val w = if (refreshing) kotlin.math.sin(spin.value * 2f * kotlin.math.PI.toFloat()) else 0f

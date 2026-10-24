@@ -246,10 +246,10 @@ fun PageBackdrop(c1: Color, c2: Color, modifier: Modifier = Modifier) {
         if (p.contrast || p.transp) return@Canvas
         val w = size.width; val h = size.height; val k = if (p.dark) .8f else 1f
         fun halo(c: Color, x: Float, y: Float, r: Float, a: Float) = drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a * k), c.copy(alpha = a * k * .35f), Color.Transparent), Offset(x, y), r), r, Offset(x, y))
-        halo(c1, w * .08f, h * .02f, w * 1.05f, .55f)
-        halo(c2, w * 1.02f, h * .3f, w * .85f, .38f)
-        halo(androidx.compose.ui.graphics.lerp(c1, c2, .5f), w * .25f, h * 1.02f, w * .95f, .32f)
-        drawRect(Brush.verticalGradient(0f to c1.copy(alpha = .18f * k), .35f to Color.Transparent))
+        halo(c1, w * .08f, h * .02f, w * 1.1f, .68f)
+        halo(c2, w * 1.02f, h * .3f, w * .9f, .5f)
+        halo(androidx.compose.ui.graphics.lerp(c1, c2, .5f), w * .25f, h * 1.02f, w * 1f, .42f)
+        drawRect(Brush.verticalGradient(0f to c1.copy(alpha = .24f * k), .35f to Color.Transparent))
     }
 }
 
@@ -465,8 +465,12 @@ fun CardHead(title: String, modifier: Modifier = Modifier, emoji: String? = null
     }
 }
 
+/** Compteur d'un titre de carte : petite pastille creusée, chiffres en gras. */
 @Composable
-fun Count(n: Any) = Text("$n", fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink2)
+fun Count(n: Any) {
+    val p = LocalPal.current
+    Text("$n", Modifier.clip(CircleShape).background(p.ink.copy(alpha = if (p.dark) .1f else .06f)).padding(horizontal = 10.dp, vertical = 3.dp), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = p.ink2, maxLines = 1)
+}
 
 @Composable
 fun Eyebrow(text: String, color: Color = LocalPal.current.ink2) = Text(tr(text).uppercase(), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = color)
@@ -509,17 +513,18 @@ private val LocalIndication = androidx.compose.foundation.LocalIndication
 private fun Modifier.alpha(a: Float) = this.graphicsLayer { alpha = a }
 
 @Composable
-fun IconBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier, plain: Boolean = false, badge: Int = 0, tint: Color? = null, size: Dp = 42.dp) {
+fun IconBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier, plain: Boolean = false, badge: Int = 0, tint: Color? = null, size: Dp = 42.dp, primary: Boolean = false) {
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
     // Grandes cibles (TalkBack, Lecture facile) : zone tactile d'au moins 48 dp
     Box(modifier.then(if (p.big) Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp) else Modifier), contentAlignment = Alignment.Center) {
         Box(
             Modifier.semantics { contentDescription = desc; role = Role.Button }.bounce(inter, .84f).size(if (plain) size - 6.dp else size)
-                .then(if (plain) Modifier.clip(CircleShape) else Modifier.depth(CircleShape, p, 1).background(if (p.dark) p.glassStrong else Color.White.copy(alpha = .86f), CircleShape)
+                .then(if (primary && !p.contrast) Modifier.candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 8.dp).clip(CircleShape)
+                    else if (plain) Modifier.clip(CircleShape) else Modifier.depth(CircleShape, p, 1).background(if (p.dark) p.glassStrong else Color.White.copy(alpha = .86f), CircleShape)
                     .then(if (p.contrast) Modifier.border(1.dp, ctlEdge(p), CircleShape) else Modifier.sheen(CircleShape, p.dark, .6f)).clip(CircleShape))
                 .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center
-        ) { Pi(icon, size = 20.dp, tint = tint ?: if (plain) p.ink2 else p.ink) }
+        ) { Pi(icon, size = 20.dp, tint = tint ?: if (primary && !p.contrast) p.onAccent else if (plain) p.ink2 else p.ink) }
         if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp))
     }
 }

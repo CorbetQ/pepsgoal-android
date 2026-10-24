@@ -53,7 +53,7 @@ fun HealthSettings(ui: AppState) {
                     Health.METRICS.chunked(2).forEach { row ->
                         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             row.forEach { m ->
-                                Row(Modifier.weight(1f).fillMaxHeight().clip(androidx.compose.foundation.shape.smoothShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(Modifier.weight(1f).fillMaxHeight().clip(fr.pepsgoal.app.ui.smoothShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Emoji(m.emoji, 22.dp)
                                     Column { Muted(m.label, small = true, maxLines = 1); Text(Health.format(m.key, values[m.key]), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1) }
                                 }

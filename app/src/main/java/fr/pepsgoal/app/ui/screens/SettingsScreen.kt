@@ -153,6 +153,8 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
             if (!low) head(Modifier.drawBehind {
                 // Barre givrée qui apparaît avec le titre compact, fine ligne de séparation en bas
                 drawRect(p.glassStrong.copy(alpha = p.glassStrong.alpha * k))
+                // Reflet clair sous le bord de la barre (verre), puis fine ligne de séparation
+                drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = (if (p.dark) .05f else .3f) * k), Color.Transparent)))
                 drawRect(p.line.copy(alpha = p.line.alpha * k), androidx.compose.ui.geometry.Offset(0f, size.height - 1.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
             }.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
             // Grand écran : colonne de lecture centrée, à largeur confortable
@@ -164,8 +166,8 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
                         val f = (off / 44.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
                     }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
-                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp)
+                        if (icon != null) IconTile(icon, c1, c2, 56.dp)
+                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, lineHeight = 32.sp)
                     }
                 }
                 content()
