@@ -357,7 +357,7 @@ private fun AccountSettings(ui: AppState, u: User) {
     val pg = ui.pg; val p = LocalPal.current
     var name by remember(u.id) { mutableStateOf(u.name) }; var bio by remember(u.id) { mutableStateOf(u.bio) }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        CatHero("account", if (pg.isGuest(u)) "Profil sans compte, gardé sur ce téléphone" else "@${u.username} · inscrit ${ago(u.createdAt)}", leading = { LevelRing(pg.level(pg.points(u.id)).idx, 52.dp) { Av(u, 52.dp) } }, chips = {
+        CatHero("account", if (pg.isGuest(u)) "Profil sans compte, gardé sur ce téléphone" else "@${u.username} · inscrit ${ago(u.createdAt)}", leading = { LevelRing(pg.level(pg.points(u.id)).tier, 52.dp) { Av(u, 52.dp) } }, chips = {
             when {
                 pg.db.sandbox -> Chip("Démonstration", "star", p.flame)
                 pg.isGuest(u) -> Chip("Sans compte", "lock", p.type("deadline").c)

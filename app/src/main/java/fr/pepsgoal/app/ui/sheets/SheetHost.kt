@@ -118,6 +118,7 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.QuickCmd -> fr.pepsgoal.app.ui.screens.QuickCmdSheet(ui)
         is Sheet.Quotes -> fr.pepsgoal.app.ui.screens.QuotesSheet(ui)
         is Sheet.Wallet -> fr.pepsgoal.app.ui.screens.WalletSheet(ui)
+        is Sheet.Levels -> fr.pepsgoal.app.ui.screens.LevelsSheet(ui)
     }
 }
 

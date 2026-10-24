@@ -471,6 +471,28 @@ class LogicTest {
         assertTrue(trimClaimed(listOf("giftiout:x:1") + List(500) { "perfect:$it" }).contains("giftiout:x:1"))
     }
 
+    @Test fun levels() {
+        // Courbe : seuils croissants, Supernova au niveau 46 vers 83 000 flammes (≈ 3 ans à 70 flammes par jour)
+        assertEquals(0, levelThreshold(1)); assertEquals(60, levelThreshold(2))
+        assertTrue((2..60).all { levelThreshold(it) > levelThreshold(it - 1) })
+        assertTrue(levelThreshold(46) in 80_000..86_000)
+        assertEquals("Étincelle I", levelOf(0).name); assertEquals(1, levelOf(59).idx); assertEquals(2, levelOf(60).idx)
+        assertEquals("Braise I", levelName(6)); assertEquals("Supernova V", levelName(50)); assertEquals("Supernova ✦2", levelName(52))
+        val l = levelOf(5000); assertEquals(3, l.tier); assertEquals("Flamme", l.tierName); assertTrue(l.idx in 11..15)
+        assertEquals(4, levelTier(16)); assertEquals(10, levelTier(70))
+        assertEquals(60, levelReward(6)); assertEquals(10, levelReward(7))
+        // Passage au nouveau système : niveaux déjà atteints notés sans récompense, puis récompense à chaque niveau gagné
+        val me = pg.me()!!; val b0 = me.shopBonus
+        pg.checkLevelUp(); assertTrue("lvl:init" in me.shopClaimed); assertEquals(b0, me.shopBonus)
+        val g = goal("routine", 400) { mode = "days"; days = (0..6).toList() }
+        val lv0 = pg.level(pg.points(me.id)).idx
+        pg.addCheck(g, "done", 1.0, levelThreshold(lv0 + 2) - pg.points(me.id), ymd(todayDate().minusDays(3)))
+        pg.checkLevelUp()
+        assertEquals(b0 + levelReward(lv0 + 1) + levelReward(lv0 + 2), me.shopBonus)
+        pg.checkLevelUp(); assertEquals(b0 + levelReward(lv0 + 1) + levelReward(lv0 + 2), me.shopBonus)
+        assertTrue(trimClaimed(listOf("lvl:7") + List(500) { "perfect:$it" }).contains("lvl:7"))
+    }
+
     @Test fun sunTheme() {
         val noon = java.time.LocalDateTime.of(2026, 10, 21, 13, 0); val night = java.time.LocalDateTime.of(2026, 10, 21, 22, 30)
         assertTrue(!sunDark(null, noon)); assertTrue(sunDark(null, night))

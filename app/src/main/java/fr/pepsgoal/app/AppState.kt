@@ -83,6 +83,8 @@ sealed class Sheet {
     object Quotes : Sheet()
     /** Porte-monnaie détaillé. */
     object Wallet : Sheet()
+    /** Les dix paliers de niveau. */
+    object Levels : Sheet()
 }
 
 /** Plein écran : célébrations, récaps, stories. */

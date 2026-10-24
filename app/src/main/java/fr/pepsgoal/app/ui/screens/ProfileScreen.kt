@@ -42,6 +42,7 @@ import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
 import fr.pepsgoal.core.*
+import fr.pepsgoal.app.sys.Perf
 import fr.pepsgoal.core.cloud.str
 import fr.pepsgoal.core.model.Story
 import fr.pepsgoal.core.model.User
@@ -97,7 +98,16 @@ fun ProfileScreen(ui: AppState) {
 @Composable
 private fun ProfileHero(ui: AppState, u: User, lv: Level) {
     val p = LocalPal.current; val pg = ui.pg; val ctx = androidx.compose.ui.platform.LocalContext.current
-    val cols = levelColors(lv.idx, p)
+    val cols = tierColors(lv.tier)
+    // Couronne de flammes : sa taille suit la progression ; elle repart de la taille vue la dernière fois et grandit en douceur
+    val auraK = (((lv.idx - 1) + lv.pct) / (LEVEL_MAX - 1)).toFloat().coerceIn(0f, 1f)
+    val aura = remember { androidx.compose.animation.core.Animatable(ui.prefs.raw.getFloat("auraK", 0f)) }
+    LaunchedEffect(auraK) {
+        if (p.motion) aura.snapTo(auraK)
+        else { kotlinx.coroutines.delay(350); aura.animateTo(auraK, androidx.compose.animation.core.tween(if (auraK > aura.value) 2400 else 600, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
+        ui.prefs.raw.edit().putFloat("auraK", auraK).apply()
+    }
+    val flick = slowPhaseState(1700, 20, running = Perf.flags.fx)
     Glass(pad = 0.dp) {
         Box(Modifier.fillMaxWidth()) {
             // Bannière : dégradé du niveau, halos et petites flammes dessinés une fois (aucune animation)
@@ -113,8 +123,8 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
                 HeroRound("gear", "Paramètres") { ui.push(Screen.Settings()) }
             }
             Column(Modifier.fillMaxWidth().padding(top = 66.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box {
-                    Box(Modifier.clip(CircleShape).background(p.bg).padding(4.dp).clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) { LevelRing(lv.idx, 92.dp) { Av(u, 92.dp) } }
+                Box(Modifier.flameAura(aura.value, 55.dp, cols, { flick.value }, still = p.motion || !Perf.flags.fx)) {
+                    Box(Modifier.clip(CircleShape).background(p.bg).padding(4.dp).clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) { LevelRing(lv.tier, 92.dp) { Av(u, 92.dp) } }
                     Box(Modifier.align(Alignment.BottomEnd).offset(x = (-2).dp, y = (-2).dp).size(30.dp).clip(CircleShape).background(p.ink).border(2.dp, p.bg, CircleShape)
                         .clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }, contentAlignment = Alignment.Center) { Pi("edit", size = 15.dp, tint = p.bg) }
                 }
@@ -132,8 +142,8 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
                 }
             }
         }
-        // Niveau : nom, palier suivant et barre de progression
-        Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Niveau : nom, niveau suivant, barre de progression et les dix paliers (touché : le détail des paliers)
+        Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Voir les paliers de niveau") { ui.open(Sheet.Levels) }.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.clip(CircleShape).background(Brush.linearGradient(cols)).padding(horizontal = 10.dp, vertical = 4.dp)) {
                     Text("Niveau ${lv.idx}", color = fr.pepsgoal.app.ui.theme.onColors(cols), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
@@ -141,16 +151,18 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
                 Text(lv.name, Modifier.padding(start = 8.dp).weight(1f), fontWeight = FontWeight.ExtraBold)
                 Muted(lv.next?.let { "${fmtNum(lv.pts)} / ${fmtNum(it)}" } ?: "${fmtNum(lv.pts)} flammes", small = true)
             }
-            Bar(lv.pct * 100, height = 10.dp)
-            Muted(lv.next?.let { "Encore ${fmtNum(it - lv.pts)} flammes pour « ${lv.nextName} »" } ?: "Niveau maximum atteint", small = true)
+            Bar(lv.pct * 100, height = 10.dp, color = cols.last())
+            Muted(lv.next?.let { "Encore ${fmtNum(it - lv.pts)} flammes pour « ${lv.nextName} » (${levelEta(it - lv.pts)})" } ?: "Niveau maximum atteint", small = true)
+            // Les dix paliers : flammes allumées aux couleurs de chaque palier atteint
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                for (t in 1..LEVEL_TIERS.size) Flame(if (t == lv.tier) 26.dp else 18.dp, dim = t > lv.tier, colors = tierColors(t))
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Muted(lv.nextTierName?.let { "Palier ${lv.tierName} · ${Math.round(lv.tierPct * 100)} % vers ${it}" } ?: "Dernier palier atteint : ${lv.tierName}", Modifier.weight(1f), small = true, maxLines = 1)
+                Text("Paliers ›", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
+            }
         }
     }
-}
-
-/** Couleurs d'un niveau (bannière, pastille), comme l'anneau autour de l'avatar. */
-private fun levelColors(level: Int, p: fr.pepsgoal.app.ui.theme.Pal): List<Color> = when (level) {
-    1 -> listOf(hex("#FFB000"), hex("#FF7A3D")); 2 -> listOf(hex("#FF7A3D"), hex("#FF4D6D")); 3 -> listOf(p.flame, p.pink)
-    4 -> listOf(p.pink, hex("#8C7DFF")); 5 -> listOf(hex("#8C7DFF"), hex("#22D3FF")); else -> listOf(hex("#22D3FF"), hex("#B48CFF"), p.pink)
 }
 
 @Composable
