@@ -812,7 +812,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
             val k = ymd(d); if (k >= today()) break
             if (!hasCheck(g.id, k)) {
                 g.failedAt = nowMs(); g.failDay = i + 1
-                notify(g.userId, "Challenge « ${g.title} » interrompu au jour ${i + 1}. Tu peux le relancer quand tu veux depuis sa fiche.", "deadline", g.id)
+                notify(g.userId, "Challenge « ${g.shownTitle()} » interrompu au jour ${i + 1}. Tu peux le relancer quand tu veux depuis sa fiche.", "deadline", g.id)
                 return true
             }
             d = d.plusDays(1)
@@ -988,15 +988,15 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         }
         if (wdIdx(todayDate()) == 6 && h >= "18:00") once("recap" + ymd(weekStart(todayDate()))) { notify(u.id, "Ton récap de la semaine est prêt : retrouve-le sur l’accueil.", "badge") }
         for (x in plan.due) if (x.g.type == "period" && !x.done && h >= x.g.start && h <= addHM(x.g.start, 15)) once("pd" + x.g.id) {
-            notify(u.id, "C’est l’heure : « ${x.g.title} » (${x.g.start}–${x.g.end}).", "period", x.g.id, "today")
+            notify(u.id, "C’est l’heure : « ${x.g.shownTitle()} » (${x.g.start}–${x.g.end}).", "period", x.g.id, "today")
         }
         // Rappel propre à chaque objectif, à son heure (s'il reste à faire)
         if (!rest) for (x in plan.due) { val at = effectiveRemind(x.g) ?: continue
-            if (!x.done && h >= at && h <= addHM(at, 90)) once("gr" + x.g.id) { notify(u.id, "C’est l’heure : ${x.g.icon} « ${x.g.title} ».", "reminder", x.g.id, "today") }
+            if (!x.done && h >= at && h <= addHM(at, 90)) once("gr" + x.g.id) { notify(u.id, "C’est l’heure : ${x.g.shownIcon()} « ${x.g.shownTitle()} ».", "reminder", x.g.id, "today") }
         }
         for (g in plan.ongoing) if (g.type == "deadline") {
             val n = daysUntil(g.due)
-            if (n == 0L || n == 1L) once("dl" + g.id) { notify(u.id, "Deadline « ${g.title} » : ${if (n == 0L) "c'est aujourd'hui" else "c'est demain"}.", "deadline", g.id) }
+            if (n == 0L || n == 1L) once("dl" + g.id) { notify(u.id, "Deadline « ${g.shownTitle()} » : ${if (n == 0L) "c'est aujourd'hui" else "c'est demain"}.", "deadline", g.id) }
         }
         evaluateGoals(u, once)
         aprilEgg(u)
@@ -1031,7 +1031,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         badgeCheckPending = false
         val u = me() ?: return
         if (store.acct && cloud?.pulledBefore == false) return
-        repriceShop(); checkFlameBonus(); checkSecrets(); checkResumes(); checkLadders(); checkBirthdays()
+        repriceShop(); checkFlameBonus(); checkSecrets(); checkResumes(); checkLadders(); checkBirthdays(); checkMonthRecap()
         val st = Badges.state(this, u.id); val keys = Badges.keys(st)
         val fams = BADGE_FAMILIES.map { it.k }
         if (u.badges != null && (u.badgeFams ?: BADGE_FAMS_V20).size < fams.size) {

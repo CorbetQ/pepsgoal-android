@@ -45,7 +45,7 @@ object WidgetUpdater {
     fun update(ctx: Context) {
         scope.launch {
             val c = ctx.applicationContext
-            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget(), FlameWidget(), TimelineWidget())) try { w.updateAll(c) } catch (e: Exception) {}
+            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget(), FlameWidget(), TimelineWidget(), QuoteWidget())) try { w.updateAll(c) } catch (e: Exception) {}
             WearSync.push(c)
         }
     }
@@ -60,6 +60,7 @@ object WidgetUpdater {
         listOf(WeekWidgetReceiver::class.java, "Ma semaine", "Les 7 jours de la semaine et ce que tu as validé chaque jour", "4 × 1", "week"),
         listOf(FlameWidgetReceiver::class.java, "Flamme", "Ta série en tout petit ; un appui valide ton prochain objectif du jour", "1 × 1", "flame"),
         listOf(TimelineWidgetReceiver::class.java, "Frise du jour", "Tes objectifs du jour placés à l’heure où tu les fais d’habitude", "4 × 2", "timeline"),
+        listOf(QuoteWidgetReceiver::class.java, "Citation du jour", "Une phrase pour se motiver, chaque jour différente (tes citations comprises)", "3 × 1", "quote"),
     )
 
     /** Demande au lanceur d'ajouter le widget sur l'écran d'accueil (false si le lanceur ne le permet pas). */
@@ -171,8 +172,8 @@ class TodayWidget : GlanceAppWidget() {
                         Row(GlanceModifier.fillMaxWidth().wCard(s).padding(start = 8.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             // Liseré aux couleurs du type d'objectif
                             Box(GlanceModifier.width(4.dp).height(24.dp).cornerRadius(2.dp).background(ColorProvider(tc))) {}
-                            Text(x.g.icon, GlanceModifier.padding(start = 8.dp), style = TextStyle(fontSize = 18.sp))
-                            Text(x.g.title, GlanceModifier.defaultWeight().padding(start = 8.dp), style = TextStyle(color = if (x.done) s.ink2 else s.ink, fontSize = 13.sp, fontWeight = if (x.done) FontWeight.Normal else FontWeight.Bold), maxLines = 1)
+                            Text(x.g.shownIcon(), GlanceModifier.padding(start = 8.dp), style = TextStyle(fontSize = 18.sp))
+                            Text(x.g.shownTitle(), GlanceModifier.defaultWeight().padding(start = 8.dp), style = TextStyle(color = if (x.done) s.ink2 else s.ink, fontSize = 13.sp, fontWeight = if (x.done) FontWeight.Normal else FontWeight.Bold), maxLines = 1)
                             Box(GlanceModifier.size(30.dp).cornerRadius(15.dp)
                                 .then(if (x.done) GlanceModifier.background(ColorProvider(tc)) else GlanceModifier.background(ImageProvider(if (s.dark) R.drawable.widget_check_dark else R.drawable.widget_check_light)))
                                 .clickable(actionRunCallback<ValidateAction>(actionParametersOf(GoalKey to x.g.id))), contentAlignment = Alignment.Center) {
@@ -341,7 +342,7 @@ class CapWidget : GlanceAppWidget() {
             Box(GlanceModifier.size(ring), contentAlignment = Alignment.Center) {
                 Image(ImageProvider(ringBitmap(pct, s.dark, if (done) 0xFF2EC27E.toInt() else android.graphics.Color.rgb(0, 209, 178))), "${Math.round(pct * 100)} %", GlanceModifier.fillMaxSize())
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (ring > 90.dp) Text(g.icon, style = TextStyle(fontSize = 18.sp))
+                    if (ring > 90.dp) Text(g.shownIcon(), style = TextStyle(fontSize = 18.sp))
                     Text(fmtNum(Math.round(v * 10) / 10.0), style = TextStyle(color = s.ink, fontSize = if (ring > 110.dp) 22.sp else 15.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                     if (ring > 76.dp) Text("/ ${fmtNum(g.target)} ${g.unit}".trim(), style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
                 }
@@ -352,7 +353,7 @@ class CapWidget : GlanceAppWidget() {
                 Text("+", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontSize = 16.sp, fontWeight = FontWeight.Bold))
             }
             if (!small) Row(GlanceModifier.fillMaxWidth().height(36.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (done) "Cap atteint ✓" else g.title, GlanceModifier.defaultWeight().padding(end = 6.dp), style = TextStyle(color = s.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                Text(if (done) "Cap atteint ✓" else g.shownTitle(), GlanceModifier.defaultWeight().padding(end = 6.dp), style = TextStyle(color = s.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                 Box(GlanceModifier.size(32.dp).wAccent(s, 16.dp).clickable(actionRunCallback<CapAddAction>(actionParametersOf(GoalKey to g.id))), contentAlignment = Alignment.Center) {
                     Text("+", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontSize = 18.sp, fontWeight = FontWeight.Bold))
                 }
@@ -435,7 +436,7 @@ class FlameWidget : GlanceAppWidget() {
             val st = u?.let { pg.globalStreak(it.id) }
             Image(ImageProvider(if (st?.lit == true) R.drawable.ic_flame else R.drawable.ic_flame_dim), "Flamme", GlanceModifier.size(if (tiny) 20.dp else 28.dp))
             Text("${st?.n ?: 0}", style = TextStyle(color = s.ink, fontWeight = FontWeight.Bold, fontSize = if (tiny) 15.sp else 20.sp), maxLines = 1)
-            if (next != null && !tiny) Text("✓ ${next.g.icon}", style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
+            if (next != null && !tiny) Text("✓ ${next.g.shownIcon()}", style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
         }
     }
 }
@@ -492,7 +493,7 @@ class TimelineWidget : GlanceAppWidget() {
             if (u == null) { Text(tr("Connecte-toi à PepsGoal."), style = TextStyle(color = s.ink)); return@Column }
             val due = pg.todayPlan(u.id).due
             val now = java.time.LocalTime.now().let { it.hour + it.minute / 60f }
-            val items = due.map { d -> TlItem(d.g.icon, pg.usualHour(d.g).coerceIn(6f, 23.8f), typeColor(d.g.type).let { col -> android.graphics.Color.argb(255, (col.red * 255).toInt(), (col.green * 255).toInt(), (col.blue * 255).toInt()) }, d.done) }
+            val items = due.map { d -> TlItem(d.g.shownIcon(), pg.usualHour(d.g).coerceIn(6f, 23.8f), typeColor(d.g.type).let { col -> android.graphics.Color.argb(255, (col.red * 255).toInt(), (col.green * 255).toInt(), (col.blue * 255).toInt()) }, d.done) }
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("Ta journée heure par heure"), GlanceModifier.defaultWeight(), style = TextStyle(color = s.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                 Text("${due.count { it.done }}/${due.size}", style = TextStyle(color = s.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold))
@@ -500,8 +501,28 @@ class TimelineWidget : GlanceAppWidget() {
             if (due.isEmpty()) { Text(tr("Rien n’est prévu aujourd’hui."), GlanceModifier.padding(top = 8.dp), style = TextStyle(color = s.ink2, fontSize = 12.sp)); return@Column }
             Image(ImageProvider(timelineBitmap(items, now, s.dark)), tr("Ta journée heure par heure"), GlanceModifier.fillMaxWidth().defaultWeight().padding(vertical = 4.dp), contentScale = ContentScale.Fit)
             val next = due.filter { !it.done }.map { it to pg.usualHour(it.g) }.sortedBy { it.second }.let { l -> l.firstOrNull { it.second >= now - .5f } ?: l.firstOrNull() }
-            if (LocalSize.current.height >= 120.dp) Text(if (next != null) tr("Prochain : ${next.first.g.icon} ${next.first.g.title} vers ${next.second.toInt()} h") else tr("Tout est validé pour aujourd’hui 🔥"),
+            if (LocalSize.current.height >= 120.dp) Text(if (next != null) tr("Prochain : ${next.first.g.shownIcon()} ${next.first.g.shownTitle()} vers ${next.second.toInt()} h") else tr("Tout est validé pour aujourd’hui 🔥"),
                 style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ Citation du jour */
+
+class QuoteWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = QuoteWidget() }
+
+/** Widget « Citation du jour » : la même citation que sur l'accueil ; un appui ouvre l'application. */
+class QuoteWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Exact
+    override suspend fun provideGlance(context: Context, id: GlanceId) { provideContent { GlanceTheme { Content(context) } } }
+
+    @Composable
+    private fun Content(ctx: Context) {
+        val pg = ctx.peps.pg; val s = style(ctx); val (q, a) = pg.quoteToday()
+        val small = LocalSize.current.height < 110.dp
+        Column(GlanceModifier.fillMaxSize().wBg(s).padding(horizontal = 16.dp, vertical = 10.dp).clickable(open(ctx) { putExtra(MainActivity.EXTRA_TAB, "today") }), verticalAlignment = Alignment.CenterVertically) {
+            Text("“ $q ”", style = TextStyle(color = s.ink, fontWeight = FontWeight.Bold, fontSize = if (small) 13.sp else 15.sp), maxLines = if (small) 3 else 6)
+            Text("— $a", GlanceModifier.padding(top = 4.dp), style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
         }
     }
 }

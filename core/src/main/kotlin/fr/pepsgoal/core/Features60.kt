@@ -30,7 +30,7 @@ fun Pg.giftOpened(msgId: String) = me()?.shopClaimed?.contains("gift:$msgId") ==
 fun Pg.openGift(msgId: String, n: Int): Boolean {
     val u = me() ?: return false
     if (giftOpened(msgId)) return false
-    u.shopBonus += n.coerceIn(1, GIFT_MAX); u.shopClaimed.add("gift:$msgId"); store.commit()
+    val k = n.coerceIn(1, GIFT_MAX); u.shopBonus += k; u.shopClaimed.add("gift:$msgId"); u.shopClaimed.add("giftin:$msgId:$k"); store.commit()
     return true
 }
 

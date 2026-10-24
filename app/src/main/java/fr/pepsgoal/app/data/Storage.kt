@@ -172,6 +172,8 @@ class DevicePrefs(context: Context) {
     var seasonal get() = p.getBoolean("seasonal", true); set(v) = p.edit().putBoolean("seasonal", v).apply()
     /** Fonds illustrés éclairés selon l'heure réelle (aube, jour, crépuscule, nuit). */
     /** Disposition de l'accueil : compact, normal ou aéré. */
+    /** Accueil « simple » (en-tête unifié, tuiles et sections repliables) ou « classic » (toutes les cartes à la suite). */
+    var homeStyle get() = p.getString("homeStyle", "simple") ?: "simple"; set(v) = p.edit().putString("homeStyle", v).apply()
     var homeLayout get() = p.getString("homeLayout", "comfy") ?: "comfy"; set(v) = p.edit().putString("homeLayout", v).apply()
     /** Fond qui réagit : lueur selon l'avancement du jour, confettis les journées parfaites. */
     var bgReactive get() = p.getBoolean("bgReactive", true); set(v) = p.edit().putBoolean("bgReactive", v).apply()

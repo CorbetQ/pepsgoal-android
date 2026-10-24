@@ -458,4 +458,20 @@ class LogicTest {
         val f = Forecast(daily = listOf(WxDay("2026-10-21", 0, sunrise = "2026-10-21T08:30", sunset = "2026-10-21T18:45")))
         assertTrue(sunDark(f, java.time.LocalDateTime.of(2026, 10, 21, 8, 0))); assertTrue(!sunDark(f, java.time.LocalDateTime.of(2026, 10, 21, 18, 0)))
     }
+
+    @Test fun countdownsQuotesFocusMobilityImport() {
+        pg.addCountdown("Marathon", "🏃", ymd(todayDate().plusDays(12))); pg.addCountdown("Passé", "x", ymd(todayDate().minusDays(1)))
+        assertEquals(listOf(12), pg.countdowns().map { it.second }); assertEquals("Dans 12 jours", countdownLabel(12))
+        pg.addQuote("Ma phrase", ""); assertTrue((0..400).any { pg.quoteToday(todayDate().plusDays(it.toLong())).first == "Ma phrase" })
+        val g = goal("routine") { mode = "days"; days = (0..6).toList(); mobility = "velo"; tripKm = 5.0 }
+        pg.setMonthFocus(g); assertEquals(g.id, pg.monthFocusGoal()?.id)
+        pg.addCheck(g, "done", 1.0, 10, today()); pg.addCheck(g, "done", 1.0, 10, yday())
+        val (km, co2) = pg.mobilityImpact(g); assertEquals(10.0, km); assertTrue(co2 > 2.0)
+        assertTrue(pg.monthFocusProgress(g).first >= 2)
+        g.discreet = true; assertEquals("Objectif discret", g.shownTitle())
+        // Import d'un export Loop Habit Tracker (2 = coché à la main)
+        val r = pg.importCsv("Date,Méditer,Courir\n2026-10-19,2,0\n2026-10-20,2,1\n2026-10-21,0,2\n")
+        assertEquals(2, r.goals); assertEquals(3, r.checks)
+        val wb = pg.walletBreakdown(); assertEquals(pg.wallet(), wb.wallet)
+    }
 }

@@ -36,6 +36,7 @@ val HOME_CARDS = linkedMapOf(
     "aipromo" to Triple("Présentation du coach IA", "Tant que l’assistant n’est pas installé", "sparkle"),
     "day" to Triple("Ta journée", "Anneau du jour, niveau et flammes", "gauge"),
     "bday" to Triple("Anniversaires", "Le jour de l’anniversaire d’un ami (fiche privée)", "heart"),
+    "countdown" to Triple("Comptes à rebours", "Les jours avant un événement qui compte pour toi", "cal"),
     "advent" to Triple("Calendrier de l’Avent", "Du 1er au 24 décembre, une case par jour", "star"),
     "briefing" to Triple("Briefing du matin", "Météo, objectifs du jour et série, à écouter avant midi", "music"),
     "record" to Triple("Record en vue", "Les derniers jours avant de battre ta meilleure série", "trophy"),
@@ -85,6 +86,7 @@ fun HomeSettings(ui: AppState) {
             Chip("Ordre personnalisé", "grip", p.type("routine").c)
             list.firstOrNull { it.second }?.let { (k, _) -> Chip("En haut : ${HOME_CARDS[k]?.first ?: k}", HOME_CARDS[k]?.third ?: "sun", p.type("objective").c) }
         })
+        StylePicker(ui)
         LayoutPicker(ui)
         Glass {
             CardHead("Cartes de l’accueil") { Count(list.count { it.second }) }
@@ -170,6 +172,27 @@ fun ComfortSettings(ui: AppState) {
             }
             SetToggle("Sons", "Petit carillon à la validation, note grave quand tu annules.", "music", p.type("period").c, pr.sounds, { pr.sounds = it; upd(); if (it) Feedback.success() })
         }
+    }
+}
+
+/** Accueil simplifié ou classique. */
+@Composable
+private fun StylePicker(ui: AppState) {
+    val p = LocalPal.current
+    var st by remember { mutableStateOf(ui.prefs.homeStyle) }
+    Glass {
+        CardHead("Présentation")
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("simple" to ("Simplifiée" to "Un en-tête qui résume ta journée, l’essentiel à valider, les moments du jour en tuiles « À la une » et le reste en sections repliables."),
+                "classic" to ("Classique" to "Toutes les cartes à la suite, dans l’ordre choisi ci-dessous.")).forEach { (k, v) ->
+                val on = st == k
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (on) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f))
+                    .clickable { st = k; ui.prefs.homeStyle = k; Feedback.tick(); ui.bump() }.padding(12.dp)) {
+                    Text(v.first, fontWeight = FontWeight.ExtraBold, color = if (on) p.ink else p.ink2); Muted(v.second, small = true)
+                }
+            }
+        }
+        if (st == "simple") Muted("En présentation simplifiée, l’ordre des sections est fixe ; les interrupteurs ci-dessous choisissent toujours ce qui s’affiche.", Modifier.padding(top = 8.dp), small = true)
     }
 }
 

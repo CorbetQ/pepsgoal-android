@@ -31,7 +31,7 @@ object WearSync {
         val items = JSONArray()
         plan.due.sortedWith(compareBy({ it.done }, { !pg.isFav(it.g) })).take(20).forEach { d ->
             val g = d.g
-            val it = JSONObject().put("id", g.id).put("title", g.title).put("icon", g.icon).put("type", g.type).put("done", d.done).put("meta", d.meta ?: pg.metaLine(g))
+            val it = JSONObject().put("id", g.id).put("title", g.shownTitle()).put("icon", g.shownIcon()).put("type", g.type).put("done", d.done).put("meta", d.meta ?: pg.metaLine(g))
             if (g.type == "cap") it.put("v", pg.capDay(g)).put("target", g.target).put("unit", g.unit).put("step", pg.capQuick(g).first())
             // Types qui demandent une saisie : ouverture sur le téléphone
             it.put("simple", g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit"))

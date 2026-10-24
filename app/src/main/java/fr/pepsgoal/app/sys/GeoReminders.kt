@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.sys
 
+import fr.pepsgoal.core.shownTitle
+import fr.pepsgoal.core.shownIcon
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.PendingIntent
@@ -98,7 +100,7 @@ class GeoReceiver : BroadcastReceiver() {
                 pg.validate(gid)
                 if (pg.hasCheck(gid, pg.stepDate(g))) {
                     val pl = pg.me()?.places?.firstOrNull { it.id == g.autoPlace }
-                    Notifier.autoValidated(ctx, gid, "${g.icon} ${g.title} : validé ✓", "Tu es resté ${g.autoMin} min ${pl?.let { "à ${it.name}" } ?: "sur place"} : c’est noté. Pas pour ça ? Touche « Annuler ».")
+                    Notifier.autoValidated(ctx, gid, "${g.shownIcon()} ${g.shownTitle()} : validé ✓", "Tu es resté ${g.autoMin} min ${pl?.let { "à ${it.name}" } ?: "sur place"} : c’est noté. Pas pour ça ? Touche « Annuler ».")
                     LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
                 }
                 continue
@@ -109,7 +111,7 @@ class GeoReceiver : BroadcastReceiver() {
             val key = "geo|${fr.pepsgoal.core.today()}|$id"
             if (key in app.prefs.notifiedIds) continue
             app.prefs.notifiedIds = app.prefs.notifiedIds + key
-            Notifier.simple(ctx, key.hashCode(), Notifier.CH_REMIND, "${g.icon} ${g.title}",
+            Notifier.simple(ctx, key.hashCode(), Notifier.CH_REMIND, "${g.shownIcon()} ${g.shownTitle()}",
                 "${if (pl.exit) "Tu quittes" else "Te voilà à"} ${pl.label.ifBlank { "l’endroit choisi" }} : c’est le moment !", goalId = id.takeIf { g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit") })
         }
     }

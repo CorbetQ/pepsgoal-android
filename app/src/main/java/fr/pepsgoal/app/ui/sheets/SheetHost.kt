@@ -113,6 +113,10 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.GroupNew -> GroupNewSheet(ui)
         is Sheet.GroupInfo -> GroupInfoSheet(ui, s.gid)
         is Sheet.DeleteAccount -> DeleteAccountSheet(ui)
+        is Sheet.HomeCard -> fr.pepsgoal.app.ui.screens.HomeCardSheet(ui, s.key)
+        is Sheet.QuickCmd -> fr.pepsgoal.app.ui.screens.QuickCmdSheet(ui)
+        is Sheet.Quotes -> fr.pepsgoal.app.ui.screens.QuotesSheet(ui)
+        is Sheet.Wallet -> fr.pepsgoal.app.ui.screens.WalletSheet(ui)
     }
 }
 

@@ -552,6 +552,7 @@ fun GoalSheet(ui: AppState, id: String) {
         OutdoorRow(ui, g)
         PlanBRow(ui, g)
         SavingsRow(ui, g)
+        fr.pepsgoal.app.ui.screens.GoalExtras61(ui, g)
         DuoRow(ui, g)
         AgendaRow(ui, g)
         GeoRow(ui, g)

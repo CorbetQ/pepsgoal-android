@@ -186,7 +186,8 @@ private fun ProfileTile(value: String, label: String, icon: String, modifier: Mo
 @Composable
 private fun WalletStrip(ui: AppState, u: User) {
     val p = LocalPal.current; val pg = ui.pg
-    Glass(onClick = { ui.push(Screen.Shop) }, pad = 14.dp) {
+    // Toucher le solde : détail du porte-monnaie ; le bouton « Boutique » ouvre la boutique
+    Glass(onClick = { ui.open(fr.pepsgoal.app.Sheet.Wallet) }, pad = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(p.flame.copy(alpha = .25f), p.pink.copy(alpha = .18f)))), contentAlignment = Alignment.Center) { Flame(28.dp) }
             Column(Modifier.weight(1f)) {
@@ -197,7 +198,7 @@ private fun WalletStrip(ui: AppState, u: User) {
                 Muted("flammes à dépenser", small = true, maxLines = 1)
             }
             // Bouton plein aux couleurs de l'accent : texte toujours contrasté (onAccent est choisi pour l'accent)
-            Row(Modifier.clip(CircleShape).background(if (p.contrast) SolidColor(p.ink) else p.accent).padding(horizontal = 12.dp, vertical = 7.dp),
+            Row(Modifier.clip(CircleShape).background(if (p.contrast) SolidColor(p.ink) else p.accent).clickable(onClickLabel = "Ouvrir la boutique") { ui.push(Screen.Shop) }.padding(horizontal = 12.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 val fg = if (p.contrast) p.bg else p.onAccent
                 Pi("star", size = 14.dp, tint = fg); Text(tr("Boutique"), color = fg, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)

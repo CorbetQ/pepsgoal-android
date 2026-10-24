@@ -93,6 +93,14 @@ class SavedPlace(val id: String, var name: String, var icon: String = "📍", va
 @Serializable
 class Reward(val id: String, var title: String, var emoji: String = "🎁", var goalId: String? = null, var target: Int = 30, val createdAt: Long = 0, var reachedAt: Long? = null, var claimedAt: Long? = null)
 
+/** Compte à rebours vers un événement (« Marathon de Nantes », « Vacances »). */
+@Serializable
+class Countdown(val id: String, var title: String, var emoji: String = "📅", var date: String)
+
+/** Citation ajoutée par l'utilisateur à la rotation de la citation du jour. */
+@Serializable
+class MyQuote(val id: String, var text: String, var author: String = "")
+
 @Serializable
 class GoalGroup(val id: String, var name: String, var icon: String = "📁", var color: String? = null)
 
@@ -149,6 +157,10 @@ class User(
     /** Fiche privée des amis : note libre et anniversaire (« MM-JJ »), visibles par soi seul. */
     var friendNotes: MutableMap<String, String> = mutableMapOf(),
     var friendBdays: MutableMap<String, String> = mutableMapOf(),
+    var countdowns: MutableList<Countdown> = mutableListOf(),
+    var myQuotes: MutableList<MyQuote> = mutableListOf(),
+    /** Objectif du mois : « AAAA-MM » → id de l'objectif mis en avant. */
+    var monthFocus: MutableMap<String, String> = mutableMapOf(),
     /** Nom choisi par la personne elle-même, quand un surnom le remplace à l'affichage. */
     var realName: String? = null,
     var milestones: MutableList<String> = mutableListOf(),
