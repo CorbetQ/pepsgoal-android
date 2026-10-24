@@ -84,7 +84,7 @@ fun UserSheet(ui: AppState, id: String) {
     val lv = pg.level(pg.points(x.id)); val st = pg.globalStreak(x.id)
     var renaming by remember(id) { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-        LevelRing(lv.idx, 64.dp) { Av(x, 64.dp) }
+        LevelRing(lv.tier, 64.dp) { Av(x, 64.dp) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(x.name, Modifier.weight(1f, fill = false), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis); if (x.demo) Chip("démo")

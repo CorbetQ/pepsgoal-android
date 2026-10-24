@@ -43,7 +43,12 @@ sealed class Celebration {
 class Stat(val v: String, val l: String)
 class DueItem(val g: Goal, val done: Boolean, val meta: String? = null)
 class Plan(val due: List<DueItem>, val ongoing: List<Goal>)
-class Level(val idx: Int, val name: String, val pts: Int, val next: Int?, val nextName: String?, val pct: Double)
+/**
+ * Niveau : [idx] de 1 à 50 (puis au-delà, éclats de Supernova), [name] « Flamme III », [tier] palier de 1 à 10 et son nom,
+ * [next] flammes du niveau suivant, [pct] avancée dans le niveau, [tierPct] avancée dans le palier.
+ */
+class Level(val idx: Int, val name: String, val pts: Int, val next: Int?, val nextName: String?, val pct: Double,
+            val tier: Int = 1, val tierName: String = name, val sub: Int = 1, val tierPct: Double = pct, val nextTier: Int? = null, val nextTierName: String? = null)
 class Streak(val n: Int, val lit: Boolean)
 class Window(val open: Boolean, val txt: String, val live: Boolean = false)
 class ProgressInfo(val title: String, val info: String, val label: String, val quick: List<Double>, val text: Boolean = false, val value: String = "1", val quickAbsolute: Boolean = false)
@@ -159,12 +164,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         u?.pts?.let { return it }
         return userCheckins(id).sumOf { it.pts }
     }
-    fun level(pts: Int): Level {
-        var i = 0
-        while (i < LEVELS.size - 1 && pts >= LEVELS[i + 1].first) i++
-        val cur = LEVELS[i]; val nxt = LEVELS.getOrNull(i + 1)
-        return Level(i + 1, cur.second, pts, nxt?.first, nxt?.second, if (nxt != null) (pts - cur.first).toDouble() / (nxt.first - cur.first) else 1.0)
-    }
+    fun level(pts: Int): Level = levelOf(pts)
     fun activeDays(id: String): MutableSet<String> {
         val u = if (store.acct && id != meId()) userById(id) else null
         u?.days?.let { return it.toMutableSet() }
@@ -1031,7 +1031,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         badgeCheckPending = false
         val u = me() ?: return
         if (store.acct && cloud?.pulledBefore == false) return
-        repriceShop(); checkFlameBonus(); checkSecrets(); checkResumes(); checkLadders(); checkBirthdays(); checkMonthRecap()
+        repriceShop(); checkFlameBonus(); checkLevelUp(); checkSecrets(); checkResumes(); checkLadders(); checkBirthdays(); checkMonthRecap()
         val st = Badges.state(this, u.id); val keys = Badges.keys(st)
         val fams = BADGE_FAMILIES.map { it.k }
         if (u.badges != null && (u.badgeFams ?: BADGE_FAMS_V20).size < fams.size) {

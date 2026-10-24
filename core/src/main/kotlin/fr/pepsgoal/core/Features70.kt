@@ -73,6 +73,7 @@ fun Pg.giftsOut(): Int = flamesGiven() + itemsGiven()
 
 /** Garde les marques de `shopClaimed` des cadeaux, qui servent aux comptes du porte-monnaie, et les [n] plus récentes des autres. */
 fun trimClaimed(l: List<String>, n: Int = 400): MutableList<String> {
-    val keep = l.filter { it.startsWith("gift") }
-    return (keep + l.filterNot { it.startsWith("gift") }.takeLast(n)).toMutableList()
+    // Cadeaux (comptes du porte-monnaie) et niveau déjà récompensé : jamais retirés
+    val kept = { s: String -> s.startsWith("gift") || s.startsWith("lvl:") }
+    return (l.filter(kept) + l.filterNot(kept).takeLast(n)).toMutableList()
 }

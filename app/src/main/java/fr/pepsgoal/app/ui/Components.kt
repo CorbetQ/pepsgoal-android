@@ -655,17 +655,78 @@ private fun AvFace(u: User?, size: Dp, a: Avatar?, modifier: Modifier = Modifier
     }
 }
 
-/** Anneau de niveau animé autour de l'avatar (couleur selon le niveau). */
+/** Couleurs d'un palier de niveau (1 Étincelle … 10 Supernova) : anneau, bannière, pastilles. */
+fun tierColors(tier: Int): List<Color> = when (tier.coerceIn(1, 10)) {
+    1 -> listOf(hex("#FFE45C"), hex("#FFB000"))
+    2 -> listOf(hex("#FFB000"), hex("#FF7A3D"))
+    3 -> listOf(hex("#FF8A3D"), hex("#FF4A12"))
+    4 -> listOf(hex("#FF4A12"), hex("#FF2E63"))
+    5 -> listOf(hex("#FF2E63"), hex("#D61F69"), hex("#FF7A3D"))
+    6 -> listOf(hex("#FF4FA3"), hex("#B23CFF"))
+    7 -> listOf(hex("#B3122E"), hex("#FF5A1F"), hex("#FFB000"))
+    8 -> listOf(hex("#8C7DFF"), hex("#22D3FF"), hex("#C6B6FF"))
+    9 -> listOf(hex("#FFD23F"), hex("#FF8A00"), hex("#FF4FA3"))
+    else -> listOf(hex("#22D3FF"), hex("#B48CFF"), hex("#FF4FA3"), hex("#FFE45C"))
+}
+
+/** Anneau de niveau animé autour de l'avatar, aux couleurs du palier ([tier] de 1 à 10). */
 @Composable
-fun LevelRing(level: Int, size: Dp, content: @Composable () -> Unit) {
-    val p = LocalPal.current
-    val cols = when (level) { 1 -> listOf(hex("#FFB000"), hex("#FFE45C")); 2 -> listOf(hex("#FF7A3D"), hex("#FFB000")); 3 -> listOf(p.flame, p.flame2); 4 -> listOf(p.pink, p.flame, p.flame2); 5 -> listOf(hex("#8C7DFF"), p.pink, p.flame); else -> listOf(hex("#22D3FF"), hex("#B48CFF"), p.pink, p.flame2) }
+fun LevelRing(tier: Int, size: Dp, content: @Composable () -> Unit) {
+    val cols = tierColors(tier)
     val rot = slowPhaseState(9000, 12, running = Perf.flags.fx)
     // `size` : taille de l'avatar ; l'anneau l'entoure à 2 dp (comme .lv-ring de la version web)
     Box(Modifier.size(size + 10.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize().graphicsLayer { rotationZ = rot.value * 360f }) { val w = 3.dp.toPx(); drawCircle(Brush.sweepGradient(cols + cols.first()), radius = this.size.minDimension / 2 - w / 2, style = Stroke(w)) }
         content()
     }
+}
+
+/**
+ * Couronne de flammes autour de l'avatar du profil : des langues de feu qui vacillent tout autour du cercle. Leur
+ * hauteur suit la progression ([progress] de 0, niveau 1, à 1, Supernova) : la couronne grandit petit à petit au fil
+ * des niveaux, et s'étire en douceur jusqu'à sa nouvelle taille quand on monte de niveau. [radius] : rayon de l'avatar.
+ */
+fun Modifier.flameAura(progress: Float, radius: Dp, colors: List<Color>, phase: () -> Float, still: Boolean = false): Modifier = this.drawBehind {
+    val k = progress.coerceIn(0f, 1f)
+    if (k <= .001f) return@drawBehind
+    val c = Offset(size.width / 2, size.height / 2)
+    val r0 = radius.toPx() * .95f
+    // Hauteur des flammes : 12 dp au tout début, jusqu'à 46 dp en Supernova ; un peu plus nombreuses en montant
+    val hMax = (12f + 34f * k).dp.toPx()
+    val n = 14 + (k * 8).toInt()
+    val t = if (still) 0f else phase()
+    val tau = 6.2832f
+    // Halo doux, plus fort vers le haut (le feu monte)
+    val glowC = Offset(c.x, c.y - hMax * .25f)
+    drawCircle(Brush.radialGradient(listOf(colors.last().copy(alpha = .42f * (.35f + .65f * k)), Color.Transparent), glowC, r0 + hMax * 1.3f), r0 + hMax * 1.3f, glowC)
+    fun layer(scale: Float, alpha: Float, base: Color, tipCol: Color, shift: Float, widen: Float) {
+        for (i in 0 until n) {
+            val a = (i + shift) / n * tau
+            val dx = kotlin.math.cos(a); val dy = kotlin.math.sin(a)
+            // Plus hautes en haut du cercle qu'en bas, et chaque langue vacille à son propre rythme
+            val top = (1f - dy) / 2f
+            val w = .7f + .3f * (.5f + .5f * kotlin.math.sin(t * tau * 2f + i * 1.9f + shift * 4f))
+            val h = hMax * scale * w * (.45f + .55f * top) * (.82f + .18f * kotlin.math.sin(i * 2.7f + shift).let { it * it })
+            // Direction de la pointe : entre l'extérieur du cercle et la verticale, avec un léger balancement
+            val sway = .22f * kotlin.math.sin(t * tau * 1.5f + i * 1.3f)
+            var ux = dx * .62f + sway * .45f; var uy = dy * .62f - .42f
+            val len = kotlin.math.sqrt(ux * ux + uy * uy).coerceAtLeast(.01f); ux /= len; uy /= len
+            val half = tau / n * widen
+            val l = Offset(c.x + kotlin.math.cos(a - half) * r0, c.y + kotlin.math.sin(a - half) * r0)
+            val rr = Offset(c.x + kotlin.math.cos(a + half) * r0, c.y + kotlin.math.sin(a + half) * r0)
+            val bx = c.x + dx * r0; val by = c.y + dy * r0
+            val tip = Offset(bx + ux * h, by + uy * h)
+            // Flancs galbés : la langue gonfle à mi-hauteur puis s'effile vers la pointe
+            val bulge = h * .32f; val px = -uy; val py = ux
+            val c1 = Offset(bx + ux * h * .45f - px * bulge, by + uy * h * .45f - py * bulge)
+            val c2 = Offset(bx + ux * h * .45f + px * bulge, by + uy * h * .45f + py * bulge)
+            val path = Path().apply { moveTo(l.x, l.y); cubicTo(l.x, l.y, c1.x, c1.y, tip.x, tip.y); cubicTo(c2.x, c2.y, rr.x, rr.y, rr.x, rr.y); close() }
+            drawPath(path, Brush.linearGradient(0f to base.copy(alpha = alpha), .55f to tipCol.copy(alpha = alpha * .9f), 1f to tipCol.copy(alpha = 0f), start = Offset(bx, by), end = tip))
+        }
+    }
+    // Couche extérieure aux couleurs du palier, cœur jaune plus court par-dessus
+    layer(1f, .9f, colors.first(), colors.last(), 0f, .85f)
+    layer(.55f, .95f, Color(0xFFFFF1A6), colors.first(), .5f, .6f)
 }
 
 /* ------------------------------------------------------------------ texte enrichi (**gras**) */

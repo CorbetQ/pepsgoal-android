@@ -1,7 +1,7 @@
 package fr.pepsgoal.core
 
 /** Valeurs fixes de l'application (identiques à la version web : apps/web-legacy/pepsgoal.html). */
-const val APP_VERSION = "6.2.0"
+const val APP_VERSION = "6.3.0"
 const val FREEZE_EVERY = 10
 const val TUTO_GELS = 5
 const val MONTH_BONUS = 60
@@ -41,7 +41,6 @@ val TYPE_GROUPS = listOf(
 val SOCIAL_TYPES = setOf("group", "duel")
 val CLOSABLE = setOf("deadline", "objective", "project", "challenge", "program", "group", "duel")
 
-val LEVELS = listOf(0 to "Étincelle", 100 to "Braise", 300 to "Flamme", 700 to "Brasier", 1500 to "Incendie", 3000 to "Supernova")
 val MILESTONES = listOf(7, 14, 21, 30, 50, 100, 200, 365)
 
 class Accent(val name: String, val c: List<String>)
