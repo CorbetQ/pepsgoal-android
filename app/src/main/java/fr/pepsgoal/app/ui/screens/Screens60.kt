@@ -68,7 +68,7 @@ fun GiftSheet(ui: AppState, id: String, item0: String? = null) {
     var item by remember { mutableStateOf(item0?.let { shopItem(it) }) }
     val w = pg.wallet()
     SheetHead(ui, if (mode == "item") "Offrir un article" else "Offrir des flammes")
-    Seg(listOf("flames" to "Flammes", "item" to "Article de la boutique"), mode, { mode = it }, Modifier.fillMaxWidth(), icons = listOf("flameo", "gift"), fill = true)
+    Seg(listOf("flames" to "Des flammes", "item" to "Un article de la boutique"), mode, { mode = it }, icons = listOf("flameo", "gift"))
     if (mode == "item") {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Av(x, 44.dp)

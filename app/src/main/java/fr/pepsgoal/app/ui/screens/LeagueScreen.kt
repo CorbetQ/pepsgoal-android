@@ -36,7 +36,7 @@ fun LeagueScreen(ui: AppState) {
     LaunchedEffect(from) { try { rows = ui.cloud.leagueWeek(from) } catch (e: ApiError) { err = if (e.status == 404) "La ligue arrive avec la prochaine mise à jour du serveur." else e.message } catch (e: Exception) { err = "Ligue indisponible pour le moment." } }
     ScreenFrame(ui, "Ligue", "Retour", { ui.back() }, icon = "trophy", color = p.type("challenge").c, color2 = p.type("deadline").c) {
         item("season") { SeasonCard(ui) }
-        item("seg") { Seg(listOf(false to "Cette semaine", true to "Semaine dernière"), last, { last = it }, Modifier.fillMaxWidth(), fill = true) }
+        item("seg") { Seg(listOf(false to "Cette semaine", true to "Semaine dernière"), last, { last = it }) }
         val l = rows
         when {
             err != null -> item("err") { Glass { Empty("Ligue indisponible", err!!, icon = "trophy") } }
@@ -115,7 +115,7 @@ fun LeagueCard(ui: AppState) {
                 Text("Ligue $tn", fontWeight = FontWeight.ExtraBold)
                 Muted("${m.first}${if (m.first == 1) "er" else "e"} sur $size cette semaine · ${m.second.points} flammes", small = true)
             }
-            Chevron()
+            Text("›", color = p.ink3, fontSize = 22.sp)
         }
     }
 }

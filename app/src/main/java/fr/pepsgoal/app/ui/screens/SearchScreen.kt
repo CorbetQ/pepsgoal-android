@@ -171,6 +171,6 @@ private fun Result(title: String, sub: String, lead: @Composable () -> Unit, onC
             Text(title, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(sub, fontSize = 13.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        Chevron()
+        Text("›", color = p.ink3, fontSize = 22.sp)
     }
 }

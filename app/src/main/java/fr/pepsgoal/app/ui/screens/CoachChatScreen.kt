@@ -86,7 +86,7 @@ fun CoachChatScreen(ui: AppState) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Pi("sparkle", size = 20.dp, tint = p.flameInk)
                             Column(Modifier.weight(1f)) { Text("Mode simple", fontWeight = FontWeight.ExtraBold); Muted(if (LocalAi.installed(ctx)) "Le coach IA est en pause : réactive-le pour des réponses complètes." else "Installe le coach IA pour des réponses complètes et personnalisées.", small = true) }
-                            Chevron()
+                            Text("›", color = p.ink3, fontSize = 22.sp)
                         }
                     }
                 }

@@ -205,7 +205,7 @@ fun PetCard(ui: AppState) {
                 Text("${ui.prefs.petName} · ${pet.stage.name}", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
                 pet.next?.let { n -> Bar((pet.days - pet.stage.min) * 100.0 / (n.min - pet.stage.min), height = 6.dp); Muted("${n.min - pet.days} jours actifs avant « ${n.name} »", small = true) } ?: Muted("Stade ultime atteint 👑", small = true)
             }
-            Chevron()
+            Text("›", color = p.ink3, fontSize = 22.sp)
         }
     }
 }

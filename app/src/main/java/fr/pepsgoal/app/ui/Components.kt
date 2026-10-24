@@ -188,25 +188,11 @@ val LocalFlame = staticCompositionLocalOf<List<Color>?> { null }
 /** Contenu d'une fenêtre du bas : les cartes y ont un fond plein (sinon leur ombre transparaît en trait flou). */
 val LocalInSheet = staticCompositionLocalOf { false }
 
-/**
- * Commandes posées sur une carte ou dans une fenêtre (vrai) ou directement sur le fond de la page (faux) : sur une carte,
- * elles prennent un remplissage tonal discret ; sur le fond coloré, un verre clair avec un liseré, plus lisible.
- */
-val LocalOnCard = staticCompositionLocalOf { false }
-
-/** Remplissage d'une commande secondaire selon l'endroit où elle est posée. */
-@Composable
-fun ctlFill(): Color { val p = LocalPal.current; return if (p.contrast) p.glassStrong else if (LocalOnCard.current) p.tonal else p.glassStrong }
-
-/** Contour d'une commande secondaire : aucun sur une carte, liseré fin sur le fond de la page. */
-@Composable
-fun Modifier.ctlEdgeIfPage(shape: Shape): Modifier { val p = LocalPal.current; return if (p.contrast) this.border(1.dp, p.line, shape) else if (LocalOnCard.current) this else this.border(1.dp, p.glassEdge, shape) }
-
 /** Espace occupé par la barre du haut et la barre de navigation flottantes (le contenu défile dessous). */
 val LocalBars = compositionLocalOf { PaddingValues(0.dp) }
 
 /** Contour des commandes (puces, boutons-icônes, sélecteurs) : visible sur le verre clair comme sombre. */
-fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink.copy(alpha = if (p.dark) .2f else .14f)
+fun ctlEdge(p: fr.pepsgoal.app.ui.theme.Pal) = if (p.contrast) p.line else p.ink.copy(alpha = if (p.dark) .24f else .18f)
 
 /**
  * Apparition en cascade des cartes : à l'ouverture d'un onglet ou d'une page, les cartes arrivent l'une après
@@ -268,7 +254,7 @@ fun PageBackdrop(c1: Color, c2: Color, modifier: Modifier = Modifier) {
 @Composable
 fun IconTile(icon: String, c1: Color, c2: Color, size: Dp = 40.dp, radius: Dp = 13.dp) {
     val p = LocalPal.current
-    Box(Modifier.size(size).shadow((if (p.transp) 0.dp else 4.dp).ifShadows(), RoundedCornerShape(radius), ambientColor = c1.copy(alpha = .6f), spotColor = c1.copy(alpha = .6f)).clip(RoundedCornerShape(radius))
+    Box(Modifier.size(size).shadow((if (p.transp) 0.dp else 8.dp).ifShadows(), RoundedCornerShape(radius), ambientColor = c1, spotColor = c1).clip(RoundedCornerShape(radius))
         .background(if (p.contrast) SolidColor(p.ink) else Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
         Pi(icon, size = size * .5f, tint = if (p.contrast) p.bg else Color(0xFF10102A))
     }
@@ -423,36 +409,37 @@ fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier {
 }
 
 @Composable
-fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 26.dp, pad: Dp = LocalGlassPad.current, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+fun Glass(modifier: Modifier = Modifier, strong: Boolean = false, radius: Dp = 24.dp, pad: Dp = LocalGlassPad.current, border: Color? = null, fill: Boolean = true, onClick: (() -> Unit)? = null, ai: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     val shape = RoundedCornerShape(radius)
     val inter = remember { MutableInteractionSource() }
     Column(
         // Toute la largeur disponible par défaut : une carte au contenu court reste alignée sur les autres
-        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).enter().then(if (onClick != null) Modifier.bounce(inter, .98f) else Modifier)
+        (if (fill) Modifier.fillMaxWidth() else Modifier).then(modifier).enter().then(if (onClick != null) Modifier.bounce(inter, .97f) else Modifier)
             .then(if (ai && !p.easy) Modifier.aiGlow(radius) else if (ai) Modifier.border(2.dp, p.flame, shape) else Modifier)
-            // Ombre douce et basse : la carte se détache du fond sans halo sombre
-            .shadow((if (p.oled || p.transp) 0.dp else 10.dp).ifShadows(), shape, ambientColor = p.shadow, spotColor = p.shadow)
+            .shadow((if (p.oled || p.transp) 0.dp else 18.dp).ifShadows(), shape, ambientColor = Color(0x4428186E), spotColor = Color(0x5528186E))
             .glassBg(shape, strong)
-            // Liseré fin : lumineux en haut (clair), presque invisible en bas
-            .border(1.dp, if (border != null) SolidColor(border) else if (p.contrast) SolidColor(p.line) else Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .14f else .9f), Color.White.copy(alpha = if (p.dark) .04f else .35f))), shape)
-            .then(if (onClick != null) Modifier.springClick(inter, onClick = onClick) else Modifier).padding(pad)
-    ) { CompositionLocalProvider(LocalOnCard provides true) { content() } }
+            // Profondeur : reflet en haut de la carte et liseré lumineux dégradé (plus vif en haut, discret en bas)
+            .then(if (p.contrast || p.transp) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .07f else .3f), .45f to Color.Transparent)))
+            .border(1.dp, if (border != null) SolidColor(border) else if (p.contrast) SolidColor(p.line) else Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .3f else .95f), p.glassEdge.copy(alpha = p.glassEdge.alpha * .35f))), shape)
+            .then(if (onClick != null) Modifier.springClick(inter, onClick = onClick) else Modifier).padding(pad),
+        content = content
+    )
 }
 
 @Composable
 fun CardHead(title: String, modifier: Modifier = Modifier, right: @Composable RowScope.() -> Unit = {}) {
-    Row(modifier.fillMaxWidth().heightIn(min = 32.dp).padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).semantics { heading() })
         right()
     }
 }
 
 @Composable
-fun Count(n: Any) = Text("$n", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = LocalPal.current.ink2)
+fun Count(n: Any) = Text("$n", fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink2)
 
 @Composable
-fun Eyebrow(text: String, color: Color = LocalPal.current.ink2) = Text(tr(text).uppercase(), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.1.sp, color = color)
+fun Eyebrow(text: String, color: Color = LocalPal.current.ink2) = Text(tr(text).uppercase(), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = color)
 
 @Composable
 fun Muted(text: String, modifier: Modifier = Modifier, small: Boolean = false, center: Boolean = false, maxLines: Int = Int.MAX_VALUE) =
@@ -468,24 +455,22 @@ fun PButton(
     val inter = remember { MutableInteractionSource() }
     val shape = CircleShape
     val bg: Modifier = when (kind) {
-        // Principal : dégradé de l'accent, légère ombre teintée
-        "primary" -> Modifier.shadow((if (p.transp || !enabled) 0.dp else 6.dp).ifShadows(), shape, ambientColor = p.flame.copy(alpha = .35f), spotColor = p.flame.copy(alpha = .45f)).background(if (p.contrast) SolidColor(p.ink) else p.accent, shape)
-        "ghost" -> Modifier
-        "danger" -> Modifier.background(p.danger.copy(alpha = if (p.dark) .16f else .1f), shape)
-        // Secondaire : remplissage tonal sur une carte, verre clair sur le fond de la page
-        else -> Modifier.background(ctlFill(), shape).ctlEdgeIfPage(shape)
+        "primary" -> Modifier.background(if (p.contrast) SolidColor(p.ink) else p.accent, shape)
+        "ghost", "danger" -> Modifier
+        else -> Modifier.background(p.glassStrong, shape).border(1.dp, ctlEdge(p), shape)
     }
     val fg = when (kind) { "primary" -> if (p.contrast) p.bg else p.onAccent; "ghost" -> p.ink2; "danger" -> p.danger; else -> p.ink }
     Row(
-        modifier.bounce(inter, .95f).alpha(if (enabled) 1f else .45f).then(bg).clip(shape)
+        modifier.bounce(inter, .92f).alpha(if (enabled) 1f else .45f).clip(shape).then(bg)
+            .then(if (kind == "danger") Modifier.border(1.dp, p.danger.copy(alpha = .4f), shape) else Modifier)
             .clickable(enabled = enabled, interactionSource = inter, indication = LocalIndication.current, role = Role.Button) { Feedback.tap(); onClick() }
-            .heightIn(min = if (p.big) 48.dp else if (small) 38.dp else 48.dp)
-            .padding(horizontal = if (small) 14.dp else 20.dp, vertical = if (small) 7.dp else 10.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally)
+            .then(if (p.big) Modifier.heightIn(min = 48.dp) else Modifier)
+            .padding(horizontal = if (small) 14.dp else 18.dp, vertical = if (small) 8.dp else 11.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
     ) {
         leading?.invoke()
-        if (icon != null) Pi(icon, size = if (small) 17.dp else 19.dp, tint = fg)
-        if (text.isNotEmpty()) Text(text, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = if (small) 13.5.sp else 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (icon != null) Pi(icon, size = 18.dp, tint = fg)
+        if (text.isNotEmpty()) Text(text, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = if (small) 13.sp else 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -499,7 +484,7 @@ fun IconBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier 
     // Grandes cibles (TalkBack, Lecture facile) : zone tactile d'au moins 48 dp
     Box(modifier.then(if (p.big) Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp) else Modifier), contentAlignment = Alignment.Center) {
         Box(
-            Modifier.semantics { contentDescription = desc; role = Role.Button }.bounce(inter, .88f).size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(ctlFill()).ctlEdgeIfPage(CircleShape))
+            Modifier.semantics { contentDescription = desc; role = Role.Button }.bounce(inter, .86f).size(if (plain) size - 6.dp else size).clip(CircleShape).then(if (plain) Modifier else Modifier.background(p.glassStrong).border(1.dp, ctlEdge(p), CircleShape))
                 .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center
         ) { Pi(icon, size = 20.dp, tint = tint ?: if (plain) p.ink2 else p.ink) }
         if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp))
@@ -521,9 +506,9 @@ fun Chip(text: String, icon: String? = null, color: Color? = null, ink: Color? =
     // Fond réel de la puce (teinte posée sur une carte) : le texte est ajusté pour toujours s'y lire
     val fill = c.copy(alpha = .2f)
     val fg = remember(ink, c, p) { readable(ink ?: if (color != null) c else p.ink2, fill.over(p.glass.over(p.bg)), 4.6f) }
-    Row(modifier.clip(CircleShape).background(fill).padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(modifier.clip(CircleShape).background(fill).padding(horizontal = 9.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (icon != null) Pi(icon, size = 13.dp, tint = fg)
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -556,16 +541,15 @@ fun TypeChip(type: String) {
 @Composable
 fun FChip(text: String, on: Boolean, onClick: () -> Unit, leading: (@Composable () -> Unit)? = null, dashed: Boolean = false) {
     val p = LocalPal.current
+    val sc by animateFloatAsState(if (on && !p.motion) 1.05f else 1f, Motion.emphasis(), label = "chip")
     val inter = remember { MutableInteractionSource() }
-    // Choisie : dégradé de l'accent ; sinon remplissage tonal (contour seulement pour une puce « à ajouter »)
     Row(
-        Modifier.bounce(inter, .92f).clip(CircleShape).background(if (on) (if (p.contrast) SolidColor(p.ink) else p.accent) else SolidColor(if (dashed) Color.Transparent else ctlFill()))
-            .then(if (on) Modifier else if (dashed) Modifier.border(1.dp, ctlEdge(p), CircleShape) else Modifier.ctlEdgeIfPage(CircleShape)).springClick(inter, onClick = onClick).semantics { selected = on }
-            .heightIn(min = if (p.big) 48.dp else 36.dp).padding(horizontal = 14.dp, vertical = 7.dp),
+        Modifier.bounce(inter, .9f).scale(sc).clip(CircleShape).background(if (on) (if (p.contrast) SolidColor(p.ink) else p.accent) else SolidColor(if (dashed) Color.Transparent else p.glassStrong))
+            .border(1.dp, if (on) Color.Transparent else ctlEdge(p), CircleShape).springClick(inter, onClick = onClick).semantics { selected = on }.then(if (p.big) Modifier.heightIn(min = 48.dp) else Modifier).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         leading?.invoke()
-        Text(text, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (on) (if (p.contrast) p.bg else p.onAccent) else p.ink)
+        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) (if (p.contrast) p.bg else p.onAccent) else p.ink)
     }
 }
 
@@ -613,7 +597,7 @@ fun Bar(pct: Double, modifier: Modifier = Modifier, color: Color? = null, height
     val p = LocalPal.current
     val target = (pct / 100.0).coerceIn(0.0, 1.0).toFloat()
     val v by animateFloatAsState(target, if (p.motion) tween(0) else Springs.bar, label = "bar")
-    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(p.ink.copy(alpha = if (p.dark) .1f else .07f))) {
+    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(p.ink.copy(alpha = .09f))) {
         Box(Modifier.fillMaxWidth(v).fillMaxHeight().clip(CircleShape).background(if (color != null) SolidColor(color) else p.accent))
     }
 }
@@ -628,7 +612,7 @@ fun Ring(done: Int, total: Int, size: Dp = 108.dp) {
         Canvas(Modifier.fillMaxSize()) {
             val sw = this.size.minDimension * .11f
             val r = Size(this.size.width - sw, this.size.height - sw)
-            drawArc(p.ink.copy(alpha = if (p.dark) .1f else .07f), 0f, 360f, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw))
+            drawArc(p.ink.copy(alpha = .1f), 0f, 360f, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw))
             drawArc(Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)), -90f, 360f * v, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw, cap = StrokeCap.Round))
         }
         Text("$done/$total", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = p.ink)
@@ -746,10 +730,9 @@ fun SkeletonCard(lines: Int = 2, round: Boolean = false) {
 @Composable
 fun Note(text: String, icon: String = "bell", modifier: Modifier = Modifier) {
     val p = LocalPal.current
-    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if (p.contrast) SolidColor(p.glassStrong) else SolidColor(p.focus.copy(alpha = if (p.dark) .14f else .08f)))
-        .then(if (p.contrast) Modifier.border(BorderStroke(1.5.dp, p.line), RoundedCornerShape(18.dp)) else Modifier).padding(horizontal = 14.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Pi(icon, size = 18.dp, tint = if (p.contrast) p.ink2 else p.focus)
-        Text(rich(text), color = p.ink, fontSize = 14.sp)
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(BorderStroke(1.5.dp, p.line), RoundedCornerShape(16.dp)).background(p.glass).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Pi(icon, size = 18.dp, tint = p.ink2)
+        Text(rich(text), color = p.ink2, fontSize = 14.sp)
     }
 }
 
@@ -761,8 +744,8 @@ fun SetRow(title: String, sub: String? = null, modifier: Modifier = Modifier, ri
         val half = maxWidth * .5f
         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = p.ink)
-                if (sub != null) Text(sub, fontSize = 13.sp, color = p.ink2, lineHeight = 17.sp)
+                Text(title, fontWeight = FontWeight.ExtraBold, color = p.ink)
+                if (sub != null) Text(sub, fontSize = 13.sp, color = p.ink2)
             }
             // Les commandes de droite ne prennent jamais plus de la moitié de la ligne : le titre n'est plus coupé en plein mot
             Row(Modifier.widthIn(max = half), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) { right() }
@@ -774,34 +757,27 @@ fun SetRow(title: String, sub: String? = null, modifier: Modifier = Modifier, ri
 fun PSwitch(on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     val p = LocalPal.current
     // Clic net à l'activation, cran léger à la désactivation
-    Switch(on, { v -> if (v) Feedback.armed() else Feedback.disarmed(); onChange(v) }, enabled = enabled, colors = SwitchDefaults.colors(checkedTrackColor = if (p.contrast) p.ink else p.flame, checkedThumbColor = if (p.contrast) p.bg else Color.White,
-        checkedBorderColor = Color.Transparent, uncheckedTrackColor = p.ink.copy(alpha = if (p.dark) .16f else .1f), uncheckedThumbColor = p.ink.copy(alpha = .55f), uncheckedBorderColor = Color.Transparent))
+    Switch(on, { v -> if (v) Feedback.armed() else Feedback.disarmed(); onChange(v) }, enabled = enabled, colors = SwitchDefaults.colors(checkedTrackColor = p.flame, checkedThumbColor = p.onAccent, uncheckedTrackColor = p.ink.copy(alpha = .12f)))
 }
 
 /** Choix segmenté (boutons radio côte à côte). */
 @Composable
-fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, modifier: Modifier = Modifier, icons: List<String>? = null, fill: Boolean = false) {
+fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, modifier: Modifier = Modifier, icons: List<String>? = null) {
     val p = LocalPal.current
     // Rail en verre givré : les options non choisies restent lisibles même sur un fond animé ou une image
-    val rail = RoundedCornerShape(16.dp); val pill = RoundedCornerShape(12.dp)
-    val pillBg = if (p.dark) lerp(p.surface, Color.White, .1f) else Color.White
-    // [fill] : options de même largeur sur toute la ligne (onglets) ; sinon elles passent à la ligne si besoin
-    val railMod = modifier.clip(rail).background(ctlFill()).ctlEdgeIfPage(rail).padding(4.dp)
-    val items: @Composable (Modifier) -> Unit = { itemMod ->
+    val rail = RoundedCornerShape(18.dp)
+    FlowRowCompat(modifier.glassBg(rail).background(p.ink.copy(alpha = if (p.dark) .06f else .04f)).border(1.dp, ctlEdge(p).copy(alpha = ctlEdge(p).alpha * .6f), rail).padding(4.dp)) {
         options.forEachIndexed { i, (k, l) ->
             val on = k == value
             val inter = remember { MutableInteractionSource() }
             // Pastille choisie qui apparaît en fondu (et non d'un coup)
             val sel by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, Motion.standard(), label = "seg")
-            Row(itemMod.bounce(inter, .94f).shadow((3.dp * sel).ifShadows(), pill, ambientColor = p.shadow, spotColor = p.shadow).clip(pill).background(pillBg.copy(alpha = pillBg.alpha * sel))
-                .then(if (p.contrast && on) Modifier.border(1.5.dp, p.ink, pill) else Modifier).springClick(inter, role = Role.RadioButton) { onChange(k) }.semantics { selected = on }
-                .heightIn(min = 36.dp).padding(horizontal = if (fill) 8.dp else 14.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+            Row(Modifier.bounce(inter, .9f).clip(RoundedCornerShape(14.dp)).background(p.glassStrong.copy(alpha = p.glassStrong.alpha * sel)).border(1.dp, ctlEdge(p).copy(alpha = ctlEdge(p).alpha * sel), RoundedCornerShape(14.dp)).springClick(inter, role = Role.RadioButton) { onChange(k) }.semantics { selected = on }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
-                Text(l, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, fontSize = 13.5.sp, color = if (on) p.ink else p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) p.ink else p.ink2)
             }
         }
     }
-    if (fill) Row(railMod, horizontalArrangement = Arrangement.spacedBy(2.dp)) { items(Modifier.weight(1f)) } else FlowRowCompat(railMod) { items(Modifier) }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -830,8 +806,8 @@ fun Field(value: String, onChange: (String) -> Unit, label: String, modifier: Mo
     var reveal by remember { mutableStateOf(false) }
     // Pilule de verre : bord discret au repos, liseré et halo de l'accent quand le champ a le focus
     val k by androidx.compose.animation.core.animateFloatAsState(if (focused) 1f else 0f, if (p.motion) snap() else tween(220), label = "field")
-    val shape = RoundedCornerShape(18.dp)
-    val edge = androidx.compose.ui.graphics.lerp(if (p.contrast) p.line else Color.Transparent, p.focus, k)
+    val shape = RoundedCornerShape(if (singleLine) 20.dp else 18.dp)
+    val edge = androidx.compose.ui.graphics.lerp(ctlEdge(p), p.focus, k)
     androidx.compose.foundation.text.BasicTextField(
         value, { if (it.length <= max) onChange(it) },
         modifier.fillMaxWidth().semantics { label.ifBlank { placeholder }.takeIf { it.isNotBlank() }?.let { contentDescription = it } },
@@ -842,9 +818,10 @@ fun Field(value: String, onChange: (String) -> Unit, label: String, modifier: Mo
         decorationBox = { inner ->
             Row(
                 Modifier.fillMaxWidth()
-                    .clip(shape).background(ctlFill())
-                    .background(p.focus.copy(alpha = .05f * k))
-                    .then(if (k < .01f) Modifier.ctlEdgeIfPage(shape) else Modifier.border((1 + .5f * k).dp, edge, shape))
+                    .shadow(if (p.transp) 0.dp else (2 + 10 * k).dp, shape, ambientColor = p.focus.copy(alpha = .5f * k), spotColor = p.focus.copy(alpha = .6f * k))
+                    .clip(shape).background(p.glassStrong)
+                    .background(Brush.verticalGradient(listOf(p.ink.copy(alpha = if (p.dark) .05f else .0f), p.focus.copy(alpha = .06f * k))))
+                    .border((1 + .6f * k).dp, edge, shape)
                     .heightIn(min = 56.dp).padding(start = if (icon != null) 14.dp else 18.dp, end = 8.dp, top = 9.dp, bottom = 9.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -877,11 +854,9 @@ fun Err(text: String?) { if (!text.isNullOrEmpty()) Text(text, color = LocalPal.
 @Composable
 fun SectionTitle(text: String) {
     val p = LocalPal.current
-    Row(Modifier.padding(start = 4.dp, bottom = 6.dp, top = 8.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp), color = p.ink)
+    // Petit liseré dégradé aux couleurs de l'accent devant le titre
+    Row(Modifier.padding(bottom = 8.dp, top = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(4.dp, 15.dp).clip(RoundedCornerShape(2.dp)).background(Brush.verticalGradient(listOf(p.flame2, p.pink))))
+        Text(text, style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp))
     }
 }
-
-/** Chevron « ouvrir » en fin de ligne ; [rot] : rotation supplémentaire (90° quand le volet est déplié). */
-@Composable
-fun Chevron(rot: Float = 0f, tint: Color = LocalPal.current.ink3) = Pi("chevronleft", Modifier.graphicsLayer { rotationZ = 180f + rot }, size = 18.dp, tint = tint)

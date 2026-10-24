@@ -285,7 +285,7 @@ private fun Shell(ui: AppState) {
     val badges = mapOf("friends" to pg.db.friendships.count { it.to == u.id && it.status == "pending" } + Social.unreadMsgs(ui), "mod" to if (pg.isAdmin(u)) Mod.count(ui) else 0)
     var topH by remember { mutableIntStateOf(0) }; var botH by remember { mutableIntStateOf(0) }
     val haze = LocalHaze.current
-    // Bouton d'action : déplié avec son libellé en haut de page et quand on remonte, replié en « + » quand on descend
+    // Bouton « + » : s'efface en glissant quand on descend dans la page (il ne cache plus le contenu), revient dès qu'on remonte
     var fabShown by remember { mutableStateOf(true) }
     LaunchedEffect(ui.tab) { fabShown = true }
     val fabConn = remember { object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
@@ -331,12 +331,14 @@ private fun Shell(ui: AppState) {
         EdgeFrost(Modifier.align(Alignment.TopCenter), top = true, cover = with(d) { topH.toDp() })
         EdgeFrost(Modifier.align(Alignment.BottomCenter), top = false, cover = with(d) { botH.toDp() })
         Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topH = it.height }) { TopBar(ui) }
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) {
-            NavBar(nav, ui.tab, badges, { ui.nav(it) }, if (p.easy) EASY_NAV else emptyMap(), Modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp))
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) { BottomNav(ui, nav, badges) }
+        val fabK by animateFloatAsState(if (fabShown) 1f else 0f, if (p.motion) snap() else spring(dampingRatio = .8f, stiffness = 420f), label = "fab")
+        val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = with(d) { botH.toDp() } + 14.dp)
+            .graphicsLayer { alpha = fabK; translationX = (1f - fabK) * 110.dp.toPx(); val sc = .7f + .3f * fabK; scaleX = sc; scaleY = sc }
+        if (fabK > .02f) {
+            if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabMod) { ui.open(Sheet.GoalForm()) }
+            else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabMod) { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }
         }
-        val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = with(d) { botH.toDp() } + 12.dp)
-        if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabShown, { ui.open(Sheet.GoalForm()) }, fabMod)
-        else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Publier", fabShown, { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }, fabMod, icon = "edit")
     }
 }
 
@@ -387,18 +389,68 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
     }) { content() }
 }
 
+/** Barre de navigation PepsGoal : pilule en verre flottante, onglet actif repéré par une pastille qui glisse. */
+@Composable
+private fun BottomNav(ui: AppState, items: List<Triple<String, String, String>>, badges: Map<String, Int>) {
+    val p = LocalPal.current
+    val idx = items.indexOfFirst { it.first == ui.tab }.coerceAtLeast(0)
+    val shape = RoundedCornerShape(24.dp)
+    Box(Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 10.dp).fillMaxWidth()
+        .shadow((if (p.oled || p.transp) 0.dp else 14.dp).ifShadows(), shape, ambientColor = Color(0x6628186E), spotColor = Color(0x4428186E))
+        .glassBg(shape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, shape).padding(6.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val w = maxWidth / items.size
+            // Pastille de l'onglet actif : le bord avant part le premier et le bord arrière suit, d'où un léger
+            // étirement pendant le glissement (effet « goutte »), puis elle reprend sa largeur
+            val prev = remember { intArrayOf(idx) }
+            val right = idx >= prev[0]; SideEffect { prev[0] = idx }
+            val lead = spring<Dp>(dampingRatio = .72f, stiffness = 620f); val lag = spring<Dp>(dampingRatio = .8f, stiffness = 260f)
+            val l by animateDpAsState(w * idx, if (p.motion) snap() else if (right) lag else lead, label = "navL")
+            val r by animateDpAsState(w * (idx + 1), if (p.motion) snap() else if (right) lead else lag, label = "navR")
+            Box(Modifier.offset(x = l).width((r - l).coerceAtLeast(w * .6f)).height(56.dp).shadow((if (p.transp) 0.dp else 6.dp).ifShadows(), RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(p.ink))
+            Row(Modifier.fillMaxWidth()) {
+                items.forEachIndexed { i, (k, l0, ic) ->
+                    // Lecture facile : libellés en mots courants
+                    val l = if (p.easy) EASY_NAV[k] ?: l0 else l0
+                    val sel = i == idx
+                    val col by animateColorAsState(if (sel) p.bg else p.ink2, tween(if (p.motion) 0 else 200), label = "navc")
+                    val pop by animateFloatAsState(if (sel && !p.motion) 1.12f else 1f, Motion.emphasis(), label = "navi")
+                    val n = badges[k] ?: 0
+                    val inter = remember { MutableInteractionSource() }
+                    Column(Modifier.weight(1f).bounce(inter, .86f).height(56.dp).clip(RoundedCornerShape(18.dp)).springClick(inter, label = l) { ui.nav(k) }
+                        .semantics { selected = sel; role = Role.Tab; contentDescription = if (n > 0) "$l, $n" else l },
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Box(Modifier.graphicsLayer { scaleX = pop; scaleY = pop }) {
+                            Pi(ic, size = 22.dp, tint = col)
+                            if (n > 0) Badge(n, Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-6).dp))
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        FitText(l, size = 11, min = 8, color = col, weight = FontWeight.ExtraBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Fab(desc: String, modifier: Modifier, onClick: () -> Unit) {
+    val p = LocalPal.current
+    val inter = remember { MutableInteractionSource() }
+    Box(modifier.bounce(inter, .84f).size(58.dp).shadow((if (p.transp) 0.dp else 16.dp).ifShadows(), CircleShape, ambientColor = p.flame, spotColor = p.flame).clip(CircleShape).background(p.accent)
+        .springClick(inter, label = desc, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) { Pi("plus", size = 28.dp, tint = p.onAccent) }
+}
+
 @Composable
 private fun TopBar(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val st = pg.globalStreak(u.id)
     // Barre du haut posée sur le flou progressif : titre de la page, puis pastilles et boutons ronds en verre
-    Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 14.dp, top = 8.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.weight(1f)) {
-                // Accueil : la date au-dessus du titre
-                if (ui.tab == "today") Text(cap(weekdayLongDate(todayDate())), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ink2, maxLines = 1)
                 AnimatedContent(ui.tab, transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(Motion.fadeIn(200)) + slideInVertically(spring(dampingRatio = .8f, stiffness = 520f)) { it / 2 }) togetherWith (fadeOut(Motion.fadeOut(100)) + slideOutVertically(tween(140, easing = Motion.Exit)) { -it / 3 }) }, label = "title") { t ->
                     // Titre entier : sa taille s'adapte à la place laissée par les boutons
-                    TabTitle(NAV_TITLES[t] ?: "PepsGoal")
+                    FitText(NAV_TITLES[t] ?: "PepsGoal", size = 24, min = 14, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
                 }
                 // Hors ligne : modifications en attente d'envoi (touchée : explication)
                 if (!ui.pg.store.online) fr.pepsgoal.app.ui.sheets.OfflineChip(ui)
@@ -406,14 +458,35 @@ private fun TopBar(ui: AppState) {
             }
             val bump = remember { Animatable(1f) }
             LaunchedEffect(st.n) { if (!p.motion) { bump.snapTo(1.35f); bump.animateTo(1f, spring(dampingRatio = .4f)) } }
-            StreakPill(st.n, u.freezes, "Série de ${pl(st.n, "jour", "jours")}${if (u.freezes > 0) ", ${u.freezes} gel${if (u.freezes > 1) "s" else ""} de série" else ""}. Ouvrir le profil", { ui.nav("profile") }, bump.value)
-            RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 20.dp, tint = p.ink) }
-            RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 20.dp, tint = p.ink) }
+            val inter = remember { MutableInteractionSource() }
+            val pill = RoundedCornerShape(50)
+            Row(Modifier.bounce(inter, .9f).height(46.dp).shadow((if (p.transp || p.oled) 0.dp else 10.dp).ifShadows(), pill, ambientColor = Color(0x4428186E), spotColor = Color(0x3328186E))
+                .glassBg(pill, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, pill).springClick(inter, label = "Ouvrir le profil") { ui.nav("profile") }.semantics(mergeDescendants = true) { contentDescription = "Série de ${pl(st.n, "jour", "jours")}${if (u.freezes > 0) ", ${u.freezes} gel${if (u.freezes > 1) "s" else ""} de série" else ""}" }.padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.graphicsLayer { scaleX = bump.value; scaleY = bump.value }, verticalAlignment = Alignment.CenterVertically) { Flame(22.dp); Text("${st.n}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp) }
+                if (u.freezes > 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { Pi("snow", size = 16.dp, tint = p.type("objective").ink); Text("${u.freezes}", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp) }
+            }
+            RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 21.dp, tint = p.ink) }
+            RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 21.dp, tint = p.ink) }
         }
         if (pg.db.sandbox) Note("**Mode démonstration.** Données d’exemple : rien n’est enregistré. Déconnecte-toi pour revenir à ton profil.", "star")
         val now = pg.maintNow(); val next = pg.maintNext()
         if (now != null) Note("**Maintenance en cours**${now.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[now.mode]}${if (now.message.isNotEmpty()) ". ${now.message}" else ""}${if (pg.isAdmin(u)) " (en tant qu’admin, tu n’es pas bloqué)" else ""}", "gauge")
         else if (next != null && next.start - nowMs() < 7 * DAY_MS) Note("Maintenance prévue le ${fmtDT(next.start)}${next.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[next.mode]}.", "clock")
+    }
+}
+
+/** Bouton rond en verre clair avec ombre portée (barre du haut). */
+@Composable
+private fun RoundGlass(desc: String, onClick: () -> Unit, badge: Int = 0, content: @Composable BoxScope.() -> Unit) {
+    val p = LocalPal.current
+    val inter = remember { MutableInteractionSource() }
+    Box {
+        Box(Modifier.bounce(inter, .86f).size(46.dp).shadow((if (p.transp || p.oled) 0.dp else 12.dp).ifShadows(), CircleShape, ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
+            .glassBg(CircleShape, strong = true).border(1.dp, if (p.contrast) p.line else p.glassEdge, CircleShape).springClick(inter, label = desc, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = if (badge > 0) "$desc, $badge non lus" else desc; role = Role.Button },
+            contentAlignment = Alignment.Center, content = content)
+        if (badge > 0) Badge(badge, Modifier.align(Alignment.TopEnd).offset(4.dp, (-2).dp))
     }
 }
 

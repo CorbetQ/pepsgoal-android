@@ -69,7 +69,7 @@ fun AuthScreen(ui: AppState) {
         Muted("Planifie tes objectifs, tes deadlines, tes routines et tes abstinences. Valide chaque jour, fais grandir ta série et avance avec tes amis.")
         FlowRowCompat(gap = 8.dp) { listOf("objective", "deadline", "routine", "abstinence").forEach { TypeChip(it) } }
         Glass(strong = true) {
-            Seg(listOf(false to "Connexion", true to "Créer un compte"), signup, { signup = it; err = null }, Modifier.fillMaxWidth(), fill = true)
+            Seg(listOf(false to "Connexion", true to "Créer un compte"), signup, { signup = it; err = null })
             Spacer(Modifier.height(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (signup) Field(name, { name = it }, "Prénom et nom", placeholder = "Camille Roux", max = 40, keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))

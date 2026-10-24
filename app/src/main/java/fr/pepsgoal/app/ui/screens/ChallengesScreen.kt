@@ -38,7 +38,7 @@ fun ChallengesCard(ui: AppState) {
                 Text("Défis de la communauté", fontWeight = FontWeight.ExtraBold)
                 Muted(if (live.isEmpty()) "Aucun défi en cours : crée le premier." else live.take(2).joinToString(" · ") { "${it.emoji} ${it.title}" } + " · ${pl(live.sumOf { it.participants }, "participant", "participants")}", small = true, maxLines = 2)
             }
-            Chevron()
+            Text("›", color = p.ink3, fontSize = 22.sp)
         }
     }
 }

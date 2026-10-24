@@ -142,10 +142,9 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
         val head = @Composable { mod: Modifier ->
             Box(mod.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    // « Retour » générique : on affiche plutôt le nom de l'onglet d'où l'on vient
-                    BackPill(if (back == "Retour" && ui.screens.size <= 1) NAV_TITLES[ui.tab] ?: back else back, onBack)
+                    PButton(back, onBack, icon = "chevronleft", small = true)
                     Text(title, Modifier.weight(1f).padding(horizontal = 6.dp).graphicsLayer { alpha = k; translationY = (1f - k) * 10.dp.toPx() }, fontFamily = Unbounded, fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        fontSize = 17.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     right()
                 }
             }
@@ -160,11 +159,14 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
             LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp), list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item("title") {
                     // Le grand titre s'efface et rétrécit en défilant (lu dans la phase de dessin : pas de recomposition)
-                    PageTitle(title, icon, c1, c2, Modifier.enter().graphicsLayer {
+                    Row(Modifier.enter().graphicsLayer {
                         val off = if (list.firstVisibleItemIndex == 0) list.firstVisibleItemScrollOffset.toFloat() else 200f
                         val f = (off / 44.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
-                    }.padding(start = 4.dp, top = 4.dp, bottom = 8.dp))
+                    }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        if (icon != null) IconTile(icon, c1, c2, 54.dp, 18.dp)
+                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp)
+                    }
                 }
                 content()
                 if (bottom == null && !low) item("nav") { Spacer(Modifier.navigationBarsPadding()) }
@@ -196,8 +198,8 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                     val list = keys.mapNotNull { k -> cats.firstOrNull { it[0] == k } }
                     if (list.isNotEmpty()) item("sec:$title") {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(title, Modifier.padding(start = 6.dp), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = p.ink)
-                            Glass(pad = 4.dp, radius = 24.dp) {
+                            Text(title.uppercase(), Modifier.padding(start = 8.dp), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, letterSpacing = .8.sp)
+                            Glass(pad = 4.dp) {
                                 Divided(inset = 66.dp) {
                                     list.forEach { (k, l, d, i) ->
                                         val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -206,8 +208,8 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                                             val (k1, k2) = SET_COLORS[k] ?: ("routine" to "duration")
                                             IconTile(i, p.type(k1).c, p.type(k2).c, 42.dp, 13.dp)
                                             // Sous le nom : l'état actuel de la catégorie quand il se résume en quelques mots
-                                            Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.Bold, fontSize = 16.sp); Muted(setSummary(ui, k) ?: d, small = true, maxLines = 2) }
-                                            Chevron()
+                                            Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp); Muted(setSummary(ui, k) ?: d, small = true, maxLines = 2) }
+                                            Text("›", color = p.ink3, fontSize = 22.sp)
                                         }
                                     }
                                 }
@@ -238,7 +240,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                 CatHero("a11y", setSummary(ui, "a11y") ?: "Réglages standard", chips = { Chip("Cet appareil", "lock", p.type("objective").c) })
                 ComfortSettings(ui)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Couleurs et effets", Modifier.padding(start = 6.dp), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = p.ink)
+                    Text("COULEURS ET EFFETS", Modifier.padding(start = 8.dp), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, letterSpacing = .8.sp)
                     Glass(pad = 4.dp) { A11yRows(ui) }
                     Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(horizontal = 8.dp), small = true)
                 }

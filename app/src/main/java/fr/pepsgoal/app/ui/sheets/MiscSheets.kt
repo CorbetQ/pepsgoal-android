@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
-import fr.pepsgoal.app.ui.HeroFlame
+import fr.pepsgoal.app.ui.screens.HeroFlame
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*

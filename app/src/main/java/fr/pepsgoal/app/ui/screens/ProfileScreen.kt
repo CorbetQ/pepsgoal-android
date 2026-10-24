@@ -57,12 +57,17 @@ fun ProfileScreen(ui: AppState) {
     ScreenList {
         item("hero") { ProfileHero(ui, u, lv) }
         item("tiles") {
-            StatStrip(listOf(StatItem("flameo", "${st.n}", "série", st.lit), StatItem("trophy", "$best", "record"), StatItem("check", fmtNum(wins), "validations"), StatItem("target", "$done", "caps")))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProfileTile("${st.n}", "série", "flameo", Modifier.weight(1f), lit = st.lit)
+                ProfileTile("$best", "record", "trophy", Modifier.weight(1f))
+                ProfileTile(fmtNum(wins), "validations", "check", Modifier.weight(1f))
+                ProfileTile("$done", "caps", "target", Modifier.weight(1f))
+            }
         }
         item("status") { StatusRow(ui) }
         item("wallet") { WalletStrip(ui, u) }
         item("tabs") {
-            Seg(listOf("overview" to "Aperçu", "badges" to "Badges", "collection" to "Collection"), ui.profileTab, { ui.profileTab = it }, Modifier.fillMaxWidth(), icons = listOf("sun", "medal", "palette"), fill = true)
+            Seg(listOf("overview" to "Aperçu", "badges" to "Badges", "collection" to "Collection"), ui.profileTab, { ui.profileTab = it }, Modifier.fillMaxWidth(), icons = listOf("sun", "medal", "palette"))
         }
         when (ui.profileTab) {
             "badges" -> {
@@ -98,8 +103,10 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
             // Bannière : dégradé du niveau, halos et petites flammes dessinés une fois (aucune animation)
             androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(118.dp)) {
                 drawRect(Brush.linearGradient(cols.map { it.copy(alpha = .9f) }, Offset.Zero, Offset(size.width, size.height)))
-                drawCircle(Color.White.copy(alpha = .14f), size.height * .9f, Offset(size.width * .92f, -size.height * .1f))
-                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .12f))))
+                drawCircle(Color.White.copy(alpha = .16f), size.height * .9f, Offset(size.width * .92f, -size.height * .1f))
+                drawCircle(Color.White.copy(alpha = .1f), size.height * .55f, Offset(size.width * .08f, size.height * 1.05f))
+                drawCircle(Color.White.copy(alpha = .08f), size.height * .3f, Offset(size.width * .62f, size.height * .35f))
+                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .18f))))
             }
             Row(Modifier.align(Alignment.TopEnd).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 HeroRound("share", "Partager mon profil") { shareProfile(ctx, ui, u, lv) }
@@ -113,7 +120,7 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(u.name, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(u.name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (pg.isOfficial(u)) Verified()
                 }
                 Muted(if (pg.isGuest(u)) "Sans compte · données sur cet appareil" else "@" + u.username + if (pg.isAdmin(u)) " · Administrateur" else "", small = true)
@@ -148,7 +155,7 @@ private fun levelColors(level: Int, p: fr.pepsgoal.app.ui.theme.Pal): List<Color
 
 @Composable
 private fun HeroRound(icon: String, desc: String, onClick: () -> Unit) {
-    Box(Modifier.size(40.dp).clip(CircleShape).background(Color.Black.copy(alpha = .2f)).clickable(onClickLabel = desc, onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(38.dp).clip(CircleShape).background(Color.Black.copy(alpha = .22f)).clickable(onClickLabel = desc, onClick = onClick), contentAlignment = Alignment.Center) {
         Pi(icon, size = 18.dp, tint = Color.White)
     }
 }
@@ -159,6 +166,20 @@ private fun shareProfile(ctx: android.content.Context, ui: AppState, u: User, lv
     val text = tr("Rejoins-moi sur PepsGoal 🔥") + "\n" + (if (ui.pg.isGuest(u)) "" else "@${u.username} · ") + tr("Niveau ${lv.idx}, ${lv.name}") + " · " + tr("série de ${pl(st, "jour", "jours")}")
     val i = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
     try { ctx.startActivity(android.content.Intent.createChooser(i, tr("Partager mon profil")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {}
+}
+
+/** Tuile de chiffre : icône colorée, grand nombre, libellé. */
+@Composable
+private fun ProfileTile(value: String, label: String, icon: String, modifier: Modifier, lit: Boolean = true) {
+    val p = LocalPal.current
+    Glass(modifier, pad = 10.dp, radius = 20.dp) {
+        // Même hauteur d'icône partout (la flamme est plus haute que les pictos), textes centrés et ajustés à la tuile
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) { if (icon == "flameo") Flame(24.dp, dim = !lit) else Pi(icon, size = 20.dp, tint = p.flameInk) }
+            FitText(value, Modifier.fillMaxWidth(), size = 20, min = 12, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
+            FitText(label, Modifier.fillMaxWidth(), size = 11, min = 8, color = p.ink2, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Center)
+        }
+    }
 }
 
 /** Porte-monnaie : flammes à dépenser et accès à la boutique. */
@@ -194,7 +215,7 @@ private fun LookCard(ui: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconTile("palette", p.flame, p.pink, 40.dp, 13.dp)
             Column(Modifier.weight(1f)) { Text("Thème, fond et icône", fontWeight = FontWeight.ExtraBold); Muted("Ce que tu as acheté dans la boutique s’applique ici", small = true) }
-            Chevron()
+            Text("›", color = p.ink3, fontSize = 22.sp)
         }
     }
 }

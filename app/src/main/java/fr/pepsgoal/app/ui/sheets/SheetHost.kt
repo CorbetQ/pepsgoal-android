@@ -19,8 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
@@ -52,20 +50,20 @@ fun SheetHost(ui: AppState) {
     ModalBottomSheet(onDismissRequest = { ui.back() }, modifier = Modifier.statusBarsPadding(), sheetState = state, containerColor = if (p.transp || p.contrast) p.bg else p.glassStrong.copy(alpha = 1f), contentColor = p.ink,
         scrimColor = p.scrim, shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         // Poignée bien visible : on comprend qu'un glissement vers le bas ferme la fenêtre
-        dragHandle = { Box(Modifier.padding(top = 10.dp, bottom = 4.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink.copy(alpha = .2f))) }) {
-        key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true, LocalOnCard provides true, LocalFootSlot provides slot) {
+        dragHandle = { Box(Modifier.padding(top = 10.dp, bottom = 2.dp).size(42.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink3.copy(alpha = .45f))) }) {
+        key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true, LocalFootSlot provides slot) {
             val foot = slot.content
             // Contenu d'une fenêtre (ou de l'étape suivante dans la même fenêtre) : fondu et léger glissement vers le haut
             val shown = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else 0f) }
             LaunchedEffect(Unit) { if (shown.value < 1f) shown.animateTo(1f, androidx.compose.animation.core.tween(260, easing = Motion.Emphasized)) }
             Column(Modifier.fillMaxWidth().imePadding().graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 14.dp.toPx() }) {
                 Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()).then(if (foot == null) Modifier.navigationBarsPadding() else Modifier)
-                    .padding(start = 22.dp, end = 22.dp, top = 6.dp, bottom = if (foot == null) 26.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = if (foot == null) 24.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SheetBody(ui, s)
                 }
                 // Boutons d'action toujours visibles en bas, même quand le contenu défile
                 if (foot != null) Row(Modifier.fillMaxWidth().drawBehind { drawRect(p.line, size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx())) }
-                    .navigationBarsPadding().padding(horizontal = 22.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) { foot() }
+                    .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) { foot() }
             }
         } }
     }
@@ -126,10 +124,10 @@ private fun SheetBody(ui: AppState, s: Sheet) {
 /** En-tête d'une fenêtre : titre et bouton fermer. */
 @Composable
 fun SheetHead(ui: AppState, title: String, right: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, Modifier.weight(1f).semantics { heading() }, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 25.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         right()
-        IconBtn("x", "Fermer", { ui.close() }, size = 38.dp)
+        IconBtn("x", "Fermer", { ui.close() }, plain = true)
     }
 }
 

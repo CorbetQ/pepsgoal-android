@@ -214,9 +214,37 @@ private fun Hero(ui: AppState) {
                 Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (compact) 20.sp else 26.sp)
                 if (!compact) Muted(msg)
             }
-            Box(Modifier.graphicsLayer { val k = if (compact) .62f else 1f; scaleX = k; scaleY = k }) { HeroFlame(st.n, st.lit, onTickle = { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") }) }
+            Box(Modifier.graphicsLayer { val k = if (compact) .62f else 1f; scaleX = k; scaleY = k }) { HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") } }
         }
         if (!compact) { Spacer(Modifier.height(12.dp)); WeekStrip(pg, u.id) }
+    }
+}
+
+@Composable
+fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
+    val p = LocalPal.current
+    // Flamme qui respire, à 15 images par seconde
+    val ph = slowPhaseState(2800, 15)
+    val count = remember { Animatable(0f) }
+    LaunchedEffect(n) { if (p.motion) count.snapTo(n.toFloat()) else count.animateTo(n.toFloat(), tween(minOf(1500, 600 + n * 6), easing = FastOutSlowInEasing)) }
+    // Chatouilles : chaque toucher fait gigoter la flamme ; 7 touchers rapprochés, elle bondit (surprise)
+    val wiggle = remember { Animatable(0f) }; val jump = remember { Animatable(0f) }
+    val taps = remember { mutableListOf<Long>() }; val scope = rememberCoroutineScope()
+    val tickle = if (onTickle == null) Modifier else Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClickLabel = "Flamme") {
+        val now = android.os.SystemClock.uptimeMillis(); taps.removeAll { now - it > 2500 }; taps.add(now)
+        fr.pepsgoal.app.ui.Feedback.ramp((taps.size / 7f).coerceAtMost(1f))
+        scope.launch { wiggle.snapTo(if (taps.size % 2 == 0) 1f else -1f); wiggle.animateTo(0f, spring(dampingRatio = .25f, stiffness = 900f)) }
+        if (taps.size >= 7) { taps.clear(); scope.launch { jump.snapTo(0f); jump.animateTo(1f, tween(700, easing = FastOutSlowInEasing)); jump.snapTo(0f) }; onTickle() }
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(tickle.graphicsLayer {
+            val f = if (lit) 1f + .03f * (1f - kotlin.math.cos(ph.value * 2f * kotlin.math.PI.toFloat())) else 1f
+            val j = kotlin.math.sin(jump.value * kotlin.math.PI.toFloat())
+            scaleX = f * (1f + .25f * j); scaleY = f * (1f + .25f * j); translationY = -j * 40.dp.toPx(); rotationZ = wiggle.value * 12f + jump.value * 360f
+            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
+        }) { Flame(84.dp, dim = !lit) }
+        Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
+        Text(if (n > 1) "jours de série" else "jour de série", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
     }
 }
 
