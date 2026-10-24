@@ -34,6 +34,7 @@ import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.Goal
+import fr.pepsgoal.core.model.unit
 
 /* ------------------------------------------------------------------ En-tête unifié */
 
