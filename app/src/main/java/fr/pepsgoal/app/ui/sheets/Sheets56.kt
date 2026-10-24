@@ -26,7 +26,7 @@ private val PAUSE_REASONS = listOf("🤕" to "Blessure", "✈️" to "Voyage", "
 fun PauseBanner(ui: AppState, g: Goal) {
     val p = LocalPal.current; val pg = ui.pg
     if (!pg.isPaused(g)) return
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.focus.copy(alpha = .14f)).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(p.focus.copy(alpha = .14f)).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Emoji("⏸️", 28.dp)
         Column(Modifier.weight(1f)) {
             Text("En pause jusqu’au ${g.pausedUntil?.let { fmtDate(it) } ?: "?"}", fontWeight = FontWeight.ExtraBold)

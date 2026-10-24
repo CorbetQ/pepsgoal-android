@@ -47,7 +47,7 @@ fun LeagueScreen(ui: AppState) {
                     val (tn, te, _) = League.tier(mine.points); val nx = League.next(mine.points); val rank = l.indexOf(mine) + 1
                     Glass {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Box(Modifier.size(72.dp).clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(tierColors(tn).map(::hexC))), contentAlignment = Alignment.Center) { Emoji(te, 42.dp) }
+                            Box(Modifier.size(72.dp).clip(smoothShape(24.dp)).background(Brush.linearGradient(tierColors(tn).map(::hexC))), contentAlignment = Alignment.Center) { Emoji(te, 42.dp) }
                             Column(Modifier.weight(1f)) {
                                 Eyebrow("Ligue $tn")
                                 Text("${rank}${if (rank == 1) "er" else "e"} sur ${l.size}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
@@ -66,7 +66,7 @@ fun LeagueScreen(ui: AppState) {
                         if (l.size <= 1) Empty("Seul pour l’instant", "Ajoute des amis pour vous mesurer chaque semaine.", icon = "users") { PButton("Trouver des amis", { ui.back(); ui.friendsTab = "discover"; ui.nav("friends") }, icon = "userplus", small = true) }
                         l.forEachIndexed { i, r ->
                             val meRow = r.userId == me; val (tn, te, _) = League.tier(r.points)
-                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (meRow) p.flame.copy(alpha = .14f) else Color.Transparent).padding(10.dp),
+                            Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(if (meRow) p.flame.copy(alpha = .14f) else Color.Transparent).padding(10.dp),
                                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text(when (i) { 0 -> "🥇"; 1 -> "🥈"; 2 -> "🥉"; else -> "${i + 1}" }, Modifier.width(28.dp), fontFamily = Unbounded, fontWeight = FontWeight.Bold)
                                 val av = remember(r.userId) { try { JSON.decodeFromJsonElement(Avatar.serializer(), r.avatar) } catch (e: Exception) { null } }
@@ -110,7 +110,7 @@ fun LeagueCard(ui: AppState) {
     val (tn, te, _) = League.tier(m.second.points)
     Glass(onClick = { ui.push(Screen.League) }) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(tierColors(tn).map(::hexC))), contentAlignment = Alignment.Center) { Emoji(te, 26.dp) }
+            Box(Modifier.size(44.dp).clip(smoothShape(14.dp)).background(Brush.linearGradient(tierColors(tn).map(::hexC))), contentAlignment = Alignment.Center) { Emoji(te, 26.dp) }
             Column(Modifier.weight(1f)) {
                 Text("Ligue $tn", fontWeight = FontWeight.ExtraBold)
                 Muted("${m.first}${if (m.first == 1) "er" else "e"} sur $size cette semaine · ${m.second.points} flammes", small = true)

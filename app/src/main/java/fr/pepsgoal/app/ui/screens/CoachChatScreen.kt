@@ -98,7 +98,7 @@ fun CoachChatScreen(ui: AppState) {
             if (!busy && msgs.isNotEmpty() && sugg.isNotEmpty()) Box(Modifier.padding(horizontal = 12.dp)) {
                 ChipScroller(bleed = 12.dp) { sugg.forEach { q -> FChip(q, false, { send(q) }) } }
             }
-            Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp).clip(RoundedCornerShape(26.dp)).background(p.glassStrong).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp).clip(smoothShape(26.dp)).background(p.glassStrong).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(input, { input = it }, "", Modifier.weight(1f), placeholder = "Écris à $name…", max = 600, singleLine = false, icon = "sparkle")
                 if (busy) IconBtn("pause", "Arrêter la réponse", { CoachChat.stop() }, size = 46.dp, tint = p.danger)
                 else IconBtn("send", "Envoyer", { send(input) }, size = 46.dp, tint = p.flameInk)
@@ -168,7 +168,7 @@ private fun Bubble(ui: AppState, m: ChatMsg, last: Boolean) {
             // Objectif proposé, prêt à créer
             m.goal?.let { line ->
                 val d = if (line.startsWith("?")) Coach.rules(line.drop(1)) else Coach.parseLine(line, m.text)
-                if (d != null) Row(Modifier.clip(RoundedCornerShape(16.dp)).background(p.type(d.type).c.copy(alpha = .18f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (d != null) Row(Modifier.clip(smoothShape(16.dp)).background(p.type(d.type).c.copy(alpha = .18f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Emoji(d.icon, 28.dp)
                     Column(Modifier.weight(1f, fill = false)) { Text(d.title, fontWeight = FontWeight.ExtraBold); TypeChip(d.type) }
                     PButton("Créer", { ui.open(Sheet.GoalForm(preType = d.type, preTitle = d.title, preIcon = d.icon, preFields = d.fields)) }, icon = "plus", kind = "primary", small = true)
@@ -182,7 +182,7 @@ private fun Bubble(ui: AppState, m: ChatMsg, last: Boolean) {
             }
             // Ce que le coach a retenu
             m.fact?.let { f ->
-                Row(Modifier.clip(RoundedCornerShape(14.dp)).background(p.ink.copy(alpha = .06f)).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .06f)).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("🧠", fontSize = 14.sp); Muted("Retenu : $f", Modifier.weight(1f, fill = false), small = true, maxLines = 2)
                     IconBtn("x", "Oublier", { AiMemory.all(ctx).lastOrNull { it.kind == "fact" && it.text.equals(f, true) }?.let { AiMemory.remove(ctx, it.at) }; ui.toast("Oublié.", "trash") }, plain = true, size = 30.dp)
                 }

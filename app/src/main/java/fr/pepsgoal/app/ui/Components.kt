@@ -269,7 +269,11 @@ fun IconTile(icon: String, c1: Color, c2: Color, size: Dp = 40.dp, radius: Dp = 
  * clair et ombre teintée. L'emoji Fluent 3D y est posé comme un objet.
  */
 @Composable
-fun EmojiTile(e: String, c: Color, size: Dp = 44.dp, radius: Dp = size * .32f) {
+fun EmojiTile(e: String, c: Color, size: Dp = 44.dp, radius: Dp = size * .32f) = EmojiTileBox(c, size, radius) { Emoji(e, size * .62f) }
+
+/** Même pastille en « pâte » colorée, avec un contenu libre (flamme, illustration…). */
+@Composable
+fun EmojiTileBox(c: Color, size: Dp = 32.dp, radius: Dp = size * .32f, content: @Composable BoxScope.() -> Unit) {
     val p = LocalPal.current
     val shape = smoothShape(radius)
     // Fond opaque (calculé sur le fond de la carte) : l'ombre ne transparaît pas à travers la pastille
@@ -278,9 +282,7 @@ fun EmojiTile(e: String, c: Color, size: Dp = 44.dp, radius: Dp = size * .32f) {
     val bottom = androidx.compose.ui.graphics.lerp(base, c, if (p.dark) .36f else .4f)
     Box(Modifier.size(size).then(if (p.contrast) Modifier.border(1.5.dp, p.line, shape) else Modifier.glow(shape, c.copy(alpha = .9f), p, if (size >= 40.dp) 7.dp else 4.dp))
         .background(Brush.linearGradient(listOf(top, bottom), start = Offset.Zero, end = Offset.Infinite), shape)
-        .then(if (p.contrast) Modifier else Modifier.sheen(shape, p.dark, .9f)), contentAlignment = Alignment.Center) {
-        Emoji(e, size * .62f)
-    }
+        .then(if (p.contrast) Modifier else Modifier.sheen(shape, p.dark, .9f)), contentAlignment = Alignment.Center, content = content)
 }
 
 /**
@@ -325,7 +327,7 @@ fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.
 fun PollOption(text: String, pct: Float, show: Boolean, mine: Boolean, top: Boolean, enabled: Boolean, onClick: () -> Unit, sub: String? = null, count: String? = null) {
     val p = LocalPal.current
     val v by animateFloatAsState(if (show) pct.coerceIn(0f, 1f) else 0f, if (p.motion) tween(0) else Springs.bar, label = "poll")
-    val shape = RoundedCornerShape(16.dp)
+    val shape = smoothShape(16.dp)
     val inter = remember { MutableInteractionSource() }
     Box(Modifier.fillMaxWidth().bounce(inter, .97f).clip(shape).background(p.ink.copy(alpha = if (p.dark) .08f else .045f))
         .border(1.5.dp, if (mine) p.flame else ctlEdge(p), shape).springClick(inter, enabled = enabled, onClick = onClick)) {
@@ -378,8 +380,8 @@ fun Modifier.aiGlow(radius: Dp): Modifier {
 
 /** Ressorts communs : réponses vives avec un léger rebond. */
 object Springs {
-    val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .42f, stiffness = 520f)
-    val bar = androidx.compose.animation.core.spring<Float>(dampingRatio = .62f, stiffness = 140f)
+    val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .4f, stiffness = 520f)
+    val bar = androidx.compose.animation.core.spring<Float>(dampingRatio = .55f, stiffness = 130f)
 }
 
 /**

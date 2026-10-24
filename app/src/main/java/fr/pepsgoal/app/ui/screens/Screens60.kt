@@ -100,7 +100,7 @@ fun GiftCard(ui: AppState, m: Message, b: JsonObject, mine: Boolean) {
     val n = b.int("n").coerceIn(0, GIFT_MAX)
     var opened by remember(m.id, ui.rev) { mutableStateOf(pg.giftOpened(m.id)) }
     val wiggle = if (!mine && !opened && !p.motion) rememberInfiniteTransition(label = "gift").animateFloat(-6f, 6f, infiniteRepeatable(tween(500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "giftW").value else 0f
-    Column(Modifier.widthIn(min = 200.dp, max = 260.dp).clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFFFFE08A), Color(0xFFFF9A4A), Color(0xFFFF5E8A))))
+    Column(Modifier.widthIn(min = 200.dp, max = 260.dp).clip(smoothShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFFFFE08A), Color(0xFFFF9A4A), Color(0xFFFF5E8A))))
         .padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.graphicsLayer { rotationZ = wiggle }) { Emoji(if (opened || mine) "🔥" else "🎁", 48.dp) }
         Text("$n flammes", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF2A1408))
@@ -175,7 +175,7 @@ fun MemoriesCard(ui: AppState) {
     val list = remember(ui.rev) { pg.memories() }
     if (list.isEmpty()) return
     Glass {
-        CardHead("Souvenirs") { Emoji("📸", 22.dp) }
+        CardHead("Souvenirs", emoji = "📸") { Emoji("📸", 22.dp) }
         list.forEach { mm ->
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(Modifier.weight(1f)) {
@@ -211,7 +211,7 @@ fun ChallengeCard(ui: AppState) {
     val (e, txt) = remember(skip, today()) { pg.dailyChallenge(skip) }
     val done = remember(ui.rev) { pg.challengeDone() }
     Glass(border = if (done) p.ok.copy(alpha = .5f) else null) {
-        CardHead("Défi du jour") { Muted("+$CHALLENGE_BONUS 🔥", small = true) }
+        CardHead("Défi du jour", emoji = "⚡") { Muted("+$CHALLENGE_BONUS 🔥", small = true) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Emoji(e, 34.dp)
             Text(txt, Modifier.weight(1f), fontWeight = FontWeight.Bold)
@@ -231,7 +231,7 @@ fun AdventCard(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg
     val d = todayDate(); if (!adventOpen(d)) return
     Glass(border = Color(0xFFE8412C).copy(alpha = .4f)) {
-        CardHead("Calendrier de l’Avent") { Emoji("🎄", 22.dp) }
+        CardHead("Calendrier de l’Avent", emoji = "🎄") { Emoji("🎄", 22.dp) }
         FlowRowCompat(gap = 6.dp) {
             for (day in 1..24) {
                 val opened = pg.adventOpened(day); val isToday = day == d.dayOfMonth; val past = day < d.dayOfMonth
@@ -274,7 +274,7 @@ fun WeekWeatherCard(ui: AppState) {
     if (outdoor.isEmpty() || f.daily.size < 3) return
     val good = goodOutdoorDays(f).map { it.day }.toSet()
     Glass {
-        CardHead("Météo de la semaine") { Muted(outdoor.take(3).joinToString(" ") { it.icon }, small = true) }
+        CardHead("Météo de la semaine", emoji = "🌤️") { Muted(outdoor.take(3).joinToString(" ") { it.icon }, small = true) }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             f.daily.take(7).forEach { dd ->
                 val d = parseYmd(dd.day); val ok = dd.day in good

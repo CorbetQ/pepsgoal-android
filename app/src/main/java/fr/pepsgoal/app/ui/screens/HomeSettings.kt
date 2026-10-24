@@ -98,8 +98,8 @@ fun HomeSettings(ui: AppState) {
                     val pos = list.indexOfFirst { it.first == k }
                     Row(Modifier.zIndex(if (isDrag) 1f else 0f).onSizeChanged { rowH = it.height }
                         .graphicsLayer { translationY = if (isDrag) dragY else 0f; scaleX = if (isDrag) 1.03f else 1f; scaleY = if (isDrag) 1.03f else 1f }
-                        .then(if (isDrag) Modifier.shadow(12.dp, RoundedCornerShape(16.dp)) else Modifier)
-                        .clip(RoundedCornerShape(16.dp)).background(if (isDrag) p.glassStrong else p.ink.copy(alpha = .04f))
+                        .then(if (isDrag) Modifier.shadow(12.dp, smoothShape(16.dp)) else Modifier)
+                        .clip(smoothShape(16.dp)).background(if (isDrag) p.glassStrong else p.ink.copy(alpha = .04f))
                         .semantics(mergeDescendants = true) {
                             contentDescription = "$l, position ${pos + 1} sur ${list.size}, ${if (on) "affichée" else "masquée"}"
                             customActions = listOfNotNull(
@@ -186,7 +186,7 @@ private fun StylePicker(ui: AppState) {
             listOf("simple" to ("Simplifiée" to "Un en-tête qui résume ta journée, l’essentiel à valider, les moments du jour en tuiles « À la une » et le reste en sections repliables."),
                 "classic" to ("Classique" to "Toutes les cartes à la suite, dans l’ordre choisi ci-dessous.")).forEach { (k, v) ->
                 val on = st == k
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (on) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f))
+                Column(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (on) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f))
                     .clickable { st = k; ui.prefs.homeStyle = k; Feedback.tick(); ui.bump() }.padding(12.dp)) {
                     Text(v.first, fontWeight = FontWeight.ExtraBold, color = if (on) p.ink else p.ink2); Muted(v.second, small = true)
                 }
@@ -223,7 +223,7 @@ private fun LayoutPicker(ui: AppState) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("compact" to ("Compact" to "Plus de cartes à l’écran, en-tête réduit."), "comfy" to ("Normal" to "L’équilibre par défaut."), "airy" to ("Aéré" to "Plus d’espace, pour respirer.")).forEach { (k, v) ->
                     val on = lay == k
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (on) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f))
+                    Column(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (on) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f))
                         .clickable { lay = k; ui.prefs.homeLayout = k; Feedback.tick(); ui.bump() }.padding(10.dp)) {
                         Text(v.first, fontWeight = FontWeight.ExtraBold, color = if (on) p.ink else p.ink2); Muted(v.second, small = true)
                     }

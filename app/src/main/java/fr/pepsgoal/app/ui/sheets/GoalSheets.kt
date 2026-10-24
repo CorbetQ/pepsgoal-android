@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
@@ -134,7 +135,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     }
     Field(title, { title = it }, "Intitulé", placeholder = "Ex. Courir 30 minutes", max = 80)
     SetRow("Icône") {
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(p.type(type).c.copy(alpha = .22f)).clickable { showIcons = !showIcons }, contentAlignment = Alignment.Center) { Emoji(icon, 30.dp) }
+        Box(Modifier.size(48.dp).clip(smoothShape(14.dp)).background(p.type(type).c.copy(alpha = .22f)).clickable { showIcons = !showIcons }, contentAlignment = Alignment.Center) { Emoji(icon, 30.dp) }
         PButton(if (showIcons) "Fermer" else "Changer", { showIcons = !showIcons }, small = true)
     }
     if (showIcons) EmojiPicker(icon) { icon = it; showIcons = false }
@@ -310,8 +311,8 @@ private fun StepBar(steps: List<Pair<String, String>>, cur: String) {
 private fun ModeCard(icon: String, title: String, desc: String, ai: Boolean, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(Modifier.fillMaxWidth().bounce(inter, .97f).then(if (ai && !p.easy) Modifier.aiGlow(20.dp) else Modifier).clip(RoundedCornerShape(20.dp))
-        .background(if (ai) p.flame.copy(alpha = .12f) else p.ink.copy(alpha = .05f)).border(1.dp, if (ai) p.flame.copy(alpha = .5f) else p.line, RoundedCornerShape(20.dp))
+    Row(Modifier.fillMaxWidth().bounce(inter, .97f).then(if (ai && !p.easy) Modifier.aiGlow(20.dp) else Modifier).clip(smoothShape(20.dp))
+        .background(if (ai) p.flame.copy(alpha = .12f) else p.ink.copy(alpha = .05f)).border(1.dp, if (ai) p.flame.copy(alpha = .5f) else p.line, smoothShape(20.dp))
         .springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         IconTile(icon, if (ai) p.type("program").c else p.type("routine").c, if (ai) p.type("measure").c else p.type("objective").c, 48.dp, 16.dp)
@@ -324,7 +325,7 @@ private fun ModeCard(icon: String, title: String, desc: String, ai: Boolean, onC
 @Composable
 private fun GoalSummary(ui: AppState, u: User, g: Goal, grp: String?, health: String?) {
     val p = LocalPal.current; val pg = ui.pg; val tc = p.type(g.type)
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(tc.c.copy(alpha = .16f)).border(1.dp, tc.c.copy(alpha = .5f), RoundedCornerShape(22.dp)).padding(16.dp),
+    Column(Modifier.fillMaxWidth().clip(smoothShape(22.dp)).background(tc.c.copy(alpha = .16f)).border(1.dp, tc.c.copy(alpha = .5f), smoothShape(22.dp)).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             GoalIcon(g, 54.dp)
@@ -483,7 +484,7 @@ private fun saveGoal(ui: AppState, u: User, g0: Goal?, g: Goal, type: String, ti
 @Composable
 private fun TypeTile(k: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val p = LocalPal.current; val tc = p.type(k); val info = typeInfo(k)
-    Column(modifier.clip(RoundedCornerShape(18.dp)).background(tc.c.copy(alpha = if (on) .32f else .12f)).border(if (on) 2.dp else 1.dp, if (on) tc.c else p.line, RoundedCornerShape(18.dp))
+    Column(modifier.clip(smoothShape(18.dp)).background(tc.c.copy(alpha = if (on) .32f else .12f)).border(if (on) 2.dp else 1.dp, if (on) tc.c else p.line, smoothShape(18.dp))
         .clickable(onClick = onClick).padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Pi(info.icon, tint = tc.ink); Text(info.label, fontWeight = FontWeight.ExtraBold); Text(info.desc, fontSize = 12.sp, color = p.ink2, lineHeight = 15.sp)
     }
@@ -498,12 +499,15 @@ fun GoalSheet(ui: AppState, id: String) {
     val tc = p.type(g.type); val running = pg.timerOf(g) != null; tickingNow(running)
     val s = pg.statBig(g); val t = today(); val doneToday = pg.hasCheck(g.id, t); val own = g.userId == u.id
     SheetHead(ui, g.title) { IconBtn("star", if (pg.isFav(g)) "Retirer des favoris" else "Ajouter aux favoris", { pg.toggleFav(g.id) }, plain = true, tint = if (pg.isFav(g)) p.flame2 else p.ink3) }
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(tc.c.copy(alpha = .2f)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    // Plaque aux couleurs du type : dégradé, reflet et ombre colorée, la pastille de l'objectif posée dessus
+    val hero = smoothShape(26.dp)
+    Row(Modifier.fillMaxWidth().depth(hero, p, 1, tint = tc.c).background(Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(p.bg, tc.c.lift(.3f), if (p.dark) .34f else .5f), androidx.compose.ui.graphics.lerp(p.bg, tc.c, if (p.dark) .2f else .26f))), hero)
+        .then(if (p.contrast) Modifier.border(1.dp, p.line, hero) else Modifier.sheen(hero, p.dark)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         // L'icône de l'objectif « arrive » de la ligne touchée : elle grandit avec un léger rebond
         val pop = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else .55f) }
-        LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .5f, stiffness = 300f)) }
-        Emoji(g.icon, 46.dp, Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -25f })
-        Column { Text(s.v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp, color = tc.ink); Text(s.l, fontWeight = FontWeight.Bold, color = p.ink2) }
+        LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .45f, stiffness = 300f)) }
+        Box(Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -25f }) { EmojiTile(g.icon, tc.c, 66.dp) }
+        Column { Text(s.v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, color = tc.ink); Text(s.l, fontWeight = FontWeight.Bold, color = p.ink2) }
     }
     if (own) PauseBanner(ui, g)
     if (!g.archived) FlowRowCompat(gap = 8.dp) {
@@ -515,8 +519,8 @@ fun GoalSheet(ui: AppState, id: String) {
         if (own && pg.todayPlan().due.any { it.g.id == g.id && !it.done }) PButton(g.missWhy()[today()]?.let { k -> MISS_REASONS.firstOrNull { it.first == k }?.second } ?: "Je n’ai pas pu", { ui.open(Sheet.Miss(g.id, today())) }, kind = "ghost")
     }
     // Informations
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
-        .border(1.dp, p.line.copy(alpha = .6f), RoundedCornerShape(22.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth().clip(smoothShape(24.dp)).background(p.ink.copy(alpha = if (p.dark) .06f else .04f))
+        .border(1.dp, p.line.copy(alpha = .5f), smoothShape(24.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Info("Type") { TypeChip(g.type) }
         if (own) Info("Groupe") {
             FlowRowCompat(gap = 4.dp) {

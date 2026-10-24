@@ -65,7 +65,7 @@ fun AvatarSheet(ui: AppState) {
     when (d.kind) {
         "photo" -> { PButton(if (d.photo.isNotEmpty()) "Changer de photo" else "Choisir une photo", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image"); Muted("La photo est recadrée en carré. La couleur choisie forme l'anneau autour.", small = true) }
         "emoji" -> EmojiPicker(d.emoji) { e -> d = d.copy().apply { emoji = e } }
-        "picto" -> FlowRowCompat(gap = 8.dp) { PICTOS.forEach { pc -> Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(if (d.picto == pc) p.flame.copy(alpha = .3f) else p.glass).border(1.dp, p.line, RoundedCornerShape(14.dp)).clickable { d = d.copy().apply { picto = pc } }, contentAlignment = Alignment.Center) { Pi(pc, size = 24.dp) } } }
+        "picto" -> FlowRowCompat(gap = 8.dp) { PICTOS.forEach { pc -> Box(Modifier.size(48.dp).clip(smoothShape(14.dp)).background(if (d.picto == pc) p.flame.copy(alpha = .3f) else p.glass).border(1.dp, p.line, smoothShape(14.dp)).clickable { d = d.copy().apply { picto = pc } }, contentAlignment = Alignment.Center) { Pi(pc, size = 24.dp) } } }
         else -> Muted("Tes initiales sont tirées de ton nom affiché.", small = true)
     }
     SectionTitle("Couleur")
@@ -114,7 +114,7 @@ fun NotesSheet(ui: AppState) {
     SheetHead(ui, "Notes de version")
     notes.forEachIndexed { i, n ->
         val a = n.jsonArray; val v = a[0].jsonPrimitive.content; val on = i in open
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.glass).clickable { open = if (on) open - i else open + i }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(p.glass).clickable { open = if (on) open - i else open + i }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold); if (v == APP_VERSION) Chip("Actuelle", color = p.flame)
                 Spacer(Modifier.weight(1f)); Muted(a[1].jsonPrimitive.content, small = true); Text(if (on) "▾" else "▸", color = p.ink3)
@@ -131,7 +131,7 @@ fun ExportSheet(ui: AppState, json: String) {
     val ctx = LocalContext.current
     SheetHead(ui, "Exporter mes données")
     Muted("Garde ce fichier en lieu sûr : il contient tes objectifs, validations, publications, stories et messages déchiffrés.")
-    Text(json.take(4000) + if (json.length > 4000) "\n…" else "", Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(LocalPal.current.glass).padding(12.dp), fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 14.sp)
+    Text(json.take(4000) + if (json.length > 4000) "\n…" else "", Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(LocalPal.current.glass).padding(12.dp), fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 14.sp)
     SheetFoot {
         PButton("Copier", { copyText(ctx, ui, json) }, kind = "ghost")
         PButton("Enregistrer ou partager", {

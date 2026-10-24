@@ -56,7 +56,7 @@ fun WidgetsSettings(ui: AppState) {
             val cls = w[0] as Class<*>; val name = w[1] as String; val desc = w[2] as String; val size = w[3] as String; val kind = w[4] as String
             Glass {
                 // Aperçu du widget sur un morceau de fond d'écran
-                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(p.type("project").c.copy(alpha = .55f), p.type("measure").c.copy(alpha = .45f), p.type("challenge").c.copy(alpha = .45f)))).padding(16.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().clip(smoothShape(20.dp)).background(Brush.linearGradient(listOf(p.type("project").c.copy(alpha = .55f), p.type("measure").c.copy(alpha = .45f), p.type("challenge").c.copy(alpha = .45f)))).padding(16.dp), contentAlignment = Alignment.Center) {
                     when (kind) {
                         "today" -> PreviewToday(dark, hide)
                         "streak" -> PreviewStreak(dark)
@@ -99,7 +99,7 @@ private val FLAME = Brush.linearGradient(listOf(Color(0xFFFFB000), Color(0xFFFF4
 
 @Composable
 private fun Frame(dark: Boolean, w: Dp, content: @Composable ColumnScope.(WCol) -> Unit) {
-    val c = WCol(dark); val shape = RoundedCornerShape(26.dp)
+    val c = WCol(dark); val shape = smoothShape(26.dp)
     Column(Modifier.width(w).shadow(14.dp, shape).clip(shape).background(c.bg).border(1.dp, c.edge, shape).padding(12.dp)) { content(c) }
 }
 
@@ -118,7 +118,7 @@ private fun PreviewToday(dark: Boolean, hide: Boolean) = Frame(dark, 250.dp) { c
     listOf(Triple("💪", "Faire du sport", "routine"), Triple("🚶", "Marcher 1 h", "duration"), Triple("🍬", "Limiter le sucre", "limit")).forEachIndexed { k, (e, t, ty) ->
         val done = k == 2; if (done && hide) return@forEachIndexed
         val tc = p.type(ty).c
-        Row(Modifier.padding(vertical = 2.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(c.card).padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(vertical = 2.dp).fillMaxWidth().clip(smoothShape(14.dp)).background(c.card).padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.width(3.dp).height(18.dp).clip(CircleShape).background(tc))
             Text(e, Modifier.padding(start = 6.dp), fontSize = 14.sp)
             Text(t, Modifier.weight(1f).padding(start = 6.dp), color = if (done) c.ink2 else c.ink, fontSize = 12.sp, fontWeight = if (done) FontWeight.Normal else FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -206,7 +206,7 @@ private fun PreviewProgress(dark: Boolean) = Frame(dark, 230.dp) { c ->
     Text("75 %", color = c.ink, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
     PBar(c, .75f, 7.dp)
     Spacer(Modifier.height(8.dp))
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(c.card).padding(8.dp)) {
+    Column(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(c.card).padding(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) { Image(painterResource(R.drawable.ic_flame), null, Modifier.size(14.dp)); Text("Niveau Flamme", Modifier.weight(1f).padding(start = 4.dp), color = c.ink, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold); Text("420", color = c.ink2, fontSize = 11.sp) }
         Spacer(Modifier.height(5.dp)); PBar(c, .3f, 5.dp)
         Text("Encore 280 flammes avant Brasier", Modifier.padding(top = 3.dp), color = c.ink2, fontSize = 10.sp)

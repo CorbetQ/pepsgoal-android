@@ -237,7 +237,7 @@ fun QuickSheet(ui: AppState, id: String) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         acts.forEach { (l, ic, go) ->
             val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bounce(inter, .97f).clip(RoundedCornerShape(16.dp)).background(p.ink.copy(alpha = .05f)).springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = go).padding(horizontal = 14.dp, vertical = 10.dp),
+            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bounce(inter, .97f).clip(smoothShape(16.dp)).background(p.ink.copy(alpha = .05f)).springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = go).padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Pi(ic, size = 22.dp, tint = p.ink); Text(l, fontWeight = FontWeight.ExtraBold)
             }

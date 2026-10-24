@@ -95,7 +95,7 @@ private fun LivePreview(ui: AppState, u: User) {
     val icon = AppIcons.ALL.firstOrNull { it.key == iconKey }
     Glass {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            val shape = RoundedCornerShape(26.dp)
+            val shape = smoothShape(26.dp)
             Box(Modifier.size(132.dp, 250.dp).clip(shape).background(p.bg).border(3.dp, p.ink.copy(alpha = .85f), shape)) {
                 Backdrop(s.bg, null, false, ui.prefs.bgStamp, s.fx)
                 Column(Modifier.fillMaxSize().padding(horizontal = 9.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -176,7 +176,7 @@ private fun Head(icon: String, title: String, sub: String? = null, modifier: Mod
 @Composable
 private fun <T> SegFill(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, enabled: Boolean = true) {
     val p = LocalPal.current
-    Row(Modifier.fillMaxWidth().alpha(if (enabled) 1f else .5f).clip(RoundedCornerShape(16.dp)).background(p.ink.copy(alpha = if (p.dark) .1f else .07f)).padding(4.dp),
+    Row(Modifier.fillMaxWidth().alpha(if (enabled) 1f else .5f).clip(smoothShape(16.dp)).background(p.ink.copy(alpha = if (p.dark) .1f else .07f)).padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         options.forEach { (k, l) ->
             val on = k == value
@@ -204,8 +204,8 @@ private fun <T> Carousel(list: List<T>, start: Int = 0, cell: @Composable (T) ->
 private fun Tile(label: String, selected: Boolean, w: Dp, h: Dp, onClick: () -> Unit, badge: String? = null, content: @Composable BoxScope.() -> Unit) {
     val p = LocalPal.current
     val sc by animateFloatAsState(if (selected && !p.motion) 1f else .96f, label = "tile")
-    Column(Modifier.width(w).clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = label, onClick = onClick).padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        val shape = RoundedCornerShape(16.dp)
+    Column(Modifier.width(w).clip(smoothShape(18.dp)).clickable(onClickLabel = label, onClick = onClick).padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        val shape = smoothShape(16.dp)
         Box(Modifier.size(w - 4.dp, h).graphicsLayerScale(sc).clip(shape).border(if (selected) 3.dp else 1.dp, if (selected) p.flame else p.line, shape)) {
             content()
             if (badge != null) Text(badge, Modifier.align(Alignment.TopEnd).padding(5.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f)).padding(horizontal = 6.dp, vertical = 2.dp),
@@ -274,8 +274,8 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
 @Composable
 private fun ShopModesTile(ui: AppState, owned: Int, modifier: Modifier) {
     val p = LocalPal.current
-    Column(modifier.clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = "Ambiances de la boutique") { ui.shopTab = "modes"; ui.push(Screen.Shop) }.padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.fillMaxWidth().height(104.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, p.line, RoundedCornerShape(16.dp)).background(p.ink.copy(alpha = .05f)), contentAlignment = Alignment.Center) {
+    Column(modifier.clip(smoothShape(18.dp)).clickable(onClickLabel = "Ambiances de la boutique") { ui.shopTab = "modes"; ui.push(Screen.Shop) }.padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().height(104.dp).clip(smoothShape(16.dp)).border(1.dp, p.line, smoothShape(16.dp)).background(p.ink.copy(alpha = .05f)), contentAlignment = Alignment.Center) {
             listOf("m:sakura", "m:neon", "m:mint").forEachIndexed { i, k ->
                 ThemePreview(themeLook(k), Modifier.size(38.dp, 62.dp).graphicsLayer { rotationZ = (i - 1) * 12f; translationX = (i - 1) * 16.dp.toPx() }.clip(RoundedCornerShape(8.dp)).border(1.dp, Color.White.copy(alpha = .6f), RoundedCornerShape(8.dp)))
             }
@@ -504,7 +504,7 @@ private fun AdvancedSection(ui: AppState, u: User) {
     val rot by animateFloatAsState(if (open) 90f else 0f, label = "adv")
     val off = ui.prefs.transp || ui.prefs.contrast
     Glass(Modifier.animateContentSize()) {
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClickLabel = if (open) "Replier" else "Déplier") { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable(onClickLabel = if (open) "Replier" else "Déplier") { open = !open }, verticalAlignment = Alignment.CenterVertically) {
             Head("gear", "Réglages avancés", "Verre givré, carte « En cours »", Modifier.weight(1f))
             Pi("chevronleft", Modifier.rotate(180f + rot), size = 18.dp, tint = p.ink2)
         }

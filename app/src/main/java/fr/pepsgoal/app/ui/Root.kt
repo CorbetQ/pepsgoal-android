@@ -179,8 +179,8 @@ fun PepsRoot(ui: AppState) {
                 AnimatedContent(top, transitionSpec = {
                     // Page qui avance : arrive de la droite en grandissant légèrement, la précédente recule et s'estompe ;
                     // au retour, le mouvement inverse. Ressorts sans rebond pour un glissement net.
-                    val sp = spring<IntOffset>(dampingRatio = .9f, stiffness = 420f)
-                    val sc = spring<Float>(dampingRatio = .9f, stiffness = 420f)
+                    val sp = spring<IntOffset>(dampingRatio = .84f, stiffness = 420f)
+                    val sc = spring<Float>(dampingRatio = .7f, stiffness = 380f)
                     when {
                         p.motion -> fadeIn(tween(120)) togetherWith fadeOut(tween(90))
                         // Transitions simples (Paramètres › Performance) : fondu court, sans glissement ni mise à l'échelle
@@ -309,7 +309,7 @@ private fun Shell(ui: AppState) {
             Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).nestedScroll(fabConn).then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier), contentAlignment = Alignment.TopCenter) {
                 Box(Modifier.fillMaxHeight().then(if (wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth())) {
                 remember(ui.tab) { Stagger.reset() }
-                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion || !Perf.flags.rich) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .86f, stiffness = 460f), initialScale = .965f) + slideInVertically(spring(dampingRatio = .88f, stiffness = 460f)) { it / 28 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.015f)) }, label = "tab") { tab ->
+                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion || !Perf.flags.rich) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .68f, stiffness = 420f), initialScale = .94f) + slideInVertically(spring(dampingRatio = .7f, stiffness = 420f)) { it / 22 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.02f)) }, label = "tab") { tab ->
                     // Tirer pour actualiser sur l'accueil, le feed et les amis
                     if (tab in setOf("today", "feed", "friends")) PullRefresh(ui, with(d) { topH.toDp() }) {
                         when (tab) { "feed" -> FeedScreen(ui); "friends" -> FriendsScreen(ui); else -> TodayScreen(ui) }
@@ -325,7 +325,7 @@ private fun Shell(ui: AppState) {
         }
         // Volet latéral de la fiche (grand écran)
         if (side != null) Box(Modifier.align(Alignment.TopEnd).padding(top = with(d) { topH.toDp() } + 8.dp, bottom = with(d) { botH.toDp() } + 8.dp, end = 12.dp).width(440.dp).fillMaxHeight()
-            .shadow(18.dp.ifShadows(), RoundedCornerShape(28.dp)).clip(RoundedCornerShape(28.dp)).background(p.glassStrong.copy(alpha = 1f))) {
+            .shadow(18.dp.ifShadows(), smoothShape(28.dp)).clip(smoothShape(28.dp)).background(p.glassStrong.copy(alpha = 1f))) {
             CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true) {
                 Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     key(side.id) { fr.pepsgoal.app.ui.sheets.GoalSheet(ui, side.id) }

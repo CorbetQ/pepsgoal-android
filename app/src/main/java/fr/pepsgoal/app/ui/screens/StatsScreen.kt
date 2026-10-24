@@ -57,7 +57,7 @@ fun StatsScreen(ui: AppState) {
         item("why") {
             val why = remember(ui.rev) { pg.missStats() }
             if (why.isNotEmpty()) Glass {
-                CardHead("Pourquoi ça coince")
+                CardHead("Pourquoi ça coince", emoji = "🤔")
                 val tot = why.sumOf { it.second }
                 why.take(5).forEach { (k, n) ->
                     ProgLine(MISS_REASONS.firstOrNull { it.first == k }?.second ?: k, n * 100.0 / tot, "$n", p.type("deadline").c)
@@ -75,7 +75,7 @@ fun StatsScreen(ui: AppState) {
         // Carte de chaleur des 53 dernières semaines
         item("heat") {
             Glass {
-                CardHead("Ton année") { Count("${perDay.filterKeys { parseYmd(it) > today.minusDays(365) }.size} jours actifs") }
+                CardHead("Ton année", emoji = "🗓️") { Count("${perDay.filterKeys { parseYmd(it) > today.minusDays(365) }.size} jours actifs") }
                 val max = (perDay.values.maxOrNull() ?: 1).coerceAtLeast(1)
                 // 371 cases dessinées d'un seul Canvas (et non 371 boîtes découpées, chacune avec son calque)
                 val cells = remember(perDay, today) { val start = weekStart(today).minusWeeks(52); IntArray(53 * 7) { i -> val day = start.plusDays(i.toLong()); if (day > today) -1 else perDay[ymd(day)] ?: 0 } }
@@ -101,7 +101,7 @@ fun StatsScreen(ui: AppState) {
         // Réussite de chaque objectif (30 derniers jours)
         item("goals") {
             Glass {
-                CardHead("Tes objectifs (30 jours)")
+                CardHead("Tes objectifs (30 jours)", emoji = "🎯")
                 // Calcul (30 jours × objectifs) fait une fois par changement de données, pas à chaque recomposition
                 val rows = remember(wins, today) {
                     val since = today.minusDays(30)
@@ -168,7 +168,7 @@ private fun HealthStatsCard(ui: AppState) {
         return
     }
     Glass {
-        CardHead("Santé · 7 derniers jours")
+        CardHead("Santé · 7 derniers jours", emoji = "❤️")
         val d = data
         if (d == null) Muted("Lecture de tes données Santé…", small = true)
         else if (d.isEmpty()) Muted("Aucune donnée Santé sur les 7 derniers jours.", small = true)
@@ -224,7 +224,7 @@ private fun InsightsCard(ui: AppState) {
         insightsCache = today() to (found ?: emptyList())
     }
     Glass {
-        CardHead("Ce qui t’aide à réussir")
+        CardHead("Ce qui t’aide à réussir", emoji = "💡")
         val f = found
         when {
             f == null -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { repeat(2) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Skeleton(Modifier.width(36.dp), 36.dp, 12.dp); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { Skeleton(Modifier.fillMaxWidth(), 12.dp); Skeleton(Modifier.fillMaxWidth(.6f), 12.dp) } } } }
@@ -258,7 +258,7 @@ private fun YearPixels(ui: AppState) {
     val rates = remember(ui.rev) { val d0 = LocalDate.of(year, 1, 1); Insights.dayRates(pg, daysBetween(d0, todayDate()).toInt() + 1) }
     val withToday = remember(rates) { val t = todayDate(); val due = pg.todayPlan().due; if (due.isEmpty()) rates else rates + (ymd(t) to due.count { it.done }.toDouble() / due.size) }
     Glass {
-        CardHead("Année en pixels") {
+        CardHead("Année en pixels", emoji = "🟩") {
             // Livre de l'année : PDF complet (chiffres, mois, objectifs phares, journal, photos)
             PButton("Livre", { ui.run {
                 val f = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { fr.pepsgoal.app.sys.Exports.yearBook(ctx, year) }

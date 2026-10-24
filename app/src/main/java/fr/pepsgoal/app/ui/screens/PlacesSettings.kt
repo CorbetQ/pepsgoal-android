@@ -60,12 +60,12 @@ fun PlacesSettings(ui: AppState) {
                 Chip(fr.pepsgoal.core.pl(u.places.size, "emplacement", "emplacements"), "pin", p.type("measure").c)
             })
             Glass {
-                CardHead("Mes emplacements") { PButton("Ajouter", { adding = true }, icon = "plus", small = true, kind = "primary") }
+                CardHead("Mes emplacements", emoji = "📍") { PButton("Ajouter", { adding = true }, icon = "plus", small = true, kind = "primary") }
                 if (u.places.isEmpty()) Empty("Aucun emplacement", "Enregistre ta maison, ton travail ou ta salle de sport : tu les retrouveras d’un geste pour les rappels par lieu.", icon = "pin")
                 u.places.forEachIndexed { i, pl ->
                     if (i > 0) Box(Modifier.fillMaxWidth().padding(start = 56.dp).height(1.dp).background(p.line.copy(alpha = .5f)))
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(p.type("measure").c.copy(alpha = .2f)), contentAlignment = Alignment.Center) { Emoji(pl.icon, 26.dp) }
+                        Box(Modifier.size(44.dp).clip(smoothShape(14.dp)).background(p.type("measure").c.copy(alpha = .2f)), contentAlignment = Alignment.Center) { Emoji(pl.icon, 26.dp) }
                         Column(Modifier.weight(1f)) {
                             Text(pl.name, fontWeight = FontWeight.ExtraBold)
                             Muted("Rayon ${pl.radius} m · ${"%.4f".format(pl.lat)}, ${"%.4f".format(pl.lon)}", small = true)
@@ -106,8 +106,8 @@ private fun PlaceEditor(ui: AppState, edit: SavedPlace?, done: () -> Unit) {
             if (fr.pepsgoal.app.sys.GeoReminders.hasFine(ctx)) perm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION))
             else perm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
         }
-        Box(Modifier.fillMaxWidth().height(320.dp).shadow((if (p.transp) 0.dp else 12.dp).ifShadows(), RoundedCornerShape(24.dp), spotColor = p.flame.copy(alpha = .35f))
-            .clip(RoundedCornerShape(24.dp)).border(1.dp, p.line, RoundedCornerShape(24.dp))) {
+        Box(Modifier.fillMaxWidth().height(320.dp).shadow((if (p.transp) 0.dp else 12.dp).ifShadows(), smoothShape(24.dp), spotColor = p.flame.copy(alpha = .35f))
+            .clip(smoothShape(24.dp)).border(1.dp, p.line, smoothShape(24.dp))) {
             StyledMap(start, if (edit != null) 17.0 else 14.0, point, radius, icon, onTap = { point = it }, onReady = { map = it })
             // Commandes flottantes en verre : zoom et position
             Column(Modifier.align(Alignment.TopEnd).padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

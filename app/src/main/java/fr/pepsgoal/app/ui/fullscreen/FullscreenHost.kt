@@ -130,8 +130,9 @@ private fun FsFrame(ui: AppState, bg: Brush, confetti: Boolean, content: @Compos
 private fun Pop(i: Int, content: @Composable () -> Unit) {
     val p = LocalPal.current
     val a = remember { Animatable(if (p.motion) 1f else 0f) }
-    LaunchedEffect(Unit) { delay(80L * i); a.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) }
-    Box(Modifier.graphicsLayer { alpha = a.value; translationY = (1 - a.value) * 40f }) { content() }
+    // Chaque élément jaillit en ressort : il monte, grandit et dépasse un peu avant de se poser
+    LaunchedEffect(Unit) { delay(90L * i); a.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .52f, stiffness = 240f)) }
+    Box(Modifier.graphicsLayer { alpha = a.value.coerceIn(0f, 1f); translationY = (1 - a.value) * 60f; val k = .78f + .22f * a.value; scaleX = k; scaleY = k }) { content() }
 }
 
 /* ------------------------------------------------------------------ journée parfaite */
@@ -146,7 +147,7 @@ private fun PerfectFs(ui: AppState, c: Celebration.Perfect) {
         if (c.icons.isNotEmpty()) Pop(4) { Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { c.icons.take(8).forEach { Emoji(it, 34.dp) } } }
         if (c.stats.isNotEmpty()) Pop(5) {
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                c.stats.forEach { (v, l, pre) -> Column(Modifier.fillMaxHeight().clip(RoundedCornerShape(18.dp)).background(p.glassStrong).padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                c.stats.forEach { (v, l, pre) -> Column(Modifier.fillMaxHeight().clip(smoothShape(18.dp)).background(p.glassStrong).padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     CountUp(v, pre); Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold) } }
             }
         }
@@ -327,8 +328,8 @@ private fun HeroCount(v: Int, prefix: String, suffix: String, ink: Color) {
 @Composable
 private fun CoachWord(w: String) {
     val ink = LocalRecapInk.current; val dark = ink == INK
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Color.White.copy(alpha = if (dark) .42f else .14f))
-        .border(1.dp, Color.White.copy(alpha = if (dark) .7f else .28f), RoundedCornerShape(24.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().clip(smoothShape(24.dp)).background(Color.White.copy(alpha = if (dark) .42f else .14f))
+        .border(1.dp, Color.White.copy(alpha = if (dark) .7f else .28f), smoothShape(24.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.size(26.dp).clip(CircleShape).background(ink.copy(alpha = .12f)), contentAlignment = Alignment.Center) { Pi("sparkle", size = 14.dp, tint = ink) }
             Text("Le mot du coach", color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
@@ -338,9 +339,9 @@ private fun CoachWord(w: String) {
 }
 
 /** Tuile en verre des récaps (fond blanc translucide, coins 24 dp). */
-private fun Modifier.recapGlass(ink: Color) = this.clip(RoundedCornerShape(24.dp))
+private fun Modifier.recapGlass(ink: Color) = this.clip(smoothShape(24.dp))
     .background(Color.White.copy(alpha = if (ink == INK) .45f else .14f))
-    .border(1.dp, Color.White.copy(alpha = if (ink == INK) .7f else .25f), RoundedCornerShape(24.dp))
+    .border(1.dp, Color.White.copy(alpha = if (ink == INK) .7f else .25f), smoothShape(24.dp))
 
 @Composable
 private fun Floaters(e: String, key: Int) {
@@ -398,7 +399,7 @@ private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit)
         is Part.Facts -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.forEach { Text(rich(it), Modifier.fillMaxWidth().recapGlass(ink).padding(14.dp), color = ink, fontSize = 15.sp, lineHeight = 21.sp) } }
         is Part.Awards -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.forEach { (e, n, d) ->
             Row(Modifier.fillMaxWidth().recapGlass(ink).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(ink.copy(alpha = .1f)), contentAlignment = Alignment.Center) { Emoji(e, 30.dp) }
+                Box(Modifier.size(48.dp).clip(smoothShape(16.dp)).background(ink.copy(alpha = .1f)), contentAlignment = Alignment.Center) { Emoji(e, 30.dp) }
                 Column { Text(n, color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text(d, color = ink.copy(alpha = .75f), fontSize = 13.sp) } } } }
         // Tuiles de chiffres : grille 2 × 2 en verre, valeur en grand
         is Part.Cells -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -461,7 +462,7 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
         // Voile sombre pour garder l'en-tête et les boutons lisibles
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .55f), .25f to Color.Black.copy(alpha = .15f), .75f to Color.Black.copy(alpha = .15f), 1f to Color.Black.copy(alpha = .6f))))
         Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(top = 70.dp, bottom = 84.dp).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-            val shape = RoundedCornerShape(28.dp)
+            val shape = smoothShape(28.dp)
             when (s.kind) {
                 "photo" -> {
                     // Photo entière, aux proportions d'origine, aux coins arrondis et en relief
@@ -470,12 +471,12 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
                     Box(Modifier.aspectRatio(ratio).graphicsLayer { scaleX = .94f + .06f * glow; scaleY = .94f + .06f * glow; alpha = glow }
                         .shadow(30.dp.ifShadows(), shape, ambientColor = Color.Black, spotColor = Color.Black).clip(shape).border(1.dp, Color.White.copy(alpha = .18f), shape)) {
                         Image(painter, s.text.ifEmpty { "Photo partagée en story" }, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
+                        if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(smoothShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
                     }
                 }
                 else -> Box(Modifier.fillMaxSize().shadow(30.dp.ifShadows(), shape).clip(shape), contentAlignment = Alignment.Center) {
                     s.data?.let { StoryCard(s.kind, it, compact = false) }
-                    if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
+                    if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(smoothShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
                 }
             }
         }
@@ -512,7 +513,7 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
             }
         }
         if (own && seen) {
-            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp).clip(RoundedCornerShape(22.dp)).background(p.glassStrong).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp).clip(smoothShape(22.dp)).background(p.glassStrong).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Vu par ${pl(s.seenBy.size, "ami", "amis")}", fontWeight = FontWeight.ExtraBold)
                 if (s.seenBy.isEmpty()) Muted("Personne pour l’instant.", small = true)
                 s.seenBy.mapNotNull { pg.userById(it) }.forEach { x -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Av(x, 30.dp); Text(x.name, Modifier.weight(1f)); if (x.id in s.likers) Flame(16.dp) } }

@@ -65,7 +65,7 @@ fun TodayScreen(ui: AppState) {
         if (!hasGoals) {
             item("hero") { Hero(ui) }
             item("aipromo") { AiPromoCard(ui) }
-            item("first") { Glass { CardHead("Crée ton premier objectif"); Muted("Choisis ce que tu veux suivre. Tu pourras le valider ici chaque jour."); Spacer(Modifier.height(12.dp)); Starters(ui) } }
+            item("first") { Glass { CardHead("Crée ton premier objectif", emoji = "🚀"); Muted("Choisis ce que tu veux suivre. Tu pourras le valider ici chaque jour."); Spacer(Modifier.height(12.dp)); Starters(ui) } }
             item("wx") { WeatherCard(ui) }
             return@ScreenList
         }
@@ -95,7 +95,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
         "aipromo" -> item("aipromo") { AiPromoCard(ui) }
         "day" -> item("day") {
             Glass {
-                CardHead("Ta journée") { Count("${lv.pts} flammes") }
+                CardHead("Ta journée", emoji = "☀️") { Count("${lv.pts} flammes") }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                     Ring(done, total)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -136,7 +136,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
             val verify = pg.db.checkins.filter { c -> c.pending && pg.goalById(c.goalId)?.buddy == u.id }
             if (verify.isNotEmpty()) item("verify") {
                 Glass {
-                    CardHead("À confirmer pour tes amis") { Count(verify.size) }
+                    CardHead("À confirmer pour tes amis", emoji = "🤝") { Count(verify.size) }
                     verify.forEach { c ->
                         val g = pg.goalById(c.goalId)!!; val o = pg.userById(c.userId)
                         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -154,7 +154,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
         }
         "ongoing" -> if (plan.ongoing.isNotEmpty() && !u.settings.hideOngoing) item("ongoing") {
             Glass {
-                CardHead("En cours") {
+                CardHead("En cours", emoji = "⏳") {
                     Count(plan.ongoing.size)
                     IconBtn("x", "Masquer la carte « En cours » (réactivable dans Paramètres › Apparence)", { u.settings.hideOngoing = true; pg.store.commit(); ui.toast("Carte « En cours » masquée. Réaffiche-la dans Paramètres › Apparence.", "list") }, plain = true, size = 36.dp)
                 }
@@ -329,7 +329,7 @@ fun WeatherCard(ui: AppState) {
     if (!u.settings.wxCard) return
     val place = u.settings.weather
     if (place == null) {
-        Glass { CardHead("Météo"); Muted("Ajoute ta ville pour voir la météo du jour, et un conseil pour tes objectifs."); Spacer(Modifier.height(10.dp)); PButton("Choisir ma ville", { ui.push(Screen.Settings("weather")) }, icon = "pin", small = true) }
+        Glass { CardHead("Météo", emoji = "🌤️"); Muted("Ajoute ta ville pour voir la météo du jour, et un conseil pour tes objectifs."); Spacer(Modifier.height(10.dp)); PButton("Choisir ma ville", { ui.push(Screen.Settings("weather")) }, icon = "pin", small = true) }
         return
     }
     LaunchedEffect(place.lat, place.lon) { Wx.ensure(ctx, ui, false) }
@@ -390,7 +390,7 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
             Muted(if (picks == null) "Le coach trie tes objectifs selon l’heure et la météo…" else "Ordre conseillé par ton coach pour ce moment", if (picks == null) Modifier.alpha(pulse) else Modifier, small = true)
         }
         // Astuce affichée une fois : les gestes de balayage
-        if (ui.prefs.swipe && !ui.prefs.swipeHint && sorted.any { !it.done }) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(start = 10.dp),
+        if (ui.prefs.swipe && !ui.prefs.swipeHint && sorted.any { !it.done }) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(start = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pi("hand", size = 18.dp, tint = p.flameInk)
             Muted("Balaie un objectif vers la droite pour le valider, vers la gauche pour reporter, mettre en favori ou lancer un Focus.", Modifier.weight(1f).padding(vertical = 8.dp), small = true)
@@ -485,7 +485,7 @@ private fun ContextCards(ui: AppState) {
             }
             val key = if (wdIdx(todayDate()) == 6) ymd(weekStart(todayDate()).plusDays(7)) else wk
             if (sug.isNotEmpty()) Glass(ai = true) {
-                CardHead("Le plan de la semaine") { IconBtn("x", "Masquer", { ui.prefs.raw.edit().putString("planDone", key).apply(); ui.bump() }, plain = true, size = 34.dp) }
+                CardHead("Le plan de la semaine", emoji = "🗺️") { IconBtn("x", "Masquer", { ui.prefs.raw.edit().putString("planDone", key).apply(); ui.bump() }, plain = true, size = 34.dp) }
                 Muted(intro ?: "D’après tes 4 dernières semaines, quelques ajustements pour que tes objectifs restent à ta portée.", small = true)
                 sug.forEach { s ->
                     var applied by remember(s.goal.id) { mutableStateOf(false) }
@@ -510,7 +510,7 @@ private fun ContextCards(ui: AppState) {
 fun WrappedCard(ui: AppState) {
     val pg = ui.pg; val r = remember { Recaps.wrappedRange() }; val year = parseYmd(r.s).year
     val ph = slowPhase(3600, 12)
-    val shape = RoundedCornerShape(24.dp)
+    val shape = smoothShape(24.dp)
     Column(Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(hex("#241552"), hex("#7A2A8A"), hex("#FF6A3A"))))
         .clickable(onClickLabel = "Ouvrir ma rétrospective") { val (sl, st) = Recaps.wrapped(pg, pg.meId()); ui.fs = Fs.Recap("year", sl, st) }.padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)) {

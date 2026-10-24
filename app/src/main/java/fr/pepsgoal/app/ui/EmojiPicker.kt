@@ -28,7 +28,7 @@ fun EmojiPicker(value: String? = null, height: Int = 230, onPick: (String) -> Un
     val p = LocalPal.current
     var cat by remember { mutableStateOf(value?.let(::emojiCatOf) ?: EMOJI_CATS[0].key) }
     val c = EMOJI_CATS.first { it.key == cat }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.glass).padding(8.dp)) {
+    Column(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(p.glass).padding(8.dp)) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             EMOJI_CATS.forEach { x ->
                 Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (x.key == cat) p.ink.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent)

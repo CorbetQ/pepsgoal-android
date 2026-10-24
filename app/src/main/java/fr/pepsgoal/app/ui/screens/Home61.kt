@@ -204,7 +204,7 @@ fun CountdownCard(ui: AppState) {
     val list = remember(ui.rev) { pg.countdowns() }
     var title by remember { mutableStateOf("") }; var emoji by remember { mutableStateOf("📅") }; var date by remember { mutableStateOf(ymd(todayDate().plusDays(30))) }
     Glass {
-        CardHead("Comptes à rebours") { Count(list.size) }
+        CardHead("Comptes à rebours", emoji = "⏳") { Count(list.size) }
         list.forEach { (c, d) ->
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Emoji(c.emoji, 30.dp)
@@ -230,7 +230,7 @@ fun CountdownSummary(ui: AppState) {
     val p = LocalPal.current
     val list = remember(ui.rev) { ui.pg.countdowns() }
     Glass(onClick = { ui.open(Sheet.HomeCard("countdown")) }) {
-        CardHead("Comptes à rebours") { IconBtn("plus", "Nouveau compte à rebours", { ui.open(Sheet.HomeCard("countdown")) }, plain = true, size = 36.dp) }
+        CardHead("Comptes à rebours", emoji = "⏳") { IconBtn("plus", "Nouveau compte à rebours", { ui.open(Sheet.HomeCard("countdown")) }, plain = true, size = 36.dp) }
         if (list.isEmpty()) Muted("Un marathon, des vacances, un examen ? Touche + pour compter les jours.", small = true)
         list.take(3).forEach { (c, d) ->
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

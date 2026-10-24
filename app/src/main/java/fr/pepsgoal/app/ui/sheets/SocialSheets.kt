@@ -169,7 +169,7 @@ fun NotifsSheet(ui: AppState) {
     SheetHead(ui, "Notifications")
     if (list.isEmpty()) Empty("Tout est calme", "Tes rappels et l'activité de tes amis apparaîtront ici.", icon = "bell")
     list.forEach { n ->
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (n.read) Color.Transparent else p.flame.copy(alpha = .1f)).clickable {
+        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (n.read) Color.Transparent else p.flame.copy(alpha = .1f)).clickable {
             when {
                 n.goalId != null && pg.goalById(n.goalId) != null -> ui.sheet = Sheet.Goal(n.goalId!!)
                 n.view == "profile" -> ui.nav("profile")
@@ -212,7 +212,7 @@ fun ShareHubSheet(ui: AppState, m: Sheet.ShareHub) {
     if (g != null) GoalAttach(ui, g) else Quote(text)
     val canStory = social && (g != null || m.period != null)
     @Composable fun Opt(ic: String, l: String, d: String, ok: Boolean, mod: Modifier, onClick: () -> Unit) {
-        Column(mod.clip(RoundedCornerShape(18.dp)).background(p.glass).border(1.dp, p.line, RoundedCornerShape(18.dp)).clickable(enabled = ok, onClick = onClick).padding(14.dp).then(if (ok) Modifier else Modifier.background(Color.Transparent)),
+        Column(mod.clip(smoothShape(18.dp)).background(p.glass).border(1.dp, p.line, smoothShape(18.dp)).clickable(enabled = ok, onClick = onClick).padding(14.dp).then(if (ok) Modifier else Modifier.background(Color.Transparent)),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (ok) p.accent else Brush.linearGradient(listOf(p.line, p.line))), contentAlignment = Alignment.Center) { Pi(ic, tint = p.onAccent) }
             Text(l, fontWeight = FontWeight.ExtraBold, color = if (ok) p.ink else p.ink3); Text(d, fontSize = 12.sp, color = p.ink2, lineHeight = 15.sp)
@@ -239,12 +239,12 @@ fun ShareHubSheet(ui: AppState, m: Sheet.ShareHub) {
 @Composable
 private fun Quote(text: String) {
     val p = LocalPal.current
-    Text(text, Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.glass).border(1.dp, p.line, RoundedCornerShape(14.dp)).padding(14.dp), fontWeight = FontWeight.Bold)
+    Text(text, Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(p.glass).border(1.dp, p.line, smoothShape(14.dp)).padding(14.dp), fontWeight = FontWeight.Bold)
 }
 
 @Composable
 private fun ShareTarget(av: @Composable () -> Unit, name: String, sub: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable(onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         av(); Column(Modifier.weight(1f)) { Text(name, fontWeight = FontWeight.ExtraBold); Muted(sub, small = true) }; Pi("send")
     }
 }
@@ -301,7 +301,7 @@ fun ComposeSheet(ui: AppState) {
     }
     SheetHead(ui, "Nouvelle publication")
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Av(u, 42.dp); Field(text, { text = it }, "Ta publication", Modifier.weight(1f), placeholder = "Partage une victoire, un doute, un cap franchi…", singleLine = false, minLines = 3, max = 500) }
-    photo?.let { (_, b) -> Box { Image(b.asImageBitmap(), "Aperçu de la photo", Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop); IconBtn("x", "Retirer la photo", { photo = null }, Modifier.align(Alignment.TopEnd).padding(6.dp)) } }
+    photo?.let { (_, b) -> Box { Image(b.asImageBitmap(), "Aperçu de la photo", Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(smoothShape(16.dp)), contentScale = ContentScale.Crop); IconBtn("x", "Retirer la photo", { photo = null }, Modifier.align(Alignment.TopEnd).padding(6.dp)) } }
     FlowRowCompat(gap = 6.dp) {
         PButton("Photo", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image", small = true)
         PButton("Emojis", { panel = if (panel == "emoji") null else "emoji" }, icon = "smile", small = true, kind = if (panel == "emoji") "primary" else "normal")
@@ -361,7 +361,7 @@ fun StoryNewSheet(ui: AppState, s0: Sheet.StoryNew) {
             else GoalChips(goals, goalId, { it?.let { id -> goalId = id } }, bleed = 20.dp)
     }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Box(Modifier.width(220.dp).aspectRatio(9f / 16f).clip(RoundedCornerShape(22.dp))) {
+        Box(Modifier.width(220.dp).aspectRatio(9f / 16f).clip(smoothShape(22.dp))) {
             if (kind == "photo") photo?.let { Image(it.second.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) } ?: Box(Modifier.fillMaxSize().background(LocalPal.current.glass), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Pi("image"); Muted("Choisis une photo à partager", small = true) } }
             else if (data != null) StoryCard(kind, data, compact = true)
         }
@@ -453,7 +453,7 @@ fun ModUserSheet(ui: AppState, id: String) {
     if (pg.isAdmin(x)) { Muted("Les comptes administrateurs ne peuvent pas être modérés ici."); return }
     Field(reason, { reason = it }, "Motif (envoyé à la personne)", placeholder = "Ex. propos insultants dans les commentaires", max = 160)
     @Composable fun Block(title: String, danger: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.dp, if (danger) p.danger.copy(alpha = .5f) else p.line, RoundedCornerShape(16.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(title, fontWeight = FontWeight.ExtraBold); content() }
+        Column(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).border(1.dp, if (danger) p.danger.copy(alpha = .5f) else p.line, smoothShape(16.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(title, fontWeight = FontWeight.ExtraBold); content() }
     }
     val body = { buildJsonObject { put("reason", reason.trim()) } }
     Block("Avertissement") {

@@ -109,7 +109,7 @@ fun StickerView(id: String, fallback: String, sz: Dp, still: Boolean = false) {
 @Composable
 fun StickerPicker(onPick: (StickerDef) -> Unit) {
     FlowRowCompat(gap = 6.dp) {
-        STICKERS.forEach { d -> Box(Modifier.clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = "Sticker ${d.label}") { onPick(d) }.padding(2.dp)) { StickerView(d.id, d.emoji, 70.dp, still = true) } }
+        STICKERS.forEach { d -> Box(Modifier.clip(smoothShape(16.dp)).clickable(onClickLabel = "Sticker ${d.label}") { onPick(d) }.padding(2.dp)) { StickerView(d.id, d.emoji, 70.dp, still = true) } }
     }
 }
 
@@ -167,7 +167,7 @@ fun searchText(ui: AppState, m: Message): String {
 @Composable
 fun ChatSearchBar(q: String, onQ: (String) -> Unit, idx: Int, count: Int, onPrev: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
     val p = LocalPal.current
-    Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(18.dp)).padding(start = 8.dp, end = 4.dp),
+    Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(smoothShape(18.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(18.dp)).padding(start = 8.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         Field(q, onQ, "", Modifier.weight(1f), placeholder = "Rechercher dans la conversation", max = 60, icon = "search")
         Text(if (q.isBlank()) "" else if (count == 0) "0" else "${idx + 1}/$count", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
@@ -213,7 +213,7 @@ fun ScheduledStrip(key: String) {
     Scheduled.rev
     val list = remember(Scheduled.rev, key) { Scheduled.of(ctx, key) }
     if (list.isEmpty()) return
-    Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(18.dp)).padding(horizontal = 10.dp, vertical = 6.dp)) {
+    Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(smoothShape(18.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(18.dp)).padding(horizontal = 10.dp, vertical = 6.dp)) {
         list.forEach { s ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Pi("clock", size = 16.dp, tint = p.flameInk)

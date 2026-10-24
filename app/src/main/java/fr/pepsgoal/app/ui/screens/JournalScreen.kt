@@ -31,7 +31,7 @@ fun MoodPicker(value: Int, onPick: (Int) -> Unit) {
         Journal.MOODS.forEachIndexed { i, (l, e) ->
             val on = value == i + 1
             val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Column(Modifier.bounce(inter, .85f).clip(RoundedCornerShape(16.dp)).background(if (on) p.flame.copy(alpha = .18f) else Color.Transparent)
+            Column(Modifier.bounce(inter, .85f).clip(smoothShape(16.dp)).background(if (on) p.flame.copy(alpha = .18f) else Color.Transparent)
                 .springClick(inter, label = l) { onPick(i + 1) }.padding(horizontal = 6.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Emoji(e, if (on) 40.dp else 32.dp)
                 Text(l, fontSize = 11.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Medium, color = if (on) p.ink else p.ink2)
@@ -48,7 +48,7 @@ fun MoodCard(ui: AppState) {
     var note by remember(e) { mutableStateOf(e?.text ?: "") }
     var open by remember { mutableStateOf(false) }
     Glass {
-        CardHead("Ton humeur du jour") { IconBtn("book", "Ouvrir le journal", { ui.push(Screen.Journal) }, plain = true, size = 36.dp) }
+        CardHead("Ton humeur du jour", emoji = "😊") { IconBtn("book", "Ouvrir le journal", { ui.push(Screen.Journal) }, plain = true, size = 36.dp) }
         MoodPicker(e?.mood ?: 0) { m -> Journal.put(ctx, t, m, note); open = true; if (e == null) ui.toast("Humeur notée.", "check") }
         // Étiquettes : ce qui colore la journée (reprises dans les corrélations de Stats)
         if (e != null) FlowRowCompat(Modifier.padding(top = 8.dp), gap = 6.dp) {
@@ -81,7 +81,7 @@ fun JournalScreen(ui: AppState) {
         if (n.length >= 2 && list.isEmpty()) item("none") { Glass { Empty("Rien trouvé", "Aucune note ne contient « ${q.trim()} ».", icon = "search") } }
         if (list.size >= 3 && n.length < 2) item("chart") {
             Glass {
-                CardHead("Humeur des 30 derniers jours")
+                CardHead("Humeur des 30 derniers jours", emoji = "🌈")
                 val last = list.take(30).reversed()
                 Row(Modifier.fillMaxWidth().height(90.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
                     last.forEach { e -> Box(Modifier.weight(1f).fillMaxHeight(e.mood / 5f).clip(RoundedCornerShape(4.dp)).background(androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, (e.mood - 1) / 4f))) }

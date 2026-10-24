@@ -120,12 +120,12 @@ fun RewardsCard(ui: AppState, compact: Boolean = false) {
     val list = u.rewards.filter { it.claimedAt == null }
     if (compact && list.isEmpty()) return
     Glass {
-        CardHead("Mes récompenses") { PButton("Ajouter", { ui.open(Sheet.Reward()) }, icon = "plus", small = true) }
+        CardHead("Mes récompenses", emoji = "🎁") { PButton("Ajouter", { ui.open(Sheet.Reward()) }, icon = "plus", small = true) }
         if (list.isEmpty()) Empty("Offre-toi quelque chose", "Fixe ta récompense : « un resto à 30 jours de série ». Elle t’attend au bout de l’effort.", icon = "star")
         list.forEach { r ->
             val n = pg.rewardProgress(r); val done = n >= r.target; val g = r.goalId?.let { pg.goalById(it) }
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable { ui.open(Sheet.Reward(r.id)) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(if (done) p.flame.copy(alpha = .25f) else p.ink.copy(alpha = .05f)), contentAlignment = Alignment.Center) { Emoji(r.emoji, 30.dp) }
+            Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).clickable { ui.open(Sheet.Reward(r.id)) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(48.dp).clip(smoothShape(16.dp)).background(if (done) p.flame.copy(alpha = .25f) else p.ink.copy(alpha = .05f)), contentAlignment = Alignment.Center) { Emoji(r.emoji, 30.dp) }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(r.title, fontWeight = FontWeight.ExtraBold)
                     Bar(minOf(100.0, n * 100.0 / r.target), color = if (done) p.ok else p.flame)
@@ -194,7 +194,7 @@ fun GoalQrSheet(ui: AppState, id: String) {
     SheetHead(ui, "Partager l’objectif")
     Muted("Ton ami scanne ce code depuis PepsGoal (onglet Objectifs › Scanner) pour créer sa propre copie de « ${g.title} ». Ton historique n’est jamais partagé.", small = true)
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Column(Modifier.clip(RoundedCornerShape(24.dp)).background(androidx.compose.ui.graphics.Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.clip(smoothShape(24.dp)).background(androidx.compose.ui.graphics.Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             androidx.compose.foundation.Image(bmp.asImageBitmapCompat(), "Code QR de ${g.title}", Modifier.size(240.dp))
             Text("${g.icon} ${g.title}", color = androidx.compose.ui.graphics.Color(0xFF10102A), fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp))
         }
@@ -218,7 +218,7 @@ fun ImportGoalSheet(ui: AppState, link: String) {
     SheetHead(ui, "Objectif reçu")
     if (o == null) { Muted("Ce lien ou ce code n’est pas un objectif PepsGoal.", small = true); return }
     val type = o["y"]?.jsonPrimitive?.content ?: "routine"
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.type(type).c.copy(alpha = .2f)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    Row(Modifier.fillMaxWidth().clip(smoothShape(22.dp)).background(p.type(type).c.copy(alpha = .2f)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Emoji(o["i"]?.jsonPrimitive?.content ?: "🎯", 46.dp)
         Column { Text(o["t"]?.jsonPrimitive?.content ?: "", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp); TypeChip(type) }
     }

@@ -276,7 +276,7 @@ fun FlameQuestsCard(ui: AppState, modifier: Modifier = Modifier) {
     val qs = remember(ui.rev) { pg.flameQuests() }
     if (qs.isEmpty()) return
     Glass(modifier) {
-        CardHead("Gagner des flammes")
+        CardHead("Gagner des flammes", emoji = "🔥")
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             qs.forEach { q ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

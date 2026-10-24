@@ -91,7 +91,7 @@ fun GelCard(ui: AppState, u: User, compact: Boolean) {
     else "$c/$FREEZE_EVERY encouragements reçus avant ton prochain gel. Un gel protège automatiquement ta série un jour où tu n'as rien validé."
     Glass {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(p.type("objective").c.copy(alpha = .22f)), contentAlignment = Alignment.Center) { Pi("snow", size = 26.dp, tint = p.type("objective").ink) }
+            Box(Modifier.size(48.dp).clip(smoothShape(16.dp)).background(p.type("objective").c.copy(alpha = .22f)), contentAlignment = Alignment.Center) { Pi("snow", size = 26.dp, tint = p.type("objective").ink) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(pl(u.freezes, "gel de série", "gels de série"), fontWeight = FontWeight.ExtraBold)
                 if (social) Bar(c * 100.0 / FREEZE_EVERY, color = p.type("objective").c)
@@ -127,7 +127,7 @@ private fun StoryBubble(label: String, u: User, ring: String, onClick: () -> Uni
     val p = LocalPal.current
     Column(Modifier.width(70.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Box {
-            Box(Modifier.size(66.dp).clip(CircleShape).background(when (ring) { "ring" -> Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)); "seen" -> androidx.compose.ui.graphics.SolidColor(p.line); else -> androidx.compose.ui.graphics.SolidColor(Color.Transparent) })
+            Box(Modifier.size(66.dp).then(if (ring == "ring") Modifier.glow(CircleShape, p.flame, p, 8.dp) else Modifier).clip(CircleShape).background(when (ring) { "ring" -> Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)); "seen" -> androidx.compose.ui.graphics.SolidColor(p.line); else -> androidx.compose.ui.graphics.SolidColor(Color.Transparent) })
                 .then(if (ring == "none") Modifier.border(2.dp, p.line, CircleShape) else Modifier).clickable(onClick = onClick).padding(3.dp), contentAlignment = Alignment.Center) {
                 Box(Modifier.border(3.dp, p.bg, CircleShape)) { Av(u, 58.dp) }
             }
@@ -141,7 +141,7 @@ private fun StoryBubble(label: String, u: User, ring: String, onClick: () -> Uni
 fun GoalAttach(ui: AppState, g: Goal?) {
     val pg = ui.pg; if (g == null || !pg.canSeeGoal(g, pg.meId())) return
     val p = LocalPal.current; val tc = p.type(g.type); val s = pg.statBig(g)
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(tc.c.copy(alpha = .16f)).clickable { if (g.userId == pg.meId()) ui.open(Sheet.Goal(g.id)) else ui.open(Sheet.User(g.userId)) }.padding(10.dp),
+    Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(tc.c.copy(alpha = .16f)).clickable { if (g.userId == pg.meId()) ui.open(Sheet.Goal(g.id)) else ui.open(Sheet.User(g.userId)) }.padding(10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         GoalIcon(g, 38.dp)
         Column { Text(g.title, fontWeight = FontWeight.ExtraBold); Muted("${typeInfo(g.type).label} · ${s.v} ${s.l}", small = true) }
@@ -174,7 +174,7 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
         }
         Column(Modifier.padding(start = 18.dp, end = 10.dp, top = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable { ui.open(Sheet.User(a.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                Row(Modifier.weight(1f).clip(smoothShape(14.dp)).clickable { ui.open(Sheet.User(a.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                     Av(a, 44.dp)
                     Column(Modifier.weight(1f)) {
                         Text(if (a.id == u.id) "Toi" else a.name, fontWeight = FontWeight.ExtraBold, fontSize = 15.5.sp, maxLines = 1)
@@ -199,7 +199,7 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
             if (post.text.isNotEmpty()) Text(post.text, fontSize = if (short) 18.sp else 15.5.sp, lineHeight = if (short) 25.sp else 22.sp, fontWeight = if (short) FontWeight.Bold else FontWeight.Medium)
             post.poll?.let { PollView(ui, post) }
             post.photo?.let { url ->
-                AsyncImage(url, "Photo partagée par ${a.name}", Modifier.fillMaxWidth().heightIn(max = 440.dp).clip(RoundedCornerShape(20.dp)).clickable { photo = true }, contentScale = ContentScale.Crop)
+                AsyncImage(url, "Photo partagée par ${a.name}", Modifier.fillMaxWidth().heightIn(max = 440.dp).clip(smoothShape(20.dp)).clickable { photo = true }, contentScale = ContentScale.Crop)
                 if (photo) PhotoViewer(url) { photo = false }
             }
             post.goalId?.let { GoalAttach(ui, pg.goalById(it)) }
@@ -266,7 +266,7 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
 private fun ActionPill(icon: String, label: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(modifier.bounce(inter, .94f).height(40.dp).clip(CircleShape).background(if (on) p.ink.copy(alpha = .1f) else p.ink.copy(alpha = .05f))
+    Row(modifier.bounce(inter, .92f).height(40.dp).clip(CircleShape).background(if (on) p.ink.copy(alpha = .1f) else if (p.dark) Color.White.copy(alpha = .06f) else Color.White.copy(alpha = .5f))
         .springClick(inter, label = label, onClick = onClick).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
         Pi(icon, size = 17.dp, tint = p.ink2)
@@ -291,13 +291,14 @@ fun CheerButton(on: Boolean, n: Int, emoji: String? = null, modifier: Modifier =
         was = on
     }
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(modifier.bounce(inter, .9f).graphicsLayer { scaleX = pop.value; scaleY = pop.value }.height(40.dp).clip(CircleShape)
-        .background(if (on) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(p.flame.copy(alpha = .3f), p.pink.copy(alpha = .22f))) else androidx.compose.ui.graphics.SolidColor(p.ink.copy(alpha = .05f)))
-        .border(1.dp, if (on) p.flame.copy(alpha = .5f) else androidx.compose.ui.graphics.Color.Transparent, CircleShape)
+    // Encouragé : bonbon de l'accent avec halo ; sinon pastille de verre clair
+    Row(modifier.bounce(inter, .88f).graphicsLayer { scaleX = pop.value; scaleY = pop.value }.height(40.dp)
+        .then(if (on && !p.contrast) Modifier.candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 6.dp) else Modifier.background(if (on) p.ink.copy(alpha = .14f) else if (p.dark) Color.White.copy(alpha = .06f) else Color.White.copy(alpha = .5f), CircleShape))
+        .clip(CircleShape)
         .springClick(inter, label = "Encourager", onClick = onClick).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
         if (emoji != null) Text(emoji, fontSize = 16.sp) else Flame(18.dp, dim = !on)
-        Text(if (n > 0) "$n" else "Bravo", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on) p.ink else p.ink2, maxLines = 1)
+        Text(if (n > 0) "$n" else "Bravo", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on && !p.contrast) p.onAccent else if (on) p.ink else p.ink2, maxLines = 1)
     }
 }
 
@@ -356,7 +357,7 @@ fun CommentsScreen(ui: AppState, postId: String) {
     var comment by remember { mutableStateOf("") }
     val canWrite = !post.commentsLocked && pg.canComment(u, post) && post.status != "pending"
     ScreenFrame(ui, "Commentaires", "Feed", { ui.back() }, icon = "comment", color = p.type("measure").c, color2 = p.flame2, state = state, bottom = {
-        val shape = RoundedCornerShape(26.dp)
+        val shape = smoothShape(26.dp)
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp).shadow((if (p.transp) 0.dp else 14.dp).ifShadows(), shape, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
             .clip(shape).background(p.glassStrong).border(1.dp, p.glassEdge, shape).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             when {

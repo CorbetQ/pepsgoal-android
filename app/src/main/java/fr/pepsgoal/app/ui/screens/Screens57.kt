@@ -56,7 +56,7 @@ fun FriendCheersCard(ui: AppState) {
     if (list.isEmpty()) return
     fun mark(m: FriendMilestone) { hidden = hidden + "${m.u.id}:${m.n}"; ui.prefs.cheeredMilestones = hidden.toList().takeLast(200).toSet() }
     Glass(border = p.flame.copy(alpha = .4f)) {
-        CardHead("Séries de tes amis") { Count(list.size) }
+        CardHead("Séries de tes amis", emoji = "👏") { Count(list.size) }
         list.take(4).forEach { m ->
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.clip(RoundedCornerShape(50)).clickable(onClickLabel = "Profil de ${m.u.name}") { ui.open(Sheet.User(m.u.id)) }) { Av(m.u, 42.dp) }
@@ -79,7 +79,7 @@ fun StatusRow(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg
     if (!pg.socialOn() || !pg.store.acct) return
     val st = remember(ui.rev) { pg.statusOf(pg.meId()) }
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.glassStrong).clickable(onClickLabel = "Statut du jour") { ui.open(Sheet.Status) }.padding(horizontal = 14.dp, vertical = 10.dp),
+    Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(p.glassStrong).clickable(onClickLabel = "Statut du jour") { ui.open(Sheet.Status) }.padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Emoji(st?.e ?: "💬", 26.dp)
         Column(Modifier.weight(1f)) {
@@ -122,7 +122,7 @@ fun BriefingCard(ui: AppState) {
     var auto by remember { mutableStateOf(ui.prefs.briefAuto) }
     LaunchedEffect(playing) { if (playing) { delay(400L + text.length * 70L); playing = false } }
     Glass {
-        CardHead("Ton briefing du matin") { IconBtn("x", "Masquer le briefing", { closed = true; Speaker.stop(); ui.prefs.raw.edit().putString("briefClosed", t).apply() }, plain = true, size = 34.dp) }
+        CardHead("Ton briefing du matin", emoji = "🎧") { IconBtn("x", "Masquer le briefing", { closed = true; Speaker.stop(); ui.prefs.raw.edit().putString("briefClosed", t).apply() }, plain = true, size = 34.dp) }
         Text(text, color = p.ink2, maxLines = 5)
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -161,8 +161,8 @@ fun WeekImageCard(ui: AppState) {
     }
     if (preview) androidx.compose.ui.window.Dialog({ preview = false }) {
         val bmp = remember(st.r.s, st.n) { WeekImage.render(ctx, st).asImageBitmap() }
-        Column(Modifier.clip(RoundedCornerShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(bmp, "Ta semaine en image", Modifier.fillMaxWidth().aspectRatio(1080f / 1920f).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Fit)
+        Column(Modifier.clip(smoothShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Image(bmp, "Ta semaine en image", Modifier.fillMaxWidth().aspectRatio(1080f / 1920f).clip(smoothShape(16.dp)), contentScale = ContentScale.Fit)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PButton("Fermer", { preview = false }, Modifier.weight(1f))
                 PButton("Partager", { WeekImage.share(ctx, ui.pg) }, Modifier.weight(1f), icon = "share", kind = "primary")
@@ -180,7 +180,7 @@ fun MomentsCard(ui: AppState) {
     val m = remember(ui.rev) { pg.moments() }
     if (m.total < 5) return
     Glass {
-        CardHead("Ton meilleur moment") { Muted("90 jours", small = true) }
+        CardHead("Ton meilleur moment", emoji = "⏰") { Muted("90 jours", small = true) }
         m.bestWd?.let { b -> Text("Tu réussis le mieux le ${WD_LONG[b]} (${Math.round((m.wd[b] ?: 0.0) * 100)} %).", fontWeight = FontWeight.ExtraBold) }
         m.hardWd?.let { h -> Muted("Le ${WD_LONG[h]} est plus difficile (${Math.round((m.wd[h] ?: 0.0) * 100)} %) : allège-le ou prévois un rappel.", small = true) }
         // Réussite par jour de la semaine
@@ -226,8 +226,8 @@ fun BeforeAfterDialog(first: Proof, last: Proof, onClose: () -> Unit) {
     val b = rememberDecoded(last.id, last.photo) { Proofs.photoFile(ctx, last)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
     var cut by remember { mutableFloatStateOf(.5f) }
     androidx.compose.ui.window.Dialog(onClose) {
-        Column(Modifier.clip(RoundedCornerShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(.8f).clip(RoundedCornerShape(16.dp)).background(Color.Black)
+        Column(Modifier.clip(smoothShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(.8f).clip(smoothShape(16.dp)).background(Color.Black)
                 .pointerInput(Unit) { detectDragGestures { ch, _ -> cut = (ch.position.x / size.width).coerceIn(0f, 1f) } }) {
                 if (b != null) Image(b, "Après", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 if (a != null) Image(a, "Avant", Modifier.fillMaxSize().drawWithContent { clipRect(right = size.width * cut) { this@drawWithContent.drawContent() } }, contentScale = ContentScale.Crop)
@@ -248,8 +248,8 @@ fun TimelapseDialog(list: List<Proof>, onClose: () -> Unit) {
     var i by remember { mutableIntStateOf(0) }; var playing by remember { mutableStateOf(true) }; var fast by remember { mutableStateOf(false) }
     LaunchedEffect(playing, fast, i) { if (playing) { delay(if (fast) 280L else 700L); i = if (i + 1 >= list.size) 0 else i + 1 } }
     androidx.compose.ui.window.Dialog(onClose) {
-        Column(Modifier.clip(RoundedCornerShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.fillMaxWidth().aspectRatio(.8f).clip(RoundedCornerShape(16.dp)).background(Color.Black)) {
+        Column(Modifier.clip(smoothShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(.8f).clip(smoothShape(16.dp)).background(Color.Black)) {
                 Crossfade(list[i], animationSpec = tween(if (fast) 120 else 260), label = "lapse") { pr ->
                     val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f -> val o = BitmapFactory.Options().apply { inSampleSize = 2 }; BitmapFactory.decodeFile(f.path, o)?.asImageBitmap() } }
                     if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)

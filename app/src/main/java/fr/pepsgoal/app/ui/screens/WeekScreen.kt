@@ -77,7 +77,7 @@ private fun DayCard(ui: AppState, d: LocalDate, goals: List<Goal>, wins: Set<Str
     val rest = k in pg.restSet()
     Glass(pad = 14.dp, border = if (isToday) p.flame else null) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(if (isToday) p.flame else p.ink.copy(alpha = .06f)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(44.dp).clip(smoothShape(14.dp)).background(if (isToday) p.flame else p.ink.copy(alpha = .06f)), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(WD_SHORT[wdIdx(d)], fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = if (isToday) p.onAccent else p.ink2)
                     Text("${d.dayOfMonth}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = if (isToday) p.onAccent else p.ink)

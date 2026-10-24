@@ -57,7 +57,7 @@ fun FriendsScreen(ui: AppState) {
                 item("sugg") { SuggestCard(ui, u) }
                 if (outgoing.isNotEmpty()) item("out") {
                     Glass {
-                        CardHead("Demandes envoyées") { Count(outgoing.size) }
+                        CardHead("Demandes envoyées", emoji = "📨") { Count(outgoing.size) }
                         outgoing.forEach { f -> pg.userById(f.to)?.let { x -> PersonRow(ui, x) { PButton("Annuler", { ui.run { ui.cloud.declineRequest(f.id) } }, kind = "ghost", small = true) } } }
                     }
                 }
@@ -71,7 +71,7 @@ fun FriendsScreen(ui: AppState) {
                     item("league") { LeagueCard(ui) }
                     item("list") {
                         Glass(pad = 12.dp) {
-                            CardHead("Mes amis", Modifier.padding(start = 6.dp, top = 4.dp)) { Count(friends.size) }
+                            CardHead("Mes amis", emoji = "🫂", modifier = Modifier.padding(start = 6.dp, top = 4.dp)) { Count(friends.size) }
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { friends.forEach { (x, st) -> FriendRow(ui, x, st) } }
                         }
                     }
@@ -86,10 +86,10 @@ fun FriendsScreen(ui: AppState) {
 private fun RequestsCard(ui: AppState, incoming: List<fr.pepsgoal.core.model.Friendship>) {
     val p = LocalPal.current; val pg = ui.pg
     Glass(border = p.flame.copy(alpha = .45f)) {
-        CardHead("Demandes reçues") { Count(incoming.size) }
+        CardHead("Demandes reçues", emoji = "👋") { Count(incoming.size) }
         Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             incoming.forEach { f -> pg.userById(f.from)?.let { x ->
-                Column(Modifier.width(148.dp).clip(RoundedCornerShape(20.dp)).background(p.glassStrong).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.width(148.dp).clip(smoothShape(20.dp)).background(p.glassStrong).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(Modifier.clip(CircleShape).clickable { ui.open(Sheet.User(x.id)) }) { Av(x, 56.dp) }
                     Text(x.name, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Muted("@${x.username}", small = true, maxLines = 1)
@@ -109,12 +109,12 @@ private fun FriendsTodayCard(ui: AppState, u: User, friends: List<Pair<User, Str
     val all = listOf(u to me) + friends.sortedByDescending { it.second.lit }
     val lit = friends.count { it.second.lit }
     Glass {
-        CardHead("Aujourd’hui") { Count("$lit / ${friends.size}") }
+        CardHead("Aujourd’hui", emoji = "🔥") { Count("$lit / ${friends.size}") }
         Muted(when { lit == 0 -> "Personne n’a encore validé : montre l’exemple !"; lit == friends.size -> "Tous tes amis ont validé aujourd’hui 🔥"; else -> "${pl(lit, "ami a", "amis ont")} déjà validé aujourd’hui." }, small = true)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             all.forEach { (x, st) ->
-                Column(Modifier.width(64.dp).clip(RoundedCornerShape(16.dp)).clickable { if (x.id == u.id) ui.nav("profile") else ui.open(Sheet.User(x.id)) },
+                Column(Modifier.width(64.dp).clip(smoothShape(16.dp)).clickable { if (x.id == u.id) ui.nav("profile") else ui.open(Sheet.User(x.id)) },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Box(Modifier.size(62.dp).clip(CircleShape).background(if (st.lit) Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)) else Brush.linearGradient(listOf(p.line, p.line))).padding(3.dp)
                         .clip(CircleShape).background(p.bg).padding(2.dp), contentAlignment = Alignment.Center) {
@@ -139,11 +139,11 @@ private fun PodiumCard(ui: AppState, u: User, friends: List<Pair<User, Streak>>)
     val heights = listOf(84.dp, 62.dp, 48.dp)
     val medals = listOf("🥇", "🥈", "🥉")
     Glass {
-        CardHead("Podium des séries") { Muted("jours d’affilée", small = true) }
+        CardHead("Podium des séries", emoji = "🏆") { Muted("jours d’affilée", small = true) }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
             order.forEach { i ->
                 val (x, st) = top[i]
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable { if (x.id == u.id) ui.nav("profile") else ui.open(Sheet.User(x.id)) }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.weight(1f).clip(smoothShape(16.dp)).clickable { if (x.id == u.id) ui.nav("profile") else ui.open(Sheet.User(x.id)) }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Av(x, if (i == 0) 58.dp else 48.dp)
                     Text(if (x.id == u.id) "Toi" else first(x.name), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Box(Modifier.fillMaxWidth().height(heights[i]).clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 6.dp, bottomEnd = 6.dp))
@@ -164,7 +164,7 @@ private fun PodiumCard(ui: AppState, u: User, friends: List<Pair<User, Streak>>)
 private fun FriendRow(ui: AppState, x: User, st: Streak) {
     val p = LocalPal.current; val pg = ui.pg
     val n = Social.unreadFrom(ui, x.id)
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable { ui.open(Sheet.User(x.id)) }.padding(horizontal = 6.dp, vertical = 8.dp),
+    Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).clickable { ui.open(Sheet.User(x.id)) }.padding(horizontal = 6.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box {
             Av(x, 50.dp)
@@ -213,7 +213,7 @@ private fun InviteCard(ui: AppState, u: User) {
 fun PersonRow(ui: AppState, x: User, size: Int = 44, acts: @Composable RowScope.() -> Unit = {}) {
     val p = LocalPal.current; val st = ui.pg.globalStreak(x.id).n
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable { ui.open(Sheet.User(x.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.weight(1f).clip(smoothShape(14.dp)).clickable { ui.open(Sheet.User(x.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Av(x, size.dp)
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -249,13 +249,13 @@ private fun MessagesCard(ui: AppState, u: User, always: Boolean = false) {
     Glass {
         if (ui.cloud.e2e.hasVault().not() && pg.store.acct && ui.cloud.e2e.keyCount() > 0)
             Note("**Messages chiffrés de bout en bout.** Protège tes clés avec ton mot de passe pour les retrouver sur tes autres appareils (Paramètres › Compte).", "lock", Modifier.padding(bottom = 10.dp))
-        CardHead("Messages") {
+        CardHead("Messages", emoji = "💬") {
             if (total > 0) Chip("$total non lus", color = p.type("deadline").c, ink = p.type("deadline").ink)
             if (canGroup) PButton("Nouveau groupe", { ui.open(Sheet.GroupNew) }, icon = "group", kind = "ghost", small = true)
         }
         if (rows.isEmpty()) Muted("Écris à un ami depuis la liste ci-dessous, ou crée un groupe de discussion.", small = true)
         rows.forEach { r ->
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { ui.push(if (r.dm != null) Screen.Chat(with = r.dm.id) else Screen.Chat(group = r.grp!!.id)) }.padding(vertical = 7.dp),
+            Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable { ui.push(if (r.dm != null) Screen.Chat(with = r.dm.id) else Screen.Chat(group = r.grp!!.id)) }.padding(vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (r.dm != null) Av(r.dm, 44.dp) else GroupAv(r.grp!!.emoji, 44)
                 Column(Modifier.weight(1f)) {
@@ -304,7 +304,7 @@ private fun SuggestCard(ui: AppState, u: User) {
     val aiOrder = aiPicks?.map { it.userId } ?: emptyList()
     val shown = list.sortedBy { if (it.first.id in aiOrder) aiOrder.indexOf(it.first.id) else 99 }
     Glass(ai = ai) {
-        CardHead("Suggestions d’amis") { IconBtn("gear", "Réglages des suggestions", { ui.push(Screen.Settings("privacy")) }, plain = true, size = 36.dp) }
+        CardHead("Suggestions d’amis", emoji = "🧭") { IconBtn("gear", "Réglages des suggestions", { ui.push(Screen.Settings("privacy")) }, plain = true, size = 36.dp) }
         if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Pi("sparkle", size = 15.dp, tint = p.flameInk); Muted(if (aiPicks == null) "Le coach cherche les meilleurs partenaires pour toi…" else "Classées par ton coach selon tes objectifs", small = true)
         }
@@ -312,7 +312,7 @@ private fun SuggestCard(ui: AppState, u: User) {
             shown.forEach { (x, s) ->
                 val mutual = s.int("mutual"); val via = s.strs("via")
                 val why = aiWhy[x.id] ?: if (mutual > 0) pl(mutual, "ami en commun", "amis en commun") + (if (via.isNotEmpty()) " · " + via.take(2).joinToString(", ") { first(it) } else "") else if (s.int("groups") > 0) "Dans un de tes groupes" else "Nouveau sur PepsGoal"
-                Box(Modifier.width(150.dp).clip(RoundedCornerShape(20.dp)).background(p.glassStrong).padding(12.dp)) {
+                Box(Modifier.width(150.dp).clip(smoothShape(20.dp)).background(p.glassStrong).padding(12.dp)) {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(Modifier.clickable { ui.open(Sheet.User(x.id)) }) { Av(x, 56.dp) }
                         Text(x.name, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)

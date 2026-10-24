@@ -102,7 +102,7 @@ private fun ModAccounts(ui: AppState) {
                 .sortedWith(compareByDescending<User> { (if (pg.isBanned(it)) 1 else 0) + (if (it.warned != null) 1 else 0) }.thenBy { it.name.lowercase() })
             if (list.isEmpty()) Muted("Aucun compte ne correspond.", Modifier.padding(top = 8.dp), small = true)
             list.take(80).forEach { x ->
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { ui.open(Sheet.ModUser(x.id)) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable { ui.open(Sheet.ModUser(x.id)) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Av(x, 40.dp)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(pg.realName(x), fontWeight = FontWeight.ExtraBold)
@@ -134,7 +134,7 @@ private fun ModPostCard(ui: AppState, post: Post, actions: @Composable () -> Uni
         a?.let { FlowRowCompat(gap = 4.dp) { StatusChips(ui, it) } }
         if (post.text.isNotEmpty()) Text(post.text)
         post.poll?.let { Muted("Sondage : " + it.options.joinToString(" · ") { o -> o.t }, small = true) }
-        post.photo?.let { AsyncImage(it, "Photo de la publication", Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(14.dp)).clickable { photo = true }, contentScale = ContentScale.Crop) }
+        post.photo?.let { AsyncImage(it, "Photo de la publication", Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(smoothShape(14.dp)).clickable { photo = true }, contentScale = ContentScale.Crop) }
         FlowRowCompat(gap = 6.dp) { actions() }
     }
     if (photo) post.photo?.let { PhotoViewer(it) { photo = false } }
@@ -278,7 +278,7 @@ private fun ModNews(ui: AppState) {
     val news = pg.db.news.reversed()
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Glass {
-            CardHead("Modèles rapides")
+            CardHead("Modèles rapides", emoji = "⚡")
             FlowRowCompat(gap = 6.dp) { NEWS_TPL.forEach { t -> PButton(t.second, { tag = t.first; text = t.third }, icon = OFFICIAL_TAGS[t.first]?.second, small = true) } }
         }
         Glass {
@@ -383,7 +383,7 @@ private fun ModServerStats(ui: AppState) {
                 num(c, "attachments")?.let { Triple(fmtNum(it), "Pièces jointes chiffrées", null) }, num(c, "notifs_1d")?.let { Triple(fmtNum(it), "Notifications (24 h)", null) }))
         }
         Glass {
-            CardHead("14 derniers jours")
+            CardHead("14 derniers jours", emoji = "📅")
             val days = (d["days"] as? kotlinx.serialization.json.JsonArray)?.map { it as JsonObject } ?: emptyList()
             listOf("signups" to "Inscriptions", "checkins" to "Validations", "messages" to "Messages").forEach { (k, l) ->
                 val vals = days.map { num(it, k) ?: 0.0 }
