@@ -397,7 +397,7 @@ private fun MessageRow(
     val kind = if (gone) "gone" else b?.str("k") ?: "text"
     // Un à quatre emojis seuls, ou un sticker : affichés en grand, sans bulle
     val jumbo = if (kind == "text" && b?.get("r") == null) Emo.only(b?.str("t").orEmpty()) else null
-    val bare = jumbo != null || kind == "stk"
+    val bare = jumbo != null || kind == "stk" || kind == "gift"
     val canAct = !m.official && b != null && !pg.isBanned(pg.me()) && !gone
     val mentioned = b?.strs("mn")?.contains(me) == true
     // Glisser un message vers la droite pour y répondre (icône qui apparaît sous le doigt, clic net au seuil)
@@ -434,7 +434,9 @@ private fun MessageRow(
             .clip(shape).then(frost).then(if (bare) Modifier else Modifier.background(if (p.contrast) SolidColor(p.glassStrong) else bg))
             .then(if (p.contrast || p.transp || bare) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .06f else .22f), .5f to Color.Transparent))).then(if (mentioned) Modifier.border(2.dp, p.flame2, shape) else Modifier)
             .then(if (selected) Modifier.border(2.dp, p.flame, shape) else Modifier)
-            .combinedClickable(enabled = canAct || selecting || gone, onClick = onTap, onLongClick = onMenu, onLongClickLabel = "Sélectionner (réagir, répondre, copier, modifier, supprimer)", onClickLabel = if (selecting) (if (selected) "Désélectionner" else "Sélectionner") else null).padding(if (kind == "photo" || bare) 4.dp else 12.dp, if (kind == "photo" || bare) 4.dp else 9.dp)) {
+            .combinedClickable(enabled = canAct || selecting || gone, onClick = onTap, onLongClick = onMenu,
+                // Double appui : ❤️ (comme sur les autres messageries)
+                onDoubleClick = if (canAct && !selecting) ({ Feedback.tick(); onReact("❤️") }) else null, onLongClickLabel = "Sélectionner (réagir, répondre, copier, modifier, supprimer)", onClickLabel = if (selecting) (if (selected) "Désélectionner" else "Sélectionner") else null).padding(if (kind == "photo" || bare) 4.dp else 12.dp, if (kind == "photo" || bare) 4.dp else 9.dp)) {
             if (m.official) OFFICIAL_TAGS[m.tag]?.let { (l, ic) -> Chip(l, ic, p.type("objective").c, modifier = Modifier.padding(bottom = 6.dp)) }
             when {
                 gone -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("ban", size = 15.dp, tint = p.ink3); Text(if (mine) "Tu as supprimé ce message" else "Message supprimé", fontSize = 14.sp, color = p.ink3, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic) }
@@ -451,6 +453,7 @@ private fun MessageRow(
                 }
                 kind == "voice" -> { VoicePlayer(ui, m, b); VoiceTranscript(ui, m, Att.get(ui, m, b.obj("a"))) }
                 kind == "stk" -> StickerView(b.str("s"), b.str("t"), 132.dp)
+                kind == "gift" -> GiftCard(ui, m, b, mine)
                 jumbo != null -> JumboEmojis(jumbo)
                 kind == "poll" -> ChatPoll(ui, m, b, votes ?: emptyMap(), onVote)
                 kind == "goal" -> {
@@ -601,6 +604,8 @@ private fun Composer(ui: AppState, u: User, key: String, members: List<String>?,
                 PButton("Photo", { panel = null; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image", small = true)
                 PButton("Objectif", { panel = "goal" }, icon = "target", small = true)
                 PButton("Sondage", { panel = "poll" }, icon = "poll", small = true)
+                // Conversation privée : offrir des flammes
+                if (key.startsWith("u:")) PButton("Cadeau", { panel = null; ui.open(Sheet.Gift(key.removePrefix("u:"))) }, icon = "gift", small = true)
             }
             "emoji", "stk" -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { FChip("Emojis", panel == "emoji", { panel = "emoji" }); FChip("Stickers", panel == "stk", { panel = "stk" }) }

@@ -96,6 +96,13 @@ fun TodayScreen(ui: AppState) {
             }
             "timeline" -> item("timeline") { TimelineCard(ui, plan) }
             "briefing" -> item("briefing") { BriefingCard(ui) }
+            "bday" -> item("bday") { BirthdayCard(ui) }
+            "advent" -> item("advent") { AdventCard(ui) }
+            "record" -> item("record") { RecordCard(ui) }
+            "challenge" -> item("challenge") { ChallengeCard(ui) }
+            "memories" -> item("memories") { MemoriesCard(ui) }
+            "wxweek" -> item("wxweek") { WeekWeatherCard(ui) }
+            "quote" -> item("quote") { QuoteCard(ui) }
             "cheers" -> item("cheers") { FriendCheersCard(ui) }
             "weekimg" -> item("weekimg") { WeekImageCard(ui) }
             "evening" -> item("evening") { EveningQuickCard(ui, plan) }
@@ -371,6 +378,7 @@ private fun QuickTools(ui: AppState) {
         Triple(if (focusOn) "Focus en cours" else "Focus", "timer") { ui.fs = Fs.Focus() },
         Triple("Stats", "trend") { ui.push(fr.pepsgoal.app.Screen.Stats) },
         Triple("Journal", "book") { ui.push(fr.pepsgoal.app.Screen.Journal) },
+        Triple("Respirer", "wind") { ui.open(fr.pepsgoal.app.Sheet.Breath) },
         if (fr.pepsgoal.app.ai.LocalAi.on(ctx)) Triple("Coach", "sparkle") { ui.push(fr.pepsgoal.app.Screen.CoachChat) } else null,
     )
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -109,7 +109,7 @@ object Mapping {
     }
 
     /* ---------- réglages du compte ---------- */
-    private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "hardDays", "essentials", "flameSkin", "shop", "places", "rewards", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams", "nicknames")
+    private val USER_KEYS = listOf("tutorialDone", "goalGroups", "goalGroupOf", "frozenDays", "restDays", "vacations", "hardDays", "essentials", "flameSkin", "shop", "places", "rewards", "milestones", "badges", "perfectDays", "favGoals", "hiddenSuggest", "aprilFool", "badgeFams", "nicknames", "friendNotes", "friendBdays")
     private val SETTING_KEYS = listOf("browser", "defaultVis", "bg", "accentCustom", "noSuggest", "weather", "wxCard", "glassBlur", "hideOngoing", "fx", "themeMode")
 
     private fun strArr(l: List<String>) = JsonArray(l.map(::JsonPrimitive))
@@ -121,6 +121,7 @@ object Mapping {
         extra["goalGroups"] = JSON.encodeToJsonElement(u.goalGroups)
         extra["goalGroupOf"] = JsonObject(u.goalGroupOf.mapValues { JsonPrimitive(it.value) })
         extra["nicknames"] = JsonObject(u.nicknames.mapValues { JsonPrimitive(it.value) })
+        extra["friendNotes"] = JsonObject(u.friendNotes.mapValues { JsonPrimitive(it.value) }); extra["friendBdays"] = JsonObject(u.friendBdays.mapValues { JsonPrimitive(it.value) })
         extra["frozenDays"] = strArr(u.frozenDays); extra["milestones"] = strArr(u.milestones)
         extra["restDays"] = strArr(u.restDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
         extra["hardDays"] = strArr(u.hardDays.filter { it >= fr.pepsgoal.core.ymd(fr.pepsgoal.core.todayDate().minusDays(400)) })
@@ -172,6 +173,8 @@ object Mapping {
         (x["goalGroups"] as? JsonArray)?.let { u.goalGroups = try { JSON.decodeFromJsonElement<List<GoalGroup>>(it).toMutableList() } catch (e: Exception) { u.goalGroups } }
         (x["goalGroupOf"] as? JsonObject)?.let { o -> u.goalGroupOf = o.mapValues { it.value.strOr("") }.filterValues { it.isNotEmpty() }.toMutableMap() }
         (x["nicknames"] as? JsonObject)?.let { o -> u.nicknames = o.mapValues { it.value.strOr("") }.filterValues { it.isNotBlank() }.toMutableMap() }
+        (x["friendNotes"] as? JsonObject)?.let { o -> u.friendNotes = o.mapValues { it.value.strOr("") }.filterValues { it.isNotBlank() }.toMutableMap() }
+        (x["friendBdays"] as? JsonObject)?.let { o -> u.friendBdays = o.mapValues { it.value.strOr("") }.filterValues { it.matches(Regex("\\d{2}-\\d{2}")) }.toMutableMap() }
         strs("frozenDays")?.let { u.frozenDays = it }
         strs("restDays")?.let { u.restDays = it }
         strs("vacations")?.let { u.vacations = it }

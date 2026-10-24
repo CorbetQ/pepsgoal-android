@@ -146,6 +146,9 @@ class User(
     var goalGroupOf: MutableMap<String, String> = mutableMapOf(),
     /** Surnoms donnés à ses amis (id → surnom), visibles par soi seul. */
     var nicknames: MutableMap<String, String> = mutableMapOf(),
+    /** Fiche privée des amis : note libre et anniversaire (« MM-JJ »), visibles par soi seul. */
+    var friendNotes: MutableMap<String, String> = mutableMapOf(),
+    var friendBdays: MutableMap<String, String> = mutableMapOf(),
     /** Nom choisi par la personne elle-même, quand un surnom le remplace à l'affichage. */
     var realName: String? = null,
     var milestones: MutableList<String> = mutableListOf(),
