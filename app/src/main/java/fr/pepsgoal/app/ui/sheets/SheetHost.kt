@@ -108,6 +108,8 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.Notes -> NotesSheet(ui)
         is Sheet.Pending -> PendingSheet(ui)
         is Sheet.Status -> fr.pepsgoal.app.ui.screens.StatusSheet(ui)
+        is Sheet.Gift -> fr.pepsgoal.app.ui.screens.GiftSheet(ui, s.id)
+        is Sheet.Breath -> fr.pepsgoal.app.ui.screens.BreathSheet(ui)
         is Sheet.GroupNew -> GroupNewSheet(ui)
         is Sheet.GroupInfo -> GroupInfoSheet(ui, s.gid)
         is Sheet.DeleteAccount -> DeleteAccountSheet(ui)

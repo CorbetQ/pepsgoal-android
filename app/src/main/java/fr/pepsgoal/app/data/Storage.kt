@@ -177,6 +177,8 @@ class DevicePrefs(context: Context) {
     var bgReactive get() = p.getBoolean("bgReactive", true); set(v) = p.edit().putBoolean("bgReactive", v).apply()
     /** Pluie, neige, orage ou brouillard par-dessus le fond quand il fait ce temps-là dehors (ville de la météo). */
     var bgWeather get() = p.getBoolean("bgWeather", true); set(v) = p.edit().putBoolean("bgWeather", v).apply()
+    /** Thème « Système » : clair entre le lever et le coucher du soleil, sombre ensuite (au lieu du réglage du téléphone). */
+    var sunTheme get() = p.getBoolean("sunTheme", false); set(v) = p.edit().putBoolean("sunTheme", v).apply()
     /** Flamme personnalisée : forme et effet animé. */
     var flameShape get() = p.getString("flameShape", "classic") ?: "classic"; set(v) = p.edit().putString("flameShape", v).apply()
     var flameFx get() = p.getString("flameFx", "none") ?: "none"; set(v) = p.edit().putString("flameFx", v).apply()

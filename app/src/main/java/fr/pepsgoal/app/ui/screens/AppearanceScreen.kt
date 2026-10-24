@@ -257,6 +257,9 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
                 }
             }
         }
+        if (s.theme == "system") SetRow("Suivre le soleil", "Clair du lever au coucher du soleil (à l’heure de ta ville météo), sombre la nuit, au lieu du réglage du téléphone.") {
+            PSwitch(ui.prefs.sunTheme, { ui.prefs.sunTheme = it; ui.themeTick++ })
+        }
         SetRow("Couleurs Material You", if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface." else "Nécessite Android 12 ou plus récent.") {
             PSwitch(ui.prefs.materialYou && dynOk, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = dynOk)
         }

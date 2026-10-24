@@ -427,4 +427,35 @@ class LogicTest {
         assertEquals(listOf("🎉", "💪"), Emo.extract("Trop bien 🎉 on y va 💪 !"))
         assertTrue(fr.pepsgoal.core.cloud.Msg.SILENT.contains("shot"))
     }
+
+    @Test fun giftsFriendCardsAndDailyBits() {
+        val me = pg.me()!!; me.shopBonus = 120
+        assertEquals(null, pg.giftError(50)); assertTrue(pg.giftError(500) != null); assertTrue(pg.giftError(0) != null)
+        val w0 = pg.wallet(); pg.spendGift(50); assertEquals(w0 - 50, pg.wallet()); assertEquals(50, pg.flamesGiven())
+        pg.refundGift(50); assertEquals(w0, pg.wallet())
+        // Cadeau reçu : ouvert une seule fois
+        assertTrue(pg.openGift("m1", 25)); assertTrue(!pg.openGift("m1", 25)); assertEquals(w0 + 25, pg.wallet())
+        // Fiche privée et anniversaire
+        pg.db.users.add(User("f1", "sam", "Sam Martin"))
+        pg.setFriendNote("f1", "  Aime le vélo  "); assertEquals("Aime le vélo", pg.friendNote("f1"))
+        pg.setFriendBday("f1", "10-21"); assertEquals(listOf("f1"), pg.birthdaysToday().map { it.id })
+        pg.checkBirthdays(); assertTrue(me.shopClaimed.contains("bday:f1:2026"))
+        pg.setFriendBday("f1", "10-30"); assertEquals(9, pg.nextBirthdays().first().second)
+        val back = User("me", "camille", "Camille Roux"); Mapping.applyServerSettings(back, Mapping.toServerSettings(me)); assertEquals("10-30", back.friendBdays["f1"])
+        // Défi du jour, Avent, citation
+        assertTrue(pg.completeChallenge()); assertTrue(!pg.completeChallenge())
+        assertTrue(!adventOpen()); assertEquals(100, adventReward(24))
+        assertTrue(quoteOfDay().first.isNotBlank())
+        // Souvenirs : une validation il y a un mois
+        val g = goal("routine", 400) { mode = "days"; days = (0..6).toList() }
+        pg.addCheck(g, "done", 1.0, 10, ymd(todayDate().minusMonths(1)))
+        assertEquals("Il y a un mois", pg.memories().single().label)
+    }
+
+    @Test fun sunTheme() {
+        val noon = java.time.LocalDateTime.of(2026, 10, 21, 13, 0); val night = java.time.LocalDateTime.of(2026, 10, 21, 22, 30)
+        assertTrue(!sunDark(null, noon)); assertTrue(sunDark(null, night))
+        val f = Forecast(daily = listOf(WxDay("2026-10-21", 0, sunrise = "2026-10-21T08:30", sunset = "2026-10-21T18:45")))
+        assertTrue(sunDark(f, java.time.LocalDateTime.of(2026, 10, 21, 8, 0))); assertTrue(!sunDark(f, java.time.LocalDateTime.of(2026, 10, 21, 18, 0)))
+    }
 }

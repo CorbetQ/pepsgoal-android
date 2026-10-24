@@ -113,7 +113,9 @@ class ThemeInput(
     val glassOpacity: String = "mid",
     val easy: Boolean = false, val big: Boolean = false, val oneHand: Boolean = false,
     /** Couleurs de saison de l'arrière-plan (null : aucune). */
-    val season: List<Long>? = null
+    val season: List<Long>? = null,
+    /** Thème automatique qui suit le soleil (null : suit le téléphone). */
+    val sunDark: Boolean? = null
 )
 
 private fun mix(a: Color, b: Color, k: Float) = lerp(a, b, k)
@@ -161,7 +163,7 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     val transp = input.transp || input.easy; val motion = input.motion || input.easy
     // Ambiance achetée (« m:<clé> ») : thème d'interface complet, clair ou sombre
     val mode = fr.pepsgoal.core.shopMode(input.theme)
-    val dark = if (mode != null) mode.dark else when (input.theme) { "light" -> false; "dark", "oled" -> true; "weather" -> input.skyDark; else -> sysDark }
+    val dark = if (mode != null) mode.dark else when (input.theme) { "light" -> false; "dark", "oled" -> true; "weather" -> input.skyDark; else -> input.sunDark ?: sysDark }
     val oled = input.theme == "oled"
     val ctx = LocalContext.current
     val dyn: ColorScheme? = if (input.materialYou && Build.VERSION.SDK_INT >= 31) (if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)) else null
