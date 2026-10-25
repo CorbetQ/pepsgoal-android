@@ -45,21 +45,31 @@ class KeystoreSecrets(context: Context) : Secrets {
     @Synchronized override fun get(key: String): String? {
         if (cache.containsKey(key)) return cache[key]
         val raw = prefs.getString(key, null) ?: return null.also { cache[key] = null }
-        val v = try {
-            val b = Base64.decode(raw, Base64.NO_WRAP)
-            val c = Cipher.getInstance("AES/GCM/NoPadding"); c.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, b, 0, 12))
-            String(c.doFinal(b, 12, b.size - 12), Charsets.UTF_8)
-        } catch (e: Exception) { null }
-        cache[key] = v
+        // Le Keystore peut échouer ponctuellement au démarrage (service système encore occupé) : quelques essais avant
+        // d'abandonner, sinon la session enregistrée serait ignorée et l'application s'ouvrirait déconnectée
+        var v: String? = null
+        for (i in 0 until 4) {
+            v = try {
+                val b = Base64.decode(raw, Base64.NO_WRAP)
+                val c = Cipher.getInstance("AES/GCM/NoPadding"); c.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, b, 0, 12))
+                String(c.doFinal(b, 12, b.size - 12), Charsets.UTF_8)
+            } catch (e: Exception) { null }
+            if (v != null) break
+            Thread.sleep(60L * (i + 1))
+        }
+        // Déchiffrement raté (Keystore momentanément indisponible) : on réessaiera, sans croire la session perdue
+        if (v != null) cache[key] = v
         return v
     }
 
     @Synchronized override fun set(key: String, value: String?) {
         cache[key] = value
-        if (value == null) { prefs.edit().remove(key).apply(); return }
+        // Écriture immédiate sur le disque (commit) : un jeton de renouvellement est à usage unique ; perdu parce que
+        // l'application est fermée juste après l'échange, la session le serait aussi à la prochaine ouverture
+        if (value == null) { prefs.edit().remove(key).commit(); return }
         val c = Cipher.getInstance("AES/GCM/NoPadding"); c.init(Cipher.ENCRYPT_MODE, key())
         val out = c.iv + c.doFinal(value.toByteArray(Charsets.UTF_8))
-        prefs.edit().putString(key, Base64.encodeToString(out, Base64.NO_WRAP)).apply()
+        prefs.edit().putString(key, Base64.encodeToString(out, Base64.NO_WRAP)).commit()
     }
 
     companion object { private const val ALIAS = "pepsgoal.secrets.v1" }

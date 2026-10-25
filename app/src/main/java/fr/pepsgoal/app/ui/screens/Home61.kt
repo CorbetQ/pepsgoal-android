@@ -64,10 +64,11 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Eyebrow(cap(weekdayLongDate(todayDate())))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Salut ${first(u.name)}", Modifier.weight(1f, fill = false), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // Le prénom entier : le texte rétrécit pour tenir (gros caractères, prénom long) au lieu d'être coupé
+                    FitText("Salut ${first(u.name)}", Modifier.weight(1f, fill = false), size = 24, min = 14, weight = FontWeight.ExtraBold, family = Unbounded)
                     Emoji(hello, 26.dp)
                 }
-                Muted(msg, maxLines = 2)
+                Muted(msg, maxLines = 4)
             }
             Box(Modifier.graphicsLayer { scaleX = .74f; scaleY = .74f }) { HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") } }
         }
@@ -77,7 +78,7 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(if (total == 0) "Rien de prévu aujourd’hui" else "$done sur $total validés aujourd’hui", fontWeight = FontWeight.ExtraBold)
                 Bar(lv.pct * 100, height = 8.dp)
-                Muted("Niveau ${lv.idx} · ${lv.name} · ${fmtNum(pg.wallet())} flammes à dépenser", small = true, maxLines = 1)
+                Muted("Niveau ${lv.idx} · ${lv.name} · ${fmtNum(pg.wallet())} flammes à dépenser", small = true, maxLines = 3)
             }
         }
         // Objectif du mois
