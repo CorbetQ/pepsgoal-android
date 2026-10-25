@@ -1896,9 +1896,8 @@ internal class FreePal(val dark: Boolean, val bg: Color, val ink: Color, cols: L
     private fun soft(col: Color): Color {
         val l = col.red * .3f + col.green * .59f + col.blue * .11f
         val gray = Color(l, l, l)
-        // Couleurs franches (à peine adoucies) : le verre des cartes les laisse transparaître, floutées
-        val desat = mix(col, gray, if (dark) .05f else .1f)
-        return if (dark) mix(desat, bg, .06f) else mix(desat, Color.White, .16f)
+        val desat = mix(col, gray, if (dark) .1f else .22f)
+        return if (dark) mix(desat, bg, .1f) else mix(desat, Color.White, .28f)
     }
     /** En sombre, les teintes froides prennent les grandes surfaces (les chaudes, sur fond nuit, virent au brun). */
     val c: List<Color> = List(4) { soft(cols[it % cols.size]) }.let { l -> if (dark) l.sortedBy { it.red - it.blue * .8f - it.green * .2f } else l }
@@ -1935,7 +1934,7 @@ private fun DrawScope.freeBlob(fp: FreePal, t: Float) {
     val W = size.width; val H = size.height; val m = max(W, H); val a = t * TAU; val k = fp.k
     val bl = if (fp.dark) BlendMode.Screen else BlendMode.SrcOver
     drawRect(Brush.linearGradient(0f to fp.base0, 1f to fp.base1, start = Offset(0f, 0f), end = Offset(W, H)))
-    val dk = if (fp.dark) .7f else 1f
+    val dk = if (fp.dark) .55f else 1f
     field(W * (.1f + .05f * sin(a)), H * (.08f + .03f * cos(a)), m * .7f, fp.c[0], .7f * k * dk)
     field(W * (.95f + .04f * cos(a)), H * (.4f + .04f * sin(a)), m * .6f, fp.c[1], .6f * k * dk)
     field(W * (.25f + .06f * sin(a + 2f)), H * .95f, m * .7f, fp.c[if (fp.dark) 0 else 2], .6f * k * dk)

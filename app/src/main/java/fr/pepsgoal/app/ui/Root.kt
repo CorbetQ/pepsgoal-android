@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -125,12 +124,8 @@ fun PepsRoot(ui: AppState) {
             LaunchedEffect(covered) { if (covered) { kotlinx.coroutines.delay(700); settled.value = true } else settled.value = false }
             val hidden = covered && settled.value
             val hideLayer = Modifier.graphicsLayer { alpha = if (hidden) 0f else 1f }
-            // Fenêtre du bas ouverte : l'écran derrière se floute en douceur (verre dépoli), la fenêtre passe au premier plan
-            val sheetOpen = ui.sheet != null && !(ui.sheet is Sheet.Goal && androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 900 && ui.screens.isEmpty() && ui.fs == null)
-            val backBlur by animateDpAsState(if (sheetOpen && Perf.flags.blur && !p.transp && !p.contrast && !p.motion) 14.dp else 0.dp, tween(if (sheetOpen) 320 else 220, easing = Motion.Emphasized), label = "backBlur")
-            val blurLayer = if (backBlur > .3.dp) Modifier.blur(backBlur) else Modifier
             // Arrière-plan : source du flou des panneaux en verre (niveau 0)
-            Box(Modifier.fillMaxSize().then(blurLayer).background(p.bg).hazeSource(haze, zIndex = 0f)) { Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
+            Box(Modifier.fillMaxSize().background(p.bg).hazeSource(haze, zIndex = 0f)) { Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                 // Changement d'arrière-plan ou de ciel (jour → crépuscule → nuit, pluie…) : fondu enchaîné
                 val kind = if (s?.theme == "weather") "sky" else s?.bg ?: "blob"
                 val sky = if (s?.theme == "weather") Weather.sky(wx?.data) else null
@@ -164,7 +159,7 @@ fun PepsRoot(ui: AppState) {
                 if (u != null && ui.prefs.briefAuto && ui.prefs.briefDay != t && h in 5..11) { ui.prefs.briefDay = t; kotlinx.coroutines.delay(1200); fr.pepsgoal.app.sys.Speaker.briefing(bctx) }
             }
             CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides haze, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses) {
-                Box(Modifier.fillMaxSize().then(blurLayer)) { Reachable(ui) {
+                Box(Modifier.fillMaxSize()) { Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                     when {
                         u == null -> AuthScreen(ui)
@@ -179,8 +174,8 @@ fun PepsRoot(ui: AppState) {
                 AnimatedContent(top, transitionSpec = {
                     // Page qui avance : arrive de la droite en grandissant légèrement, la précédente recule et s'estompe ;
                     // au retour, le mouvement inverse. Ressorts sans rebond pour un glissement net.
-                    val sp = spring<IntOffset>(dampingRatio = .84f, stiffness = 420f)
-                    val sc = spring<Float>(dampingRatio = .7f, stiffness = 380f)
+                    val sp = spring<IntOffset>(dampingRatio = 1f, stiffness = 450f)
+                    val sc = spring<Float>(dampingRatio = 1f, stiffness = 450f)
                     when {
                         p.motion -> fadeIn(tween(120)) togetherWith fadeOut(tween(90))
                         // Transitions simples (Paramètres › Performance) : fondu court, sans glissement ni mise à l'échelle
@@ -309,7 +304,7 @@ private fun Shell(ui: AppState) {
             Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).nestedScroll(fabConn).then(if (haze != null) Modifier.hazeSource(haze, zIndex = 1f) else Modifier), contentAlignment = Alignment.TopCenter) {
                 Box(Modifier.fillMaxHeight().then(if (wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth())) {
                 remember(ui.tab) { Stagger.reset() }
-                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion || !Perf.flags.rich) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = .68f, stiffness = 420f), initialScale = .94f) + slideInVertically(spring(dampingRatio = .7f, stiffness = 420f)) { it / 22 }) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.02f)) }, label = "tab") { tab ->
+                AnimatedContent(ui.tab, Modifier.fillMaxSize(), transitionSpec = { if (p.motion || !Perf.flags.rich) fadeIn(tween(100)) togetherWith fadeOut(tween(80)) else (fadeIn(Motion.fadeIn(200)) + scaleIn(spring(dampingRatio = 1f, stiffness = 500f), initialScale = .985f)) togetherWith (fadeOut(Motion.fadeOut(110)) + scaleOut(tween(140, easing = Motion.Exit), targetScale = 1.02f)) }, label = "tab") { tab ->
                     // Tirer pour actualiser sur l'accueil, le feed et les amis
                     if (tab in setOf("today", "feed", "friends")) PullRefresh(ui, with(d) { topH.toDp() }) {
                         when (tab) { "feed" -> FeedScreen(ui); "friends" -> FriendsScreen(ui); else -> TodayScreen(ui) }

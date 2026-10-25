@@ -48,8 +48,8 @@ fun GoalIcon(g: Goal, size: Dp = 44.dp, masked: Boolean = false) {
 }
 
 /**
- * Case à valider : bulle de verre cerclée de la couleur du type ; validée, elle devient une sphère brillante qui
- * s'écrase puis rebondit, la coche se dessine au trait et une onde s'élargit autour.
+ * Case à valider : cercle fin de la couleur du type ; validée, elle se remplit, la coche se dessine au trait et une
+ * onde légère s'élargit autour.
  */
 @Composable
 fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disabled: Boolean = false, icon: String = "check", running: Boolean = false, onClick: () -> Unit) {
@@ -60,8 +60,8 @@ fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disab
     LaunchedEffect(just, done) {
         if (just && done && !p.motion) {
             draw.snapTo(0f); wave.snapTo(0f)
-            launch { pop.snapTo(.68f); pop.animateTo(1f, spring(dampingRatio = .34f, stiffness = 480f)) }
-            launch { wave.animateTo(1f, tween(560, easing = Motion.Emphasized)) }
+            launch { pop.snapTo(.82f); pop.animateTo(1f, spring(dampingRatio = .6f, stiffness = 500f)) }
+            launch { wave.animateTo(1f, tween(480, easing = Motion.Emphasized)) }
             kotlinx.coroutines.delay(70); draw.animateTo(1f, tween(300, easing = Motion.Emphasized))
         } else { draw.snapTo(if (done) 1f else 0f); wave.snapTo(1f) }
     }
@@ -75,22 +75,18 @@ fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disab
         Modifier.drawBehind {
             val w = wave.value
             if (w < 1f) {
-                drawCircle(color.copy(alpha = (1f - w) * .5f), size.minDimension / 2f * (1f + w * .9f), style = androidx.compose.ui.graphics.drawscope.Stroke((1f - w) * 5.dp.toPx() + 1f))
-                drawCircle(color.copy(alpha = (1f - w) * .18f), size.minDimension / 2f * (1f + w * .55f))
+                drawCircle(color.copy(alpha = (1f - w) * .4f), size.minDimension / 2f * (1f + w * .6f), style = androidx.compose.ui.graphics.drawscope.Stroke((1f - w) * 3.dp.toPx() + 1f))
             }
-        }.bounce(inter, .78f).scale(pop.value).size(46.dp)
+        }.bounce(inter, .9f).scale(pop.value).size(40.dp)
             .then(when {
-                filled -> Modifier.candy(CircleShape, listOf(color.lift(.4f), color, color.deepen(.1f)), p, glow = !disabled, elevation = 10.dp)
-                p.contrast -> Modifier.background(base, CircleShape).border(2.5.dp, if (disabled) p.ink3 else line, CircleShape)
-                else -> Modifier.depth(CircleShape, p, 1).background(lerp(base, color, if (disabled) .03f else if (p.dark) .16f else .1f), CircleShape)
-                    .border(2.5.dp, if (disabled) SolidBrush(p.ink3.copy(alpha = .4f)) else Brush.linearGradient(listOf(color.lift(.25f), line)), CircleShape)
-                    .sheen(CircleShape, p.dark, .7f, rim = false)
+                filled -> Modifier.background(color, CircleShape)
+                else -> Modifier.border(2.dp, if (disabled) p.ink3.copy(alpha = .4f) else line, CircleShape)
             })
             .clip(CircleShape).springClick(inter, label = label, onClick = onClick).semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
-        if (done && !running && icon == "check") DrawnCheck(draw.value, onC, 26.dp, 3.2.dp)
-        else Pi(icon, size = 22.dp, tint = if (filled) onC else if (disabled) p.ink3.copy(alpha = .55f) else line)
+        if (done && !running && icon == "check") DrawnCheck(draw.value, onC, 22.dp, 2.6.dp)
+        else if (icon != "check" || filled) Pi(icon, size = 20.dp, tint = if (filled) onC else if (disabled) p.ink3.copy(alpha = .55f) else line)
     }
 }
 
@@ -110,43 +106,44 @@ fun MiniBtn(text: String, color: Color, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
     val base = if (LocalInSheet.current) p.bg else p.card
-    Box(Modifier.bounce(inter, .86f).depth(CircleShape, p, 1).background(Brush.verticalGradient(listOf(lerp(base, color.lift(.3f), if (p.dark) .26f else .3f), lerp(base, color, if (p.dark) .2f else .24f))), CircleShape)
-        .border(1.5.dp, readable(color).copy(alpha = .5f), CircleShape).clip(CircleShape).springClick(inter, onClick = onClick).heightIn(min = 38.dp).padding(horizontal = 13.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = p.ink, maxLines = 1)
+    Box(Modifier.bounce(inter).background(color.copy(alpha = if (p.dark) .2f else .14f), CircleShape).clip(CircleShape).springClick(inter, onClick = onClick)
+        .heightIn(min = 34.dp).padding(horizontal = 12.dp, vertical = 7.dp), contentAlignment = Alignment.Center) {
+        Text(text, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = fr.pepsgoal.app.ui.theme.readable(readable(color), lerp(base, color, .14f), 4.5f), maxLines = 1)
     }
 }
 
 /* ------------------------------------------------------------------ habillage : barre de navigation, bouton +, barre du haut */
 
 /**
- * Barre de navigation : capsule de verre flottante. L'onglet actif est repéré par une pastille « bonbon » de l'accent
- * qui glisse en s'étirant comme une goutte (le bord avant part le premier), puis rebondit en place.
+ * Barre d'onglets en verre (Liquid Glass) : capsule flottante floutée ; l'onglet actif est repéré par une pastille
+ * plus claire qui glisse d'un onglet à l'autre, icône et libellé à la couleur de l'accent.
  */
 @Composable
 fun NavBar(items: List<Triple<String, String, String>>, tab: String, badges: Map<String, Int>, onNav: (String) -> Unit, labels: Map<String, String> = emptyMap(), modifier: Modifier = Modifier) {
     val p = LocalPal.current
     val idx = items.indexOfFirst { it.first == tab }.coerceAtLeast(0)
-    val shape = smoothShape(30.dp); val pill = smoothShape(23.dp)
+    val shape = CircleShape; val pill = CircleShape
     Box(modifier.fillMaxWidth().depth(shape, p, 3).glassBg(shape, strong = true)
         .then(if (p.contrast) Modifier.border(1.dp, p.line, shape) else Modifier.sheen(shape, p.dark, .8f)).padding(6.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val w = maxWidth / items.size
             val prev = remember { intArrayOf(idx) }
             val right = idx >= prev[0]; SideEffect { prev[0] = idx }
-            val lead = spring<Dp>(dampingRatio = .6f, stiffness = 640f); val lag = spring<Dp>(dampingRatio = .74f, stiffness = 240f)
+            val lead = spring<Dp>(dampingRatio = .85f, stiffness = 700f); val lag = spring<Dp>(dampingRatio = .9f, stiffness = 380f)
             val l by animateDpAsState(w * idx, if (p.motion) snap() else if (right) lag else lead, label = "navL")
             val r by animateDpAsState(w * (idx + 1), if (p.motion) snap() else if (right) lead else lag, label = "navR")
-            Box(Modifier.offset(x = l + 2.dp).width((r - l - 4.dp).coerceAtLeast(w * .55f)).height(58.dp)
-                .then(if (p.contrast) Modifier.background(p.ink, pill) else Modifier.candy(pill, listOf(p.flame2, p.flame, p.pink), p, elevation = 10.dp)))
+            // Onglet actif : pastille de verre plus claire (Liquid Glass), l'icône et le libellé prennent l'accent
+            Box(Modifier.offset(x = l + 2.dp).width((r - l - 4.dp).coerceAtLeast(w * .55f)).height(54.dp)
+                .background(if (p.contrast) p.ink else if (p.dark) Color.White.copy(alpha = .12f) else p.ink.copy(alpha = .07f), pill))
             Row(Modifier.fillMaxWidth()) {
                 items.forEachIndexed { i, (k, l0, ic) ->
                     val label = labels[k] ?: l0
                     val sel = i == idx
-                    val col by animateColorAsState(if (sel) (if (p.contrast) p.bg else p.onAccent) else p.ink2, tween(if (p.motion) 0 else 180), label = "navc")
-                    val pop by animateFloatAsState(if (sel && !p.motion) 1.14f else 1f, spring(dampingRatio = .4f, stiffness = 520f), label = "navi")
+                    val col by animateColorAsState(if (sel) (if (p.contrast) p.bg else p.flameInk) else p.ink2, tween(if (p.motion) 0 else 180), label = "navc")
+                    val pop = 1f
                     val n = badges[k] ?: 0
                     val inter = remember { MutableInteractionSource() }
-                    Column(Modifier.weight(1f).bounce(inter, .84f).height(58.dp).clip(pill).springClick(inter, label = label) { onNav(k) }
+                    Column(Modifier.weight(1f).bounce(inter).height(54.dp).clip(pill).springClick(inter, label = label) { onNav(k) }
                         .semantics { selected = sel; role = Role.Tab; contentDescription = if (n > 0) "$label, $n" else label },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Box(Modifier.graphicsLayer { scaleX = pop; scaleY = pop; translationY = (1f - pop) * 6.dp.toPx() }) {
@@ -162,21 +159,18 @@ fun NavBar(items: List<Triple<String, String, String>>, tab: String, badges: Map
     }
 }
 
-/**
- * Bouton d'action flottant : bonbon de l'accent aux coins continus, avec halo. Il s'efface en glissant quand on
- * descend dans la page et revient en rebondissant (en tournant d'un quart de tour) dès qu'on remonte.
- */
+/** Bouton d'action flottant : rond plein de l'accent ; il s'efface quand on descend dans la page et revient quand on remonte. */
 @Composable
 fun Fab(desc: String, shown: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: String = "plus") {
     val p = LocalPal.current
-    val k by animateFloatAsState(if (shown) 1f else 0f, if (p.motion) snap() else spring(dampingRatio = .52f, stiffness = 380f), label = "fab")
+    val k by animateFloatAsState(if (shown) 1f else 0f, if (p.motion) snap() else spring(dampingRatio = .9f, stiffness = 500f), label = "fab")
     if (k <= .02f) return
     val inter = remember { MutableInteractionSource() }
-    val shape = smoothShape(22.dp)
-    Box(modifier.graphicsLayer { alpha = k.coerceIn(0f, 1f); translationX = (1f - k) * 110.dp.toPx(); val s = .6f + .4f * k; scaleX = s; scaleY = s; rotationZ = (1f - k) * -90f }
-        .bounce(inter, .82f).size(60.dp).then(if (p.contrast) Modifier.background(p.ink, shape) else Modifier.candy(shape, listOf(p.flame2, p.flame, p.pink), p, elevation = 16.dp))
+    val shape = CircleShape
+    Box(modifier.graphicsLayer { alpha = k.coerceIn(0f, 1f); val s = .8f + .2f * k; scaleX = s; scaleY = s }
+        .bounce(inter).size(56.dp).depth(shape, p, 3).then(if (p.contrast) Modifier.background(p.ink, shape) else Modifier.candy(shape, listOf(p.flame2, p.flame), p))
         .clip(shape).springClick(inter, label = desc, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) {
-        Pi(icon, size = 28.dp, tint = if (p.contrast) p.bg else p.onAccent)
+        Pi(icon, size = 26.dp, tint = if (p.contrast) p.bg else p.onAccent)
     }
 }
 
@@ -184,7 +178,7 @@ fun Fab(desc: String, shown: Boolean, onClick: () -> Unit, modifier: Modifier = 
 @Composable
 fun TabTitle(text: String) {
     val p = LocalPal.current
-    FitText(text, size = 27, min = 14, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
+    FitText(text, size = 28, min = 14, color = p.ink, weight = FontWeight.Bold, family = Unbounded)
 }
 
 /** Pastille de la série (barre du haut) : flamme sur un halo chaud, nombre de jours, gels de série. */
@@ -194,13 +188,11 @@ fun StreakPill(n: Int, freezes: Int, desc: String, onClick: () -> Unit, bump: Fl
     val inter = remember { MutableInteractionSource() }
     Row(Modifier.bounce(inter, .88f).height(46.dp).depth(CircleShape, p, 1).glassBg(CircleShape, strong = true)
         .then(if (p.contrast) Modifier.border(1.dp, p.line, CircleShape) else Modifier.sheen(CircleShape, p.dark, .7f))
-        .clip(CircleShape).springClick(inter, label = "Ouvrir le profil", onClick = onClick).semantics(mergeDescendants = true) { contentDescription = desc }.padding(start = 8.dp, end = 13.dp),
+        .clip(CircleShape).springClick(inter, label = "Ouvrir le profil", onClick = onClick).semantics(mergeDescendants = true) { contentDescription = desc }.padding(start = 10.dp, end = 13.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         Row(Modifier.graphicsLayer { scaleX = bump; scaleY = bump }, verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(30.dp).drawBehind {
-                if (!p.contrast) drawCircle(Brush.radialGradient(listOf(p.flame.copy(alpha = if (p.dark) .45f else .32f), Color.Transparent), radius = size.minDimension * .62f), size.minDimension * .62f)
-            }, contentAlignment = Alignment.Center) { Flame(24.dp, dim = n == 0) }
-            Text("$n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            Flame(22.dp, dim = n == 0)
+            Text("$n", fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
         if (freezes > 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Pi("snow", size = 16.dp, tint = p.type("objective").ink); Text("$freezes", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
