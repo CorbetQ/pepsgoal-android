@@ -114,10 +114,6 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
             // Bannière : dégradé du niveau, reflet brillant et bulles de lumière ; elle se fond dans la carte vers le bas
             androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(132.dp).graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) {
                 drawRect(Brush.linearGradient(cols, Offset.Zero, Offset(size.width, size.height)))
-                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = .3f), .5f to Color.White.copy(alpha = 0f)))
-                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .34f), Color.Transparent), Offset(size.width * .9f, 0f), size.height), size.height, Offset(size.width * .9f, 0f))
-                drawCircle(Color.White.copy(alpha = .12f), size.height * .42f, Offset(size.width * .1f, size.height * .75f))
-                drawCircle(Color.White.copy(alpha = .1f), size.height * .2f, Offset(size.width * .6f, size.height * .28f))
                 drawRect(Brush.verticalGradient(0f to Color.Black, .55f to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
             }
             Row(Modifier.align(Alignment.TopEnd).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

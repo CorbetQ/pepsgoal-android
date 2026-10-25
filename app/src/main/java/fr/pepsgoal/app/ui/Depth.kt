@@ -30,8 +30,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 /*
- * Matières de PepsGoal 7 : verre givré éclairé (reflets, liseré qui accroche la lumière), ombres douces en deux
- * couches, commandes « bonbon » brillantes et coins continus. Tout l'habillage s'appuie sur ces briques.
+ * Matières de PepsGoal : contenu net et plat (plaques presque opaques, contour d'un pixel, coins continus), verre
+ * réservé à la couche de navigation. Peu d'ombres, aucun halo : un rendu sobre et léger pour le téléphone.
  */
 
 /**
@@ -62,84 +62,60 @@ data class Squircle(val radius: Dp, val smooth: Float = .6f) : Shape {
  */
 fun smoothShape(radius: Dp): Shape = if (Build.VERSION.SDK_INT >= 28) Squircle(radius) else RoundedCornerShape(radius)
 
-/** Teinte des ombres : indigo profond en clair (ombres colorées, jamais grises), presque noire en sombre. */
-val Pal.shade: Color get() = if (dark) Color(0xFF020210) else Color(0xFF34208A)
-
-/** Fond réel d'une carte (verre posé sur le fond), opaque : base des pastilles pleines posées sur le verre. */
-val Pal.card: Color get() = glass.over(bg)
+/** Teinte des ombres : indigo très profond en clair (jamais gris sale), noire en sombre. */
+val Pal.shade: Color get() = if (dark) Color(0xFF000000) else Color(0xFF1A1440)
 
 /**
- * Ombre douce en deux couches : une ombre de contact courte, et une grande ombre diffuse teintée qui détache l'élément
- * du fond. [lift] : hauteur (1 : commande, 2 : carte, 3 : panneau flottant).
+ * Surface des cartes : plaque nette et presque opaque posée sur le fond (comme les listes groupées d'iOS). Aucun flou
+ * à calculer : le verre est réservé à la navigation (barre d'onglets, barre du haut, boutons flottants).
+ */
+val Pal.surface: Color get() = if (transp || contrast) glassStrong.copy(alpha = 1f) else glassStrong.copy(alpha = if (dark) .9f else .93f)
+
+/** Fond réel d'une carte, opaque : base des pastilles pleines posées dessus. */
+val Pal.card: Color get() = surface.over(bg)
+
+/** Trait fin du contour des surfaces et des commandes (un pixel physique, à peine visible). */
+fun Pal.hairline(): Color = if (contrast) line else if (dark) Color.White.copy(alpha = .09f) else ink.copy(alpha = .07f)
+
+/**
+ * Élévation : rien pour le contenu (cartes et commandes restent à plat), une seule ombre douce pour ce qui flotte
+ * au-dessus (barre d'onglets, bouton d'action, notifications). [lift] 3 : élément flottant.
  */
 fun Modifier.depth(shape: Shape, p: Pal, lift: Int = 2, tint: Color = p.shade): Modifier {
-    if (lift <= 0 || p.transp || p.oled || !Perf.flags.shadows) return this
-    val far = when (lift) { 1 -> 8.dp; 2 -> 20.dp; else -> 30.dp }
-    val near = when (lift) { 1 -> 1.5.dp; 2 -> 3.dp; else -> 5.dp }
-    val k = if (p.dark) 1f else .8f
-    return this.shadow(far, shape, clip = false, ambientColor = tint.copy(alpha = .5f * k), spotColor = tint.copy(alpha = .75f * k))
-        .shadow(near, shape, clip = false, ambientColor = tint.copy(alpha = .35f * k), spotColor = tint.copy(alpha = .45f * k))
+    if (lift < 3 || p.transp || p.oled || !Perf.flags.shadows) return this
+    return this.shadow(14.dp, shape, clip = false, ambientColor = tint.copy(alpha = if (p.dark) .5f else .18f), spotColor = tint.copy(alpha = if (p.dark) .6f else .22f))
 }
 
-/** Halo de couleur sous un élément vif (bouton principal, case validée, pastille). */
-fun Modifier.glow(shape: Shape, color: Color, p: Pal, elevation: Dp = 12.dp): Modifier =
-    if (p.transp || p.contrast || !Perf.flags.shadows) this else this.shadow(elevation, shape, clip = false, ambientColor = color, spotColor = color)
+/** Halo coloré : retiré (l'accent se suffit à lui-même). Gardé pour la compatibilité des appels. */
+@Suppress("UNUSED_PARAMETER")
+fun Modifier.glow(shape: Shape, color: Color, p: Pal, elevation: Dp = 12.dp): Modifier = this
 
 /**
- * Lumière sur le verre : voile clair en haut, reflet dans le coin supérieur gauche, léger assombrissement vers le bas
- * (volume), puis liseré dégradé qui accroche la lumière sur le bord haut et, plus discrètement, sur le bord bas.
- * [k] : intensité ; [rim] faux : pas de liseré.
+ * Contour net des surfaces : un trait fin d'un pixel, clair en sombre et foncé en clair, qui découpe proprement la
+ * plaque sur le fond. [rim] faux : rien.
  */
-fun Modifier.sheen(shape: Shape, dark: Boolean, k: Float = 1f, rim: Boolean = true): Modifier = this.drawWithCache {
-    val w = size.width; val h = size.height
-    val o = shape.createOutline(size, layoutDirection, this)
-    val topH = min(h, 150.dp.toPx())
-    val top = Brush.verticalGradient(0f to Color.White.copy(alpha = (if (dark) .08f else .4f) * k), 1f to Color.Transparent, startY = 0f, endY = topH)
-    val glintR = max(min(w, 260.dp.toPx()) * .62f, 1f)
-    val glint = Brush.radialGradient(listOf(Color.White.copy(alpha = (if (dark) .1f else .34f) * k), Color.Transparent), center = Offset(w * .08f, 0f), radius = glintR)
-    val base = Brush.verticalGradient(0f to Color.Transparent, 1f to (if (dark) Color.Black.copy(alpha = .18f * k) else Color(0xFF34208A).copy(alpha = .05f * k)), startY = h * .5f, endY = h)
-    val sw = 1.2.dp.toPx()
-    val inner = shape.createOutline(Size(w - sw, h - sw), layoutDirection, this)
-    val edge = Brush.linearGradient(
-        0f to Color.White.copy(alpha = if (dark) .4f else .98f), .28f to Color.White.copy(alpha = if (dark) .12f else .55f),
-        .62f to Color.White.copy(alpha = if (dark) .03f else .14f), 1f to Color.White.copy(alpha = if (dark) .14f else .6f),
-        start = Offset(0f, 0f), end = Offset(w * .55f, h))
-    onDrawWithContent {
-        drawOutline(o, top); drawOutline(o, glint); drawOutline(o, base)
-        drawContent()
-        if (rim) translate(sw / 2, sw / 2) { drawOutline(inner, edge, style = Stroke(sw)) }
-    }
+@Suppress("UNUSED_PARAMETER")
+fun Modifier.sheen(shape: Shape, dark: Boolean, k: Float = 1f, rim: Boolean = true): Modifier = if (!rim || k < .3f) this else this.drawWithCache {
+    val sw = 1f
+    val inner = shape.createOutline(Size(size.width - sw, size.height - sw), layoutDirection, this)
+    val c = if (dark) Color.White.copy(alpha = .09f) else Color(0xFF0D0E2B).copy(alpha = .07f)
+    onDrawWithContent { drawContent(); translate(sw / 2, sw / 2) { drawOutline(inner, c, style = Stroke(sw)) } }
 }
 
 /**
- * Matière « bonbon » des éléments vifs (bouton principal, puce choisie, pastille d'icône, case validée) : dégradé
- * intense, reflet brillant en haut, ombre interne en bas et liseré clair, comme les emojis 3D. [glow] : halo coloré.
+ * Remplissage des éléments vifs (bouton principal, puce choisie, case validée, pastille d'icône) : couleur pleine avec
+ * le dégradé de l'accent PepsGoal, sans reflet ni halo.
  */
+@Suppress("UNUSED_PARAMETER")
 fun Modifier.candy(shape: Shape, colors: List<Color>, p: Pal, glow: Boolean = true, elevation: Dp = 12.dp): Modifier {
     val cs = if (colors.size == 1) listOf(colors[0], colors[0]) else colors
-    val mid = cs[cs.size / 2]
-    return this.then(if (glow) Modifier.glow(shape, mid, p, elevation) else Modifier)
-        .background(Brush.linearGradient(cs, start = Offset.Zero, end = Offset.Infinite), shape)
-        .then(if (p.contrast) Modifier else Modifier.drawWithCache {
-            val w = size.width; val h = size.height
-            val o = shape.createOutline(size, layoutDirection, this)
-            val gloss = Brush.verticalGradient(0f to Color.White.copy(alpha = .36f), .55f to Color.White.copy(alpha = 0f), endY = h)
-            val shadeB = Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0xFF1A0B3D).copy(alpha = .16f), startY = h * .55f, endY = h)
-            val sw = 1.dp.toPx()
-            val inner = shape.createOutline(Size(w - sw, h - sw), layoutDirection, this)
-            val rimB = Brush.verticalGradient(0f to Color.White.copy(alpha = .7f), .5f to Color.White.copy(alpha = .08f), 1f to Color.White.copy(alpha = .22f), endY = h)
-            onDrawWithContent {
-                drawOutline(o, gloss); drawOutline(o, shadeB)
-                drawContent()
-                translate(sw / 2, sw / 2) { drawOutline(inner, rimB, style = Stroke(sw)) }
-            }
-        })
+    return this.background(Brush.linearGradient(cs, start = Offset.Zero, end = Offset.Infinite), shape)
 }
 
-/** Couleur éclaircie (vers le blanc) : départ lumineux des dégradés « bonbon ». */
+/** Couleur éclaircie (vers le blanc). */
 fun Color.lift(k: Float): Color = lerp(this, Color.White, k)
 /** Couleur assombrie (vers un indigo très foncé, jamais un gris sale). */
 fun Color.deepen(k: Float): Color = lerp(this, Color(0xFF1A0B3D), k)
 
-/** Dégradé « bonbon » tiré d'une seule couleur : clair en haut à gauche, plus dense en bas à droite. */
-fun candyOf(c: Color): List<Color> = listOf(c.lift(.28f), c, c.deepen(.12f))
+/** Dégradé discret tiré d'une seule couleur. */
+fun candyOf(c: Color): List<Color> = listOf(c.lift(.12f), c)

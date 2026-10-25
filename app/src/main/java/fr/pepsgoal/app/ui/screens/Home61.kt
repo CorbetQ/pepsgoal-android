@@ -85,7 +85,7 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
         pg.monthFocusGoal()?.let { g ->
             val (d, n) = remember(ui.rev, g.id) { pg.monthFocusProgress(g) }
             val well = smoothShape(20.dp)
-            Row(Modifier.padding(top = 12.dp).fillMaxWidth().clip(well).background(Brush.horizontalGradient(listOf(p.flame.copy(alpha = .2f), p.pink.copy(alpha = .06f)))).clickable { ui.open(Sheet.Goal(g.id)) }.padding(10.dp),
+            Row(Modifier.padding(top = 12.dp).fillMaxWidth().clip(well).background(p.flame.copy(alpha = if (p.dark) .14f else .08f)).clickable { ui.open(Sheet.Goal(g.id)) }.padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 EmojiTile(g.shownIcon(), p.flame, 38.dp)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -153,7 +153,7 @@ fun MomentsRow(ui: AppState, tiles: List<MomentTile>, showAdd: Boolean = true) {
     Row(Modifier.fillMaxWidth().bleed(16.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         tiles.forEachIndexed { i, t ->
             val shape = smoothShape(24.dp); val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Column(Modifier.bounce(inter, .94f).width(156.dp).height(126.dp).depth(shape, p, 1).glassBg(shape).sheen(shape, p.dark, .8f)
+            Column(Modifier.bounce(inter, .94f).width(156.dp).height(126.dp).clip(shape).background(p.surface).sheen(shape, p.dark)
                 .clip(shape).springClick(inter, label = t.title) { ui.open(Sheet.HomeCard(t.key)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 EmojiTile(t.emoji, tones[i % tones.size], 38.dp)
                 Text(t.title, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -187,8 +187,7 @@ fun HomeSectionHead(title: String, icon: String, collapsed: Boolean, onToggle: (
     val rot by animateFloatAsState(if (collapsed) -90f else 0f, androidx.compose.animation.core.spring(dampingRatio = .5f, stiffness = 500f), label = "secRot")
     Row(Modifier.fillMaxWidth().padding(top = 4.dp).clip(smoothShape(16.dp)).clickable(onClickLabel = if (collapsed) "Déplier $title" else "Replier $title", onClick = onToggle).padding(horizontal = 4.dp, vertical = 4.dp).semantics { heading() },
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        IconTile(icon, p.flame2, p.pink, 28.dp)
-        Text(title, Modifier.weight(1f), fontFamily = Unbounded, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = p.ink)
+        Text(title, Modifier.weight(1f), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = p.ink)
         Box(Modifier.size(30.dp).clip(CircleShape).background(p.ink.copy(alpha = if (p.dark) .1f else .06f)), contentAlignment = Alignment.Center) {
             Pi("down", size = 16.dp, tint = p.ink2, modifier = Modifier.graphicsLayer { rotationZ = rot })
         }

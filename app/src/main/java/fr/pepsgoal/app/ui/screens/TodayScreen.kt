@@ -238,10 +238,7 @@ fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
         if (taps.size >= 7) { taps.clear(); scope.launch { jump.snapTo(0f); jump.animateTo(1f, tween(700, easing = FastOutSlowInEasing)); jump.snapTo(0f) }; onTickle() }
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(96.dp).drawBehind {
-            if (lit && !p.contrast) { val f = .9f + .1f * (1f - kotlin.math.cos(ph.value * 2f * kotlin.math.PI.toFloat())) / 2f
-                drawCircle(Brush.radialGradient(listOf(p.flame.copy(alpha = (if (p.dark) .5f else .38f) * f), p.pink.copy(alpha = .12f * f), Color.Transparent)), size.minDimension / 2 * f) }
-        }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) {
         Box(tickle.graphicsLayer {
             val f = if (lit) 1f + .03f * (1f - kotlin.math.cos(ph.value * 2f * kotlin.math.PI.toFloat())) else 1f
             val j = kotlin.math.sin(jump.value * kotlin.math.PI.toFloat())

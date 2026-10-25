@@ -131,7 +131,7 @@ private fun Pop(i: Int, content: @Composable () -> Unit) {
     val p = LocalPal.current
     val a = remember { Animatable(if (p.motion) 1f else 0f) }
     // Chaque élément jaillit en ressort : il monte, grandit et dépasse un peu avant de se poser
-    LaunchedEffect(Unit) { delay(90L * i); a.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .52f, stiffness = 240f)) }
+    LaunchedEffect(Unit) { delay(90L * i); a.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .8f, stiffness = 300f)) }
     Box(Modifier.graphicsLayer { alpha = a.value.coerceIn(0f, 1f); translationY = (1 - a.value) * 60f; val k = .78f + .22f * a.value; scaleX = k; scaleY = k }) { content() }
 }
 

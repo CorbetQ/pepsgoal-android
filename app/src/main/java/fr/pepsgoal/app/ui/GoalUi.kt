@@ -168,9 +168,9 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
     val sw = rememberSwipe()
     val rightLabel = if (g.type == "duration") (if (running) "Pause" else "Minuteur") else if (done && g.type in setOf("routine", "abstinence", "limit", "timed", "challenge")) "Annuler" else if (g.type == "cap") "Ajouter" else "Valider"
     val status = when { running -> "minuteur en cours"; done -> "validé aujourd’hui"; urgent -> "à faire, urgent"; else -> "à faire" }
-    val rowShape = smoothShape(22.dp)
+    val rowShape = smoothShape(16.dp)
     // Chaque objectif repose dans un creux de verre clair ; validé, il prend un lavis de la couleur de son type
-    val well = if (LocalInSheet.current) p.ink.copy(alpha = .045f) else if (p.dark) Color.White.copy(alpha = .055f) else Color.White.copy(alpha = .42f)
+    val well = if (LocalInSheet.current) p.ink.copy(alpha = .04f) else if (p.dark) Color.White.copy(alpha = .05f) else p.ink.copy(alpha = .035f)
     val inSheet = LocalInSheet.current
     Box(Modifier.fillMaxWidth()) {
         SwipeReveal(sw, rowShape, right = SwipeAction(if (rightLabel == "Annuler") "x" else if (g.type == "duration") "play" else "check", rightLabel, if (rightLabel == "Annuler") p.ink2 else p.ok),
@@ -180,7 +180,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
                 .swipeTilt(sw)
                 .bounce(inter, .97f).fillMaxWidth().clip(rowShape)
                 .background(if (sw.dx != 0f) androidx.compose.ui.graphics.SolidColor(if (inSheet) p.bg else p.glassStrong.copy(alpha = 1f))
-                    else if (done) Brush.horizontalGradient(listOf(tc.c.copy(alpha = if (p.dark) .26f else .3f), tc.c.copy(alpha = .07f))) else androidx.compose.ui.graphics.SolidColor(well))
+                    else if (done) androidx.compose.ui.graphics.SolidColor(tc.c.copy(alpha = if (p.dark) .14f else .1f)) else androidx.compose.ui.graphics.SolidColor(well))
                 // Objectif de durée : un appui long lance tout de suite une session Focus plein écran
                 .springClick(inter, label = "Ouvrir les détails", onLongClick = if (g.type == "duration" && !done) ({ quickFocus(ui, g) }) else null) { ui.open(Sheet.Goal(g.id)) }
                 .semantics {
