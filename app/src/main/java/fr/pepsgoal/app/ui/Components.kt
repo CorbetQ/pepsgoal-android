@@ -43,6 +43,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -362,19 +363,22 @@ fun Modifier.aiGlow(radius: Dp): Modifier {
     val ph = slowPhaseState(5200, 20, running = Perf.flags.fx)
     return this.drawWithContent {
         val angle = ph.value * 360f
-        val r = radius.toPx(); val c = Offset(size.width / 2, size.height / 2)
+        val c = Offset(size.width / 2, size.height / 2)
         val m = android.graphics.Matrix().apply { setRotate(angle, c.x, c.y) }
         val shader = SweepGradientShader(c, AI_COLORS).also { it.setLocalMatrix(m) }
         val brush = ShaderBrush(shader)
-        // Lueur : plusieurs traits de plus en plus larges et transparents, sous la carte
-        for ((w, a) in listOf(16f to .07f, 10f to .11f, 6f to .18f)) {
-            val wp = w.dp.toPx()
-            drawRoundRect(brush, Offset(-wp / 4, -wp / 4), Size(size.width + wp / 2, size.height + wp / 2), CornerRadius(r + wp / 4), style = Stroke(wp), alpha = if (dark) a * 1.4f else a)
-        }
         drawContent()
-        // Liseré net par-dessus la carte
+        // Tout est dessiné à l'intérieur de la carte, sur sa forme exacte : rien ne déborde (une liste qui anime sa
+        // taille découpe ce qui dépasse en rectangle). Lueur intérieure en traits de plus en plus fins, puis liseré net.
+        val shape = smoothShape(radius)
+        val o = shape.createOutline(size, layoutDirection, this)
+        val clip = Path().apply { addOutline(o) }
+        clipPath(clip) {
+            for ((w, a) in listOf(18f to .08f, 11f to .12f, 6f to .2f)) drawOutline(o, brush, alpha = if (dark) a * 1.4f else a, style = Stroke(w.dp.toPx()))
+        }
         val bw = 2.dp.toPx()
-        drawRoundRect(brush, Offset(bw / 2, bw / 2), Size(size.width - bw, size.height - bw), CornerRadius(r - bw / 2), style = Stroke(bw))
+        val inner = shape.createOutline(Size(size.width - bw, size.height - bw), layoutDirection, this)
+        withTransform({ translate(bw / 2, bw / 2) }) { drawOutline(inner, brush, style = Stroke(bw)) }
     }
 }
 

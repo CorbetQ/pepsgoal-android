@@ -197,7 +197,8 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null) 
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     FavStar(pg, g)
-                    Text(g.shownTitle(), fontWeight = FontWeight.ExtraBold, color = p.ink, maxLines = if (p.easy) 3 else 1, overflow = TextOverflow.Ellipsis, textDecoration = null)
+                    // Titre sur deux lignes au besoin (gros caractères, bouton de validation à droite) plutôt que coupé
+                    Text(g.shownTitle(), fontWeight = FontWeight.ExtraBold, color = p.ink, maxLines = if (p.easy) 3 else 2, overflow = TextOverflow.Ellipsis, textDecoration = null, lineHeight = 20.sp)
                 }
                 FlowRowCompat(gap = 6.dp) {
                     // Lecture facile : l'état est écrit en toutes lettres

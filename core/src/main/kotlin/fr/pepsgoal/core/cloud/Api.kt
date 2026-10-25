@@ -51,13 +51,20 @@ class Api(var base: String, private val secrets: Secrets, private val userAgent:
 
     private fun url(path: String) = base.trimEnd('/') + path
 
-    private suspend fun refresh(): Boolean = refreshLock.withLock {
+    /** Renouvelle la session ; [failed] : jeton d'accès refusé qui a motivé la demande. */
+    private suspend fun refresh(failed: String?): Boolean = refreshLock.withLock {
         val t = tokens ?: return false
+        // Un autre appel a renouvelé la session pendant l'attente du verrou : rien à faire
+        if (failed != null && t.accessToken != failed) return true
         withContext(Dispatchers.IO) {
             try {
                 val body = buildJsonObject { put("refreshToken", t.refreshToken) }.toString().toRequestBody(jsonType)
                 http.newCall(Request.Builder().url(url("/v1/auth/refresh")).header("User-Agent", userAgent).post(body).build()).execute().use { r ->
-                    if (r.code == 401) { onSessionLost?.invoke(); return@use false }
+                    if (r.code == 401) {
+                        // Jetons remplacés entre-temps (connexion, autre renouvellement) : la session n'est pas perdue
+                        if (tokens?.refreshToken != t.refreshToken) return@use true
+                        onSessionLost?.invoke(); return@use false
+                    }
                     if (!r.isSuccessful) return@use false
                     val d = JSON.parseToJsonElement(r.body!!.string()).jsonObject
                     // Un autre appel a peut-être déjà renouvelé la session entre-temps : on garde le plus récent
@@ -80,7 +87,7 @@ class Api(var base: String, private val secrets: Secrets, private val userAgent:
         }
         if (res.first == 502 || res.first == 504) onServerDown?.invoke()
         if (res.first == 401 && retry && sent != null) {
-            if (tokens?.accessToken != sent || refresh()) return exec(build, false)
+            if (tokens?.accessToken != sent || refresh(sent)) return exec(build, false)
         }
         return res
     }
