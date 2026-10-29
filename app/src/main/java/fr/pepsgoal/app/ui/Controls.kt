@@ -236,7 +236,8 @@ fun RoundGlass(desc: String, onClick: () -> Unit, badge: Int = 0, content: @Comp
 fun AvatarButton(u: User, level: Int?, onClick: () -> Unit, size: Dp = 40.dp) {
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
-    Box(Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).bounce(inter, .92f).clip(CircleShape)
+    // Pas de découpe : le badge du niveau dépasse du cercle
+    Box(Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).bounce(inter, .92f)
         .springClick(inter, label = "Ouvrir le profil", onClick = onClick).semantics(mergeDescendants = true) { contentDescription = "Profil${level?.let { ", niveau $it" } ?: ""}"; role = Role.Button },
         contentAlignment = Alignment.Center) {
         Box(Modifier.size(size + 8.dp)) {

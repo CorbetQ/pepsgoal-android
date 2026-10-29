@@ -94,10 +94,10 @@ private class Bit(val x: Float, val delay: Float, val speed: Float, val drift: F
 @Composable
 fun Confetti(modifier: Modifier = Modifier) {
     val p = LocalPal.current
-    // Effets décoratifs coupés (Paramètres › Performance) : pas de confettis ; sinon leur nombre suit le réglage
+    // Moments forts : 40 confettis au plus (aplats) ; coupés en animations réduites et sans effets décoratifs
     if (p.motion || !fr.pepsgoal.app.sys.Perf.flags.fx) return
     val cols = listOf(p.flame, p.flame2, p.pink, p.type("objective").c, p.type("routine").c, p.type("abstinence").c)
-    val bits = remember { List(fr.pepsgoal.app.ui.particles(140)) { Bit(Random.nextFloat(), Random.nextFloat() * 1.4f, .25f + Random.nextFloat() * .35f, Random.nextFloat() * 2 - 1, Random.nextFloat() * 6.28f, Random.nextInt(6), 6 + Random.nextFloat() * 6) } }
+    val bits = remember { List(fr.pepsgoal.app.ui.particles(40)) { Bit(Random.nextFloat(), Random.nextFloat() * 1.4f, .25f + Random.nextFloat() * .35f, Random.nextFloat() * 2 - 1, Random.nextFloat() * 6.28f, Random.nextInt(6), 6 + Random.nextFloat() * 6) } }
     var t by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) { val t0 = withFrameNanos { it }; while (isActive && t < 6f) { withFrameNanos { t = (it - t0) / 1e9f } } }
     Canvas(modifier.fillMaxSize()) {

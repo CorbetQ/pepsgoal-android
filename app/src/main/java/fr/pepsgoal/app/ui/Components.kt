@@ -773,7 +773,7 @@ private val EMPTY_EMOJI = mapOf("sun" to "🌴", "sparkle" to "✨", "users" to 
  * titre, seul le texte s'affiche.
  */
 @Composable
-fun Empty(title: String, text: String, icon: String = "sparkle", action: (@Composable () -> Unit)? = null, emoji: String? = null) {
+fun Empty(title: String, text: String, icon: String = "sparkle", emoji: String? = null, action: (@Composable () -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (title.isNotEmpty()) EmptyArt(emoji ?: EMPTY_EMOJI[icon] ?: "✨")
         if (title.isNotEmpty()) Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, lineHeight = 24.sp, color = LocalPal.current.ink, textAlign = TextAlign.Center)
