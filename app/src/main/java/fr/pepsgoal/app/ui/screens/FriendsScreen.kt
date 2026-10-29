@@ -269,7 +269,7 @@ private fun MessagesCard(ui: AppState, u: User, always: Boolean = false) {
                         r.dm != null -> "${if (r.last.from == u.id) "Toi : " else ""}${cut(Social.preview(ui, r.last))} · ${ago(r.last.at)}"
                         else -> "${if (r.last.from == u.id) "Toi" else first(pg.userById(r.last.from)?.name ?: "?")} : ${cut(Social.preview(ui, r.last))} · ${ago(r.last.at)}"
                     }
-                    Text(sub, fontSize = 13.sp, color = if (r.n > 0) p.ink else p.ink2, fontWeight = if (r.n > 0) FontWeight.ExtraBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(sub, fontSize = 13.sp, color = if (r.n > 0) p.ink else p.ink2, fontWeight = if (r.n > 0) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (r.n > 0) Badge(r.n)
             }
