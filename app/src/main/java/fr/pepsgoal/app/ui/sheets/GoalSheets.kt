@@ -314,7 +314,7 @@ private fun StepBar(steps: List<Pair<String, String>>, cur: String) {
 private fun ModeCard(icon: String, title: String, desc: String, ai: Boolean, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(Modifier.fillMaxWidth().bounce(inter, .97f).then(if (ai && !p.easy) Modifier.aiGlow(20.dp) else Modifier).clip(smoothShape(20.dp))
+    Row(Modifier.fillMaxWidth().bounce(inter, .97f).then(if (ai) Modifier.border(2.dp, p.flame, smoothShape(20.dp)) else Modifier).clip(smoothShape(20.dp))
         .background(if (ai) p.flame.copy(alpha = .12f) else p.ink.copy(alpha = .05f)).border(1.dp, if (ai) p.flame.copy(alpha = .5f) else p.line, smoothShape(20.dp))
         .springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
