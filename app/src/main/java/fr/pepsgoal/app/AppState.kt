@@ -19,6 +19,7 @@ import fr.pepsgoal.core.cloud.ApiError
 import fr.pepsgoal.core.model.Notif
 import fr.pepsgoal.core.model.Goal
 import fr.pepsgoal.core.nowMs
+import fr.pepsgoal.core.today
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -85,6 +86,8 @@ sealed class Sheet {
     object Wallet : Sheet()
     /** Les dix paliers de niveau. */
     object Levels : Sheet()
+    /** Feuille de la série (carte Série de l'accueil) : semaine, jokers, repos, journée difficile. */
+    object Streak : Sheet()
 }
 
 /** Plein écran : célébrations, récaps, stories. */
@@ -212,7 +215,7 @@ class AppState(val app: PepsApp) : Hooks {
         val t = Toast(nowMs() + toasts.size, text, icon, action, onAction)
         while (toasts.size >= 3) toasts.removeAt(0)
         toasts.add(t)
-        scope.launch { delay(if (action != null) 5000 else if (prefs.easy) 5000 else 3600); toasts.remove(t) }
+        scope.launch { delay(if (action != null || prefs.easy) 6000 else 4000); toasts.remove(t) }
     }
 
     /** Message « … · Annuler » : l'action d'annulation retire le message et le remplace par sa confirmation. */
@@ -228,6 +231,12 @@ class AppState(val app: PepsApp) : Hooks {
 
     override fun celebrate(c: Celebration) {
         if (!app.foreground) return
+        // Journée parfaite : confettis et message (une fois par jour) ; l'écran de fête reste à un toucher
+        if (c is Celebration.Perfect) {
+            if (prefs.perfectFx != today()) { prefs.perfectFx = today(); fr.pepsgoal.app.ui.Fx.confetti++ }
+            toast("Journée parfaite ! Tout est validé aujourd’hui.", "star", "Fêter") { fs = Fs.Celebrate(c) }
+            return
+        }
         val f = Fs.Celebrate(c)
         if (fs == null) fs = f else fsQueue.addLast(f)
     }
@@ -257,7 +266,11 @@ class AppState(val app: PepsApp) : Hooks {
     fun open(s: Sheet) { sheet = s }
     fun close() { sheet = null }
     fun push(s: Screen) { sheet = null; screens.add(s) }
-    fun nav(t: String) { if (t == tab && screens.isEmpty() && sheet == null) fr.pepsgoal.app.ui.TabReTap.n++; tab = t; sheet = null; screens.clear(); if (t in setOf("feed", "friends", "mod", "today")) cloud.scheduleSocial(50) }
+    fun nav(t0: String) {
+        // « social » rouvre le dernier onglet de Social (Feed ou Amis)
+        val t = if (t0 == "social") fr.pepsgoal.app.ui.Fx.lastSocial else t0
+        if (t == "feed" || t == "friends") fr.pepsgoal.app.ui.Fx.lastSocial = t
+        if (t == tab && screens.isEmpty() && sheet == null) fr.pepsgoal.app.ui.TabReTap.n++; tab = t; sheet = null; screens.clear(); if (t in setOf("feed", "friends", "mod", "today")) cloud.scheduleSocial(50) }
 
     /** Bouton retour : ferme ce qui est ouvert, revient à l'accueil, sinon laisse quitter. */
     fun back(): Boolean {

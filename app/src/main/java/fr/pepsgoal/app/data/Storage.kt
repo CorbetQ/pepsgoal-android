@@ -186,6 +186,10 @@ class DevicePrefs(context: Context) {
     var homeStyle get() = p.getString("homeStyle", "simple") ?: "simple"; set(v) = p.edit().putString("homeStyle", v).apply()
     var homeLayout get() = p.getString("homeLayout", "comfy") ?: "comfy"; set(v) = p.edit().putString("homeLayout", v).apply()
     /** Fond qui réagit : lueur selon l'avancement du jour, confettis les journées parfaites. */
+    /** Fond animé en haut de l'accueil : « on », « off », ou vide (choix par défaut, déduit du fond choisi). */
+    var bgTop get() = p.getString("bgTop", "") ?: ""; set(v) = p.edit().putString("bgTop", v).apply()
+    /** Moment fort déjà fêté par des confettis aujourd'hui (journée parfaite). */
+    var perfectFx get() = p.getString("perfectFx", "") ?: ""; set(v) = p.edit().putString("perfectFx", v).apply()
     var bgReactive get() = p.getBoolean("bgReactive", true); set(v) = p.edit().putBoolean("bgReactive", v).apply()
     /** Pluie, neige, orage ou brouillard par-dessus le fond quand il fait ce temps-là dehors (ville de la météo). */
     var bgWeather get() = p.getBoolean("bgWeather", true); set(v) = p.edit().putBoolean("bgWeather", v).apply()

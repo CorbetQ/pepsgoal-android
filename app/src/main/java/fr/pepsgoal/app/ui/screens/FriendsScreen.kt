@@ -46,9 +46,10 @@ fun FriendsScreen(ui: AppState) {
         if (searching) { item("results") { SearchCard(ui, u) }; return@ScreenList }
         item("status") { StatusRow(ui) }
         if (incoming.isNotEmpty()) item("in") { RequestsCard(ui, incoming) }
-        item("tabs") {
-            Seg(listOf("friends" to (if (friends.isEmpty()) "Amis" else "Amis · ${friends.size}"), "msgs" to (if (unread > 0) "Messages · $unread" else "Messages"), "discover" to "Découvrir"),
-                ui.friendsTab, { ui.friendsTab = it }, Modifier.fillMaxWidth(), icons = listOf("users", "comment", "compass"))
+        // Messages : choisis dans le segmenté de Social ; ici, mes amis ou la découverte
+        if (ui.friendsTab != "msgs") item("tabs") {
+            Seg(listOf("friends" to (if (friends.isEmpty()) "Mes amis" else "Mes amis · ${friends.size}"), "discover" to "Découvrir"),
+                ui.friendsTab, { ui.friendsTab = it }, Modifier.fillMaxWidth(), icons = listOf("users", "compass"))
         }
         when (ui.friendsTab) {
             "msgs" -> item("msgs") { MessagesCard(ui, u, always = true) }
@@ -268,7 +269,7 @@ private fun MessagesCard(ui: AppState, u: User, always: Boolean = false) {
                         r.dm != null -> "${if (r.last.from == u.id) "Toi : " else ""}${cut(Social.preview(ui, r.last))} · ${ago(r.last.at)}"
                         else -> "${if (r.last.from == u.id) "Toi" else first(pg.userById(r.last.from)?.name ?: "?")} : ${cut(Social.preview(ui, r.last))} · ${ago(r.last.at)}"
                     }
-                    Text(sub, fontSize = 13.sp, color = if (r.n > 0) p.ink else p.ink2, fontWeight = if (r.n > 0) FontWeight.ExtraBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(sub, fontSize = 13.sp, color = if (r.n > 0) p.ink else p.ink2, fontWeight = if (r.n > 0) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (r.n > 0) Badge(r.n)
             }

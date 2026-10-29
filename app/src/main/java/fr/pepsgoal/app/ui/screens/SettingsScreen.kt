@@ -91,6 +91,9 @@ val SET_SECTIONS = listOf(
     "Confort et aide" to listOf("a11y", "help")
 )
 
+/** Emoji des sections de la page des Paramètres. */
+val SET_SECTION_EMOJI = mapOf("Personnalisation" to "🎨", "Au quotidien" to "⏰", "Compte et vie privée" to "🔐", "Confort et aide" to "🤝", "Résultats" to "🔍")
+
 /** Couleurs des catégories de réglages (reprises des couleurs des types d'objectifs). */
 val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
     "weather" to ("objective" to "period"), "places" to ("measure" to "routine"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "home" to ("routine" to "objective"), "a11y" to ("duration" to "objective"), "perf" to ("timed" to "challenge"), "help" to ("monthly" to "challenge"))
@@ -142,20 +145,17 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
         val head = @Composable { mod: Modifier ->
             Box(mod.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    PButton(back, onBack, icon = "chevronleft", small = true)
-                    Text(title, Modifier.weight(1f).padding(horizontal = 6.dp).graphicsLayer { alpha = k; translationY = (1f - k) * 10.dp.toPx() }, fontFamily = Unbounded, fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    IconBtn("chevronleft", "Retour : $back", onBack)
+                    Text(title, Modifier.weight(1f).padding(horizontal = 6.dp).graphicsLayer { alpha = k; translationY = (1f - k) * 10.dp.toPx() }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold,
+                        fontSize = 20.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     right()
                 }
             }
         }
         Column(Modifier.fillMaxSize().imePadding()) {
             if (!low) head(Modifier.drawBehind {
-                // Barre givrée qui apparaît avec le titre compact, fine ligne de séparation en bas
-                drawRect(p.glassStrong.copy(alpha = p.glassStrong.alpha * k))
-                // Reflet clair sous le bord de la barre (verre), puis fine ligne de séparation
-                drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = (if (p.dark) .05f else .3f) * k), Color.Transparent)))
-                drawRect(p.line.copy(alpha = p.line.alpha * k), androidx.compose.ui.geometry.Offset(0f, size.height - 1.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
+                // Barre opaque qui apparaît avec le titre compact (aucun verre ni reflet)
+                drawRect(p.bg.copy(alpha = k))
             }.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
             // Grand écran : colonne de lecture centrée, à largeur confortable
             LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp), list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -166,8 +166,8 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
                         val f = (off / 44.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
                     }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        if (icon != null) IconTile(icon, c1, c2, 56.dp)
-                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, lineHeight = 32.sp)
+                        if (icon != null) EmojiTileBox(c2, 52.dp) { Pi(icon, size = 26.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
+                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 34.sp)
                     }
                 }
                 content()
@@ -199,19 +199,19 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                 sections.forEach { (title, keys) ->
                     val list = keys.mapNotNull { k -> cats.firstOrNull { it[0] == k } }
                     if (list.isNotEmpty()) item("sec:$title") {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(title.uppercase(), Modifier.padding(start = 8.dp), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, letterSpacing = .8.sp)
-                            Glass(pad = 4.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            SectionTitle(title, SET_SECTION_EMOJI[title])
+                            Glass(pad = 0.dp) {
                                 Divided(inset = 66.dp) {
                                     list.forEach { (k, l, d, i) ->
                                         val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                                        Row(Modifier.fillMaxWidth().bounce(inter, .98f).clip(smoothShape(18.dp)).springClick(inter) { ui.screens[ui.screens.lastIndex] = Screen.Settings(k) }.padding(horizontal = 12.dp, vertical = 11.dp),
-                                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Row(Modifier.fillMaxWidth().springClick(inter, role = androidx.compose.ui.semantics.Role.Button) { ui.screens[ui.screens.lastIndex] = Screen.Settings(k) }.heightIn(min = 60.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                                             val (k1, k2) = SET_COLORS[k] ?: ("routine" to "duration")
-                                            IconTile(i, p.type(k1).c, p.type(k2).c, 42.dp, 13.dp)
+                                            IconTile(i, p.type(k1).c, p.type(k2).c, 38.dp, 12.dp)
                                             // Sous le nom : l'état actuel de la catégorie quand il se résume en quelques mots
-                                            Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp); Muted(setSummary(ui, k) ?: d, small = true, maxLines = 2) }
-                                            Text("›", color = p.ink3, fontSize = 22.sp)
+                                            Column(Modifier.weight(1f)) { Text(l, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text(setSummary(ui, k) ?: d, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+                                            Pi("chevronright", size = 18.dp, tint = p.ink3)
                                         }
                                     }
                                 }
@@ -242,8 +242,8 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                 CatHero("a11y", setSummary(ui, "a11y") ?: "Réglages standard", chips = { Chip("Cet appareil", "lock", p.type("objective").c) })
                 ComfortSettings(ui)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("COULEURS ET EFFETS", Modifier.padding(start = 8.dp), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, letterSpacing = .8.sp)
-                    Glass(pad = 4.dp) { A11yRows(ui) }
+                    SectionTitle("Couleurs et effets", "🌈")
+                    Glass(pad = 0.dp) { A11yRows(ui) }
                     Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(horizontal = 8.dp), small = true)
                 }
             } }

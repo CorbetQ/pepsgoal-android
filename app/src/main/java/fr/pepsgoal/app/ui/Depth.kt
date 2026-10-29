@@ -1,12 +1,23 @@
 package fr.pepsgoal.app.ui
 
 import android.os.Build
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -15,23 +26,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import fr.pepsgoal.app.sys.Perf
+import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.PLUM
 import fr.pepsgoal.app.ui.theme.Pal
-import fr.pepsgoal.app.ui.theme.over
+import fr.pepsgoal.app.ui.theme.contrast
+import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.max
 import kotlin.math.min
 
 /*
- * Matières de PepsGoal : contenu net et plat (plaques presque opaques, contour d'un pixel, coins continus), verre
- * réservé à la couche de navigation. Peu d'ombres, aucun halo : un rendu sobre et léger pour le téléphone.
+ * Matière « Braise Pop » : aplats pleins, bord de 2 dp et « marche » (ombre pleine décalée sous l'élément). Tout ce qui
+ * se touche a une marche et s'y enfonce à l'appui ; rien n'est flouté, aucun halo ni reflet. Chaque élément à marche
+ * coûte deux rectangles arrondis : aussi rapide qu'un fond uni.
  */
 
 /**
@@ -62,50 +73,102 @@ data class Squircle(val radius: Dp, val smooth: Float = .6f) : Shape {
  */
 fun smoothShape(radius: Dp): Shape = if (Build.VERSION.SDK_INT >= 28) Squircle(radius) else RoundedCornerShape(radius)
 
-/** Teinte des ombres : indigo très profond en clair (jamais gris sale), noire en sombre. */
-val Pal.shade: Color get() = if (dark) Color(0xFF000000) else Color(0xFF1A1440)
-
-/**
- * Surface des cartes : plaque nette et presque opaque posée sur le fond (comme les listes groupées d'iOS). Aucun flou
- * à calculer : le verre est réservé à la navigation (barre d'onglets, barre du haut, boutons flottants).
- */
-val Pal.surface: Color get() = if (transp || contrast) glassStrong.copy(alpha = 1f) else glassStrong.copy(alpha = if (dark) .9f else .93f)
+/** Teinte des ombres (gardée pour les rares éléments hors interface, ex. aperçus). */
+val Pal.shade: Color get() = if (dark) Color(0xFF000000) else Color(0xFF2A1420)
 
 /** Fond réel d'une carte, opaque : base des pastilles pleines posées dessus. */
-val Pal.card: Color get() = surface.over(bg)
+val Pal.card: Color get() = surface
 
-/** Trait fin du contour des surfaces et des commandes (un pixel physique, à peine visible). */
-fun Pal.hairline(): Color = if (contrast) line else if (dark) Color.White.copy(alpha = .09f) else ink.copy(alpha = .07f)
+/** Trait du contour des surfaces et des commandes : le bord des éléments neutres. */
+fun Pal.hairline(): Color = edge
+
+/** Dégradé de la flamme (accent) : carte Série, bouton +, onglet actif, bouton principal. */
+fun Pal.flameBrush(): Brush = if (contrast) SolidColor(ink) else Brush.linearGradient(listOf(flame2, flame, pink))
+
+/** Aplat d'une seule couleur. */
+fun solid(c: Color): Brush = SolidColor(c)
 
 /**
- * Élévation : rien pour le contenu (cartes et commandes restent à plat), une seule ombre douce pour ce qui flotte
- * au-dessus (barre d'onglets, bouton d'action, notifications). [lift] 3 : élément flottant.
+ * Aplat vif sur lequel l'encre prune reste lisible (≥ 4,5:1) : la couleur est éclaircie juste ce qu'il faut si elle est
+ * trop sombre (danger, accent foncé…). Jamais de texte blanc sur une couleur vive.
  */
-fun Modifier.depth(shape: Shape, p: Pal, lift: Int = 2, tint: Color = p.shade): Modifier {
-    if (lift < 3 || p.transp || p.oled || !Perf.flags.shadows) return this
-    return this.shadow(14.dp, shape, clip = false, ambientColor = tint.copy(alpha = if (p.dark) .5f else .18f), spotColor = tint.copy(alpha = if (p.dark) .6f else .22f))
+fun vivid(c: Color): Color {
+    val o = c.copy(alpha = 1f)
+    if (contrast(PLUM, o) >= 4.5f) return o
+    var k = .08f
+    while (k < 1f) { val x = lerp(o, Color.White, k); if (contrast(PLUM, x) >= 4.5f) return x; k += .08f }
+    return Color.White
 }
 
-/** Halo coloré : retiré (l'accent se suffit à lui-même). Gardé pour la compatibilité des appels. */
+/**
+ * Volume « à marche » : bord [edge] de [border] dp et marche pleine de [step] dp sous l'aplat [fill], le tout dessiné
+ * derrière le contenu (deux rectangles arrondis, sans couche hors écran). La hauteur de l'élément comprend la marche ;
+ * le contenu est placé dans l'aplat. [pressed] (0 → 1, lu au dessin) : l'élément descend sur sa marche, sans
+ * recomposition ni nouvelle mise en page.
+ */
+fun Modifier.chunk(fill: Brush, edge: Color, radius: Dp, step: Dp = 4.dp, border: Dp = 2.dp, pressed: () -> Float = { 0f }): Modifier =
+    this.graphicsLayer { translationY = pressed() * step.toPx() }
+        .drawBehind {
+            val st = step.toPx(); val dy = pressed() * st; val b = border.toPx()
+            val h = size.height - st
+            val r = min(radius.toPx(), min(size.width, h) / 2f)
+            // Bord et marche : une seule forme pleine, qui reste posée au sol quand l'élément s'enfonce
+            if (st > 0f || b > 0f) drawRoundRect(edge, Offset.Zero, Size(size.width, size.height - dy), CornerRadius(r))
+            val ri = max(0f, r - b)
+            drawRoundRect(fill, Offset(b, b), Size(size.width - 2 * b, h - 2 * b), CornerRadius(ri))
+        }
+        .padding(start = border, end = border, top = border, bottom = border + step)
+
+/** Même volume, d'une couleur pleine. */
+fun Modifier.chunk(fill: Color, edge: Color, radius: Dp, step: Dp = 4.dp, border: Dp = 2.dp, pressed: () -> Float = { 0f }): Modifier =
+    chunk(SolidColor(fill), edge, radius, step, border, pressed)
+
+/**
+ * Enfoncement à l'appui (0 : au repos, 1 : posé sur sa marche), piloté par [inter] : descente nette (ressort `press`),
+ * remontée avec un léger dépassement. Animations réduites : changement immédiat. À lire au dessin (voir [chunk]).
+ */
+@Composable
+fun rememberPress(inter: MutableInteractionSource, enabled: Boolean = true): () -> Float {
+    val motionOff = LocalPal.current.motion
+    val a = remember { Animatable(0f) }
+    LaunchedEffect(inter, enabled, motionOff) {
+        if (!enabled) { a.snapTo(0f); return@LaunchedEffect }
+        inter.interactions.collectLatest { i ->
+            when (i) {
+                is PressInteraction.Press -> if (motionOff) a.snapTo(1f) else a.animateTo(1f, Motion.press())
+                is PressInteraction.Release, is PressInteraction.Cancel -> {
+                    if (motionOff) a.snapTo(0f) else {
+                        // Appui très bref : on laisse le temps de voir l'élément s'enfoncer avant qu'il ne remonte
+                        if (a.value < .7f) a.animateTo(1f, tween(50))
+                        a.animateTo(0f, spring(dampingRatio = .45f, stiffness = 700f))
+                    }
+                }
+            }
+        }
+    }
+    return { a.value }
+}
+
+/** Élément dont la marche est dessinée ailleurs : il descend de [step] à l'appui. */
+@Composable
+fun Modifier.pressable(inter: MutableInteractionSource, step: Dp = 4.dp, enabled: Boolean = true): Modifier {
+    val pr = rememberPress(inter, enabled)
+    return this.graphicsLayer { translationY = pr() * step.toPx() }
+}
+
+/** Aucun relief flou : la marche remplace l'élévation. Gardé pour la compatibilité des appels. */
+@Suppress("UNUSED_PARAMETER")
+fun Modifier.depth(shape: Shape, p: Pal, lift: Int = 2, tint: Color = p.shade): Modifier = this
+
+/** Halo coloré : retiré. Gardé pour la compatibilité des appels. */
 @Suppress("UNUSED_PARAMETER")
 fun Modifier.glow(shape: Shape, color: Color, p: Pal, elevation: Dp = 12.dp): Modifier = this
 
-/**
- * Contour net des surfaces : un trait fin d'un pixel, clair en sombre et foncé en clair, qui découpe proprement la
- * plaque sur le fond. [rim] faux : rien.
- */
+/** Reflet : retiré (aplats seulement). Gardé pour la compatibilité des appels. */
 @Suppress("UNUSED_PARAMETER")
-fun Modifier.sheen(shape: Shape, dark: Boolean, k: Float = 1f, rim: Boolean = true): Modifier = if (!rim || k < .3f) this else this.drawWithCache {
-    val sw = 1f
-    val inner = shape.createOutline(Size(size.width - sw, size.height - sw), layoutDirection, this)
-    val c = if (dark) Color.White.copy(alpha = .09f) else Color(0xFF0D0E2B).copy(alpha = .07f)
-    onDrawWithContent { drawContent(); translate(sw / 2, sw / 2) { drawOutline(inner, c, style = Stroke(sw)) } }
-}
+fun Modifier.sheen(shape: Shape, dark: Boolean, k: Float = 1f, rim: Boolean = true): Modifier = this
 
-/**
- * Remplissage des éléments vifs (bouton principal, puce choisie, case validée, pastille d'icône) : couleur pleine avec
- * le dégradé de l'accent PepsGoal, sans reflet ni halo.
- */
+/** Remplissage des éléments vifs : couleur pleine ou dégradé franc, sans reflet ni halo. */
 @Suppress("UNUSED_PARAMETER")
 fun Modifier.candy(shape: Shape, colors: List<Color>, p: Pal, glow: Boolean = true, elevation: Dp = 12.dp): Modifier {
     val cs = if (colors.size == 1) listOf(colors[0], colors[0]) else colors
@@ -114,8 +177,8 @@ fun Modifier.candy(shape: Shape, colors: List<Color>, p: Pal, glow: Boolean = tr
 
 /** Couleur éclaircie (vers le blanc). */
 fun Color.lift(k: Float): Color = lerp(this, Color.White, k)
-/** Couleur assombrie (vers un indigo très foncé, jamais un gris sale). */
-fun Color.deepen(k: Float): Color = lerp(this, Color(0xFF1A0B3D), k)
+/** Couleur assombrie (vers le prune, jamais un gris sale). */
+fun Color.deepen(k: Float): Color = lerp(this, Color(0xFF2A1420), k)
 
 /** Dégradé discret tiré d'une seule couleur. */
 fun candyOf(c: Color): List<Color> = listOf(c.lift(.12f), c)

@@ -28,6 +28,9 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.screens.TimeButton
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
+import fr.pepsgoal.app.ui.theme.PLUM
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.semantics.heading
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
 import androidx.compose.ui.semantics.semantics
@@ -311,7 +314,7 @@ private fun StepBar(steps: List<Pair<String, String>>, cur: String) {
 private fun ModeCard(icon: String, title: String, desc: String, ai: Boolean, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(Modifier.fillMaxWidth().bounce(inter, .97f).then(if (ai && !p.easy) Modifier.aiGlow(20.dp) else Modifier).clip(smoothShape(20.dp))
+    Row(Modifier.fillMaxWidth().bounce(inter, .97f).then(if (ai) Modifier.border(2.dp, p.flame, smoothShape(20.dp)) else Modifier).clip(smoothShape(20.dp))
         .background(if (ai) p.flame.copy(alpha = .12f) else p.ink.copy(alpha = .05f)).border(1.dp, if (ai) p.flame.copy(alpha = .5f) else p.line, smoothShape(20.dp))
         .springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -494,33 +497,70 @@ private fun TypeTile(k: String, on: Boolean, modifier: Modifier, onClick: () -> 
 @Composable
 fun GoalSheet(ui: AppState, id: String) {
     ui.watch()
-    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    val pg = ui.pg
     val g = pg.goalById(id) ?: run { LaunchedEffect(Unit) { ui.close() }; return }
+    // Bandeau néon jusqu'aux bords, puis le contenu avec les marges de 16 dp
+    GoalBanner(ui, g)
+    Column(Modifier.fillMaxWidth().padding(horizontal = if (LocalInSheet.current) 16.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { GoalSheetBody(ui, g) }
+}
+
+/**
+ * Bandeau de la fiche : 176 dp en aplat du néon du type, deux cercles blancs translucides, poignée prune, pilule
+ * (type · moment), titre en Unbounded 28 prune et emoji Fluent de 96 dp incliné de 8°. Favori et fermer à droite.
+ */
+@Composable
+private fun GoalBanner(ui: AppState, g: Goal) {
+    val p = LocalPal.current; val pg = ui.pg
+    val c = vivid(p.type(g.type).c)
+    val moment = mapOf("morning" to "Matin", "afternoon" to "Après-midi", "evening" to "Soir", "day" to "Dans la journée")[momentOf(pg, g)]
+    // L'emoji « arrive » avec un rebond
+    val pop = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else .55f) }
+    LaunchedEffect(Unit) { pop.animateTo(1f, Motion.pop()) }
+    Box(Modifier.fillMaxWidth().heightIn(min = 176.dp).background(c).drawBehind {
+        drawCircle(Color.White.copy(alpha = .22f), size.height * .7f, androidx.compose.ui.geometry.Offset(size.width * .86f, size.height * .55f))
+        drawCircle(Color.White.copy(alpha = .16f), size.height * .22f, androidx.compose.ui.geometry.Offset(size.width * .55f, size.height * .1f))
+    }) {
+        Box(Modifier.align(Alignment.TopCenter).padding(top = 10.dp).size(40.dp, 5.dp).clip(CircleShape).background(PLUM.copy(alpha = .35f)))
+        Box(Modifier.align(Alignment.CenterEnd).padding(end = 22.dp, top = 24.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = 8f - (1f - pop.value) * 25f }) { Emoji(g.icon, 96.dp) }
+        Row(Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 8.dp)) {
+            IconBtn("star", if (pg.isFav(g)) "Retirer des favoris" else "Ajouter aux favoris", { pg.toggleFav(g.id) }, tint = if (pg.isFav(g)) p.flameInk else p.ink3)
+            if (LocalInSheet.current) IconBtn("x", "Fermer", { ui.close() })
+        }
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth(.66f).padding(start = 20.dp, bottom = 20.dp, top = 64.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.clip(CircleShape).background(Color.White.copy(alpha = .5f)).padding(horizontal = 10.dp, vertical = 3.dp)) {
+                Text("${typeInfo(g.type).label}${moment?.let { " · $it" } ?: ""}", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, maxLines = 1)
+            }
+            Text(g.title, Modifier.semantics { heading() }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, lineHeight = 31.sp, color = PLUM, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun ColumnScope.GoalSheetBody(ui: AppState, g: Goal) {
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    val id = g.id
     val tc = p.type(g.type); val running = pg.timerOf(g) != null; tickingNow(running)
     val s = pg.statBig(g); val t = today(); val doneToday = pg.hasCheck(g.id, t); val own = g.userId == u.id
-    SheetHead(ui, g.title) { IconBtn("star", if (pg.isFav(g)) "Retirer des favoris" else "Ajouter aux favoris", { pg.toggleFav(g.id) }, plain = true, tint = if (pg.isFav(g)) p.flame2 else p.ink3) }
-    // Plaque aux couleurs du type : dégradé, reflet et ombre colorée, la pastille de l'objectif posée dessus
-    val hero = smoothShape(26.dp)
-    Row(Modifier.fillMaxWidth().depth(hero, p, 1, tint = tc.c).background(Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(p.bg, tc.c.lift(.3f), if (p.dark) .34f else .5f), androidx.compose.ui.graphics.lerp(p.bg, tc.c, if (p.dark) .2f else .26f))), hero)
-        .then(if (p.contrast) Modifier.border(1.dp, p.line, hero) else Modifier.sheen(hero, p.dark)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        // L'icône de l'objectif « arrive » de la ligne touchée : elle grandit avec un léger rebond
-        val pop = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else .55f) }
-        LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .45f, stiffness = 300f)) }
-        Box(Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -25f }) { EmojiTile(g.icon, tc.c, 66.dp) }
-        Column { Text(s.v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, color = tc.ink); Text(s.l, fontWeight = FontWeight.Bold, color = p.ink2) }
-    }
-    if (own) PauseBanner(ui, g)
-    if (!g.archived) FlowRowCompat(gap = 8.dp) {
+    // Carte d'action : grande valeur en Unbounded 48, barre de 12 dp, puis les boutons du type
+    Glass {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FitText(s.v, Modifier.weight(1f, fill = false), size = 48, min = 22, weight = FontWeight.ExtraBold, family = Unbounded, color = p.ink)
+            Text(s.l, Modifier.padding(bottom = 8.dp), fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = p.ink2, maxLines = 2)
+        }
+        pg.barPct(g)?.let { Bar(it, Modifier.padding(top = 10.dp), tc.c, 12.dp) }
+        if (own) PauseBanner(ui, g)
+        if (!g.archived) FlowRowCompat(Modifier.padding(top = 12.dp), gap = 8.dp) {
         GoalActions(ui, g, doneToday, running)
         // Version mini : garde la série les jours sans énergie
         if (own && g.miniLabel != null && !pg.hasCheck(g.id, pg.stepDate(g)) && pg.todayPlan().due.any { it.g.id == g.id }) PButton("Mini : ${g.miniLabel}", { pg.validateMini(g.id)?.let { ui.toast(it, "x") } ?: ui.toast("Version mini validée : ta série continue 💪", "check") }, icon = "check")
         if (own && pg.isMiniDone(g)) Chip("Version mini", "check")
         // « Je n'ai pas pu » : noter la raison d'un jour qui ne se fera pas
         if (own && pg.todayPlan().due.any { it.g.id == g.id && !it.done }) PButton(g.missWhy()[today()]?.let { k -> MISS_REASONS.firstOrNull { it.first == k }?.second } ?: "Je n’ai pas pu", { ui.open(Sheet.Miss(g.id, today())) }, kind = "ghost")
+        }
     }
-    // Informations
-    Column(Modifier.fillMaxWidth().clip(smoothShape(24.dp)).background(p.ink.copy(alpha = if (p.dark) .06f else .04f))
-        .border(1.dp, p.line.copy(alpha = .5f), smoothShape(24.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Informations : carte à marche
+    Glass {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Info("Type") { TypeChip(g.type) }
         if (own) Info("Groupe") {
             FlowRowCompat(gap = 4.dp) {
@@ -537,6 +577,7 @@ fun GoalSheet(ui: AppState, id: String) {
         else Info("Visibilité") { VIS[g.visibility]?.let { Chip(it.first, it.second) } }
         g.buddy?.let { b -> Info("Binôme") { Text("${if (b == u.id) "Toi" else pg.userById(b)?.name ?: ""}${if (g.buddyVerify) " · confirme les validations" else ""}${if (g.buddyMiss) " · alerté en cas d’oubli" else ""}", fontWeight = FontWeight.Bold) } }
         if (g.note.isNotEmpty()) Info("Pourquoi") { Text(g.note) }
+      }
     }
     GoalDetail(ui, g, own)
     if (g.type in STEP_TYPES && !pg.isClosedGoal(g)) StepsBlock(ui, g, own)
@@ -563,7 +604,7 @@ fun GoalSheet(ui: AppState, id: String) {
         PinRow(ui, g)
     }
     if (g.type == "objective") Bar(minOf(100.0, pg.objProgress(g) / g.target * 100), color = tc.c)
-    if (g.type != "deadline" && pg.hasCalendar(g.type)) { SectionTitle("5 dernières semaines"); GoalCalendar(pg, g) }
+    if (g.type != "deadline" && pg.hasCalendar(g.type)) Glass { CardHead("5 dernières semaines", emoji = "📅"); GoalCalendar(pg, g) }
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         FlowRowCompat(Modifier.weight(1f), gap = 6.dp) {
             PButton("Partager", { ui.open(Sheet.ShareHub(goalId = g.id)) }, icon = "share", small = true)

@@ -51,9 +51,18 @@ val Manrope = FontFamily(
 
 fun hex(s: String): Color = Color(android.graphics.Color.parseColor(s))
 
-/** Couleur d'un type d'objectif : vive (fond, barre) et encre (texte lisible sur le fond de l'application). */
+/** Encre prune : seule couleur de texte posée sur un aplat vif (néons, flamme, or, rose). */
+val PLUM = Color(0xFF2A1420)
+
+/** Couleur d'un type d'objectif : néon en aplat (tuile, case faite, barre) et encre (texte du type sur une carte). */
 @Immutable
-data class TypeColor(val c: Color, val ink: Color)
+data class TypeColor(val c: Color, val ink: Color) {
+    /** « Marche » de l'aplat : le néon assombri vers le prune. */
+    val step: Color get() = c.step()
+}
+
+/** Teinte de la marche d'un aplat : la même couleur, assombrie vers le prune (32 %). */
+fun Color.step(): Color = lerp(this, Color(0xFF5A1030), .32f)
 
 /** Jetons de couleur de PepsGoal (variables CSS de la version web : --bg, --ink, --glass, --flame…). */
 @Immutable
@@ -76,9 +85,28 @@ data class Pal(
     /** Grandes cibles tactiles (48 dp) : TalkBack actif ou Lecture facile. */
     val big: Boolean = false,
     /** Mode une main. */
-    val oneHand: Boolean = false
+    val oneHand: Boolean = false,
+    /* Braise Pop : surfaces opaques, bord et marche, encre prune sur les aplats */
+    /** Cartes, lignes, barre d'onglets, boutons secondaires. */
+    val surface: Color = Color.White,
+    /** Creux : rails, pastilles de compteur, séparateurs épais. */
+    val surface2: Color = Color(0xFFFFEDE1),
+    /** Bord (2 dp) et marche des éléments neutres. */
+    val edge: Color = Color(0xFFF2DED1),
+    /** Contour d'une case « à faire », interrupteur éteint (≥ 3:1). */
+    val control: Color = Color(0xFF9C8273),
+    /** Texte et icônes sur tout aplat vif. */
+    val plum: Color = PLUM,
+    /** Marche des éléments en dégradé de la flamme. */
+    val flameStep: Color = Color(0xFFC2185B),
+    val gold: Color = Color(0xFFFFD23F),
+    val ice: Color = Color(0xFF22D3FF),
+    /** Formes décoratives du fond (aplats immobiles). */
+    val deco: List<Color> = listOf(Color(0xFFFFE2CC), Color(0xFFFFD6E8))
 ) {
     val accent get() = Brush.linearGradient(listOf(flame2, flame, pink))
+    /** Rail des barres et anneaux. */
+    val rail: Color get() = if (dark && !contrast) Color(0xFF120B16) else surface2
     fun type(t: String) = types[t] ?: types.getValue("routine")
 }
 
@@ -130,7 +158,7 @@ fun contrast(a: Color, b: Color): Float { val x = lum(a); val y = lum(b); return
 fun Color.over(bg: Color): Color = if (alpha >= 1f) this else lerp(bg, copy(alpha = 1f), alpha)
 /** Texte à poser sur un dégradé de [cols] : foncé ou blanc, celui qui se lit le mieux sur toutes les teintes. */
 fun onColors(cols: List<Color>): Color {
-    val d = hex("#10102A")
+    val d = PLUM
     return if (cols.minOf { contrast(d, it) } >= cols.minOf { contrast(Color.White, it) }) d else Color.White
 }
 /**
@@ -144,17 +172,6 @@ fun readable(fg: Color, bg: Color, min: Float = 4.5f): Color {
     var k = .1f
     while (k < 1f) { val c = lerp(f, to, k); if (contrast(c, b) >= min) return c.copy(alpha = fg.alpha); k += .1f }
     return to.copy(alpha = fg.alpha)
-}
-/** Rapproche une couleur de son gris de même luminosité. */
-private fun desat(c: Color, k: Float): Color { val l = .299f * c.red + .587f * c.green + .114f * c.blue; return lerp(c, Color(l, l, l, c.alpha), k) }
-
-/** Fait tendre une couleur vers la teinte de la palette Material You (harmonisation des types d'objectifs). */
-private fun harmonize(c: Color, toward: Color, k: Float = .35f): Color {
-    val hsv1 = FloatArray(3); val hsv2 = FloatArray(3)
-    android.graphics.Color.colorToHSV(c.toArgb(), hsv1); android.graphics.Color.colorToHSV(toward.toArgb(), hsv2)
-    var d = hsv2[0] - hsv1[0]; if (d > 180) d -= 360; if (d < -180) d += 360
-    hsv1[0] = (hsv1[0] + d * k + 360) % 360
-    return Color(android.graphics.Color.HSVToColor(hsv1))
 }
 
 @Composable
@@ -173,87 +190,92 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         validAccent(input.accentCustom) -> input.accentCustom!!.map(::hex)
         else -> (ACCENTS.getOrNull(input.accent) ?: ACCENTS[0]).c.map(::hex)
     }
-    // Texte posé sur l'accent : foncé ou blanc, celui qui se lit le mieux sur les trois teintes ; si aucun n'atteint
+    // Texte posé sur l'accent : prune ou blanc, celui qui se lit le mieux sur les trois teintes ; si aucun n'atteint
     // 4,5, les teintes trop proches du texte sont éclaircies (ou assombries) juste ce qu'il faut
-    val inkDark = hex("#10102A")
-    val onAc: Color = if (dyn != null) (if (dark) dyn.onPrimaryContainer else dyn.onPrimary) else {
+    val inkDark = PLUM
+    val onAc: Color = if (dyn != null) onColors(listOf(dyn.primary, dyn.tertiary)) else {
         val d = ac.minOf { contrast(inkDark, it) }; val w = ac.minOf { contrast(Color.White, it) }
         if (d >= w) inkDark else Color.White
     }
-    val ac2 = if (dyn != null) ac else ac.map { stop ->
+    val ac2 = ac.map { stop ->
         if (contrast(onAc, stop) >= 4.5f) stop
         else { val to = if (onAc == Color.White) Color.Black else Color.White; var c = stop; var k = .08f; while (contrast(onAc, c) < 4.5f && k < 1f) { c = lerp(stop, to, k); k += .08f }; c }
     }
-    var bg = if (dark) hex("#07081A") else hex("#ECEEFF")
-    var ink = if (dark) hex("#F4F5FF") else hex("#0D0E2B"); var ink2 = if (dark) hex("#D3D6F7") else hex("#34375F"); var ink3 = if (dark) hex("#AAADDB") else hex("#575A86")
-    // Sombre : cartes un peu plus claires que le fond, pour mieux s'en détacher
-    var glass = if (dark) Color(31, 34, 80, (255 * .62).toInt()) else Color(255, 255, 255, (255 * .62).toInt())
-    var glassStrong = if (dark) Color(34, 37, 86, 230) else Color(255, 255, 255, 220)
+    // Neutres « Braise Pop » : crème pêche / prune nuit, surfaces opaques, bord et marche pleins
+    var bg = if (dark) hex("#170F1C") else hex("#FFF7F0")
+    var surface = if (dark) hex("#241A2B") else Color.White
+    var surface2 = if (dark) hex("#2F2337") else hex("#FFEDE1")
+    var edge = if (dark) hex("#3A2D43") else hex("#F2DED1")
+    var control = if (dark) hex("#8C7584") else hex("#9C8273")
+    var ink = if (dark) hex("#FFF4EC") else PLUM; var ink2 = if (dark) hex("#D9C4CF") else hex("#6B4F5C"); var ink3 = if (dark) hex("#A8929E") else hex("#7D6170")
+    var deco = if (dark) listOf(hex("#3A1F2E"), hex("#2E1B3A")) else listOf(hex("#FFE2CC"), hex("#FFD6E8"))
     if (dyn != null) {
+        // Material You : neutres et accent tirés de la palette dynamique ; les néons et la flamme de la série restent
         bg = dyn.background; ink = dyn.onBackground; ink2 = dyn.onSurfaceVariant; ink3 = mix(dyn.onSurfaceVariant, dyn.background, .25f)
-        glass = dyn.surfaceContainerLow.copy(alpha = .78f); glassStrong = dyn.surfaceContainerHigh.copy(alpha = .92f)
+        surface = if (dark) dyn.surfaceContainer else dyn.surfaceContainerLowest; surface2 = dyn.surfaceContainerHigh
+        edge = dyn.outlineVariant; control = dyn.outline
+        deco = listOf(mix(bg, dyn.primaryContainer, .7f), mix(bg, dyn.tertiaryContainer, .6f))
     }
-    if (oled) { bg = Color.Black; glass = Color(255, 255, 255, 14); glassStrong = Color(20, 20, 24, 240) }
+    if (oled) { bg = Color.Black; surface = hex("#170F1C"); surface2 = hex("#241A2B"); edge = hex("#2F2337") }
     if (mode != null) {
-        bg = hex(mode.bg); ink = hex(mode.ink); ink2 = mix(ink, bg, .2f); ink3 = mix(ink, bg, if (dark) .4f else .3f)
-        val g = hex(mode.glass); glass = g.copy(alpha = .62f); glassStrong = g.copy(alpha = if (dark) .92f else .88f)
-    }
-    // Opacité du verre : réglage séparé du flou (Paramètres › Apparence)
-    val alpha = when (input.glassOpacity) { "low" -> .38f; "high" -> .86f; else -> .62f }
-    glass = glass.copy(alpha = if (oled) glass.alpha else minOf(.95f, alpha + if (dyn != null) .08f else 0f))
-    if (!oled) glassStrong = glassStrong.copy(alpha = when (input.glassOpacity) { "low" -> .7f; "high" -> .96f; else -> glassStrong.alpha })
-    if (transp || input.contrast) { glass = if (dark) (if (oled) Color(12, 12, 14) else hex("#14163A")) else Color.White; glassStrong = glass }
-    if (input.contrast) { ink = if (dark) Color.White else Color.Black; ink2 = ink; ink3 = if (dark) Color(0xFFDDDDDD) else Color(0xFF222222) }
-    val line = if (input.contrast) ink.copy(alpha = .7f) else ink.copy(alpha = .13f)
-    // Fond réel d'une carte (verre posé sur le fond) : base de tous les calculs de lisibilité
-    val card = glass.over(bg)
+        // Ambiance de la boutique : teinte le fond et le décor, jamais les surfaces ni les néons
+        bg = hex(mode.bg); ink = readable(hex(mode.ink), surface, 7f); ink2 = mix(ink, surface, .25f); ink3 = mix(ink, surface, if (dark) .4f else .35f)
+        deco = mode.blobs.take(2).map { mix(bg, hex(it), if (dark) .35f else .3f) }
+    } else if (input.season != null && dyn == null) deco = input.season.take(2).map { mix(bg, Color(it).copy(alpha = 1f), if (dark) .3f else .25f) }
+    if (input.contrast) { ink = if (dark) Color.White else Color.Black; ink2 = ink; ink3 = if (dark) Color(0xFFDDDDDD) else Color(0xFF222222); edge = ink; control = ink; deco = listOf(bg, bg) }
+    // Compatibilité : l'ancien verre est désormais une surface opaque
+    val glass = surface; val glassStrong = surface
+    val line = edge
+    // Base de tous les calculs de lisibilité : la surface des cartes
+    val card = surface
     ink2 = readable(ink2, card, 7f); ink3 = readable(ink3, card, 4.6f)
-    val flameInk = if (input.contrast) ink else readable(ac2[1], card, 4.6f)
+    val braise = dyn == null && !validAccent(input.accentCustom) && input.accent == 0
+    val flameInk = if (input.contrast) ink else if (braise) (if (dark) hex("#FF8A55") else hex("#B8350A")) else readable(ac2[1], card, 4.6f)
+    val flameStep = if (input.contrast) ink else if (braise) hex("#C2185B") else ac2[0].step()
 
     val cvd = CVD[input.cvd]
     val types = TYPE_LIGHT.entries.mapIndexed { i, (k, v) ->
         var c = hex(v.first); var tink = if (dark) hex(TYPE_DARK_INK[k]!!) else hex(v.second)
         if (cvd != null) { c = hex(cvd[i % cvd.size]); tink = if (dark) mix(c, Color.White, .3f) else mix(c, Color.Black, .35f) }
-        else if (dyn != null) { c = harmonize(c, dyn.primary); tink = harmonize(tink, dyn.primary) }
-        // La nuit, couleurs des types légèrement désaturées : moins criardes sur fond sombre
-        else if (dark && !input.contrast) c = desat(c, .14f)
-        // Encre du type toujours lisible sur les cartes, y compris sur les fonds teintés des ambiances
+        // Néons identiques en clair et en sombre (texte prune posé dessus) ; l'encre du type reste lisible sur les cartes
         k to TypeColor(c, readable(tink, card, 4.6f))
     }.toMap()
 
     val pal = Pal(
-        dark, oled, bg, ink, ink2, ink3, glass, glassStrong, if (dark) Color(255, 255, 255, 36) else Color(255, 255, 255, 242), line,
-        if (dark) Color(3, 3, 14, 160) else Color(13, 14, 43, 97),
+        dark, oled, bg, ink, ink2, ink3, glass, glassStrong, edge, line,
+        if (dark) Color(0xB3000000) else Color(0x802A1420),
         ac2[0], ac2[1], ac2[2], onAc, flameInk,
-        if (dark) hex("#5BE38A") else hex("#1E8E3E"), if (dark) hex("#FF6B81") else hex("#C8102E"), if (dark) hex("#6FE3FF") else hex("#0057D9"),
+        if (dark) hex("#4FD08A") else hex("#1E7F45"), if (dark) hex("#FF7A84") else hex("#C0392B"), if (dark) hex("#6FE3FF") else hex("#0057D9"),
         if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: mode?.let { m -> m.blobs.map(::hex) + ac[1] } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
         if (oled) .22f else if (dark) .42f else .55f, types, dyn != null, input.contrast, transp, input.mono, motion,
         when (input.glassBlur) { "xlow" -> 20f; "low" -> 40f; "high" -> 110f; else -> 70f },
-        input.easy, input.big || input.easy, input.oneHand
+        input.easy, input.big || input.easy, input.oneHand,
+        surface = surface, surface2 = surface2, edge = edge, control = control, flameStep = flameStep, deco = deco
     )
 
     val base = dyn ?: if (dark) darkColorScheme() else lightColorScheme()
     val scheme = base.copy(
         // Composants Material (boutons texte des dialogues, champs, curseur) : l'accent lisible, pas l'accent brut
         primary = pal.flameInk, onPrimary = onColors(listOf(pal.flameInk)), secondary = pal.pink, tertiary = pal.flame2,
-        background = bg, onBackground = ink, surface = if (oled) Color.Black else if (mode != null) mix(bg, hex(mode.glass), .5f) else if (dyn != null) dyn.surface else (if (dark) hex("#10122E") else hex("#F7F7FF")),
-        onSurface = ink, onSurfaceVariant = ink2, outline = ink3, outlineVariant = line, error = pal.danger,
-        surfaceContainerLow = glass, surfaceContainer = glassStrong, surfaceContainerHigh = glassStrong,
-        surfaceContainerHighest = mode?.let { hex(it.glass) } ?: if (dark) hex("#1C1F4A") else hex("#FFFFFF")
-    ).let { if (dyn != null) it.copy(primary = dyn.primary, onPrimary = dyn.onPrimary, primaryContainer = dyn.primaryContainer, secondary = dyn.secondary, tertiary = dyn.tertiary, surface = dyn.surface) else it }
+        background = bg, onBackground = ink, surface = surface,
+        onSurface = ink, onSurfaceVariant = ink2, outline = control, outlineVariant = edge, error = pal.danger,
+        surfaceContainerLow = surface, surfaceContainer = surface2, surfaceContainerHigh = surface, surfaceContainerHighest = surface2
+    )
 
     val t = Typography()
     // Chiffres à largeur fixe partout : compteurs et scores ne « dansent » plus quand ils changent
     val body = TextStyle(fontFamily = Manrope, fontFeatureSettings = "tnum")
-    val head = TextStyle(fontFamily = Unbounded, fontFeatureSettings = "tnum", letterSpacing = (-.2).sp)
+    val head = TextStyle(fontFamily = Unbounded, fontFeatureSettings = "tnum", letterSpacing = (-.01).em)
+    // Échelle « Braise Pop » : Unbounded pour les titres et les chiffres, Manrope (jamais en Regular) pour le reste
     val typo = Typography(
-        displayLarge = t.displayLarge.merge(head).copy(fontWeight = FontWeight.Bold), displayMedium = t.displayMedium.merge(head).copy(fontWeight = FontWeight.Bold),
-        displaySmall = t.displaySmall.merge(head).copy(fontWeight = FontWeight.Bold), headlineLarge = t.headlineLarge.merge(head).copy(fontWeight = FontWeight.Bold),
-        headlineMedium = t.headlineMedium.merge(head).copy(fontWeight = FontWeight.Bold), headlineSmall = t.headlineSmall.merge(head).copy(fontWeight = FontWeight.Bold),
-        titleLarge = t.titleLarge.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 18.sp), titleMedium = t.titleMedium.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.sp),
-        titleSmall = t.titleSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold), bodyLarge = t.bodyLarge.merge(body), bodyMedium = t.bodyMedium.merge(body).copy(fontSize = 15.sp),
-        bodySmall = t.bodySmall.merge(body).copy(fontSize = 13.sp), labelLarge = t.labelLarge.merge(body).copy(fontWeight = FontWeight.ExtraBold),
-        labelMedium = t.labelMedium.merge(body).copy(fontWeight = FontWeight.Bold), labelSmall = t.labelSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold)
+        displayLarge = t.displayLarge.merge(head).copy(fontWeight = FontWeight.ExtraBold, fontSize = 60.sp), displayMedium = t.displayMedium.merge(head).copy(fontWeight = FontWeight.ExtraBold, fontSize = 48.sp),
+        displaySmall = t.displaySmall.merge(head).copy(fontWeight = FontWeight.ExtraBold, fontSize = 36.sp), headlineLarge = t.headlineLarge.merge(head).copy(fontWeight = FontWeight.ExtraBold, fontSize = 30.sp),
+        headlineMedium = t.headlineMedium.merge(head).copy(fontWeight = FontWeight.ExtraBold, fontSize = 28.sp), headlineSmall = t.headlineSmall.merge(head).copy(fontWeight = FontWeight.ExtraBold, fontSize = 22.sp),
+        titleLarge = t.titleLarge.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 18.sp), titleMedium = t.titleMedium.merge(head).copy(fontWeight = FontWeight.Bold, fontSize = 16.sp),
+        titleSmall = t.titleSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold, fontSize = 16.sp), bodyLarge = t.bodyLarge.merge(body).copy(fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+        bodyMedium = t.bodyMedium.merge(body).copy(fontWeight = FontWeight.Bold, fontSize = 15.sp), bodySmall = t.bodySmall.merge(body).copy(fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+        labelLarge = t.labelLarge.merge(body).copy(fontWeight = FontWeight.ExtraBold, fontSize = 17.sp), labelMedium = t.labelMedium.merge(body).copy(fontWeight = FontWeight.ExtraBold, fontSize = 13.sp),
+        labelSmall = t.labelSmall.merge(body).copy(fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
     )
     // Interlignes proportionnels à la taille du texte : une taille imposée (fontSize = 13.sp…) garde un interligne serré
     fun TextStyle.lh(k: Float) = copy(lineHeight = k.em)

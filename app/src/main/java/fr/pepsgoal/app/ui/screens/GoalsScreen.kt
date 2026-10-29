@@ -28,6 +28,8 @@ import fr.pepsgoal.core.TYPES
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.TYPE_GROUPS
 import fr.pepsgoal.core.model.Goal
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 
 @Composable
 fun ChipsRow(content: @Composable RowScope.() -> Unit) = ChipScroller(bleed = 16.dp, content = content)
@@ -78,19 +80,19 @@ fun GoalsScreen(ui: AppState) {
         // Vue d'ensemble : trois raccourcis
         item("overview") {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OverTile("${open.size}", "en cours", "target", p.flame, ui.goalFilter == "active", Modifier.weight(1f)) { ui.goalFilter = "active" }
-                OverTile("$doneToday/${plan.due.size}", "aujourd’hui", "sun", p.type("monthly").c, ui.goalFilter == "today", Modifier.weight(1f)) { ui.goalFilter = "today" }
-                OverTile("${open.count { pg.isFav(it) }}", "favoris", "star", p.pink, ui.goalFilter == "fav", Modifier.weight(1f)) { ui.goalFilter = "fav" }
+                OverTile("${open.size}", "en cours", "🎯", p.type("limit").c, ui.goalFilter == "active", Modifier.weight(1f)) { ui.goalFilter = "active" }
+                OverTile("$doneToday/${plan.due.size}", "aujourd’hui", "☀️", p.type("monthly").c, ui.goalFilter == "today", Modifier.weight(1f)) { ui.goalFilter = "today" }
+                OverTile("${open.count { pg.isFav(it) }}", "favoris", "⭐", p.type("deadline").c, ui.goalFilter == "fav", Modifier.weight(1f)) { ui.goalFilter = "fav" }
             }
         }
         // Recherche, affichage et tri
         item("tools") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(query, { query = it }, "", Modifier.weight(1f), placeholder = "Rechercher un objectif", max = 60, icon = "search")
-                IconBtn("cal", "Ma semaine", { ui.push(fr.pepsgoal.app.Screen.Week) }, size = 46.dp)
+                IconBtn("cal", "Ma semaine", { ui.push(fr.pepsgoal.app.Screen.Week) })
                 val sctx = androidx.compose.ui.platform.LocalContext.current
-                IconBtn("link", "Scanner un objectif partagé", { fr.pepsgoal.app.ui.sheets.scanGoal(ui, sctx) }, size = 46.dp)
-                IconBtn(if (compact) "list" else "grip", if (compact) "Afficher en cartes" else "Afficher en liste", { compact = !compact; ui.prefs.goalView = if (compact) "list" else "cards" }, size = 46.dp)
+                IconBtn("link", "Scanner un objectif partagé", { fr.pepsgoal.app.ui.sheets.scanGoal(ui, sctx) })
+                IconBtn(if (compact) "list" else "grip", if (compact) "Afficher en cartes" else "Afficher en liste", { compact = !compact; ui.prefs.goalView = if (compact) "list" else "cards" })
             }
         }
         item("filters") {
@@ -104,13 +106,14 @@ fun GoalsScreen(ui: AppState) {
                 // Dossiers : filtre en un geste, avec leur couleur
                 if (u.goalGroups.isNotEmpty()) ChipsRow {
                     FChip("Tous les dossiers", gf == "all", { ui.groupFilter = "all" }, leading = { Pi("folder", size = 15.dp) })
+                    // Puce choisie : aplat de la couleur du dossier
                     u.goalGroups.forEach { gr -> FChip("${gr.icon} ${gr.name}", gf == gr.id, { ui.groupFilter = if (gf == gr.id) "all" else gr.id },
-                        leading = gr.color?.let { c -> { Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(fr.pepsgoal.app.ui.theme.hex(c))) } }) }
+                        leading = gr.color?.let { c -> { Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(fr.pepsgoal.app.ui.theme.hex(c))) } }, color = gr.color?.let { fr.pepsgoal.app.ui.theme.hex(it) }) }
                     FChip("Sans dossier", gf == "none", { ui.groupFilter = if (gf == "none") "all" else "none" })
                 }
                 if (types.size > 1) ChipsRow {
                     FChip("Tous les types", type == "all", { type = "all" })
-                    types.forEach { t -> FChip(TYPES.getValue(t).label, type == t, { type = t }, leading = { Box(Modifier.size(11.dp).clip(CircleShape).background(Brush.verticalGradient(listOf(p.type(t).c.lift(.35f), p.type(t).c))).border(1.dp, Color.White.copy(alpha = .6f), CircleShape)) }) }
+                    types.forEach { t -> FChip(TYPES.getValue(t).label, type == t, { type = t }, leading = { Box(Modifier.size(11.dp).clip(CircleShape).background(p.type(t).c).border(1.5.dp, p.type(t).step, CircleShape)) }, color = p.type(t).c) }
                 }
             }
         }
@@ -145,14 +148,9 @@ fun GoalsScreen(ui: AppState) {
                         }
                     }
                     if (!c) {
-                        if (compact) item("list-$key") {
-                            // Liste compacte : une carte par section, une ligne par objectif, validation en un geste
-                            Glass(pad = 10.dp) {
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    items.forEach { g -> key(g.id) { Box(Modifier.animatePlacement()) { GoalRow(ui, g, dueIds[g.id] ?: false) } } }
-                                }
-                            }
-                        } else items(items, key = { "g-" + it.id }) { g -> GoalCard(ui, g, Modifier.animateItem()) }
+                        // Liste : une ligne à marche par objectif (avec son étiquette de type), validation en un geste
+                        if (compact) items(items, key = { "r-" + it.id }) { g -> Box(Modifier.animateItem()) { GoalRow(ui, g, dueIds[g.id] ?: false, tag = true) } }
+                        else items(items, key = { "g-" + it.id }) { g -> GoalCard(ui, g, Modifier.animateItem()) }
                     }
                 }
             }
@@ -162,17 +160,25 @@ fun GoalsScreen(ui: AppState) {
 
 private val SORTS = listOf("fav" to "Pertinence", "az" to "A → Z", "progress" to "Progression", "recent" to "Récents")
 
-/** Tuile de la vue d'ensemble : pastille colorée, chiffre, libellé ; active, elle s'illumine de sa couleur. */
+/**
+ * Tuile de la vue d'ensemble : aplat néon à marche (emoji, chiffre en Unbounded, libellé prune). Choisie, elle porte
+ * une coche et un bord prune (jamais la couleur seule) ; au repos, elle est teintée.
+ */
 @Composable
-private fun OverTile(v: String, l: String, icon: String, c: Color, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun OverTile(v: String, l: String, emoji: String, c: Color, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val p = LocalPal.current
-    Glass(modifier.fillMaxHeight(), pad = 12.dp, radius = 24.dp, fill = false, onClick = onClick, border = if (on) c.copy(alpha = .85f) else null, wash = if (on) listOf(c, c.lift(.3f)) else null) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconTile(icon, c.lift(.2f), c, 30.dp)
-            FitText(v, size = 19, min = 12, weight = FontWeight.ExtraBold, family = Unbounded)
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
+    val fill = if (on) vivid(c) else androidx.compose.ui.graphics.lerp(p.surface, c, if (p.dark) .25f else .3f)
+    val ink = if (on) fr.pepsgoal.app.ui.theme.PLUM else p.ink
+    Column(modifier.fillMaxHeight().chunk(fill, if (on) (if (p.contrast) p.ink else vivid(c).let { androidx.compose.ui.graphics.lerp(it, Color(0xFF5A1030), .32f) }) else androidx.compose.ui.graphics.lerp(p.edge, c, .55f), 22.dp, 4.dp, if (on) 0.dp else 2.dp, press)
+        .clip(RoundedCornerShape(20.dp)).springClick(inter, role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick).semantics { selected = on }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Emoji(emoji, 24.dp); Spacer(Modifier.weight(1f))
+            if (on) Pi("check", size = 16.dp, tint = ink)
         }
-        Spacer(Modifier.height(6.dp))
-        Text(l, color = if (on) p.ink else p.ink2, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        FitText(v, size = 22, min = 12, weight = FontWeight.ExtraBold, family = Unbounded, color = ink)
+        Text(l, color = ink, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
 

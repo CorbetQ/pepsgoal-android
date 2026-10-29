@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -100,7 +99,7 @@ private val FLAME = Brush.linearGradient(listOf(Color(0xFFFFB000), Color(0xFFFF4
 @Composable
 private fun Frame(dark: Boolean, w: Dp, content: @Composable ColumnScope.(WCol) -> Unit) {
     val c = WCol(dark); val shape = smoothShape(26.dp)
-    Column(Modifier.width(w).shadow(14.dp, shape).clip(shape).background(c.bg).border(1.dp, c.edge, shape).padding(12.dp)) { content(c) }
+    Column(Modifier.width(w).clip(shape).background(c.bg).border(1.dp, c.edge, shape).padding(12.dp)) { content(c) }
 }
 
 @Composable
@@ -121,7 +120,7 @@ private fun PreviewToday(dark: Boolean, hide: Boolean) = Frame(dark, 250.dp) { c
         Row(Modifier.padding(vertical = 2.dp).fillMaxWidth().clip(smoothShape(14.dp)).background(c.card).padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.width(3.dp).height(18.dp).clip(CircleShape).background(tc))
             Text(e, Modifier.padding(start = 6.dp), fontSize = 14.sp)
-            Text(t, Modifier.weight(1f).padding(start = 6.dp), color = if (done) c.ink2 else c.ink, fontSize = 12.sp, fontWeight = if (done) FontWeight.Normal else FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(t, Modifier.weight(1f).padding(start = 6.dp), color = if (done) c.ink2 else c.ink, fontSize = 12.sp, fontWeight = if (done) FontWeight.Medium else FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Box(Modifier.size(24.dp).clip(CircleShape).background(if (done) tc else c.card).border(if (done) 0.dp else 1.5.dp, c.ink2.copy(alpha = .5f), CircleShape), contentAlignment = Alignment.Center) { if (done) Text("✓", color = Color(0xFF10102A), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp) }
         }
     }

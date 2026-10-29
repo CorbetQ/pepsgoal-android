@@ -1,6 +1,7 @@
 package fr.pepsgoal.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -9,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -98,7 +98,7 @@ fun HomeSettings(ui: AppState) {
                     val pos = list.indexOfFirst { it.first == k }
                     Row(Modifier.zIndex(if (isDrag) 1f else 0f).onSizeChanged { rowH = it.height }
                         .graphicsLayer { translationY = if (isDrag) dragY else 0f; scaleX = if (isDrag) 1.03f else 1f; scaleY = if (isDrag) 1.03f else 1f }
-                        .then(if (isDrag) Modifier.shadow(12.dp, smoothShape(16.dp)) else Modifier)
+                        .then(if (isDrag) Modifier.border(2.dp, LocalPal.current.flame, smoothShape(16.dp)) else Modifier)
                         .clip(smoothShape(16.dp)).background(if (isDrag) p.glassStrong else p.ink.copy(alpha = .04f))
                         .semantics(mergeDescendants = true) {
                             contentDescription = "$l, position ${pos + 1} sur ${list.size}, ${if (on) "affichée" else "masquée"}"

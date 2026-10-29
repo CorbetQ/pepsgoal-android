@@ -57,17 +57,14 @@ fun ProfileScreen(ui: AppState) {
     val best = remember(ui.rev, u.id) { pg.bestStreak(u.id) }; val wins = remember(ui.rev, u.id) { pg.userCheckins(u.id).count { pg.isWin(it) } }
     ScreenList {
         item("hero") { ProfileHero(ui, u, lv) }
+        // Trois tuiles de statistiques en aplats néon (Série, Record, Validés)
         item("tiles") {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                val p = LocalPal.current
-                ProfileTile("${st.n}", "série", "flameo", p.flame, Modifier.weight(1f), lit = st.lit)
-                ProfileTile("$best", "record", "trophy", p.type("monthly").c, Modifier.weight(1f))
-                ProfileTile(fmtNum(wins), "validations", "check", p.type("routine").c, Modifier.weight(1f))
-                ProfileTile("$done", "caps", "target", p.type("objective").c, Modifier.weight(1f))
-            }
+            val p = LocalPal.current
+            StatGrid(listOf("${st.n}" to if (st.n > 1) "jours de série" else "jour de série", "${maxOf(best, st.n)}" to "record", fmtNum(wins) to if (wins > 1) "validés" else "validé"), columns = 3,
+                emojis = listOf("🔥", "🏆", "✅"), colors = listOf(p.type("limit").c, p.type("monthly").c, p.type("routine").c))
         }
         item("status") { StatusRow(ui) }
-        item("wallet") { WalletStrip(ui, u) }
+        item("space") { MySpace(ui, u, done) }
         item("tabs") {
             Seg(listOf("overview" to "Aperçu", "badges" to "Badges", "collection" to "Collection"), ui.profileTab, { ui.profileTab = it }, Modifier.fillMaxWidth(), icons = listOf("sun", "medal", "palette"))
         }
@@ -95,126 +92,79 @@ fun ProfileScreen(ui: AppState) {
     }
 }
 
-/** En-tête : bannière aux couleurs du niveau, grand avatar qui la chevauche, nom, pseudo, bio et progression du niveau. */
+/**
+ * Carte identité : avatar de 70 dp dans l'anneau de la flamme avec son badge de niveau, nom en Unbounded 24, pseudo,
+ * puis la ligne du niveau (flamme, nom du niveau, points) et sa barre de 14 dp ; les dix paliers en dessous.
+ */
 @Composable
 private fun ProfileHero(ui: AppState, u: User, lv: Level) {
-    val p = LocalPal.current; val pg = ui.pg; val ctx = androidx.compose.ui.platform.LocalContext.current
-    val cols = tierColors(lv.tier)
-    // Couronne de flammes : sa taille suit la progression ; elle repart de la taille vue la dernière fois et grandit en douceur
-    val auraK = (((lv.idx - 1) + lv.pct) / (LEVEL_MAX - 1)).toFloat().coerceIn(0f, 1f)
-    val aura = remember { androidx.compose.animation.core.Animatable(ui.prefs.raw.getFloat("auraK", 0f)) }
-    LaunchedEffect(auraK) {
-        if (p.motion) aura.snapTo(auraK)
-        else { kotlinx.coroutines.delay(350); aura.animateTo(auraK, androidx.compose.animation.core.tween(if (auraK > aura.value) 2400 else 600, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
-        ui.prefs.raw.edit().putFloat("auraK", auraK).apply()
-    }
-    val flick = slowPhaseState(1700, 20, running = Perf.flags.fx)
-    Glass(pad = 0.dp) {
-        Box(Modifier.fillMaxWidth()) {
-            // Bannière : dégradé du niveau, reflet brillant et bulles de lumière ; elle se fond dans la carte vers le bas
-            androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(132.dp).graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) {
-                drawRect(Brush.linearGradient(cols, Offset.Zero, Offset(size.width, size.height)))
-                drawRect(Brush.verticalGradient(0f to Color.Black, .55f to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn)
-            }
-            Row(Modifier.align(Alignment.TopEnd).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HeroRound("share", "Partager mon profil") { shareProfile(ctx, ui, u, lv) }
-                HeroRound("gear", "Paramètres") { ui.push(Screen.Settings()) }
-            }
-            Column(Modifier.fillMaxWidth().padding(top = 66.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.flameAura(aura.value, 55.dp, cols, { flick.value }, still = p.motion || !Perf.flags.fx)) {
-                    Box(Modifier.clip(CircleShape).background(p.bg).padding(4.dp).clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) { LevelRing(lv.tier, 92.dp) { Av(u, 92.dp) } }
-                    Box(Modifier.align(Alignment.BottomEnd).offset(x = (-2).dp, y = (-2).dp).border(2.5.dp, p.bg, CircleShape).padding(1.dp).size(30.dp)
-                        .candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 6.dp).clip(CircleShape)
-                        .clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }, contentAlignment = Alignment.Center) { Pi("edit", size = 15.dp, tint = p.onAccent) }
+    val p = LocalPal.current; val pg = ui.pg
+    Glass {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) {
+                AvatarFace(u, 70.dp)
+                Box(Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp).background(fr.pepsgoal.app.ui.theme.PLUM, CircleShape).padding(horizontal = 7.dp, vertical = 2.dp)) {
+                    Text("${lv.idx}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = p.gold)
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(u.name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(u.name, Modifier.weight(1f, fill = false), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, lineHeight = 28.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     if (pg.isOfficial(u)) Verified()
                 }
-                Muted(if (pg.isGuest(u)) "Sans compte · données sur cet appareil" else "@" + u.username + if (pg.isAdmin(u)) " · Administrateur" else "", small = true)
-                if (u.bio.isNotEmpty()) Text(u.bio, Modifier.padding(horizontal = 24.dp, vertical = 6.dp), fontSize = 15.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (pg.isGuest(u)) PButton("Créer un compte", { ui.push(Screen.Settings("account")) }, icon = "user", kind = "primary", small = true)
-                    else PButton("Modifier le profil", { ui.push(Screen.Settings("account")) }, icon = "edit", small = true)
-                    PButton("Apparence", { ui.push(Screen.Settings("appearance")) }, icon = "palette", small = true, kind = "ghost")
-                }
+                Text(if (pg.isGuest(u)) "Sans compte · données sur cet appareil" else "@" + u.username + if (pg.isAdmin(u)) " · Administrateur" else "", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = p.ink2)
             }
         }
-        // Niveau : nom, niveau suivant, barre de progression et les dix paliers (touché : le détail des paliers)
-        Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Voir les paliers de niveau") { ui.open(Sheet.Levels) }.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.candy(CircleShape, cols, p, elevation = 6.dp).padding(horizontal = 11.dp, vertical = 5.dp)) {
-                    Text("Niveau ${lv.idx}", color = fr.pepsgoal.app.ui.theme.onColors(cols), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
-                }
-                Text(lv.name, Modifier.padding(start = 8.dp).weight(1f), fontWeight = FontWeight.ExtraBold)
-                Muted(lv.next?.let { "${fmtNum(lv.pts)} / ${fmtNum(it)}" } ?: "${fmtNum(lv.pts)} flammes", small = true)
+        if (u.bio.isNotEmpty()) Text(u.bio, Modifier.padding(top = 10.dp), fontSize = 15.sp)
+        // Niveau : flamme, nom, points et barre de la flamme (touché : le détail des paliers)
+        Column(Modifier.fillMaxWidth().padding(top = 14.dp).clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = "Voir les paliers de niveau") { ui.open(Sheet.Levels) }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Flame(26.dp, colors = tierColors(lv.tier))
+                Text(lv.name, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
+                Text(lv.next?.let { "${fmtNum(lv.pts)} / ${fmtNum(it)}" } ?: "${fmtNum(lv.pts)} flammes", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
             }
-            Bar(lv.pct * 100, height = 10.dp, color = cols.last())
+            Bar(lv.pct * 100, height = 14.dp)
             Muted(lv.next?.let { "Encore ${fmtNum(it - lv.pts)} flammes pour « ${lv.nextName} » (${levelEta(it - lv.pts)})" } ?: "Niveau maximum atteint", small = true)
             // Les dix paliers : flammes allumées aux couleurs de chaque palier atteint
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                 for (t in 1..LEVEL_TIERS.size) Flame(if (t == lv.tier) 26.dp else 18.dp, dim = t > lv.tier, colors = tierColors(t))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Muted(lv.nextTierName?.let { "Palier ${lv.tierName} · ${Math.round(lv.tierPct * 100)} % vers ${it}" } ?: "Dernier palier atteint : ${lv.tierName}", Modifier.weight(1f), small = true, maxLines = 1)
                 Text("Paliers", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
-                Pi("chevronleft", Modifier.graphicsLayer { rotationZ = 180f }, size = 15.dp, tint = p.flameInk)
+                Pi("chevronright", size = 15.dp, tint = p.flameInk)
             }
+        }
+        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (pg.isGuest(u)) PButton("Créer un compte", { ui.push(Screen.Settings("account")) }, icon = "user", kind = "primary", small = true)
+            else PButton("Modifier le profil", { ui.push(Screen.Settings("account")) }, icon = "edit", small = true)
+            PButton("Apparence", { ui.push(Screen.Settings("appearance")) }, icon = "palette", small = true, kind = "ghost")
         }
     }
 }
 
+/** « Mon espace » : groupe à marche de raccourcis, chacun avec sa tuile d'icône néon (couleur fixe par entrée). */
 @Composable
-private fun HeroRound(icon: String, desc: String, onClick: () -> Unit) {
-    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    // Bouton de verre posé sur la bannière : voile blanc, reflet et liseré clair
-    Box(Modifier.bounce(inter, .84f).size(40.dp).background(Color.White.copy(alpha = .26f), CircleShape).sheen(CircleShape, false, .8f).clip(CircleShape)
-        .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center) {
-        Pi(icon, size = 18.dp, tint = Color.White)
+private fun MySpace(ui: AppState, u: User, caps: Int) {
+    val p = LocalPal.current; val pg = ui.pg
+    SetGroup("Mon espace", emoji = "🎒") {
+        SetItem("Boutique", null, "gift", p.type("measure").c, onClick = { ui.push(Screen.Shop) }) { Text("${fmtNum(pg.wallet(u))} 🔥", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = p.ink2) }
+        SetItem("Porte-monnaie", "Flammes gagnées et dépensées", "flameo", p.type("limit").c, onClick = { ui.open(Sheet.Wallet) })
+        SetItem("Badges", null, "medal", p.type("monthly").c, onClick = { ui.profileTab = "badges" })
+        SetItem("Statistiques", if (caps > 0) pl(caps, "objectif atteint", "objectifs atteints") else null, "trend", p.type("objective").c, onClick = { ui.push(Screen.Stats) })
+        SetItem("Ligue", null, "trophy", p.type("challenge").c, onClick = { ui.push(Screen.League) })
+        if (pg.socialOn(u)) SetItem("Amis", null, "users", p.type("period").c, onClick = { ui.nav("friends") })
+        if (pg.isAdmin(u)) SetItem("Modération", null, "shield", p.type("duel").c, onClick = { ui.nav("mod") })
+        SetItem("Réglages", null, "gear", p.type("program").c, onClick = { ui.push(Screen.Settings()) })
     }
 }
 
 /** Partage du profil en texte : pseudo, niveau et série. */
-private fun shareProfile(ctx: android.content.Context, ui: AppState, u: User, lv: Level) {
+fun shareProfile(ctx: android.content.Context, ui: AppState, u: User, lv: Level) {
     val st = ui.pg.globalStreak(u.id).n
     val text = tr("Rejoins-moi sur PepsGoal 🔥") + "\n" + (if (ui.pg.isGuest(u)) "" else "@${u.username} · ") + tr("Niveau ${lv.idx}, ${lv.name}") + " · " + tr("série de ${pl(st, "jour", "jours")}")
     val i = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
     try { ctx.startActivity(android.content.Intent.createChooser(i, tr("Partager mon profil")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {}
-}
-
-/** Tuile de chiffre : icône colorée, grand nombre, libellé. */
-@Composable
-private fun ProfileTile(value: String, label: String, icon: String, c: Color, modifier: Modifier, lit: Boolean = true) {
-    val p = LocalPal.current
-    Glass(modifier, pad = 10.dp, radius = 22.dp) {
-        // Pastille colorée (la flamme sur son halo), grand nombre, libellé : textes centrés et ajustés à la tuile
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            if (icon == "flameo") EmojiTileBox(c) { Flame(24.dp, dim = !lit) } else IconTile(icon, c.lift(.2f), c, 32.dp)
-            FitText(value, Modifier.fillMaxWidth(), size = 20, min = 12, weight = FontWeight.ExtraBold, family = Unbounded, align = androidx.compose.ui.text.style.TextAlign.Center)
-            FitText(label, Modifier.fillMaxWidth(), size = 11, min = 8, color = p.ink2, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Center)
-        }
-    }
-}
-
-/** Porte-monnaie : flammes à dépenser et accès à la boutique. */
-@Composable
-private fun WalletStrip(ui: AppState, u: User) {
-    val p = LocalPal.current; val pg = ui.pg
-    // Toucher le solde : détail du porte-monnaie ; le bouton « Boutique » ouvre la boutique
-    Glass(onClick = { ui.open(fr.pepsgoal.app.Sheet.Wallet) }, pad = 14.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            EmojiTileBox(p.flame, 46.dp) { Flame(30.dp) }
-            Column(Modifier.weight(1f)) {
-                // Le solde défile jusqu'à sa nouvelle valeur après un achat ou un bonus
-                val w = pg.wallet(u); val shown = remember { androidx.compose.animation.core.Animatable(w.toFloat()) }
-                LaunchedEffect(w) { if (p.motion) shown.snapTo(w.toFloat()) else shown.animateTo(w.toFloat(), androidx.compose.animation.core.tween(700)) }
-                FitText(fmtNum(shown.value.toInt()), size = 22, min = 14, weight = FontWeight.ExtraBold, family = Unbounded)
-                Muted("flammes à dépenser", small = true, maxLines = 1)
-            }
-            PButton("Boutique", { ui.push(Screen.Shop) }, icon = "star", kind = "primary", small = true)
-        }
-    }
 }
 
 /** Raccourci vers l'apparence (thème, fond, icône). */
