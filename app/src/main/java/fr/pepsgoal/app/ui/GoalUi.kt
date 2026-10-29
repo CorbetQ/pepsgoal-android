@@ -243,7 +243,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null, 
                 }
                 if (!done) bar?.let { Bar(it, Modifier.padding(top = 4.dp, end = 4.dp), c, 8.dp) }
             }
-            CheckButton(done && !running, just, ctlLabel, c, ctlDisabled, ctlIcon, running, ctlProg, ctlLong, ctlClick)
+            CheckButton(done && !running, just, ctlLabel, c, ctlDisabled, ctlIcon, running, ctlProg, ctlLong, onClick = ctlClick)
         }
     }
 }
