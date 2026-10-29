@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -59,6 +60,20 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: 
         if (Perf.flags.fx) { if (snow || fx == "snow") SnowFx() else if (fx.isNotEmpty() && !p.motion) ThemeFx(fx) }
         // Temps qu'il fait dehors, par-dessus le fond (réglage Apparence › Fond à la météo)
         if (weather != null && Perf.flags.fx && !p.motion) WeatherFx(weather)
+    }
+}
+
+/**
+ * Fond animé confiné (option Apparence › Fond animé) : dessiné seulement dans les 360 dp du haut de l'accueil, à 70 %
+ * (clair) ou 55 % (sombre) d'opacité, et fondu vers le fond à partir de la moitié. [frozen] : horloges arrêtées (page
+ * défilée, économie d'énergie, animations réduites). Les cartes, opaques, passent par-dessus.
+ */
+@Composable
+fun ConfinedBackdrop(frozen: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val p = LocalPal.current
+    Box(modifier.fillMaxSize().graphicsLayer { alpha = if (p.dark) .55f else .7f; compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent { drawContent(); drawRect(Brush.verticalGradient(0f to Color.Black, .5f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn) }) {
+        CompositionLocalProvider(LocalBgPaused provides (frozen || LocalBgPaused.current)) { content() }
     }
 }
 

@@ -75,11 +75,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.layout.onSizeChanged
-import dev.chrisbanes.haze.HazeInputScale
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
@@ -178,18 +173,17 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     val chosen = colorIdx?.let { fr.pepsgoal.core.ACCENTS.getOrNull(it) }?.c?.map(::hex)
     val cc = chosen?.get(1) ?: x?.let { hex((fr.pepsgoal.core.ACCENTS.getOrNull(it.avatar.color) ?: fr.pepsgoal.core.ACCENTS[0]).c[1]) } ?: p.flame
     // Les messages défilent sous un en-tête et une zone de saisie flottants, sur un voile givré progressif
-    val chatHaze = dev.chrisbanes.haze.rememberHazeState()
     val dn = androidx.compose.ui.platform.LocalDensity.current
     var headH by remember { mutableIntStateOf(0) }; var footH by remember { mutableIntStateOf(0) }
     remember(key) { Stagger.reset() }
     Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
-        Box(Modifier.fillMaxSize().then(if (!p.transp && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.hazeSource(chatHaze, zIndex = 0f) else Modifier)) {
+        Box(Modifier.fillMaxSize()) {
             if (bgKey != null) { SceneBg(bgKey, Modifier.fillMaxSize()); Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = .18f))) }
             else PageBackdrop(cc, chosen?.get(2) ?: p.pink)
         }
         Box(Modifier.fillMaxSize().imePadding()) {
             // Messages
-            LazyColumn(Modifier.fillMaxSize().then(if (!p.transp && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.hazeSource(chatHaze, zIndex = 1f) else Modifier), state,
+            LazyColumn(Modifier.fillMaxSize(), state,
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = with(dn) { headH.toDp() } + 14.dp, bottom = with(dn) { footH.toDp() } + 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 if (list.isEmpty()) item("empty") { Muted(if (g != null) "Aucun message pour l’instant. Dis bonjour au groupe !" else "Aucun message pour l'instant. Lance la conversation !", Modifier.fillMaxWidth().padding(top = 30.dp), small = true, center = true) }
                 var lastDay = ""; var lastFrom = ""
@@ -203,7 +197,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                     item("m:${m.id}") {
                         MessageRow(ui, m, mine, who, g?.members, reacts[m.id], menu == m.id, more,
                             selected = m.id in sel || (searching && hits.getOrNull(hit) == m.id), selecting = sel.isNotEmpty(), editedText = edits[m.id], gone = m.id in gone, accent = chosen,
-                            blur = if (!p.transp && !p.contrast && fr.pepsgoal.app.sys.Perf.flags.blur) chatHaze else null,
+                            blur = null,
                             onMenu = { sel = if (m.id in sel) sel - m.id else sel + m.id; more = false; Feedback.tick() }, onMore = { more = !more },
                             onTap = { if (sel.isNotEmpty()) sel = if (m.id in sel) sel - m.id else sel + m.id },
                             onReact = { e -> val on = reacts[m.id]?.get(e)?.contains(u.id) != true; sel = emptySet(); more = false; send(buildJsonObject { put("k", "react"); put("p", m.id); put("e", e); put("on", on) }, null, null) },
@@ -217,8 +211,6 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 }
                 item("end") { Spacer(Modifier.height(4.dp)) }
             }
-            EdgeFrost(Modifier.align(Alignment.TopCenter), top = true, cover = with(dn) { headH.toDp() }, haze = if (p.transp) null else chatHaze)
-            EdgeFrost(Modifier.align(Alignment.BottomCenter), top = false, cover = with(dn) { footH.toDp() }, haze = if (p.transp) null else chatHaze)
             Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { headH = it.height }) {
             // En-tête (ou barre d'actions pendant une sélection)
             if (sel.isNotEmpty()) {
@@ -427,9 +419,8 @@ private fun MessageRow(
             else -> SolidColor(if (blur != null) p.glass.copy(alpha = maxOf(p.glass.alpha, .5f)) else p.glassStrong)
         }
         // Flou de l'arrière-plan sous la bulle (les calques de messages ne sont jamais floutés, seulement le fond)
-        val frost = if (blur == null || gone || bare) Modifier else Modifier.hazeEffect(blur, HazeStyle(backgroundColor = p.bg, tints = emptyList(), blurRadius = 22.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.glassStrong))) {
-            inputScale = HazeInputScale.Fixed(.5f)
-        }
+        // Aucun flou sous les bulles : aplats seulement
+        val frost = Modifier
         Column(Modifier.widthIn(max = 300.dp).msgEnter(mine).shadow((if (p.transp || bare) 0.dp else 6.dp).ifShadows(), shape, ambientColor = Color(0x3328186E), spotColor = if (mine) p.flame.copy(alpha = .5f) else Color(0x4428186E))
             .clip(shape).then(frost).then(if (bare) Modifier else Modifier.background(if (p.contrast) SolidColor(p.glassStrong) else bg))
             .then(if (p.contrast || p.transp || bare) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .06f else .22f), .5f to Color.Transparent))).then(if (mentioned) Modifier.border(2.dp, p.flame2, shape) else Modifier)

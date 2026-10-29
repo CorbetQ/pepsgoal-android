@@ -27,6 +27,8 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.fmtDate
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import fr.pepsgoal.core.parseYmd
 import fr.pepsgoal.core.today
 import fr.pepsgoal.core.todayDate
@@ -47,23 +49,24 @@ fun SheetHost(ui: AppState) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // La fenêtre s'arrête sous la barre d'état ; ses cartes n'ont pas de flou (autre fenêtre que l'arrière-plan)
     val slot = remember(s) { FootSlot() }
-    ModalBottomSheet(onDismissRequest = { ui.back() }, modifier = Modifier.statusBarsPadding(), sheetState = state, containerColor = if (p.transp || p.contrast) p.bg else p.glassStrong.copy(alpha = 1f), contentColor = p.ink,
-        scrimColor = p.scrim, shape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp),
-        // Poignée bien visible : on comprend qu'un glissement vers le bas ferme la fenêtre
-        dragHandle = { Box(Modifier.padding(top = 10.dp, bottom = 2.dp).size(44.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink3.copy(alpha = .5f))) }) {
+    ModalBottomSheet(onDismissRequest = { ui.back() }, modifier = Modifier.statusBarsPadding(), sheetState = state, containerColor = p.bg, contentColor = p.ink,
+        scrimColor = p.scrim, shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        // Fiche d'objectif : la poignée est dessinée dans son bandeau néon ; ailleurs, poignée de 40 × 5 dp
+        dragHandle = if (s is Sheet.Goal) null else ({ Box(Modifier.padding(top = 10.dp, bottom = 2.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink3)) })) {
         key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true, LocalFootSlot provides slot) {
             val foot = slot.content
             // Contenu d'une fenêtre (ou de l'étape suivante dans la même fenêtre) : fondu et léger glissement vers le haut
             val shown = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else 0f) }
-            LaunchedEffect(Unit) { if (shown.value < 1f) shown.animateTo(1f, androidx.compose.animation.core.tween(220, easing = Motion.Emphasized)) }
-            // Lumière en haut de la fenêtre : lavis de l'accent et reflet du bord, comme une plaque de verre
+            LaunchedEffect(Unit) { if (shown.value < 1f) shown.animateTo(1f, Motion.sheet()) }
             Column(Modifier.fillMaxWidth().imePadding().graphicsLayer { alpha = shown.value.coerceIn(0f, 1f); translationY = (1f - shown.value) * 18.dp.toPx() }) {
+                // Fiche d'objectif : le bandeau néon va jusqu'aux bords ; son contenu garde les marges de 16 dp
+                val goal = s is Sheet.Goal
                 Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()).then(if (foot == null) Modifier.navigationBarsPadding() else Modifier)
-                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = if (foot == null) 24.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    .padding(start = if (goal) 0.dp else 16.dp, end = if (goal) 0.dp else 16.dp, top = if (goal) 0.dp else 8.dp, bottom = if (foot == null) 24.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SheetBody(ui, s)
                 }
                 // Boutons d'action toujours visibles en bas, même quand le contenu défile
-                if (foot != null) Row(Modifier.fillMaxWidth().drawBehind { drawRect(p.line, size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx())) }
+                if (foot != null) Row(Modifier.fillMaxWidth().drawBehind { drawRect(p.surface2, size = androidx.compose.ui.geometry.Size(size.width, 2.dp.toPx())) }
                     .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) { foot() }
             }
         } }
@@ -120,16 +123,17 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.Quotes -> fr.pepsgoal.app.ui.screens.QuotesSheet(ui)
         is Sheet.Wallet -> fr.pepsgoal.app.ui.screens.WalletSheet(ui)
         is Sheet.Levels -> fr.pepsgoal.app.ui.screens.LevelsSheet(ui)
+        is Sheet.Streak -> fr.pepsgoal.app.ui.screens.StreakSheet(ui)
     }
 }
 
-/** En-tête d'une fenêtre : titre et bouton fermer. */
+/** En-tête d'une fenêtre : titre en Unbounded 22 (2 lignes au plus) et bouton rond fermer. */
 @Composable
 fun SheetHead(ui: AppState, title: String, right: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, Modifier.weight(1f).semantics { heading() }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, lineHeight = 26.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         right()
-        IconBtn("x", "Fermer", { ui.close() }, size = 38.dp)
+        RoundBtn("x", "Fermer", { ui.close() })
     }
 }
 

@@ -44,9 +44,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.SolidColor
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Sheet
@@ -73,11 +70,9 @@ private val INK = Color(0xFF10102A)
 fun FullscreenHost(ui: AppState) {
     val f = ui.fs ?: return
     BackHandler { ui.closeFs() }
-    val p = LocalPal.current; val h = LocalHaze.current
-    // Fond : l'écran derrière est flouté (verre dépoli), ou masqué par une teinte opaque si la transparence est réduite
-    val back = if (h != null && !p.transp && f !is Fs.Stories && fr.pepsgoal.app.sys.Perf.flags.blur)
-        Modifier.hazeEffect(h, HazeStyle(backgroundColor = p.bg, tints = listOf(HazeTint(p.bg.copy(alpha = .6f))), blurRadius = 40.dp, noiseFactor = 0f, fallbackTint = HazeTint(p.bg)))
-    else Modifier.background(p.bg)
+    val p = LocalPal.current
+    // Fond opaque (aucun flou de l'écran derrière)
+    val back = Modifier.background(p.bg)
     Box(Modifier.fillMaxSize().then(back).pointerInput(Unit) { detectTapGestures { } }) {
         when (f) {
             is Fs.Celebrate -> when (val c = f.c) {
@@ -457,7 +452,7 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
         val ok = pst is coil3.compose.AsyncImagePainter.State.Success
         val glow by animateFloatAsState(if (ok || s.kind != "photo") 1f else 0f, tween(500), label = "glow")
         if (s.kind == "photo" && ok) Image(painter, null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.35f; scaleY = 1.35f; alpha = .85f * glow }
-            .then(if (android.os.Build.VERSION.SDK_INT >= 31 && fr.pepsgoal.app.sys.Perf.flags.blur) Modifier.blur(90.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded) else Modifier.graphicsLayer { alpha = .35f * glow }), contentScale = ContentScale.Crop)
+            .graphicsLayer { alpha = .35f * glow }, contentScale = ContentScale.Crop)
         else if (s.kind != "photo") Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(p.flame.copy(alpha = .45f), p.pink.copy(alpha = .2f), Color.Transparent))))
         // Voile sombre pour garder l'en-tête et les boutons lisibles
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .55f), .25f to Color.Black.copy(alpha = .15f), .75f to Color.Black.copy(alpha = .15f), 1f to Color.Black.copy(alpha = .6f))))

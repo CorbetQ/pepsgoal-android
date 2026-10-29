@@ -461,6 +461,14 @@ private fun EffectsSection(ui: AppState, u: User) {
     val season = Season.now()
     Glass {
         Head("sparkle", "Effets et saisons")
+        // Fond animé : jamais derrière toute l'application, seulement en haut de l'accueil (360 dp, fondu)
+        Text(tr("Fond animé"), Modifier.padding(top = 4.dp), fontWeight = FontWeight.ExtraBold)
+        Muted("Ton fond (scène, ciel, ambiance) derrière l’en-tête de l’accueil. Sinon, deux formes colorées immobiles.", Modifier.padding(bottom = 6.dp), small = true)
+        Seg(listOf("off" to "Non", "on" to "Haut de l’accueil"), if (fr.pepsgoal.app.ui.bgTopOn(ui)) "on" else "off", { ui.prefs.bgTop = it; ui.themeTick++; ui.bump() }, Modifier.fillMaxWidth())
+        Text(tr("Animations"), Modifier.padding(top = 12.dp), fontWeight = FontWeight.ExtraBold)
+        Muted("Rebonds, flamme qui danse et confettis ; « Réduites » les remplace par des fondus.", Modifier.padding(bottom = 6.dp), small = true)
+        Seg(listOf(false to "Complètes", true to "Réduites"), ui.prefs.motion, { ui.prefs.motion = it; ui.themeTick++ }, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(6.dp))
         SetRow("Couleurs de saison", "Halloween, fêtes (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${Season.LABELS[it]}." } ?: ""}") {
             PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
         }
@@ -502,22 +510,15 @@ private fun AdvancedSection(ui: AppState, u: User) {
     val p = LocalPal.current; val s = u.settings
     var open by remember { mutableStateOf(false) }
     val rot by animateFloatAsState(if (open) 90f else 0f, label = "adv")
-    val off = ui.prefs.transp || ui.prefs.contrast
     Glass(Modifier.animateContentSize()) {
         Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable(onClickLabel = if (open) "Replier" else "Déplier") { open = !open }, verticalAlignment = Alignment.CenterVertically) {
-            Head("gear", "Réglages avancés", "Verre givré, carte « En cours »", Modifier.weight(1f))
+            Head("gear", "Réglages avancés", "Carte « En cours »", Modifier.weight(1f))
             Pi("chevronleft", Modifier.rotate(180f + rot), size = 18.dp, tint = p.ink2)
         }
         if (open) {
             SetRow("Carte « En cours » sur l’accueil", "Deadlines, projets, objectifs chiffrés et défis en cours") {
                 PSwitch(!s.hideOngoing, { s.hideOngoing = !it; commit(ui); ui.toast(if (it) "Carte « En cours » affichée sur l’accueil." else "Carte « En cours » masquée.", "list") })
             }
-            Text(tr("Flou du verre givré"), Modifier.padding(top = 8.dp), fontWeight = FontWeight.Bold)
-            Muted(if (off) "Sans effet : la transparence est désactivée dans Accessibilité." else "Intensité du flou de l’arrière-plan derrière les panneaux", Modifier.padding(bottom = 6.dp), small = true)
-            SegFill(BLURS, s.glassBlur, { k -> s.glassBlur = k; commit(ui) }, enabled = !off)
-            Text(tr("Opacité du verre givré"), Modifier.padding(top = 12.dp), fontWeight = FontWeight.Bold)
-            Muted(if (off) "Sans effet : la transparence est désactivée dans Accessibilité." else "« Faible » laisse voir l’arrière-plan, « Fort » rend les panneaux presque opaques. Propre à cet appareil.", Modifier.padding(bottom = 6.dp), small = true)
-            SegFill(listOf("low" to "Faible", "mid" to "Moyen", "high" to "Fort"), ui.prefs.glassOpacity, { ui.prefs.glassOpacity = it; ui.themeTick++ }, enabled = !off)
         }
     }
 }

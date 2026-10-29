@@ -32,6 +32,11 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
+import fr.pepsgoal.app.ui.theme.PLUM
+import fr.pepsgoal.app.ui.theme.step
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.animation.core.tween
 import kotlinx.coroutines.launch
 import fr.pepsgoal.core.*
 
@@ -42,7 +47,7 @@ fun ScreenList(gap: androidx.compose.ui.unit.Dp = 14.dp, content: androidx.compo
     val state = androidx.compose.foundation.lazy.rememberLazyListState()
     val tap = TabReTap.n
     LaunchedEffect(tap) { if (tap > 0 && (state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 0)) state.animateScrollToItem(0) }
-    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 14.dp, bottom = bars.calculateBottomPadding() + 86.dp),
+    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 10.dp, bottom = bars.calculateBottomPadding() + 80.dp),
         verticalArrangement = Arrangement.spacedBy(gap), content = content)
 }
 
@@ -60,12 +65,15 @@ fun TodayScreen(ui: AppState) {
     // Disposition choisie (Paramètres › Accueil) : écart entre les cartes et marge intérieure
     val layout = ui.prefs.homeLayout
     var collapsed by remember { mutableStateOf(ui.prefs.raw.getStringSet("homeCollapsed", emptySet())?.toSet() ?: emptySet()) }
-    CompositionLocalProvider(LocalGlassPad provides when (layout) { "compact" -> 13.dp; "airy" -> 24.dp; else -> 18.dp }) {
-    ScreenList(gap = when (layout) { "compact" -> 8.dp; "airy" -> 22.dp; else -> 14.dp }) {
+    val toggle = { k: String -> collapsed = if (k in collapsed) collapsed - k else collapsed + k; ui.prefs.raw.edit().putStringSet("homeCollapsed", collapsed).apply() }
+    val due = rememberDue(ui, plan)
+    CompositionLocalProvider(LocalGlassPad provides when (layout) { "compact" -> 13.dp; "airy" -> 22.dp; else -> 16.dp }) {
+    // Ordre fixe : carte Série, objectifs groupés par moment, puis les modules
+    ScreenList(gap = when (layout) { "compact" -> 8.dp; "airy" -> 14.dp; else -> 10.dp }) {
         if (!hasGoals) {
-            item("hero") { Hero(ui) }
-            item("aipromo") { AiPromoCard(ui) }
+            item("hero") { HomeHeader(ui, plan, st, lv) }
             item("first") { Glass { CardHead("Crée ton premier objectif", emoji = "🚀"); Muted("Choisis ce que tu veux suivre. Tu pourras le valider ici chaque jour."); Spacer(Modifier.height(12.dp)); Starters(ui) } }
+            item("aipromo") { AiPromoCard(ui) }
             item("wx") { WeatherCard(ui) }
             return@ScreenList
         }
@@ -75,8 +83,8 @@ fun TodayScreen(ui: AppState) {
             // Le matin : rattrapage des oublis de la veille
             item("catchup") { CatchUpCard(ui) }
             // Accueil classique : toutes les cartes, dans l'ordre choisi (Paramètres › Accueil)
-            for (k in cards) homeCard(ui, k, plan, lv)
-        } else simpleHome(ui, cards, plan, st, lv, collapsed) { k -> collapsed = if (k in collapsed) collapsed - k else collapsed + k; ui.prefs.raw.edit().putStringSet("homeCollapsed", collapsed).apply() }
+            for (k in cards) homeCard(ui, k, plan, lv, due, collapsed, toggle)
+        } else simpleHome(ui, cards, plan, st, lv, collapsed, due, toggle)
         item("custom") {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 PButton("Personnaliser l’accueil", { ui.push(Screen.Settings("home")) }, icon = "edit", kind = "ghost", small = true)
@@ -87,11 +95,11 @@ fun TodayScreen(ui: AppState) {
 }
 
 /** Une carte de l'accueil, par sa clé (voir HOME_CARDS). */
-private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState, k: String, plan: Plan, lv: Level) {
+private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState, k: String, plan: Plan, lv: Level, due: DueState, collapsed: Set<String>, toggle: (String) -> Unit) {
     val pg = ui.pg; val u = pg.me() ?: return
     val done = plan.due.count { it.done }; val total = plan.due.size
     when (k) {
-        "hero" -> { item("hero") { Hero(ui) }; item("ctx") { ContextCards(ui) } }
+        "hero" -> { item("hero") { HomeHeader(ui, plan, pg.globalStreak(u.id), lv) }; item("ctx") { ContextCards(ui) } }
         "aipromo" -> item("aipromo") { AiPromoCard(ui) }
         "day" -> item("day") {
             Glass {
@@ -131,7 +139,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
         "mood" -> item("mood") { MoodCard(ui) }
         "wx" -> item("wx") { WeatherCard(ui) }
         "board" -> if (pg.socialOn(u)) item("board") { Board(ui) }
-        "due" -> item("due") { DueCard(ui, plan, done, total) }
+        "due" -> dueItems(ui, due, "done" !in collapsed) { toggle("done") }
         "verify" -> {
             val verify = pg.db.checkins.filter { c -> c.pending && pg.goalById(c.goalId)?.buddy == u.id }
             if (verify.isNotEmpty()) item("verify") {
@@ -170,11 +178,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
  * les cartes ponctuelles en tuiles « À la une » ; le reste rangé en sections repliables. Aucune carte n'est perdue :
  * chacune garde son interrupteur dans Paramètres › Accueil.
  */
-private fun androidx.compose.foundation.lazy.LazyListScope.simpleHome(ui: AppState, cards: List<String>, plan: Plan, st: Streak, lv: Level, collapsed: Set<String>, toggle: (String) -> Unit) {
+private fun androidx.compose.foundation.lazy.LazyListScope.simpleHome(ui: AppState, cards: List<String>, plan: Plan, st: Streak, lv: Level, collapsed: Set<String>, due: DueState, toggle: (String) -> Unit) {
     val pg = ui.pg; val u = pg.me() ?: return
-    if ("hero" in cards || "day" in cards) { item("hero") { HomeHeader(ui, plan, st, lv) }; item("ctx") { ContextCards(ui) } }
-    if ("aipromo" in cards) homeCard(ui, "aipromo", plan, lv)
-    for (k in listOf("due", "verify", "ongoing")) if (k in cards) homeCard(ui, k, plan, lv)
+    if ("hero" in cards || "day" in cards) item("hero") { HomeHeader(ui, plan, st, lv) }
+    for (k in listOf("due", "verify", "ongoing")) if (k in cards) homeCard(ui, k, plan, lv, due, collapsed, toggle)
+    // Modules secondaires, sous la liste
+    if ("hero" in cards || "day" in cards) { item("ctx") { ContextCards(ui) }; item("month") { MonthFocusCard(ui) } }
+    if ("aipromo" in cards) homeCard(ui, "aipromo", plan, lv, due, collapsed, toggle)
     val moments = cards.filter { it in MOMENT_KEYS }
     item("moments") {
         val tiles = rememberMoments(ui, moments)
@@ -193,42 +203,19 @@ private fun androidx.compose.foundation.lazy.LazyListScope.simpleHome(ui: AppSta
     for ((id, head, keys) in sections) {
         val shown = keys.filter { it in cards }; if (shown.isEmpty()) continue
         item("sec:$id") { HomeSectionHead(head.first, head.second, id in collapsed) { toggle(id) } }
-        if (id !in collapsed) for (k in shown) homeCard(ui, k, plan, lv)
+        if (id !in collapsed) for (k in shown) homeCard(ui, k, plan, lv, due, collapsed, toggle)
     }
 }
 
-/** En-tête de l'accueil : date, salutation, message et flamme de la série. */
-@Composable
-private fun Hero(ui: AppState) {
-    val pg = ui.pg; val u = pg.me() ?: return; val st = pg.globalStreak(u.id); val p = LocalPal.current
-    val vac = pg.vacationOf()?.takeIf { today() >= it.first }
-    val msg = if (pg.isHardDay()) "Journée difficile 💛 : seuls tes essentiels comptent aujourd’hui. Fais ce que tu peux, c’est déjà beaucoup."
-        else if (vac != null) "En vacances jusqu’au ${fmtDate(vac.second)} 🏖️ : tes séries sont en pause, profite à fond."
-        else if (pg.isRest()) "Jour de repos 😴 : ta série est protégée aujourd’hui, sans dépenser de gel. Valide quand même si l’envie te prend."
-        else if (p.easy) (if (st.lit) "Bravo, tu as validé aujourd’hui." else "Valide un objectif aujourd’hui pour garder ta série.")
-        else if (st.lit) "Ta flamme brûle aujourd'hui. Continue sur ta lancée." else if (st.n > 0) "Valide une action avant minuit pour prolonger ta série de ${pl(st.n, "jour", "jours")}." else "Valide ta première action pour allumer ta flamme."
-    val compact = ui.prefs.homeLayout == "compact"
-    Glass(strong = false, pad = if (compact) 14.dp else if (ui.prefs.homeLayout == "airy") 26.dp else 20.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 6.dp)) {
-                Eyebrow(cap(weekdayLongDate(todayDate())))
-                Text("Salut ${first(u.name)}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (compact) 20.sp else 26.sp)
-                if (!compact) Muted(msg)
-            }
-            Box(Modifier.graphicsLayer { val k = if (compact) .62f else 1f; scaleX = k; scaleY = k }) { HeroFlame(st.n, st.lit) { ui.egg("tickle", "Hé ! Arrête, ça chatouille ! 🔥", "confetti") } }
-        }
-        if (!compact) { Spacer(Modifier.height(12.dp)); WeekStrip(pg, u.id) }
-    }
-}
-
+/**
+ * Flamme de la série avec son nombre de jours (tutoriel, feuilles) : immobile (la flamme ne danse que sur la carte
+ * Série) ; chatouilles conservées (surprise après 7 touchers).
+ */
 @Composable
 fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
     val p = LocalPal.current
-    // Flamme qui respire, à 15 images par seconde
-    val ph = slowPhaseState(2800, 15)
     val count = remember { Animatable(0f) }
     LaunchedEffect(n) { if (p.motion) count.snapTo(n.toFloat()) else count.animateTo(n.toFloat(), tween(minOf(1500, 600 + n * 6), easing = FastOutSlowInEasing)) }
-    // Chatouilles : chaque toucher fait gigoter la flamme ; 7 touchers rapprochés, elle bondit (surprise)
     val wiggle = remember { Animatable(0f) }; val jump = remember { Animatable(0f) }
     val taps = remember { mutableListOf<Long>() }; val scope = rememberCoroutineScope()
     val tickle = if (onTickle == null) Modifier else Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClickLabel = "Flamme") {
@@ -240,14 +227,13 @@ fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) {
         Box(tickle.graphicsLayer {
-            val f = if (lit) 1f + .03f * (1f - kotlin.math.cos(ph.value * 2f * kotlin.math.PI.toFloat())) else 1f
             val j = kotlin.math.sin(jump.value * kotlin.math.PI.toFloat())
-            scaleX = f * (1f + .25f * j); scaleY = f * (1f + .25f * j); translationY = -j * 40.dp.toPx(); rotationZ = wiggle.value * 12f + jump.value * 360f
+            scaleX = 1f + .25f * j; scaleY = 1f + .25f * j; translationY = -j * 40.dp.toPx(); rotationZ = wiggle.value * 12f + jump.value * 360f
             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
         }) { Flame(84.dp, dim = !lit) }
         }
         Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
-        Text(if (n > 1) "jours de série" else "jour de série", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        Text(if (n > 1) "jours de série" else "jour de série", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
     }
 }
 
@@ -261,10 +247,11 @@ fun Starters(ui: AppState) {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { (k, l, d) ->
                     val tc = p.type(if (k == "more") "measure" else k)
-                    val tile = smoothShape(22.dp)
-                    Column(Modifier.weight(1f).fillMaxHeight().clip(tile).background(Brush.linearGradient(listOf(tc.c.copy(alpha = .3f), tc.c.copy(alpha = .1f))), tile).sheen(tile, p.dark, .7f)
-                        .clickable { ui.open(if (k == "more") Sheet.GoalForm() else Sheet.GoalForm(preType = k)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        IconTile(if (k == "more") "plus" else typeInfo(k).icon, tc.c.lift(.15f), tc.c, 34.dp); Text(l, fontWeight = FontWeight.ExtraBold); Muted(d, small = true)
+                    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val press = rememberPress(inter)
+                    Column(Modifier.weight(1f).fillMaxHeight().chunk(androidx.compose.ui.graphics.lerp(p.surface, tc.c, if (p.dark) .22f else .2f), androidx.compose.ui.graphics.lerp(p.edge, tc.c, .55f), 22.dp, 4.dp, 2.dp, press)
+                        .clip(RoundedCornerShape(20.dp)).springClick(inter, role = androidx.compose.ui.semantics.Role.Button) { ui.open(if (k == "more") Sheet.GoalForm() else Sheet.GoalForm(preType = k)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        IconTile(if (k == "more") "plus" else typeInfo(k).icon, tc.c, tc.c, 38.dp); Text(l, fontWeight = FontWeight.ExtraBold); Muted(d, small = true)
                     }
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -280,7 +267,7 @@ private fun Board(ui: AppState) {
     Glass {
         CardHead("Classement des flammes", emoji = "🏆") { PButton("Amis", { ui.nav("friends") }, kind = "ghost", small = true) }
         if (board.size > 1) board.forEachIndexed { i, (x, n) ->
-            Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(if (x.id == u.id) Brush.horizontalGradient(listOf(p.flame.copy(alpha = .22f), p.pink.copy(alpha = .06f))) else androidx.compose.ui.graphics.SolidColor(Color.Transparent)).clickable { if (x.id != u.id) ui.open(Sheet.User(x.id)) }.padding(8.dp),
+            Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(if (x.id == u.id) androidx.compose.ui.graphics.lerp(p.surface, p.flame, .18f) else Color.Transparent).clickable { if (x.id != u.id) ui.open(Sheet.User(x.id)) }.padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (i < 3) Emoji(listOf("🥇", "🥈", "🥉")[i], 22.dp) else Text("${i + 1}", fontFamily = Unbounded, fontWeight = FontWeight.Bold, color = p.ink3, modifier = Modifier.width(22.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 Av(x, 30.dp)
@@ -301,19 +288,18 @@ fun RecapCard(ui: AppState) {
                 val r = Recaps.range(k)
                 val name = if (r.past) mapOf("week" to "Semaine passée", "month" to "Mois passé", "year" to "Année passée")[k]!! else l
                 val g = SBG[listOf(0, 4, 1)[i]].map(::hex)
-                val gph = if (r.past) slowPhase(3200, 12) else 0f
-                val glow = object { val value: Float get() = .5f - .5f * kotlin.math.cos(gph * 2f * kotlin.math.PI.toFloat()) }
-                val tile = smoothShape(22.dp)
-                Column(Modifier.weight(1f).fillMaxHeight().candy(tile, g, p, elevation = 8.dp).clip(tile)
-                    .then(if (r.past) Modifier.border((2 + glow.value * 2).dp, Color.White.copy(alpha = .5f + glow.value * .4f), tile) else Modifier)
-                    .clickable { val (sl, st) = Recaps.slides(pg, pg.meId(), k); ui.fs = Fs.Recap(k, sl, st) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    if (r.past) Text("J+1", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF10102A), modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = .7f)).padding(horizontal = 6.dp, vertical = 1.dp))
-                    Pi("star", tint = Color(0xFF10102A))
-                    FitText(name, size = 14, min = 9, color = Color(0xFF10102A), weight = FontWeight.ExtraBold)
+                val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val press = rememberPress(inter)
+                val c0 = vivid(g.last())
+                Column(Modifier.weight(1f).fillMaxHeight().chunk(c0, c0.step(), 22.dp, 4.dp, 0.dp, press).clip(RoundedCornerShape(22.dp))
+                    .springClick(inter, role = androidx.compose.ui.semantics.Role.Button) { val (sl, st) = Recaps.slides(pg, pg.meId(), k); ui.fs = Fs.Recap(k, sl, st) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    if (r.past) Text("J+1", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = .7f)).padding(horizontal = 6.dp, vertical = 1.dp))
+                    Pi("star", tint = PLUM)
+                    FitText(name, size = 14, min = 9, color = PLUM, weight = FontWeight.ExtraBold)
                     val n = Recaps.countIn(pg, pg.meId(), k)
-                    Text("$n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF10102A))
-                    FitText(if (n > 1) "validations" else "validation", size = 12, min = 8, color = Color(0xFF10102A).copy(alpha = .8f))
-                    if (r.past) Text("bilan complet, aujourd’hui", fontSize = 11.sp, color = Color(0xFF10102A).copy(alpha = .75f))
+                    Text("$n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = PLUM)
+                    FitText(if (n > 1) "validations" else "validation", size = 12, min = 8, color = PLUM.copy(alpha = .8f))
+                    if (r.past) Text("bilan complet, aujourd’hui", fontSize = 11.sp, color = PLUM.copy(alpha = .75f))
                 }
             }
         }
@@ -351,7 +337,7 @@ fun WeatherCard(ui: AppState) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             w.daily.drop(1).take(3).forEach { d ->
                 val x = Weather.wmo(d.code)
-                Column(Modifier.weight(1f).clip(smoothShape(18.dp)).background(if (p.dark) Color.White.copy(alpha = .06f) else Color.White.copy(alpha = .45f)).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(p.surface2).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(cap(parseYmd(d.day).dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, FR).removeSuffix(".")), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Emoji(x.emoji, 26.dp)
                     Text("${Weather.temp(d.max)}  ${Weather.temp(d.min)}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -363,13 +349,22 @@ fun WeatherCard(ui: AppState) {
     }
 }
 
+/** Objectifs du jour, prêts à être affichés : groupés par moment, coach IA, reportés. */
+class DueState(
+    val sections: List<Pair<String, List<DueItem>>>, val doneList: List<DueItem>, val total: Int,
+    val reasons: Map<String, String>, val ai: Boolean, val aiPending: Boolean, val later: Int
+)
+
+/** Sections par moment : emoji et titre. */
+private val MOMENTS = listOf("morning" to ("☀️" to "Ce matin"), "afternoon" to ("🌤️" to "Cet après-midi"), "evening" to ("🌙" to "Ce soir"), "day" to ("🌈" to "Dans la journée"))
+
 /**
- * « À valider aujourd'hui ». Avec le coach IA (recommandations activées), la liste est réordonnée selon l'heure et la
- * météo : les objectifs conseillés passent en tête avec la raison du coach, et la carte prend le contour IA.
+ * Prépare « À valider aujourd'hui ». Avec le coach IA (recommandations activées), chaque section est réordonnée selon
+ * l'heure et la météo, avec la raison du coach. Un objectif validé reste 1,5 s à sa place avant de glisser vers « Fait ».
  */
 @Composable
-private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
-    val pg = ui.pg; val p = LocalPal.current; val ctx = androidx.compose.ui.platform.LocalContext.current
+fun rememberDue(ui: AppState, plan: Plan): DueState {
+    val pg = ui.pg; val ctx = androidx.compose.ui.platform.LocalContext.current
     val ai = fr.pepsgoal.app.ai.LocalAi.on(ctx, ui.prefs.aiRecommend) && plan.due.any { !it.done }
     val rk = if (ai) fr.pepsgoal.app.ai.Coach.recoKey(ctx) else ""
     // Recommandations mémorisées : affichées tout de suite, recalculées seulement quand le contexte change
@@ -377,42 +372,104 @@ private fun DueCard(ui: AppState, plan: Plan, done: Int, total: Int) {
     if (ai) LaunchedEffect(rk) { if (picks == null) picks = fr.pepsgoal.app.ai.Coach.recommend(ctx) }
     val reasons = picks?.associate { it.goal.id to it.reason } ?: emptyMap()
     val order = picks?.map { it.goal.id } ?: emptyList()
+    // Validation qui vient d'avoir lieu : la ligne reste en place 1,5 s (case qui « pop », teinte), puis glisse
+    var hold by remember { mutableStateOf(emptySet<String>()) }
+    val just = pg.justDone
+    LaunchedEffect(just) { if (just != null) { hold = hold + just; kotlinx.coroutines.delay(1500); hold = hold - just } }
     val later = Snooze.ids(ui)
-    val sorted = plan.due.filter { it.g.id !in later || it.done }.sortedWith(compareBy<DueItem> { it.done }.thenBy { if (it.g.id in order) order.indexOf(it.g.id) else 99 }.thenByDescending { pg.isFav(it.g) })
-    val pulse = thinkingAlpha()
-    Glass(Modifier.animateContentSize(Motion.standard()), ai = ai) {
-        CardHead("À valider aujourd'hui", emoji = if (total > 0 && done == total) "🏆" else "🎯") { DayCount(done, total) }
-        if (ai) Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pi("sparkle", size = 15.dp, tint = p.flameInk)
-            Muted(if (picks == null) "Le coach trie tes objectifs selon l’heure et la météo…" else "Ordre conseillé par ton coach pour ce moment", if (picks == null) Modifier.alpha(pulse) else Modifier, small = true)
-        }
-        // Astuce affichée une fois : les gestes de balayage
-        if (ui.prefs.swipe && !ui.prefs.swipeHint && sorted.any { !it.done }) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(start = 10.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pi("hand", size = 18.dp, tint = p.flameInk)
-            Muted("Balaie un objectif vers la droite pour le valider, vers la gauche pour reporter, mettre en favori ou lancer un Focus.", Modifier.weight(1f).padding(vertical = 8.dp), small = true)
-            IconBtn("x", "Masquer l’astuce", { ui.prefs.swipeHint = true; ui.bump() }, plain = true, size = 36.dp)
-        }
-        if (total == 0) Empty("Rien de prévu aujourd'hui", "Profite de ta journée, ou ajoute une routine.", icon = "sun")
-        else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            sorted.forEach { d -> key(d.g.id) {
-                // Un objectif validé glisse vers le bas de la liste au lieu de sauter
-                Column(Modifier.animatePlacement()) {
-                    GoalRow(ui, d.g, d.done, d.meta)
-                    val why = reasons[d.g.id]
-                    if (why != null && !d.done) Row(Modifier.padding(start = 68.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Pi("sparkle", size = 13.dp, tint = p.flameInk); Muted(why, small = true, maxLines = 2)
-                    }
-                }
-            } }
-            if (later.isNotEmpty()) {
-                val n = plan.due.count { it.g.id in later && !it.done }
-                if (n > 0) Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pi("clock", size = 16.dp, tint = p.ink2)
-                    Muted(pl(n, "objectif reporté à demain", "objectifs reportés à demain"), Modifier.weight(1f), small = true)
-                    PButton("Remettre", { ui.prefs.snoozed = ""; ui.bump() }, kind = "ghost", small = true)
-                }
+    val shown = plan.due.filter { it.g.id !in later || it.done }
+    val sorted = shown.sortedWith(compareBy<DueItem> { if (it.g.id in order) order.indexOf(it.g.id) else 99 }.thenByDescending { pg.isFav(it.g) })
+    val open = sorted.filter { !it.done || it.g.id in hold }
+    val sections = MOMENTS.map { (k, _) -> k to open.filter { momentOf(pg, it.g) == k } }.filter { it.second.isNotEmpty() }
+    return DueState(sections, sorted.filter { it.done && it.g.id !in hold }, plan.due.size, reasons, ai, ai && picks == null,
+        plan.due.count { it.g.id in later && !it.done })
+}
+
+/**
+ * « À valider aujourd'hui » : sections ☀️ Ce matin, 🌤️ Cet après-midi, 🌙 Ce soir, 🌈 Dans la journée (sections vides
+ * masquées), lignes à marche espacées de 10 dp, puis ✅ Fait, repliée par défaut. Chaque ligne est un élément de la liste :
+ * elle glisse d'une section à l'autre.
+ */
+fun androidx.compose.foundation.lazy.LazyListScope.dueItems(ui: AppState, d: DueState, doneOpen: Boolean, toggleDone: () -> Unit) {
+    if (d.total == 0) {
+        item("due:empty") {
+            Glass {
+                Empty("Rien de prévu aujourd’hui", "Profite, ou ajoute une routine !", emoji = "🌴",
+                    action = { PButton("Ajouter une routine", { ui.open(Sheet.GoalForm(preType = "routine")) }, icon = "plus", kind = "primary") })
             }
+        }
+        return
+    }
+    // Astuce affichée une fois : les gestes de balayage
+    if (ui.prefs.swipe && !ui.prefs.swipeHint && d.sections.isNotEmpty()) item("due:hint") {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Note("Balaie un objectif vers la droite pour le valider, vers la gauche pour reporter, mettre en favori ou lancer un Focus.", "hand", Modifier.weight(1f))
+            IconBtn("x", "Masquer l’astuce", { ui.prefs.swipeHint = true; ui.bump() }, size = 36.dp)
+        }
+    }
+    d.sections.forEachIndexed { i, (k, list) ->
+        val (emoji, title) = MOMENTS.first { it.first == k }.second
+        item("sec:$k") {
+            SectionTitle(title, emoji, list.size, modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+                // Coach IA : une pilule « Ordre conseillé » dans le premier en-tête
+                if (i == 0 && d.ai) CoachPill(d.aiPending)
+            }
+        }
+        list.forEach { x -> item("g:" + x.g.id) { DueRow(ui, x, d.reasons[x.g.id]) } }
+    }
+    if (d.later > 0) item("due:later") {
+        Row(Modifier.fillMaxWidth().animateItem(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Emoji("⏰", 20.dp)
+            Muted(pl(d.later, "objectif reporté à demain", "objectifs reportés à demain"), Modifier.weight(1f), small = true)
+            PButton("Remettre", { ui.prefs.snoozed = ""; ui.bump() }, kind = "ghost", small = true)
+        }
+    }
+    if (d.doneList.isNotEmpty()) {
+        item("sec:done") { DoneHead(ui, d.doneList, doneOpen, toggleDone, Modifier.animateItem()) }
+        if (doneOpen) d.doneList.forEach { x -> item("g:" + x.g.id) { DueRow(ui, x, null) } }
+    }
+}
+
+/** Une ligne de la liste du jour, avec la raison du coach IA en dessous. */
+@Composable
+private fun androidx.compose.foundation.lazy.LazyItemScope.DueRow(ui: AppState, x: DueItem, why: String?) {
+    val p = LocalPal.current
+    Column(if (p.motion) Modifier else Modifier.animateItem(fadeInSpec = tween(150), placementSpec = Motion.move(), fadeOutSpec = tween(150))) {
+        GoalRow(ui, x.g, x.done, x.meta)
+        if (why != null && !x.done) Row(Modifier.padding(start = 70.dp, top = 6.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Emoji("✨", 14.dp); Muted(why, small = true, maxLines = 2)
+        }
+    }
+}
+
+/** Pilule ✨ du coach IA dans l'en-tête de section. */
+@Composable
+private fun CoachPill(pending: Boolean) {
+    val p = LocalPal.current
+    val pulse = thinkingAlpha()
+    Row(Modifier.graphicsLayer { alpha = if (pending) pulse else 1f }.clip(CircleShape).background(vivid(p.type("abstinence").c)).padding(horizontal = 9.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Emoji("✨", 14.dp); Text(if (pending) "Le coach trie…" else "Ordre conseillé", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, maxLines = 1)
+    }
+}
+
+/** Section « Fait » repliée : ligne à marche avec la pile des emojis faits ; un toucher la déplie. */
+@Composable
+private fun DoneHead(ui: AppState, list: List<DueItem>, open: Boolean, toggle: () -> Unit, modifier: Modifier) {
+    val p = LocalPal.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionTitle("Fait", "✅", list.size)
+        val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+        val press = rememberPress(inter)
+        Row(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(20.dp))
+            .springClick(inter, label = if (open) "Replier les objectifs faits" else "Déplier les objectifs faits", onClick = toggle)
+            .semantics { stateDescription = if (open) "déplié" else "replié" }.heightIn(min = 56.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
+                list.take(4).forEach { x -> Box(Modifier.size(34.dp).clip(CircleShape).background(vivid(p.type(x.g.type).c)).border(2.dp, p.surface, CircleShape), contentAlignment = Alignment.Center) { Emoji(x.g.shownIcon(), 22.dp) } }
+            }
+            Text(pl(list.size, "fait aujourd’hui", "faits aujourd’hui"), Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+            Pi("down", size = 18.dp, tint = p.ink2, modifier = Modifier.graphicsLayer { rotationZ = if (open) 180f else 0f })
         }
     }
 }
@@ -506,13 +563,11 @@ private fun ContextCards(ui: AppState) {
 @Composable
 fun WrappedCard(ui: AppState) {
     val pg = ui.pg; val r = remember { Recaps.wrappedRange() }; val year = parseYmd(r.s).year
-    val ph = slowPhase(3600, 12)
-    val shape = smoothShape(24.dp)
-    Column(Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(hex("#241552"), hex("#7A2A8A"), hex("#FF6A3A"))))
+    Column(Modifier.fillMaxWidth().chunk(Brush.linearGradient(listOf(hex("#241552"), hex("#5A1F6A"), hex("#8A2A50"))), hex("#120810"), 24.dp, 4.dp, 0.dp).clip(RoundedCornerShape(24.dp))
         .clickable(onClickLabel = "Ouvrir ma rétrospective") { val (sl, st) = Recaps.wrapped(pg, pg.meId()); ui.fs = Fs.Recap("year", sl, st) }.padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.graphicsLayer { val k = 1f + .06f * kotlin.math.sin(ph * 2f * kotlin.math.PI.toFloat()); scaleX = k; scaleY = k; rotationZ = 6f * kotlin.math.sin(ph * 2f * kotlin.math.PI.toFloat()) }) { Emoji("🎁", 46.dp) }
+            Box(Modifier.graphicsLayer { rotationZ = 8f }) { Emoji("🎁", 56.dp) }
             Column(Modifier.weight(1f)) {
                 Text("PEPSGOAL WRAPPED", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .8f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
                 Text("Ton année $year est prête", color = androidx.compose.ui.graphics.Color.White, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 19.sp)
@@ -522,15 +577,14 @@ fun WrappedCard(ui: AppState) {
     }
 }
 
-/** Compteur du jour (« 3/5 ») : pastille de l'accent, verte avec une coche quand tout est validé. */
+/** Compteur du jour (« 3/5 ») : pastille creusée, coche quand tout est validé. */
 @Composable
 fun DayCount(done: Int, total: Int) {
     val p = LocalPal.current
     val all = total > 0 && done == total
-    val c = if (all) p.ok else p.flame
-    Row(Modifier.clip(CircleShape).background(Brush.horizontalGradient(listOf(c.copy(alpha = .26f), c.copy(alpha = .12f)))).border(1.dp, c.copy(alpha = .35f), CircleShape).padding(horizontal = 10.dp, vertical = 4.dp),
+    Row(Modifier.clip(CircleShape).background(if (all) vivid(p.type("routine").c) else p.surface2).padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (all) Pi("check", size = 14.dp, tint = fr.pepsgoal.app.ui.theme.readable(c, p.card, 4.6f))
-        Text("$done/$total", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = fr.pepsgoal.app.ui.theme.readable(c, p.card, 4.6f))
+        if (all) Pi("check", size = 14.dp, tint = PLUM)
+        Text("$done/$total", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (all) PLUM else p.ink2)
     }
 }

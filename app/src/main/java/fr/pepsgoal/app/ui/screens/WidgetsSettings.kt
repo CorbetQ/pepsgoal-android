@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -100,7 +99,7 @@ private val FLAME = Brush.linearGradient(listOf(Color(0xFFFFB000), Color(0xFFFF4
 @Composable
 private fun Frame(dark: Boolean, w: Dp, content: @Composable ColumnScope.(WCol) -> Unit) {
     val c = WCol(dark); val shape = smoothShape(26.dp)
-    Column(Modifier.width(w).shadow(14.dp, shape).clip(shape).background(c.bg).border(1.dp, c.edge, shape).padding(12.dp)) { content(c) }
+    Column(Modifier.width(w).clip(shape).background(c.bg).border(1.dp, c.edge, shape).padding(12.dp)) { content(c) }
 }
 
 @Composable

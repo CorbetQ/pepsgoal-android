@@ -46,9 +46,10 @@ fun FriendsScreen(ui: AppState) {
         if (searching) { item("results") { SearchCard(ui, u) }; return@ScreenList }
         item("status") { StatusRow(ui) }
         if (incoming.isNotEmpty()) item("in") { RequestsCard(ui, incoming) }
-        item("tabs") {
-            Seg(listOf("friends" to (if (friends.isEmpty()) "Amis" else "Amis · ${friends.size}"), "msgs" to (if (unread > 0) "Messages · $unread" else "Messages"), "discover" to "Découvrir"),
-                ui.friendsTab, { ui.friendsTab = it }, Modifier.fillMaxWidth(), icons = listOf("users", "comment", "compass"))
+        // Messages : choisis dans le segmenté de Social ; ici, mes amis ou la découverte
+        if (ui.friendsTab != "msgs") item("tabs") {
+            Seg(listOf("friends" to (if (friends.isEmpty()) "Mes amis" else "Mes amis · ${friends.size}"), "discover" to "Découvrir"),
+                ui.friendsTab, { ui.friendsTab = it }, Modifier.fillMaxWidth(), icons = listOf("users", "compass"))
         }
         when (ui.friendsTab) {
             "msgs" -> item("msgs") { MessagesCard(ui, u, always = true) }
