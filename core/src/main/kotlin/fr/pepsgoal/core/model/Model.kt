@@ -75,7 +75,7 @@ class Settings(
     var morning: Reminder = Reminder(true, "08:30"),
     var evening: Reminder = Reminder(true, "20:30"),
     var browser: Boolean = false,
-    var bg: String = "blob",
+    var bg: String = "pop",
     var noSuggest: Boolean = false,
     var weather: Place? = null,
     var wxCard: Boolean = true,

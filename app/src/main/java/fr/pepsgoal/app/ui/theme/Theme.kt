@@ -106,9 +106,39 @@ data class Pal(
 ) {
     val accent get() = Brush.linearGradient(listOf(flame2, flame, pink))
     /** Rail des barres et anneaux. */
-    val rail: Color get() = if (dark && !contrast) Color(0xFF120B16) else surface2
+    val rail: Color get() = if (dark && !contrast) RAIL_NIGHT else surface2
     fun type(t: String) = types[t] ?: types.getValue("routine")
+
+    /* Jetons 8.1 « fond partout » */
+    /** Voile des feuilles : prune 32 % (clair) ou noir 50 % (sombre) ; la scène reste lisible au-dessus. */
+    val sheetScrim: Color get() = if (dark) SCRIM_SHEET_DARK else SCRIM_SHEET_LIGHT
+    /** Voile des dialogues : prune 45 % ou noir 62 %. */
+    val dialogScrim: Color get() = if (dark) SCRIM_DIALOG_DARK else SCRIM_DIALOG_LIGHT
+    /** Bord d'un champ ou d'un sélecteur ouvert, bulle choisie : la braise de la flamme. */
+    val focusEdge: Color get() = if (contrast) ink else EMBER
+    /** Fond des visionneuses de photos et de stories. */
+    val mediaBg: Color get() = Color.Black
+    /** Cinq niveaux pleins des cartes de chaleur (0 : creux, 4 : braise). */
+    fun heat(i: Int): Color = when {
+        contrast -> if (i <= 0) surface2 else lerp(surface, ink, .2f * i)
+        i <= 0 -> surface2; i == 1 -> lerp(surface, EMBER, .3f); i == 2 -> lerp(surface, EMBER, .55f); i == 3 -> lerp(surface, EMBER, .8f); else -> EMBER
+    }
+    /** Fond d'une ligne choisie (radio, option de menu) : la surface teintée du néon [c]. */
+    fun selTint(c: Color): Color = lerp(surface, c, if (dark) .16f else .14f)
 }
+
+/** Braise de la flamme (#FF4A12) : focus, carte de chaleur. */
+val EMBER = Color(0xFFFF4A12)
+/** Rail creusé en thème sombre. */
+val RAIL_NIGHT = Color(0xFF120B16)
+/** Prune très foncé : marche des toasts et des pastilles prune. */
+val PLUM_DEEP = Color(0xFF120810)
+/** Encre claire posée sur le prune (toasts, bulles de valeur). */
+val CREAM = Color(0xFFFFF4EC)
+private val SCRIM_SHEET_LIGHT = Color(0x522A1420)
+private val SCRIM_SHEET_DARK = Color(0x80000000)
+private val SCRIM_DIALOG_LIGHT = Color(0x732A1420)
+private val SCRIM_DIALOG_DARK = Color(0x9E000000)
 
 val LocalPal = staticCompositionLocalOf<Pal> { error("Pal") }
 

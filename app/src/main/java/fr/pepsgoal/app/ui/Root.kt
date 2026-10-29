@@ -81,8 +81,12 @@ val SOCIAL_TABS = setOf("feed", "friends")
 object Fx {
     /** Incrémenté pour lancer une gerbe de confettis (journée parfaite). */
     var confetti by mutableIntStateOf(0)
-    /** Défilement de la page ouverte (px), lu au dessin par la barre du haut. */
+    /** Défilement de l'onglet ouvert (px), lu au dessin par la barre compacte et la parallaxe du fond. */
     var scroll by mutableFloatStateOf(0f)
+    /** Défilement de la page poussée au-dessus des onglets (px). */
+    var pageScroll by mutableFloatStateOf(0f)
+    /** Une liste défile (et 500 ms après) : l'horloge de la scène est figée. */
+    var scrolling by mutableStateOf(false)
     /** Dernier onglet ouvert dans Social. */
     var lastSocial = "feed"
 }
@@ -201,6 +205,9 @@ fun PepsRoot(ui: AppState) {
                 } }
                 SheetHost(ui)
                 FullscreenHost(ui)
+                // Dialogues et sélecteurs (date, heure) : au-dessus de tout ; Retour les ferme en premier
+                OverlayHost()
+                if (Overlays.open) androidx.activity.compose.BackHandler { Overlays.back() }
                 EggOverlay(ui)
                 Toasts(ui)
                 Sparks(ui)
@@ -271,14 +278,8 @@ private fun Modifier.grayscale() = this.drawWithContent {
     drawIntoCanvas { c -> c.saveLayer(androidx.compose.ui.geometry.Rect(Offset.Zero, size), paint); drawContent(); c.restore() }
 }
 
-/** Fond animé en haut de l'accueil (Apparence › Fond animé) ; par défaut, actif seulement si un fond a été choisi. */
-fun bgTopOn(ui: AppState): Boolean {
-    val s = ui.pg.me()?.settings
-    return when (ui.prefs.bgTop) {
-        "on" -> true; "off" -> false
-        else -> s?.theme == "weather" || fr.pepsgoal.core.shopMode(s?.theme ?: "") != null || (s?.bg != null && s.bg !in setOf("blob", "plain"))
-    }
-}
+/** Fond visible en haut de l'accueil (réglage « Où voir ton fond »). */
+fun bgTopOn(ui: AppState): Boolean = ui.prefs.bgWhere != "off"
 
 /**
  * Fond animé choisi (fonds gratuits, scènes, ciel de la Météo, effets de saison et de météo, fond réactif). Dessiné

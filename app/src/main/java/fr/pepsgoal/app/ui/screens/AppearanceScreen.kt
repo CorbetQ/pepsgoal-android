@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.screens
 
+import kotlin.math.roundToInt
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -383,16 +384,20 @@ private fun BackgroundSection(ui: AppState, u: User) {
         if (has) {
             SetRow("Mon image", "Une photo à toi, gardée sur cet appareil.") {
                 PButton("Changer", { openPicker() }, icon = "image", small = true)
-                PButton("Retirer", { file.delete(); ui.prefs.bgPalette = emptyList(); ui.prefs.bgStamp = nowMs(); if (s.bg == "custom") s.bg = "blob"; commit(ui); ui.toast("Image d’arrière-plan retirée.", "image") }, kind = "ghost", small = true)
+                PButton("Retirer", { file.delete(); ui.prefs.bgPalette = emptyList(); ui.prefs.bgStamp = nowMs(); if (s.bg == "custom") s.bg = "pop"; commit(ui); ui.toast("Image d’arrière-plan retirée.", "image") }, kind = "ghost", small = true)
             }
             if (s.bg == "custom") {
-                var blur by remember { mutableIntStateOf(ui.prefs.raw.getInt("bgBlur", 0)) }
-                var dim by remember { mutableFloatStateOf(ui.prefs.raw.getFloat("bgDim", -1f)) }
-                Text(tr("Flou de l’image"), Modifier.padding(top = 4.dp, bottom = 6.dp), fontWeight = FontWeight.Bold)
-                SegFill(listOf(0 to "Aucun", 8 to "Léger", 18 to "Moyen", 32 to "Fort"), blur, { blur = it; ui.prefs.raw.edit().putInt("bgBlur", it).apply(); ui.prefs.bgStamp = nowMs() })
-                if (Build.VERSION.SDK_INT < 31) Muted("Le flou demande Android 12 ou plus récent.", small = true)
-                Text(tr("Assombrissement"), Modifier.padding(top = 10.dp, bottom = 6.dp), fontWeight = FontWeight.Bold)
-                SegFill(listOf(-1f to "Auto", 0f to "Aucun", .3f to "Léger", .5f to "Moyen", .7f to "Fort"), dim, { dim = it; ui.prefs.raw.edit().putFloat("bgDim", it).apply(); ui.prefs.bgStamp = nowMs() })
+                // Plus aucun flou : un voile dégradé réglable (Auto = celui de la présence du fond)
+                var dim by remember { mutableFloatStateOf(ui.prefs.bgDim) }
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Voile"), Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink2)
+                    Text(if (dim < 0f) "Auto" else "${(dim * 100).roundToInt()} %", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                }
+                PSlider(if (dim < 0f) .55f else dim / .8f, { v -> dim = v * .8f; ui.prefs.bgDim = dim }, bubble = { v -> "${(v * 80).roundToInt()} %" }, label = "Voile de l’image", keepBubble = dim >= 0f)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Plus de flou : un voile dégradé garde tes cartes lisibles.", Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LocalPal.current.ink2, lineHeight = 17.sp)
+                    if (dim >= 0f) PButton("Auto", { dim = -1f; ui.prefs.bgDim = -1f }, kind = "ghost", small = true)
+                }
             }
             val pal = ui.prefs.bgPalette
             if (pal.isNotEmpty()) {
@@ -464,7 +469,8 @@ private fun EffectsSection(ui: AppState, u: User) {
         // Fond animé : jamais derrière toute l'application, seulement en haut de l'accueil (360 dp, fondu)
         Text(tr("Fond animé"), Modifier.padding(top = 4.dp), fontWeight = FontWeight.ExtraBold)
         Muted("Ton fond (scène, ciel, ambiance) derrière l’en-tête de l’accueil. Sinon, deux formes colorées immobiles.", Modifier.padding(bottom = 6.dp), small = true)
-        Seg(listOf("off" to "Non", "on" to "Haut de l’accueil"), if (fr.pepsgoal.app.ui.bgTopOn(ui)) "on" else "off", { ui.prefs.bgTop = it; ui.themeTick++; ui.bump() }, Modifier.fillMaxWidth())
+        PRadioGroup(listOf("all" to "Partout", "home" to "Accueil seulement", "off" to "Nulle part"), ui.prefs.bgWhere, { ui.prefs.bgWhere = it; ui.themeTick++; ui.bump() },
+            subs = listOf("Accueil, pages, derrière les feuilles", "Le haut de l’accueil", "Deux formes colorées immobiles"), emojis = listOf("🏞️", "🏠", "⚪"))
         Text(tr("Animations"), Modifier.padding(top = 12.dp), fontWeight = FontWeight.ExtraBold)
         Muted("Rebonds, flamme qui danse et confettis ; « Réduites » les remplace par des fondus.", Modifier.padding(bottom = 6.dp), small = true)
         Seg(listOf(false to "Complètes", true to "Réduites"), ui.prefs.motion, { ui.prefs.motion = it; ui.themeTick++ }, Modifier.fillMaxWidth())
@@ -472,9 +478,8 @@ private fun EffectsSection(ui: AppState, u: User) {
         SetRow("Couleurs de saison", "Halloween, fêtes (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${Season.LABELS[it]}." } ?: ""}") {
             PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
         }
-        SetRow("Fonds à l’heure réelle", "Les fonds illustrés suivent la journée : aube rose, plein jour, crépuscule et nuit (la Loire s’illumine, le phare s’allume le soir).") {
-            PSwitch(ui.prefs.bgClock, { ui.prefs.bgClock = it; ui.themeTick++ })
-        }
+        PSelectMenu("Lumière de la scène", listOf("real" to "Suit l’heure réelle", "day" to "Toujours le jour", "theme" to "Suit le thème"), ui.prefs.bgLight, { ui.prefs.bgLight = it; ui.themeTick++ },
+            emojis = listOf("🕰️", "☀️", "🌗"), subs = listOf("Aube, jour, crépuscule, nuit", null, "Nuit en thème sombre"))
         SetRow("Fond qui réagit", "Une lueur chaude monte au fil de tes validations, et des confettis tombent les journées parfaites.") {
             PSwitch(ui.prefs.bgReactive, { ui.prefs.bgReactive = it; ui.themeTick++ })
         }

@@ -21,12 +21,12 @@ val SHOP_THEMES = listOf(
     ShopTheme("forest", "Forêt", "Mousse, sapin et lumière du matin", listOf("#D4FF8A", "#4CC38A", "#1E8E6E"), "aurora", 120),
     ShopTheme("gold", "Or", "Or brossé, élégant et chaleureux", listOf("#FFF1B8", "#E8B730", "#B8860B"), "mesh", 350),
     ShopTheme("abyss", "Abysses", "Bleu nuit, turquoise et bioluminescence", listOf("#7DF9FF", "#1FB6FF", "#3C3CFF"), "waves", 200, dark = true),
-    ShopTheme("candy", "Bonbon", "Pastels acidulés et sucrés", listOf("#FFD6E8", "#FF8FC7", "#9AE6FF"), "blob", 120),
+    ShopTheme("candy", "Bonbon", "Pastels acidulés et sucrés", listOf("#FFD6E8", "#FF8FC7", "#9AE6FF"), "pop", 120),
     ShopTheme("sunset", "Coucher de soleil", "Pêche, corail et lavande", listOf("#FFE0A3", "#FF8A65", "#9C6BFF"), "aurora", 150),
     ShopTheme("matcha", "Matcha", "Thé vert, crème et sérénité", listOf("#E8F5C8", "#9BC53D", "#5B8C2A"), "plain", 120),
     ShopTheme("cyberpunk", "Cyberpunk", "Jaune électrique et magenta sur la nuit", listOf("#FCEE0A", "#FF2A6D", "#05D9E8"), "grid", 250, dark = true),
     ShopTheme("midnight", "Minuit", "Bleu encre et étoiles qui scintillent", listOf("#A9C7FF", "#4D6BFF", "#1B1F5E"), "stars", 200, dark = true, fx = "stars"),
-    ShopTheme("cloud", "Nuage", "Bleu ciel et blanc cotonneux", listOf("#FFFFFF", "#BFE3FF", "#8CB8FF"), "blob", 120, fx = "bubbles"),
+    ShopTheme("cloud", "Nuage", "Bleu ciel et blanc cotonneux", listOf("#FFFFFF", "#BFE3FF", "#8CB8FF"), "pop", 120, fx = "bubbles"),
     ShopTheme("blaze", "Brasier", "Braises qui s’envolent sur fond sombre", listOf("#FFC14D", "#FF5A1F", "#B3122E"), "mesh", 250, dark = true, fx = "embers"),
     ShopTheme("zen", "Zen", "Sable, sauge et calme", listOf("#F3E9D2", "#C6B38E", "#88A096"), "plain", 120),
     ShopTheme("retro", "Rétro 80", "Coucher de soleil néon sur la grille", listOf("#FFB86C", "#FF5E9C", "#7A5CFF"), "grid", 200, dark = true),
@@ -38,11 +38,11 @@ val SHOP_THEMES = listOf(
     ShopTheme("angevine", "Douceur angevine", "Ardoise, tuffeau et vignes du Layon, au pied d’un moulin cavier", listOf("#F3E2C4", "#C9A24A", "#5E6E86"), "s:angevine", 300, dark = false),
     // Éditions limitées de saison
     ShopTheme("t-halloween", "Nuit d’Halloween", "Citrouille, violet sorcière et braises", listOf("#FF8A00", "#8B3DFF", "#3DFF8A"), "stars", 200, dark = true, fx = "embers", season = "halloween"),
-    ShopTheme("t-noel", "Noël enneigé", "Rouge, sapin et neige qui tombe", listOf("#FF4D4D", "#1E8E3E", "#FFD166"), "blob", 200, fx = "snow", season = "noel"),
+    ShopTheme("t-noel", "Noël enneigé", "Rouge, sapin et neige qui tombe", listOf("#FF4D4D", "#1E8E3E", "#FFD166"), "pop", 200, fx = "snow", season = "noel"),
     ShopTheme("t-newyear", "Nouvel An", "Or, champagne et confettis", listOf("#FFE7A1", "#FFC300", "#B98CFF"), "stars", 200, dark = true, fx = "confetti", season = "newyear"),
     ShopTheme("t-winter", "Hiver", "Givre bleuté et flocons", listOf("#E4F4FF", "#9FD8FF", "#B6B4FF"), "aurora", 150, fx = "snow", season = "winter"),
-    ShopTheme("t-love", "Saint-Valentin", "Rose tendre et cœurs qui flottent", listOf("#FFC2D9", "#FF4F8B", "#E85BFF"), "blob", 150, fx = "hearts", season = "love"),
-    ShopTheme("t-easter", "Pâques", "Pastels printaniers et confettis", listOf("#FFE8A3", "#A8E6CF", "#DCC6FF"), "blob", 150, fx = "confetti", season = "easter"),
+    ShopTheme("t-love", "Saint-Valentin", "Rose tendre et cœurs qui flottent", listOf("#FFC2D9", "#FF4F8B", "#E85BFF"), "pop", 150, fx = "hearts", season = "love"),
+    ShopTheme("t-easter", "Pâques", "Pastels printaniers et confettis", listOf("#FFE8A3", "#A8E6CF", "#DCC6FF"), "pop", 150, fx = "confetti", season = "easter"),
     ShopTheme("t-spring", "Printemps", "Bourgeons, cerisiers et pétales", listOf("#D9FF8A", "#FF9AD5", "#7DD3FC"), "aurora", 150, fx = "petals", season = "spring"),
     ShopTheme("t-summer", "Été", "Soleil, mer turquoise et bulles", listOf("#FFE45C", "#FF7A3D", "#22D3FF"), "waves", 150, fx = "bubbles", season = "summer"),
     ShopTheme("t-autumn", "Automne", "Feuilles rousses qui tombent", listOf("#FFC36B", "#E2711D", "#8B3A1E"), "mesh", 150, fx = "leaves", season = "autumn"),
@@ -54,7 +54,22 @@ val SHOP_THEMES = listOf(
  * Arrière-plan illustré de la boutique : une scène animée en douceur (réglage « bg » = « s:<clé> »).
  * [sky] : couleurs indicatives (haut → bas) pour l'aperçu en liste et le repli si l'animation est coupée.
  */
-class ShopBg(val key: String, val name: String, val desc: String, val price: Int, val sky: List<String>, val dark: Boolean = false, val season: String? = null)
+/**
+ * Fond illustré de la boutique. [focus] : point focal vertical (fraction de la hauteur) calé dans le héros des pages ;
+ * [tint] / [tintDark] : couleur dominante qui teinte le bord et la marche des barres (par défaut le milieu du ciel).
+ */
+class ShopBg(val key: String, val name: String, val desc: String, val price: Int, val sky: List<String>, val dark: Boolean = false, val season: String? = null) {
+    val focus: Float get() = BG_FOCUS[key] ?: .3f
+    val tint: String get() = BG_TINT[key]?.first ?: sky.getOrElse(1) { sky.first() }
+    val tintDark: String get() = BG_TINT[key]?.second ?: sky.getOrElse(1) { sky.first() }
+}
+
+/** Points focaux des scènes dont le sujet n'est pas dans le tiers haut. */
+private val BG_FOCUS = mapOf("loire" to .30f, "mountains" to .62f, "lighthouse" to .55f, "rooftops" to .5f, "angers" to .3f, "balloons" to .3f, "tram" to .45f, "nantes" to .35f,
+    "nighttrain" to .5f, "canyon" to .45f, "savanna" to .5f, "lagoon" to .45f, "dunes" to .5f, "vineyard" to .45f, "icefield" to .45f)
+/** Teinte des barres (clair, sombre) des scènes vedettes. */
+private val BG_TINT = mapOf("loire" to ("#5E93CF" to "#2E4670"), "mountains" to ("#F59E8B" to "#3B2F5E"), "balloons" to ("#7FB2E6" to "#2B3F66"),
+    "angers" to ("#4F86C6" to "#2B3F66"), "lighthouse" to ("#5E7FB8" to "#2E4670"), "rooftops" to ("#A06A9A" to "#3A3F7A"))
 
 val SHOP_BGS = listOf(
     ShopBg("nebula", "Nébuleuse", "Nuages cosmiques et étoiles filantes", 200, listOf("#0B0628", "#3B1D6E", "#C14BA8"), dark = true),

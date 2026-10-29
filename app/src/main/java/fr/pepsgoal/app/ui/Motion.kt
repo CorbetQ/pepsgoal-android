@@ -59,6 +59,8 @@ object Motion {
     fun <T> move(): FiniteAnimationSpec<T> = spring(dampingRatio = .75f, stiffness = 380f)
     /** Ample : feuilles du bas, écrans poussés. */
     fun <T> sheet(): FiniteAnimationSpec<T> = spring(dampingRatio = .82f, stiffness = 300f)
+    /** Ouverture rebondissante des feuilles (dépassement d'une douzaine de points puis retour). */
+    fun <T> sheetIn(): FiniteAnimationSpec<T> = spring(dampingRatio = .72f, stiffness = 380f)
     /** Entrée en cascade des lignes (ouverture de l'app, changement de jour). */
     fun <T> enter(): FiniteAnimationSpec<T> = spring(dampingRatio = .7f, stiffness = 420f)
 
@@ -154,5 +156,33 @@ fun Confetti(count: Int = 24, onEnd: () -> Unit = {}) {
             val a = 1f - ((k - .75f) / .25f).coerceIn(0f, 1f)
             rotate(b.spin * k, Offset(x, y)) { drawRoundRect(cols[b.c % cols.size].copy(alpha = a), Offset(x - bw / 2, y - bh / 2), Size(bw, bh), CornerRadius(1.5f * density)) }
         }
+    }
+}
+
+/**
+ * Étiquette qui monte de 16 dp en s'effaçant (500 ms) chaque fois que [trigger] change : « +250 ml » au-dessus de la case
+ * d'un cap. Lu dans la phase de dessin (graphicsLayer) ; invisible au repos. Animations réduites : rien.
+ */
+@Composable
+fun Modifier.floatUp(trigger: Any?): Modifier {
+    val motionOff = LocalPal.current.motion
+    val a = remember { Animatable(1f) }
+    val first = remember { booleanArrayOf(true) }
+    LaunchedEffect(trigger) {
+        if (first[0]) { first[0] = false; return@LaunchedEffect }
+        if (!motionOff) { a.snapTo(0f); a.animateTo(1f, tween(520, easing = Motion.Emphasized)) }
+    }
+    return this.graphicsLayer { val v = a.value; alpha = if (v >= 1f) 0f else (1f - v).coerceIn(0f, 1f); translationY = -16.dp.toPx() * v }
+}
+
+/** Apparition d'un menu ou d'un dialogue : échelle 0,92 → 1 et fondu (ressort `pop`). Animations réduites : fondu seul. */
+@Composable
+fun Modifier.popIn(origin: androidx.compose.ui.graphics.TransformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center): Modifier {
+    val motionOff = LocalPal.current.motion
+    val a = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { if (motionOff) a.animateTo(1f, tween(120)) else a.animateTo(1f, Motion.pop()) }
+    return this.graphicsLayer {
+        val v = a.value; alpha = v.coerceIn(0f, 1f); transformOrigin = origin
+        if (!motionOff) { val sc = .92f + .08f * v; scaleX = sc; scaleY = sc }
     }
 }
