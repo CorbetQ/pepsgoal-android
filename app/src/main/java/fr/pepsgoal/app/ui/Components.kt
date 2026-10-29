@@ -453,7 +453,7 @@ fun PButton(
     ) {
         leading?.invoke()
         if (icon != null) Pi(icon, size = if (small) 18.dp else 20.dp, tint = fg)
-        if (text.isNotEmpty()) Text(text, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = if (small) 15.sp else 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (text.isNotEmpty()) Text(text, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = if (small) 15.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 
@@ -847,7 +847,7 @@ fun SetRow(title: String, sub: String? = null, modifier: Modifier = Modifier, ri
  * éteint, creux neutre au contour ≥ 3:1. La pastille saute d'un côté à l'autre avec le ressort `pop`.
  */
 @Composable
-fun PSwitch(on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+fun PSwitch(on: Boolean, onChange: ((Boolean) -> Unit)?, enabled: Boolean = true) {
     val p = LocalPal.current
     val k by animateFloatAsState(if (on) 1f else 0f, if (p.motion) snap() else Motion.pop(), label = "switch")
     val inter = remember { MutableInteractionSource() }
@@ -855,7 +855,8 @@ fun PSwitch(on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     val track = if (on) lime else p.surface2
     val edge = if (p.contrast) p.ink else if (on) lime.step() else p.control
     Box(Modifier.alpha(if (enabled) 1f else .45f).size(60.dp, 36.dp).background(track, CircleShape).border(2.dp, edge, CircleShape).clip(CircleShape)
-        .toggleableCompat(on, enabled, inter) { v -> if (v) Feedback.armed() else Feedback.disarmed(); onChange(v) }) {
+        // Sans [onChange] : dessin seul, la ligne qui le contient porte l'interrupteur (voir SetToggle)
+        .then(if (onChange == null) Modifier else Modifier.toggleableCompat(on, enabled, inter) { v -> if (v) Feedback.armed() else Feedback.disarmed(); onChange(v) })) {
         Box(Modifier.align(Alignment.CenterStart).graphicsLayer { translationX = (4.dp + 20.dp * k).toPx() }.size(28.dp, 30.dp).chunk(Color.White, edge, 14.dp, 2.dp, 0.dp),
             contentAlignment = Alignment.Center) {
             if (on) Pi("check", size = 14.dp, tint = PLUM)
@@ -991,7 +992,7 @@ fun SectionTitle(text: String, emoji: String? = null, count: Any? = null, action
             if (count != null) Count(count)
             extra()
         }
-        if (action != null && onAction != null) Text(action, Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onAction).heightIn(min = 40.dp).padding(horizontal = 8.dp, vertical = 10.dp),
+        if (action != null && onAction != null) Text(action, Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onAction).heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 10.dp),
             fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
     }
 }

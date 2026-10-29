@@ -16,6 +16,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -96,13 +100,19 @@ fun Divided(modifier: Modifier = Modifier, inset: androidx.compose.ui.unit.Dp = 
  */
 @Composable
 fun SetItem(title: String, sub: String? = null, icon: String? = null, tint: Color? = null, onClick: (() -> Unit)? = null, chevron: Boolean = onClick != null,
-            enabled: Boolean = true, danger: Boolean = false, right: @Composable RowScope.() -> Unit = {}) {
+            enabled: Boolean = true, danger: Boolean = false, toggled: Boolean? = null, right: @Composable RowScope.() -> Unit = {}) {
     val p = LocalPal.current
     val c = if (danger) p.type("duel").c else tint ?: p.flame
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val half = maxWidth * .52f
-        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).then(if (onClick != null && enabled) Modifier.springClick(inter, onClick = onClick) else Modifier)
+        // Ligne d'interrupteur ([toggled]) : toute la ligne est un seul nœud « interrupteur » pour TalkBack (titre, état)
+        val act = when {
+            onClick == null || !enabled -> if (toggled != null) Modifier.semantics(mergeDescendants = true) { role = Role.Switch; stateDescription = tr(if (toggled) "Activé" else "Désactivé") } else Modifier
+            toggled != null -> Modifier.toggleable(toggled, inter, androidx.compose.foundation.LocalIndication.current, role = Role.Switch) { v -> if (v) Feedback.armed() else Feedback.disarmed(); onClick() }
+            else -> Modifier.springClick(inter, onClick = onClick)
+        }
+        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).then(act)
             .padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             // Tuile néon de la couleur de l'entrée (grisée quand la ligne est inactive)
             if (icon != null) { if (enabled) IconTile(icon, c, c, 38.dp, 12.dp) else Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(p.surface2), contentAlignment = Alignment.Center) { Pi(icon, size = 20.dp, tint = p.ink3) } }
@@ -119,8 +129,8 @@ fun SetItem(title: String, sub: String? = null, icon: String? = null, tint: Colo
 /** Interrupteur : toute la ligne est touchable. */
 @Composable
 fun SetToggle(title: String, sub: String? = null, icon: String? = null, tint: Color? = null, on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) =
-    SetItem(title, sub, icon, tint, onClick = if (enabled) ({ onChange(!on) }) else null, chevron = false, enabled = enabled) {
-        PSwitch(on, onChange, enabled)
+    SetItem(title, sub, icon, tint, onClick = if (enabled) ({ onChange(!on) }) else null, chevron = false, enabled = enabled, toggled = on) {
+        PSwitch(on, null, enabled)
     }
 
 /** Contenu libre dans un groupe (champs, puces…), avec les marges des lignes. */

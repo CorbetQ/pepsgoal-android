@@ -102,8 +102,10 @@ fun PepsRoot(ui: AppState) {
     // Ambiance choisie mais pas (ou plus) possédée : on retombe sur le thème de base équivalent
     val theme0 = ui.themePreview ?: s?.theme ?: "system"
     val theme = fr.pepsgoal.core.shopMode(theme0)?.let { m -> if (ui.themePreview != null || pg.owns("mode:${m.key}", m.price, u)) theme0 else fr.pepsgoal.core.baseTheme(theme0) } ?: theme0
+    // Animations coupées dans Android (Options pour les développeurs ou Accessibilité) : « Animations réduites »
+    val sysNoAnim = remember { try { android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f } catch (e: Exception) { false } }
     val input = ThemeInput(theme, s?.accent ?: 0, s?.accentCustom, s?.glassBlur ?: "mid", ui.prefs.materialYou,
-        ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion, ui.prefs.transp, Weather.skyDark(wx?.data), ui.prefs.glassOpacity,
+        ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion || sysNoAnim, ui.prefs.transp, Weather.skyDark(wx?.data), ui.prefs.glassOpacity,
         ui.prefs.easy, rememberTalkBack(), ui.prefs.oneHand,
         if (ui.prefs.seasonal) fr.pepsgoal.app.sys.Season.now()?.let { fr.pepsgoal.app.sys.Season.COLORS[it] } else null,
         if (ui.prefs.sunTheme && theme == "system") sunTick.let { fr.pepsgoal.core.sunDark(wx?.data) } else null)
@@ -443,7 +445,7 @@ private fun TopBar(ui: AppState) {
     Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 12.dp, top = 6.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Column(Modifier.weight(1f)) {
-                if (tab == "today") Text(cap(weekdayLongDate(todayDate())), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, maxLines = 1)
+                if (tab == "today") Text(cap(weekdayLongDate(todayDate())), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
                 Box(Modifier.graphicsLayer {
                     val k = (Fx.scroll / 120.dp.toPx()).coerceIn(0f, 1f); val s = 1f - k * (1f - 20f / 30f)
                     scaleX = s; scaleY = s; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)

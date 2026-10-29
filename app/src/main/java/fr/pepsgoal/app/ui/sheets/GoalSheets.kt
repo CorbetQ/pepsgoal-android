@@ -521,7 +521,7 @@ private fun GoalBanner(ui: AppState, g: Goal) {
         drawCircle(Color.White.copy(alpha = .16f), size.height * .22f, androidx.compose.ui.geometry.Offset(size.width * .55f, size.height * .1f))
     }) {
         Box(Modifier.align(Alignment.TopCenter).padding(top = 10.dp).size(40.dp, 5.dp).clip(CircleShape).background(PLUM.copy(alpha = .35f)))
-        Box(Modifier.align(Alignment.CenterEnd).padding(end = 22.dp, top = 24.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = 8f - (1f - pop.value) * 25f }) { Emoji(g.shownIcon(), 96.dp) }
+        Box(Modifier.align(Alignment.CenterEnd).padding(end = 22.dp, top = 24.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = 8f - (1f - pop.value) * 25f }) { Emoji(g.icon, 96.dp) }
         Row(Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 8.dp)) {
             IconBtn("star", if (pg.isFav(g)) "Retirer des favoris" else "Ajouter aux favoris", { pg.toggleFav(g.id) }, tint = if (pg.isFav(g)) p.flameInk else p.ink3)
             if (LocalInSheet.current) IconBtn("x", "Fermer", { ui.close() })

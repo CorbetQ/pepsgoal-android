@@ -85,11 +85,14 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
         else -> p.flameBrush()
     }
     val stepC = when { p.contrast -> p.ink; off -> p.edge; frozen && !st.lit -> Color(0xFF4A5AC8); p.materialYou -> Color(0xFFC2185B); else -> p.flameStep }
-    val ink = if (off || p.contrast) p.ink else if (p.materialYou || frozen) PLUM else p.onAccent
+    val ink = if (off || p.contrast) p.ink else if (p.materialYou || (frozen && !st.lit)) PLUM else p.onAccent
     val desc = "Série de ${pl(st.n, "jour", "jours")}, ${pl(u.freezes, "joker", "jokers")}, record $best, $done ${if (done > 1) "objectifs" else "objectif"} sur $total ${if (done > 1) "faits" else "fait"}. $msg"
     val inter = remember { MutableInteractionSource() }
     val press = rememberPress(inter)
-    val bigText = LocalDensity.current.fontScale >= 1.6f
+    val fontScale = LocalDensity.current.fontScale
+    val bigText = fontScale >= 1.6f
+    // Chiffre de série : 60 sp, plafonné à 72 sp effectifs avec les grands caractères
+    val heroSize = minOf(60f, 72f / fontScale.coerceAtLeast(.5f)).sp
     Box(Modifier.fillMaxWidth().chunk(fill, stepC, 28.dp, 6.dp, if (off || p.contrast) 2.dp else 0.dp, press).clip(RoundedCornerShape(28.dp))
         .springClick(inter, label = "Ouvrir ma série") { ui.open(Sheet.Streak) }.semantics(mergeDescendants = true) { contentDescription = desc }) {
         // Décor en aplat : deux cercles blancs translucides, sans flou
@@ -100,7 +103,7 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             val number = @Composable {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    RollingNumber(st.n, size = 60.sp, color = ink)
+                    RollingNumber(st.n, size = heroSize, color = ink)
                     Spacer(Modifier.width(8.dp))
                     Text(if (st.n > 1) "jours\nde série" else "jour\nde série", Modifier.padding(bottom = 8.dp), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = ink, lineHeight = 18.sp, maxLines = 2)
                 }
@@ -113,7 +116,7 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
             } else Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     number()
-                    Text(msg, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = ink, lineHeight = 20.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    Text(msg, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = ink, lineHeight = 20.sp)
                 }
                 Spacer(Modifier.width(8.dp)); medal()
             }

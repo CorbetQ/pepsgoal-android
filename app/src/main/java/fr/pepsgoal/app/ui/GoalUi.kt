@@ -218,7 +218,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null, 
                         CustomAccessibilityAction(rightLabel) { doValidate(ui, g.id); true },
                         CustomAccessibilityAction("Actions rapides") { ui.open(Sheet.Quick(g.id)); true }
                     )
-                }.heightIn(min = 70.dp).padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                }.heightIn(min = 72.dp).padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Objectif discret : titre et icône masqués dans les listes (visibles dans sa fiche)
@@ -445,7 +445,7 @@ fun WeekStrip(pg: Pg, id: String, onColor: Boolean = false) {
                     on -> Box(Modifier.size(34.dp).background(if (onColor) PLUM else p.ink, CircleShape), contentAlignment = Alignment.Center) { Flame(20.dp) }
                     fz -> Box(Modifier.size(34.dp).background(Color.White, CircleShape).then(if (onColor) Modifier else Modifier.border(2.dp, p.edge, CircleShape)), contentAlignment = Alignment.Center) { Emoji("🧊", 20.dp) }
                     k == t -> Box(Modifier.size(34.dp).background(Color.White.copy(alpha = if (onColor) .45f else 0f), CircleShape).drawBehind {
-                        drawCircle(ink, size.minDimension / 2 - 1.25.dp.toPx(), style = Stroke(2.5.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6f, 5f))))
+                        drawCircle(ink, size.minDimension / 2 - 1.25.dp.toPx(), style = Stroke(2.5.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
                     }, contentAlignment = Alignment.Center) { Flame(18.dp, dim = true) }
                     fut -> Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) { Box(Modifier.size(8.dp).background(ink.copy(alpha = .3f), CircleShape)) }
                     else -> Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) { Box(Modifier.size(10.dp).border(2.dp, ink.copy(alpha = .45f), CircleShape)) }

@@ -89,7 +89,7 @@ fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disab
     ) {
         when {
             lock -> Box(Modifier.size(44.dp).drawBehind {
-                drawCircle(p.control, size.minDimension / 2 - 1.25.dp.toPx(), style = Stroke(2.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 6f))))
+                drawCircle(p.control, size.minDimension / 2 - 1.25.dp.toPx(), style = Stroke(2.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.5.dp.toPx()))))
             }, contentAlignment = Alignment.Center) { Pi("lock", size = 18.dp, tint = p.ink3) }
             done -> Box(Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value }.size(44.dp, 47.dp).chunk(c, if (p.contrast) p.ink else c.step(), 22.dp, 3.dp, 0.dp, press), contentAlignment = Alignment.Center) {
                 if (icon == "check" || icon == "play" || icon == "pause") DrawnCheck(draw.value, PLUM, 26.dp, 3.4.dp) else Pi(icon, size = 20.dp, tint = PLUM)

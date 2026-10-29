@@ -217,7 +217,7 @@ fun SyncedChip(ui: AppState) {
         val pop = remember { androidx.compose.animation.core.Animatable(0f) }
         LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .4f, stiffness = 500f)) }
         Row(Modifier.clip(CircleShape).clickable { ui.open(Sheet.Pending) }.padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.size(16.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -90f }.clip(CircleShape).background(p.ok), contentAlignment = Alignment.Center) { Pi("check", size = 11.dp, tint = Color.White) }
+            Box(Modifier.size(16.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -90f }.clip(CircleShape).background(p.ok), contentAlignment = Alignment.Center) { Pi("check", size = 11.dp, tint = if (p.dark) fr.pepsgoal.app.ui.theme.PLUM else Color.White) }
             Text(if (ui.syncedN > 1) "Synchronisé · ${ui.syncedN} envoyées" else "Synchronisé", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ok)
         }
     }
