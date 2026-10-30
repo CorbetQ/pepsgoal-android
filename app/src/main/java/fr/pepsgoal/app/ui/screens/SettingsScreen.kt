@@ -1,7 +1,6 @@
 package fr.pepsgoal.app.ui.screens
 
 import android.Manifest
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -19,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import fr.pepsgoal.app.ui.Text
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.graphicsLayer
@@ -234,7 +232,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Couleurs et effets", "🌈")
                     Glass(pad = 0.dp) { A11yRows(ui) }
-                    Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(horizontal = 8.dp), small = true)
+                    Hint("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.")
                 }
             } }
             else -> item("b") { HelpSettings(ui) }
@@ -247,11 +245,10 @@ private fun save(ui: AppState) { ui.pg.store.commit() }
 /* ------------------------------------------------------------------ Rappels */
 @Composable
 fun TimeButton(value: String, onChange: (String) -> Unit, desc: String) {
-    val ctx = LocalContext.current
-    PButton(value, {
-        val (h, m) = value.split(":").map { it.toIntOrNull() ?: 0 }.let { (it.getOrElse(0) { 8 }) to (it.getOrElse(1) { 30 }) }
-        TimePickerDialog(ctx, { _, hh, mm -> onChange("${pad(hh)}:${pad(mm)}") }, h, m, true).apply { setTitle(desc) }.show()
-    }, icon = "clock", small = true)
+    // Heure : liste qui ouvre le sélecteur d'heure Braise Pop (plus de dialogue Android)
+    var open by remember { mutableStateOf(false) }
+    PSelect(null, value, { open = true }, Modifier.width(128.dp), icon = "clock", open = open)
+    if (open) PTimePicker(value, onChange, { open = false }, desc)
 }
 
 /** En-tête d'une catégorie de réglages, aux couleurs et à l'icône de la catégorie. */
@@ -294,7 +291,7 @@ private fun RemindersSettings(ui: AppState, u: User) {
                 if (granted) Chip("Activées", "check", p.ok) else PButton("Autoriser", {
                     if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) perm.launch(Manifest.permission.POST_NOTIFICATIONS)
                     else Notifier.openSettings(ctx)
-                }, icon = "bell", kind = "primary", small = true)
+                }, icon = "bell", small = true)
             }
             if (granted) SetItem("Catégories de notifications", "Son, vibration et importance de chaque catégorie, dans Android.", "gear", cNotif, onClick = { Notifier.openSettings(ctx) })
             if (!Reminders.canExact(ctx)) SetItem("Rappels à l’heure exacte", "Android peut retarder les rappels de quelques minutes. Autorise les alarmes exactes pour qu’ils arrivent pile à l’heure.", "clock", p.type("deadline").c, onClick = { Reminders.openExactSettings(ctx) })
@@ -314,7 +311,7 @@ private fun RemindersSettings(ui: AppState, u: User) {
                 SetToggle("Notifications instantanées", "PepsGoal reste connecté en arrière-plan (petite notification discrète) pour relever les nouveautés chaque minute.", "bolt", cBg,
                     instant, { instant = it; ui.prefs.instantNotifs = it; Poller.startLink(ctx); ui.toast(if (it) "Connexion en direct activée." else "Connexion en direct désactivée.", "bell") })
                 SetItem("Optimisation de batterie", if (unr) "PepsGoal n’est pas limité par Android : les relèves continuent en veille." else "Android peut endormir PepsGoal et retarder les messages.", "gauge", cBg) {
-                    if (unr) Chip("Sans limite", "check", p.ok) else PButton("Autoriser", { Poller.askUnrestricted(ctx) }, kind = "primary", small = true)
+                    if (unr) Chip("Sans limite", "check", p.ok) else PButton("Autoriser", { Poller.askUnrestricted(ctx) }, small = true)
                 }
                 SetItem("Tester application fermée", "Ferme PepsGoal : une notification de confirmation arrive à la prochaine relève, en une à deux minutes.", "clock", cBg,
                     onClick = { ui.prefs.pollTest = System.currentTimeMillis(); ui.toast("Ferme l’application et attends la notification.", "bell") })
@@ -348,6 +345,11 @@ fun LifecycleResume(onResume: () -> Unit) {
 private fun AccountSettings(ui: AppState, u: User) {
     val pg = ui.pg; val p = LocalPal.current
     var name by remember(u.id) { mutableStateOf(u.name) }; var bio by remember(u.id) { mutableStateOf(u.bio) }
+    var askOut by remember { mutableStateOf(false) }
+    // Déconnexion : dialogue destructif (bouton « duel » et icône)
+    if (askOut) PDialog({ askOut = false }, "👋", if (pg.db.sandbox) "Quitter la démonstration ?" else "Se déconnecter ?",
+        if (pg.db.sandbox) "Les données d’exemple sont effacées." else "Tes objectifs restent enregistrés sur ton compte. Tu les retrouveras en te reconnectant.",
+        if (pg.db.sandbox) "Quitter" else "Se déconnecter", { askOut = false; signOut(ui) }, dismiss = "Rester connecté", danger = true, icon = "logout")
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         CatHero("account", if (pg.isGuest(u)) "Profil sans compte, gardé sur ce téléphone" else "@${u.username} · inscrit ${ago(u.createdAt)}", leading = { LevelRing(pg.level(pg.points(u.id)).tier, 52.dp) { Av(u, 52.dp) } }, chips = {
             when {
@@ -360,8 +362,9 @@ private fun AccountSettings(ui: AppState, u: User) {
         if (pg.isGuest(u) && !pg.db.sandbox) GuestUpgrade(ui)
         SetGroup("Profil public", note = "Ton nom et ta bio sont visibles par tes amis et sur tes publications.") {
             SetBlock {
-                Field(name, { name = it }, "Nom affiché", max = 40, keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words), icon = "user")
-                Field(bio, { bio = it }, "Bio", singleLine = false, minLines = 2, max = 160)
+                Field(name, { name = it }, "Nom affiché", max = 40, keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words), icon = "user", counter = true,
+                    error = if (name.isNotEmpty() && name.trim().length < 2) "2 caractères minimum." else null)
+                PTextArea(bio, { bio = it }, "Bio", placeholder = "Ce qui te motive en ce moment…", max = 160)
                 val dirty = name.trim() != u.name || bio.trim() != u.bio
                 PButton("Enregistrer", {
                     val n = name.trim()
@@ -377,7 +380,7 @@ private fun AccountSettings(ui: AppState, u: User) {
             val ok = pg.db.sandbox || !pg.store.acct || pg.store.online
             if (pg.isGuest(u)) SetItem("Mode sans compte", "Profil local créé ${ago(u.createdAt)}. Tu peux le reprendre depuis l'écran d'accueil avec « Reprendre sans compte ».", "user", p.type("routine").c)
             SetItem(if (pg.db.sandbox) "Quitter la démonstration" else "Se déconnecter", if (pg.db.sandbox) "Les données d’exemple sont effacées." else if (!pg.store.acct) "Tes données restent sur cet appareil." else if (ok) "Tes données sont sauvegardées sur le serveur PepsGoal." else "Hors ligne : la déconnexion reviendra avec la connexion.",
-                "logout", p.type("project").c, onClick = { signOut(ui) }, enabled = ok)
+                "logout", p.type("project").c, onClick = { askOut = true }, enabled = ok)
             if (!pg.isAdmin(u) && !pg.db.sandbox) SetItem("Supprimer mon compte", "Profil, objectifs, publications, stories et messages. Définitif.", "trash", danger = true, onClick = {
                 if (pg.store.acct) ui.open(Sheet.DeleteAccount)
                 else ui.confirm("Supprimer ton profil ?", "Ton profil sans compte et tous ses objectifs seront supprimés définitivement de cet appareil.", "Supprimer mon profil") {
@@ -448,7 +451,7 @@ private fun PasswordCard(ui: AppState) {
                     catch (e: ApiError) { err = if (e.status == 401) "Mot de passe actuel incorrect." else e.message } catch (e: Exception) { err = e.message }
                     finally { busy = false }
                 }
-            }, icon = "lock", kind = "primary", enabled = !busy)
+            }, icon = "lock", enabled = !busy)
         }
     } }
 }
@@ -487,7 +490,7 @@ fun VaultForm(ui: AppState) {
         if (locked) Text(rich("**Ton coffre de clés a été créé avec un ancien mot de passe.** Saisis cet ancien mot de passe pour le rouvrir, ou recrée le coffre avec ton mot de passe actuel (les clés absentes de tes appareils seront perdues)."), fontSize = 13.sp)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Field(pw, { pw = it }, if (locked) "Ancien mot de passe" else "Ton mot de passe", Modifier.weight(1f), password = true)
-            PButton("Déverrouiller", { go(false) }, icon = "lock", kind = "primary", small = true, enabled = !busy)
+            PButton("Déverrouiller", { go(false) }, icon = "lock", small = true, enabled = !busy)
         }
         if (locked) PButton("Recréer le coffre avec mon mot de passe actuel", { go(true) }, kind = "ghost", small = true, enabled = !busy)
         Err(err)
@@ -518,7 +521,7 @@ private fun WeatherSettings(ui: AppState, u: User) {
             SetBlock {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Field(q, { q = it }, "", Modifier.weight(1f), placeholder = if (pl0 == null) "Rechercher une ville" else "Changer de ville", max = 60, icon = "search")
-                    PButton("Chercher", search, small = true, kind = "primary", enabled = q.trim().length >= 2)
+                    PButton("Chercher", search, small = true, enabled = q.trim().length >= 2)
                 }
                 Err(err)
                 res?.let { list -> if (list.isEmpty()) Muted("Aucune ville trouvée.", small = true) }
@@ -559,7 +562,8 @@ private fun PrivacySettings(ui: AppState, u: User) {
         SetGroup("Visibilité", note = "Modifiable ensuite pour chaque objectif.") {
             SetBlock {
                 Text("Nouveaux objectifs visibles par", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-                Seg(VIS.keys.map { it to VIS.getValue(it).first }, s.defaultVis, { s.defaultVis = it; save(ui); ui.toast("Nouveaux objectifs : ${VIS.getValue(it).first.lowercase()} par défaut.", VIS.getValue(it).second) }, icons = VIS.values.map { it.second })
+                PRadioGroup(VIS.keys.map { it to VIS.getValue(it).first }, s.defaultVis, { s.defaultVis = it; save(ui); ui.toast("Nouveaux objectifs : ${VIS.getValue(it).first.lowercase()} par défaut.", VIS.getValue(it).second) },
+                    subs = listOf("Toi seul", "Tes amis", "Tout le monde sur PepsGoal"), emojis = listOf("🔒", "👥", "🌍"))
             }
             SetItem("Stories", "Visibles uniquement par tes amis pendant 24 heures, puis gardées dans ton archive (visible par toi seul).", "image", p.pink) { Chip("Amis · 24 h", "users", p.type("group").c) }
         }
@@ -602,9 +606,9 @@ private fun DataSettings(ui: AppState, u: User) {
             // Mes données en chiffres
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Objectifs", "Validations", "Publications", "Messages").forEachIndexed { i, l ->
-                    Column(Modifier.weight(1f).clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        FitText(fmtNum(mine[i]), Modifier.fillMaxWidth(), size = 17, min = 11, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
-                        FitText(l, Modifier.fillMaxWidth().padding(horizontal = 4.dp), size = 11, min = 8, color = p.ink2, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Center)
+                    Column(Modifier.weight(1f).clip(RoundedCornerShape(17.dp)).background(p.surface2).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        FitText(fmtNum(mine[i]), Modifier.fillMaxWidth(), size = 18, min = 11, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
+                        FitText(l, Modifier.fillMaxWidth().padding(horizontal = 4.dp), size = 12, min = 8, color = p.ink2, weight = FontWeight.Bold, align = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }
@@ -697,7 +701,7 @@ private fun HelpSettings(ui: AppState) {
         var taps by remember { mutableIntStateOf(0) }
         val spin by androidx.compose.animation.core.animateFloatAsState(taps * 51.4f, Motion.emphasis(), label = "verSpin")
         CatHero("help", "PepsGoal $APP_VERSION · application Android native${if (ui.pg.db.sandbox) " · démonstration" else ""}", leading = {
-            Box(Modifier.size(52.dp).graphicsLayer { rotationZ = spin }.clip(smoothShape(17.dp)).background(Brush.linearGradient(listOf(p.flame2.copy(alpha = .3f), p.pink.copy(alpha = .22f))))
+            Box(Modifier.size(52.dp).graphicsLayer { rotationZ = spin }.clip(RoundedCornerShape(17.dp)).background(p.selTint(p.flame))
                 .clickable(onClickLabel = "PepsGoal $APP_VERSION") {
                     taps++; Feedback.tick()
                     when {
@@ -761,13 +765,13 @@ private fun UpdateCard(ui: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 10.dp)) {
             IconTile("cloud", p.type("project").c, p.type("objective").c, 44.dp, 14.dp)
             Column(Modifier.weight(1f)) {
-                Text("Mises à jour", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+                Text("Mises à jour", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
                 Muted("Version installée : ${Updater.current}", small = true)
             }
         }
         val r = rel
         when (state) {
-            "checking" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = p.flame); Muted("Recherche d’une nouvelle version…", small = true) }
+            "checking" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { PSpinner(6.dp); Muted("Recherche d’une nouvelle version…", small = true) }
             "none" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Chip("À jour", "check", p.ok); Muted("Tu as la dernière version.", small = true) }
             "error" -> Muted("Impossible de joindre GitHub pour le moment. Vérifie ta connexion et réessaie.", small = true)
             "available", "downloading", "ready" -> if (r != null) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -776,7 +780,7 @@ private fun UpdateCard(ui: AppState) {
                     if (r.size > 0) Muted("· ${"%.1f".format(r.size / 1_048_576f)} Mo", small = true)
                 }
                 if (r.notes.isNotBlank()) Text(r.notes.lines().filter { it.startsWith("- ") }.take(6).joinToString("\n") { "• " + it.removePrefix("- ") }.ifEmpty { r.notes.take(400) }, fontSize = 13.sp, color = p.ink2)
-                if (state == "downloading") { Bar(prog * 100.0); Muted("Téléchargement… ${(prog * 100).toInt()} %", small = true) }
+                if (state == "downloading") { Bar(prog * 100.0, height = 12.dp); Muted("Téléchargement… ${(prog * 100).toInt()} %", small = true) }
                 else PButton(if (state == "ready") "Installer" else "Télécharger et installer", install, icon = "down", kind = "primary", modifier = Modifier.fillMaxWidth())
             }
             else -> {}
@@ -856,7 +860,7 @@ private fun BackupCard(ui: AppState) {
             Muted("Sans ce mot de passe, impossible de restaurer : note-le précieusement. Il n’est pas enregistré sur le téléphone.", small = true)
             PButton(if (busy) "Préparation…" else "Choisir le dossier et activer", {
                 when { pass.length < 8 -> ui.toast("Choisis un mot de passe d’au moins 8 caractères.", "x"); pass != pass2 -> ui.toast("Les deux mots de passe ne sont pas identiques.", "x"); else -> pickDir.launch(null) }
-            }, Modifier.fillMaxWidth(), icon = "lock", kind = "primary", small = true, enabled = !busy)
+            }, Modifier.fillMaxWidth(), icon = "lock", small = true, enabled = !busy)
         }
         SetItem("Restaurer une sauvegarde", "Ajoute les objectifs, validations et pages du journal d’un fichier .pgbak (nouveau téléphone, profil sans compte…). Rien n’est effacé.", "down", p.type("project").c, onClick = { pickFile.launch(arrayOf("*/*")) })
         SetItem("Importer un historique (CSV)", "Depuis Loop Habit Tracker (export « Checkmarks.csv ») ou un tableau : une colonne date, puis une colonne par habitude. Les validations importées ne rapportent pas de flammes.", "upload", p.type("measure").c,
@@ -873,7 +877,7 @@ private fun BackupCard(ui: AppState) {
                             if (n == null) ui.toast("Mot de passe incorrect, ou fichier qui n’est pas une sauvegarde PepsGoal.", "x")
                             else { restoreUri = null; ui.toast(if (n > 0) "Restauration terminée : ${pl(n, "objectif ajouté", "objectifs ajoutés")}." else "Restauration terminée : tout était déjà sur cet appareil.", "check") }
                         }
-                    }, icon = "check", kind = "primary", small = true, enabled = !busy && restorePass.isNotEmpty())
+                    }, icon = "check", small = true, enabled = !busy && restorePass.isNotEmpty())
                     PButton("Annuler", { restoreUri = null }, kind = "ghost", small = true)
                 }
             }

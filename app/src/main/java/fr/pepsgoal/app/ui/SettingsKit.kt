@@ -45,15 +45,17 @@ private val GROUP_EMOJI = mapOf(
 )
 
 /**
- * En-tête d'une catégorie : tuile d'icône néon, titre en Unbounded, état actuel en une phrase, pastilles et contenu
- * libre. Plat (aucune carte) : c'est l'en-tête illustré de la page.
+ * État d'une catégorie (sous le héros de la page) : tuile d'icône néon, titre en Unbounded, état actuel en une phrase,
+ * pastilles et contenu libre, dans une carte à marche.
  */
 @Suppress("UNUSED_PARAMETER")
 @Composable
 fun SetHero(icon: String, c1: Color, c2: Color, title: String, sub: String, leading: (@Composable () -> Unit)? = null,
             chips: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit = {}) {
     val p = LocalPal.current
-    Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    // État de la catégorie : carte à marche (jamais de texte posé sur la scène)
+    Glass {
+      Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             if (leading != null) leading() else EmojiTileBox(c2, 56.dp) { Pi(icon, size = 28.dp, tint = PLUM) }
             Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -61,8 +63,9 @@ fun SetHero(icon: String, c1: Color, c2: Color, title: String, sub: String, lead
                 Text(sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2)
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips() }
+        FlowRowCompat(gap = 6.dp) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips() } }
         content()
+      }
     }
 }
 

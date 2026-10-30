@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,8 +53,9 @@ fun AiSettings(ui: AppState) {
             Spacer(Modifier.height(10.dp))
             when (LocalAi.status) {
                 "downloading" -> {
-                    Bar(LocalAi.progress * 100.0, height = 10.dp)
-                    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (LocalAi.progress >= 1f) PIndeterminate() else Bar(LocalAi.progress * 100.0, height = 12.dp, color = p.type("program").c)
+                    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PSpinner()
                         Muted(if (LocalAi.progress >= 1f) "Premier démarrage du modèle…" else "Téléchargement… ${(LocalAi.progress * 100).toInt()} %", Modifier.weight(1f), small = true)
                         PButton("Annuler", { LocalAi.cancel(ctx) }, kind = "ghost", small = true)
                     }
@@ -98,24 +99,20 @@ private fun PersonaGroup(ui: AppState) {
     val cur = Personas.of(persona)
     SetGroup("Personnalité", note = "Le ton s’applique à la conversation, aux conseils, aux récaps et au mode simple.") {
         SetBlock { Field(name, { name = it.take(20); pr.aiCoachName = name.trim().ifEmpty { "Peps" } }, "Prénom du coach", max = 20, icon = "smile") }
-        Personas.ALL.forEach { ps ->
-            val on = ps.key == persona
-            val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Row(Modifier.fillMaxWidth().bounce(inter, .98f).clip(fr.pepsgoal.app.ui.smoothShape(18.dp))
-                .background(if (on) p.flame.copy(alpha = .1f) else androidx.compose.ui.graphics.Color.Transparent)
-                .springClick(inter, role = androidx.compose.ui.semantics.Role.RadioButton) { persona = ps.key; pr.aiPersona = ps.key }.padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                CoachAvatar(40.dp, emoji = ps.emoji)
-                Column(Modifier.weight(1f)) { Text(ps.label, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp); Muted(ps.desc, small = true) }
-                if (on) Pi("check", size = 20.dp, tint = p.flameInk)
+        SetBlock {
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Personas.ALL.forEach { ps ->
+                    PRadioRow(ps.label, ps.desc, ps.key == persona, { persona = ps.key; pr.aiPersona = ps.key }, color = p.type("program").c,
+                        leading = { CoachAvatar(40.dp, emoji = ps.emoji) })
+                }
             }
         }
         SetBlock {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 CoachAvatar(32.dp, emoji = cur.emoji)
-                Column(Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp, 18.dp, 18.dp, 6.dp)).background(p.glassStrong).padding(12.dp)) {
+                Column(Modifier.chunk(p.surface2, p.edge, 18.dp, 3.dp, 2.dp).padding(12.dp)) {
                     Muted("${name.trim().ifEmpty { "Peps" }} · exemple", small = true)
-                    Text(cur.sample, fontSize = 14.sp)
+                    Text(cur.sample, fontSize = 15.sp)
                 }
             }
         }
@@ -134,26 +131,31 @@ private fun MemoryCard(ui: AppState) {
     val list = remember(AiMemory.rev) { AiMemory.all(ctx) }
     var open by remember { mutableStateOf(false) }
     var on by remember { mutableStateOf(pr.aiMemory) }
+    var askClear by remember { mutableStateOf(false) }
+    var forget by remember { mutableStateOf<Long?>(null) }
+    if (askClear) PDialog({ askClear = false }, "🧠", "Vider la mémoire de l’IA ?", "Les ${list.size} souvenirs du coach seront effacés définitivement.", "Vider",
+        { askClear = false; AiMemory.clear(ctx); ui.toast("Mémoire de l’IA vidée.", "trash") }, danger = true)
+    forget?.let { at -> PDialog({ forget = null }, "🫥", "Oublier ce souvenir ?", "Le coach ne s’en servira plus pour te conseiller.", "Oublier", { forget = null; AiMemory.remove(ctx, at) }, danger = true) }
     SetGroup("Mémoire de l’IA", note = "Le coach retient tes demandes et tes réactions pour mieux te conseiller. Cette mémoire reste sur ton téléphone.") {
         SetToggle("Mémoriser", if (list.isEmpty()) "La mémoire est vide" else pl(list.size, "souvenir", "souvenirs"), "book", p.type("measure").c, on, { on = it; pr.aiMemory = it })
         if (on) SetBlock {
             var fact by remember { mutableStateOf("") }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(fact, { fact = it }, "", Modifier.weight(1f), placeholder = "Apprends-lui quelque chose sur toi…", max = 200, icon = "sparkle")
-                PButton("Retenir", { if (AiMemory.addFact(ctx, fact)) { fact = ""; ui.toast("Le coach s’en souviendra.", "sparkle") } else ui.toast("Déjà retenu, ou trop court.", "x") }, small = true, kind = "primary", enabled = fact.trim().length >= 4)
+                PButton("Retenir", { if (AiMemory.addFact(ctx, fact)) { fact = ""; ui.toast("Le coach s’en souviendra.", "sparkle") } else ui.toast("Déjà retenu, ou trop court.", "x") }, small = true, color = p.type("program").c, enabled = fact.trim().length >= 4)
             }
             Muted("Exemples : « Je travaille de nuit », « Je cours le dimanche matin », « Je préfère les conseils courts ».", small = true)
         }
         if (list.isNotEmpty()) SetBlock {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PButton(if (open) "Masquer" else "Lire la mémoire", { open = !open }, icon = "book", small = true)
-                PButton("Vider la mémoire", { ui.confirm("Vider la mémoire de l’IA ?", "Les ${list.size} souvenirs du coach seront effacés définitivement.", "Vider") { AiMemory.clear(ctx); ui.toast("Mémoire de l’IA vidée.", "trash") } }, icon = "trash", kind = "danger", small = true)
+                PButton("Vider la mémoire", { askClear = true }, icon = "trash", kind = "danger", small = true)
             }
             if (open) Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 list.reversed().forEach { m ->
                     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Column(Modifier.weight(1f)) { Text(m.text, fontSize = 14.sp); Muted("${ago(m.at)} · ${MEM_KIND[m.kind] ?: m.kind}", small = true) }
-                        IconBtn("x", "Oublier ce souvenir", { AiMemory.remove(ctx, m.at) }, plain = true, size = 34.dp)
+                        IconBtn("x", "Oublier ce souvenir", { forget = m.at }, plain = true)
                     }
                 }
             }

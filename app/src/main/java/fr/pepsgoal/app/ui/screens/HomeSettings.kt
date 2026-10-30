@@ -91,15 +91,15 @@ fun HomeSettings(ui: AppState) {
         Glass {
             CardHead("Cartes de l’accueil") { Count(list.count { it.second }) }
             Muted("Fais glisser la poignée pour changer l’ordre. L’interrupteur affiche ou masque la carte.", Modifier.padding(bottom = 10.dp), small = true)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 list.forEach { (k, on) -> key(k) {
                     val (l, d, ic) = HOME_CARDS[k]!!
                     val isDrag = dragging == k
                     val pos = list.indexOfFirst { it.first == k }
+                    // Ligne à marche ; saisie = soulevée (marche 6, échelle 1,02, bord braise)
                     Row(Modifier.zIndex(if (isDrag) 1f else 0f).onSizeChanged { rowH = it.height }
-                        .graphicsLayer { translationY = if (isDrag) dragY else 0f; scaleX = if (isDrag) 1.03f else 1f; scaleY = if (isDrag) 1.03f else 1f }
-                        .then(if (isDrag) Modifier.border(2.dp, LocalPal.current.flame, smoothShape(16.dp)) else Modifier)
-                        .clip(smoothShape(16.dp)).background(if (isDrag) p.glassStrong else p.ink.copy(alpha = .04f))
+                        .graphicsLayer { translationY = if (isDrag) dragY else 0f; scaleX = if (isDrag) 1.02f else 1f; scaleY = if (isDrag) 1.02f else 1f }
+                        .chunk(p.surface, if (isDrag) p.focusEdge else p.edge, 22.dp, if (isDrag) 6.dp else 3.dp, 2.dp).clip(RoundedCornerShape(20.dp))
                         .semantics(mergeDescendants = true) {
                             contentDescription = "$l, position ${pos + 1} sur ${list.size}, ${if (on) "affichée" else "masquée"}"
                             customActions = listOfNotNull(
@@ -145,12 +145,13 @@ fun ComfortSettings(ui: AppState) {
         SetGroup("Lecture") {
             SetToggle("Mode Lecture facile", "Mots simples, état des objectifs écrit en toutes lettres, texte un peu plus grand, messages affichés plus longtemps, sans effets de verre ni animations.", "book", p.type("duration").c,
                 pr.easy, { pr.easy = it; upd(); ui.toast(if (it) "Lecture facile activée." else "Lecture facile désactivée.", "eye") })
-            Column {
-                SetItem("Taille du texte", "${(pr.textScale * 100).roundToInt()} % de la taille choisie dans Android", "text", p.type("objective").c)
-                FlowRowCompat(Modifier.padding(start = 60.dp, end = 12.dp, bottom = 12.dp), gap = 6.dp) {
-                    listOf(.85f to "Petit", 1f to "Normal", 1.15f to "Grand", 1.3f to "Très grand", 1.5f to "Maximum").forEach { (v, l) -> FChip(l, abs(pr.textScale - v) < .01f, { pr.textScale = v; upd() }) }
-                }
-            }
+            // Taille du texte : curseur à crans de 15 % (85 % à 200 %), bulle de valeur ; appliquée au relâchement
+            val sizes = listOf(.85f, 1f, 1.15f, 1.3f, 1.45f, 1.6f, 1.75f, 1.9f, 2f)
+            var ts by remember { mutableFloatStateOf(pr.textScale) }
+            val ti = sizes.indices.minByOrNull { abs(sizes[it] - ts) } ?: 1
+            SetSlider("Taille du texte", "${(ts * 100).roundToInt()} %", ti / 8f, { v -> ts = sizes[(v * 8).roundToInt().coerceIn(0, 8)] },
+                sub = "En plus de la taille choisie dans Android", steps = 8, start = "85 %", end = "200 %", bubble = { "${(ts * 100).roundToInt()} %" },
+                onDone = { if (abs(pr.textScale - ts) > .001f) { pr.textScale = ts; upd() } })
             Column {
                 SetItem("Densité de l’affichage", "Compact : plus de contenu à l’écran. Large : tout est plus grand et plus facile à toucher.", "grip", p.type("project").c)
                 Box(Modifier.padding(start = 60.dp, end = 12.dp, bottom = 12.dp)) { Seg(listOf("compact" to "Compact", "normal" to "Normal", "large" to "Large"), pr.density, { pr.density = it; upd() }) }
@@ -186,10 +187,7 @@ private fun StylePicker(ui: AppState) {
             listOf("simple" to ("Simplifiée" to "Un en-tête qui résume ta journée, l’essentiel à valider, les moments du jour en tuiles « À la une » et le reste en sections repliables."),
                 "classic" to ("Classique" to "Toutes les cartes à la suite, dans l’ordre choisi ci-dessous.")).forEach { (k, v) ->
                 val on = st == k
-                Column(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (on) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f))
-                    .clickable { st = k; ui.prefs.homeStyle = k; Feedback.tick(); ui.bump() }.padding(12.dp)) {
-                    Text(v.first, fontWeight = FontWeight.ExtraBold, color = if (on) p.ink else p.ink2); Muted(v.second, small = true)
-                }
+                PRadioRow(v.first, v.second, on, { st = k; ui.prefs.homeStyle = k; ui.bump() }, emoji = if (k == "simple") "✨" else "📋")
             }
         }
         if (st == "simple") Muted("En présentation simplifiée, l’ordre des sections est fixe ; les interrupteurs ci-dessous choisissent toujours ce qui s’affiche.", Modifier.padding(top = 8.dp), small = true)
@@ -210,23 +208,20 @@ private fun LayoutPicker(ui: AppState) {
             // Aperçu : un téléphone et ses cartes
             androidx.compose.foundation.Canvas(Modifier.width(96.dp).height(170.dp)) {
                 val r = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx())
-                drawRoundRect(p.ink.copy(alpha = .08f), cornerRadius = r); drawRoundRect(p.ink.copy(alpha = .25f), cornerRadius = r, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+                drawRoundRect(p.surface2, cornerRadius = r); drawRoundRect(p.control, cornerRadius = r, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
                 var y = 10.dp.toPx(); val x = 7.dp.toPx(); val w = size.width - 2 * x
                 val cards = listOf(hero, 40f, 30f, 46f, 30f, 40f)
                 for ((i, h) in cards.withIndex()) {
                     val hh = h.dp.toPx() * (if (i == 0) 1f else (.7f + pad / 30f)); if (y + hh > size.height - 6.dp.toPx()) break
-                    drawRoundRect(if (i == 0) p.flame.copy(alpha = .35f) else p.glassStrong, androidx.compose.ui.geometry.Offset(x, y), androidx.compose.ui.geometry.Size(w, hh), androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))
-                    drawRoundRect(p.ink.copy(alpha = .3f), androidx.compose.ui.geometry.Offset(x + pad.dp.toPx() * .6f, y + pad.dp.toPx() * .6f), androidx.compose.ui.geometry.Size(w * .5f, 3.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
+                    drawRoundRect(if (i == 0) vivid(p.flame) else p.surface, androidx.compose.ui.geometry.Offset(x, y), androidx.compose.ui.geometry.Size(w, hh), androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
+                    drawRoundRect(if (i == 0) fr.pepsgoal.app.ui.theme.PLUM else p.control, androidx.compose.ui.geometry.Offset(x + pad.dp.toPx() * .6f, y + pad.dp.toPx() * .6f), androidx.compose.ui.geometry.Size(w * .5f, 3.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
                     y += hh + gap.dp.toPx()
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("compact" to ("Compact" to "Plus de cartes à l’écran, en-tête réduit."), "comfy" to ("Normal" to "L’équilibre par défaut."), "airy" to ("Aéré" to "Plus d’espace, pour respirer.")).forEach { (k, v) ->
                     val on = lay == k
-                    Column(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (on) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f))
-                        .clickable { lay = k; ui.prefs.homeLayout = k; Feedback.tick(); ui.bump() }.padding(10.dp)) {
-                        Text(v.first, fontWeight = FontWeight.ExtraBold, color = if (on) p.ink else p.ink2); Muted(v.second, small = true)
-                    }
+                    PRadioRow(v.first, v.second, on, { lay = k; ui.prefs.homeLayout = k; ui.bump() })
                 }
             }
         }

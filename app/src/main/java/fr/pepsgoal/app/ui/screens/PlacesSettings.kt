@@ -9,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +22,7 @@ import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.core.model.SavedPlace
 import fr.pepsgoal.core.uid
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -60,12 +60,12 @@ fun PlacesSettings(ui: AppState) {
                 Chip(fr.pepsgoal.core.pl(u.places.size, "emplacement", "emplacements"), "pin", p.type("measure").c)
             })
             Glass {
-                CardHead("Mes emplacements", emoji = "📍") { PButton("Ajouter", { adding = true }, icon = "plus", small = true, kind = "primary") }
+                CardHead("Mes emplacements", emoji = "📍") { PButton("Ajouter", { adding = true }, icon = "plus", small = true, color = p.type("measure").c) }
                 if (u.places.isEmpty()) Empty("Aucun emplacement", "Enregistre ta maison, ton travail ou ta salle de sport : tu les retrouveras d’un geste pour les rappels par lieu.", icon = "pin")
                 u.places.forEachIndexed { i, pl ->
-                    if (i > 0) Box(Modifier.fillMaxWidth().padding(start = 56.dp).height(1.dp).background(p.line.copy(alpha = .5f)))
+                    if (i > 0) Box(Modifier.fillMaxWidth().padding(start = 56.dp).height(1.dp).background(p.line))
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.size(44.dp).clip(smoothShape(14.dp)).background(p.type("measure").c.copy(alpha = .2f)), contentAlignment = Alignment.Center) { Emoji(pl.icon, 26.dp) }
+                        Box(Modifier.size(44.dp).chunk(p.selTint(p.type("measure").c), p.edge, 14.dp, 3.dp, 2.dp), contentAlignment = Alignment.Center) { Emoji(pl.icon, 26.dp) }
                         Column(Modifier.weight(1f)) {
                             Text(pl.name, fontWeight = FontWeight.ExtraBold)
                             Muted("Rayon ${pl.radius} m · ${"%.4f".format(pl.lat)}, ${"%.4f".format(pl.lon)}", small = true)
@@ -106,28 +106,34 @@ private fun PlaceEditor(ui: AppState, edit: SavedPlace?, done: () -> Unit) {
             if (fr.pepsgoal.app.sys.GeoReminders.hasFine(ctx)) perm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION))
             else perm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
         }
-        Box(Modifier.fillMaxWidth().height(320.dp).shadow((if (p.transp) 0.dp else 12.dp).ifShadows(), smoothShape(24.dp), spotColor = p.flame.copy(alpha = .35f))
-            .clip(smoothShape(24.dp)).border(1.dp, p.line, smoothShape(24.dp))) {
+        Box(Modifier.fillMaxWidth().height(324.dp).chunk(p.surface, p.edge, 24.dp, 4.dp, 2.dp).padding(2.dp).clip(RoundedCornerShape(22.dp))) {
             StyledMap(start, if (edit != null) 17.0 else 14.0, point, radius, icon, onTap = { point = it }, onReady = { map = it })
-            // Commandes flottantes en verre : zoom et position
+            // Commandes flottantes à marche : zoom et position
             Column(Modifier.align(Alignment.TopEnd).padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MapBtn("plus", "Zoomer") { map?.controller?.zoomIn() }
                 MapBtn("minus", "Dézoomer") { map?.controller?.zoomOut() }
             }
             MapBtn("compass", "Utiliser ma position", Modifier.align(Alignment.BottomEnd).padding(10.dp), accent = true) { locate() }
             // État du point, en pastille
-            Row(Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(50)).background(p.glassStrong.copy(alpha = .92f)).border(1.dp, p.line, RoundedCornerShape(50))
+            Row(Modifier.align(Alignment.TopStart).padding(10.dp).background(p.surface, RoundedCornerShape(50)).border(2.dp, p.edge, RoundedCornerShape(50))
                 .padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(if (point == null) "👆" else icon, fontSize = 13.sp)
-                Text(if (point == null) "Touche pour placer" else name.ifBlank { "Point placé" }, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text(if (point == null) "👆" else icon, fontSize = 14.sp)
+                Text(if (point == null) "Touche pour placer" else name.ifBlank { "Point placé" }, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             }
-            Text("© contributeurs OpenStreetMap", Modifier.align(Alignment.BottomStart).padding(8.dp).clip(RoundedCornerShape(6.dp)).background(p.glassStrong.copy(alpha = .8f)).padding(horizontal = 6.dp, vertical = 2.dp),
-                fontSize = 9.sp, color = p.ink2)
+            Text("© contributeurs OpenStreetMap", Modifier.align(Alignment.BottomStart).padding(8.dp).background(p.surface, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
+                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink2)
         }
-        Text("Rayon", Modifier.padding(top = 12.dp), fontWeight = FontWeight.Bold)
-        FlowRowCompat(Modifier.padding(top = 6.dp), gap = 6.dp) { listOf(100, 150, 300, 500).forEach { r -> FChip("$r m", radius == r, { radius = r }) } }
+        // Rayon : curseur à crans de 100 m à 2 km (paliers de 50 m sous 500 m, puis de 250 m)
+        val stops = RADII; val ri = stops.indexOfFirst { it >= radius }.let { if (it < 0) stops.lastIndex else it }
+        Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Rayon", Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            Text(radiusLabel(radius), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = p.ink)
+        }
+        PSlider(ri / stops.lastIndex.toFloat(), { v -> radius = stops[(v * stops.lastIndex).roundToInt()] }, color = p.type("measure").c, steps = stops.lastIndex,
+            bubble = { v -> radiusLabel(stops[(v * stops.lastIndex).roundToInt()]) }, label = "Rayon")
+        SliderEnds("100 m", "2 km")
         Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-            PButton("Annuler", done, kind = "ghost", small = true)
+            PButton("Annuler", done, kind = "ghost")
             PButton("Enregistrer", {
                 val pt = point ?: return@PButton ui.toast("Place l’emplacement sur la carte.", "pin")
                 if (name.isBlank()) return@PButton ui.toast("Donne un nom à cet emplacement.", "pin")
@@ -135,22 +141,17 @@ private fun PlaceEditor(ui: AppState, edit: SavedPlace?, done: () -> Unit) {
                 if (edit != null) { edit.name = name.trim().take(40); edit.icon = icon; edit.lat = pt.latitude; edit.lon = pt.longitude; edit.radius = radius }
                 else u.places.add(SavedPlace(uid(), name.trim().take(40), icon, pt.latitude, pt.longitude, radius))
                 pg.store.commit(); ui.toast("Emplacement « ${name.trim()} » enregistré.", "pin"); done()
-            }, icon = "check", kind = "primary", small = true)
+            }, icon = "check", kind = "primary")
         }
     }
 }
 
 @Composable
-private fun MapBtn(icon: String, desc: String, modifier: Modifier = Modifier, accent: Boolean = false, onClick: () -> Unit) {
-    val p = LocalPal.current
-    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Box(modifier.bounce(inter, .88f).size(42.dp).shadow(8.dp.ifShadows(), RoundedCornerShape(50), spotColor = p.flame.copy(alpha = .4f)).clip(RoundedCornerShape(50))
-        .background(if (accent) androidx.compose.ui.graphics.Brush.linearGradient(listOf(p.flame2, p.flame, p.pink)) else androidx.compose.ui.graphics.SolidColor(p.glassStrong.copy(alpha = .95f)))
-        .border(1.dp, if (accent) androidx.compose.ui.graphics.Color.White.copy(alpha = .5f) else p.line, RoundedCornerShape(50))
-        .springClick(inter, label = desc, onClick = onClick), contentAlignment = Alignment.Center) {
-        Pi(icon, size = 20.dp, tint = if (accent) p.onAccent else p.ink)
-    }
-}
+private fun MapBtn(icon: String, desc: String, modifier: Modifier = Modifier, accent: Boolean = false, onClick: () -> Unit) =
+    IconBtn(icon, desc, onClick, modifier, primary = accent)
+
+private val RADII = listOf(100, 150, 200, 250, 300, 400, 500, 750, 1000, 1500, 2000)
+private fun radiusLabel(r: Int) = if (r >= 1000) "${"%.1f".format(r / 1000f).removeSuffix(",0").removeSuffix(".0")} km" else "$r m"
 
 /**
  * Carte OpenStreetMap recolorée en deux tons aux couleurs de PepsGoal, cercle du rayon
@@ -220,18 +221,19 @@ private fun tint(bg: androidx.compose.ui.graphics.Color, ink: androidx.compose.u
     return android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix(m))
 }
 
-/** Marqueur : goutte dégradée aux couleurs de l'accent, liseré blanc, ombre douce et emoji de l'emplacement. */
+/** Marqueur : goutte aux couleurs de la braise, liseré blanc, marche pleine et emoji de l'emplacement. */
 private fun pinDrawable(ctx: Context, emoji: String, c1: Int, c2: Int, c3: Int): android.graphics.drawable.BitmapDrawable {
     val d = ctx.resources.displayMetrics.density
-    val w = (54 * d).toInt(); val h = (66 * d).toInt(); val r = 23 * d; val cx = w / 2f; val cy = r + 4 * d
+    val w = (54 * d).toInt(); val h = (69 * d).toInt(); val r = 23 * d; val cx = w / 2f; val cy = r + 4 * d
     val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
     val cv = android.graphics.Canvas(bmp)
     val path = android.graphics.Path().apply {
         addCircle(cx, cy, r, android.graphics.Path.Direction.CW)
         moveTo(cx - r * .55f, cy + r * .8f); lineTo(cx, h - 3 * d); lineTo(cx + r * .55f, cy + r * .8f); close()
     }
-    val shadow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0x55000000; maskFilter = android.graphics.BlurMaskFilter(4 * d, android.graphics.BlurMaskFilter.Blur.NORMAL) }
-    cv.save(); cv.translate(0f, 2 * d); cv.drawPath(path, shadow); cv.restore()
+    // Marche pleine sous la goutte (aucun flou ni ombre)
+    val step = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC2185B.toInt() }
+    cv.save(); cv.translate(0f, 3 * d); cv.drawPath(path, step); cv.restore()
     val fill = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         shader = android.graphics.LinearGradient(0f, cy - r, 0f, h.toFloat(), intArrayOf(c1, c2, c3), null, android.graphics.Shader.TileMode.CLAMP)
     }

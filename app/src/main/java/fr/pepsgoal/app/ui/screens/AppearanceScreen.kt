@@ -45,6 +45,8 @@ import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.sys.AppIcons
 import fr.pepsgoal.app.sys.Season
 import fr.pepsgoal.app.ui.*
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
@@ -67,7 +69,7 @@ private val FX_NAMES = linkedMapOf("snow" to "Neige", "petals" to "Pétales", "l
     "bubbles" to "Bulles", "confetti" to "Confettis", "stars" to "Étoiles")
 
 /** Nom lisible de l'arrière-plan en cours. */
-private fun bgName(bg: String): String = SHOP_BGS.firstOrNull { "s:${it.key}" == bg }?.name ?: BGS.firstOrNull { it.first == bg }?.second ?: "Blob"
+private fun bgName(bg: String): String = SHOP_BGS.firstOrNull { "s:${it.key}" == bg }?.name ?: BGS.firstOrNull { it.first == bg }?.second ?: "Collines braise"
 
 /** Page Apparence, insérée dans la liste des réglages (un seul élément de la LazyColumn). */
 @Composable
@@ -96,42 +98,28 @@ private fun LivePreview(ui: AppState, u: User) {
     val icon = AppIcons.ALL.firstOrNull { it.key == iconKey }
     Glass {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            val shape = smoothShape(26.dp)
-            Box(Modifier.size(132.dp, 250.dp).clip(shape).background(p.bg).border(3.dp, p.ink.copy(alpha = .85f), shape)) {
-                Backdrop(s.bg, null, false, ui.prefs.bgStamp, s.fx)
+            // Téléphone miniature à marche : la scène figée, son voile, un héros en plaque, une carte et deux lignes
+            Box(Modifier.size(132.dp, 254.dp).chunk(p.bg, p.edge, 26.dp, 4.dp, 2.dp).clip(RoundedCornerShape(24.dp))) {
+                MiniBackdrop(if (s.theme == "weather") "plain" else ui.sceneKind(), ui)
+                val bg = p.bg
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to bg.copy(alpha = .06f), .5f to bg.copy(alpha = .38f), 1f to bg.copy(alpha = .55f))))
                 Column(Modifier.fillMaxSize().padding(horizontal = 9.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    // Barre du haut : titre et pastille de série
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FitText(tr("Aujourd’hui"), Modifier.weight(1f), size = 11, min = 7, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
-                        Row(Modifier.clip(CircleShape).background(p.glassStrong).padding(horizontal = 5.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Flame(10.dp); Text("12", fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
-                        }
+                    Spacer(Modifier.height(30.dp))
+                    Box(Modifier.background(p.surface, CircleShape).border(1.5.dp, p.edge, CircleShape).padding(horizontal = 7.dp, vertical = 2.dp)) {
+                        FitText(tr("Aujourd’hui"), size = 12, min = 7, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
                     }
-                    // Carte en verre factice
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, RoundedCornerShape(12.dp)).padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Column(Modifier.fillMaxWidth().background(p.flameBrush(), RoundedCornerShape(12.dp)).padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Box(Modifier.fillMaxWidth(.8f).height(5.dp).clip(CircleShape).background(p.ink.copy(alpha = .75f)))
-                                Spacer(Modifier.height(4.dp))
-                                Box(Modifier.fillMaxWidth(.55f).height(4.dp).clip(CircleShape).background(p.ink.copy(alpha = .35f)))
-                            }
-                            Flame(22.dp)
-                        }
-                        Box(Modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(p.ink.copy(alpha = .1f))) {
-                            Box(Modifier.fillMaxWidth(.66f).fillMaxHeight().clip(CircleShape).background(p.accent))
+                            Text("12", Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = fr.pepsgoal.app.ui.theme.PLUM)
+                            Box(Modifier.size(24.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) { Flame(16.dp) }
                         }
                     }
                     repeat(2) { i ->
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(p.glass).padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Box(Modifier.size(12.dp).clip(RoundedCornerShape(4.dp)).background(p.type(if (i == 0) "routine" else "objective").c))
-                            Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(p.ink.copy(alpha = .4f)))
-                            Box(Modifier.size(10.dp).clip(CircleShape).border(1.5.dp, if (i == 0) p.ok else p.ink3, CircleShape))
+                        Row(Modifier.fillMaxWidth().background(p.surface, RoundedCornerShape(10.dp)).border(1.5.dp, p.edge, RoundedCornerShape(10.dp)).padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Box(Modifier.size(12.dp).background(p.type(if (i == 0) "routine" else "objective").c, RoundedCornerShape(6.dp)))
+                            Box(Modifier.weight(1f).height(4.dp).background(p.surface2, CircleShape))
+                            Box(Modifier.size(10.dp).border(1.5.dp, p.control, CircleShape))
                         }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Box(Modifier.fillMaxWidth().height(22.dp).clip(CircleShape).background(p.accent), contentAlignment = Alignment.Center) {
-                        FitText(tr("Valider"), size = 9, min = 6, color = p.onAccent, weight = FontWeight.ExtraBold)
                     }
                 }
             }
@@ -152,7 +140,7 @@ private fun LivePreview(ui: AppState, u: User) {
 private fun PreviewLine(k: String, v: String) {
     val p = LocalPal.current
     Column {
-        Text(tr(k).uppercase(), fontSize = 10.sp, letterSpacing = 1.1.sp, fontWeight = FontWeight.ExtraBold, color = p.ink3)
+        Text(tr(k).uppercase(), fontSize = 12.sp, letterSpacing = 1.1.sp, fontWeight = FontWeight.ExtraBold, color = p.ink3)
         FitText(tr(v), size = 14, min = 10, color = p.ink, weight = FontWeight.ExtraBold)
     }
 }
@@ -173,21 +161,10 @@ private fun Head(icon: String, title: String, sub: String? = null, modifier: Mod
     }
 }
 
-/** Sélecteur segmenté pleine largeur : chaque option a la même part, libellé ajusté sur une ligne. */
+/** Sélecteur segmenté pleine largeur (Seg Braise Pop : rail 56, segments 48, deux lignes). */
 @Composable
 private fun <T> SegFill(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, enabled: Boolean = true) {
-    val p = LocalPal.current
-    Row(Modifier.fillMaxWidth().alpha(if (enabled) 1f else .5f).clip(smoothShape(16.dp)).background(p.ink.copy(alpha = if (p.dark) .1f else .07f)).padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        options.forEach { (k, l) ->
-            val on = k == value
-            Box(Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(12.dp)).background(if (on) p.glassStrong else Color.Transparent)
-                .then(if (on) Modifier.border(1.dp, p.glassEdge, RoundedCornerShape(12.dp)) else Modifier)
-                .clickable(enabled = enabled, onClickLabel = l) { onChange(k) }.padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
-                FitText(tr(l), size = 13, min = 9, color = if (on) p.ink else p.ink2, weight = FontWeight.ExtraBold)
-            }
-        }
-    }
+    Box(Modifier.fillMaxWidth().alpha(if (enabled) 1f else .45f)) { Seg(options, value, { if (enabled) onChange(it) }, Modifier.fillMaxWidth()) }
 }
 
 /** Carrousel horizontal avec aimantation sur les tuiles. */
@@ -200,20 +177,14 @@ private fun <T> Carousel(list: List<T>, start: Int = 0, cell: @Composable (T) ->
     }
 }
 
-/** Tuile d'un carrousel : aperçu arrondi et libellé sur une ligne (jamais tronqué : il rétrécit). */
+/** Tuile d'un carrousel : tuile à marche 78 × 104 (choisie = bord braise), étiquette en mini-plaque. */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 private fun Tile(label: String, selected: Boolean, w: Dp, h: Dp, onClick: () -> Unit, badge: String? = null, content: @Composable BoxScope.() -> Unit) {
-    val p = LocalPal.current
-    val sc by animateFloatAsState(if (selected && !p.motion) 1f else .96f, label = "tile")
-    Column(Modifier.width(w).clip(smoothShape(18.dp)).clickable(onClickLabel = label, onClick = onClick).padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        val shape = smoothShape(16.dp)
-        Box(Modifier.size(w - 4.dp, h).graphicsLayerScale(sc).clip(shape).border(if (selected) 3.dp else 1.dp, if (selected) p.flame else p.line, shape)) {
-            content()
-            if (badge != null) Text(badge, Modifier.align(Alignment.TopEnd).padding(5.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f)).padding(horizontal = 6.dp, vertical = 2.dp),
-                color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
-            if (selected) Box(Modifier.align(Alignment.BottomEnd).padding(5.dp).size(20.dp).clip(CircleShape).background(p.flame), contentAlignment = Alignment.Center) { Pi("check", size = 13.dp, tint = p.onAccent) }
-        }
-        FitText(tr(label), Modifier.padding(top = 6.dp), size = 12, min = 8, color = if (selected) p.ink else p.ink2, weight = if (selected) FontWeight.ExtraBold else FontWeight.Bold)
+    BgTile(label, null, selected, onClick) {
+        content()
+        if (badge != null) MiniPlaque(badge, Modifier.align(Alignment.TopEnd).padding(4.dp))
+        if (selected) Box(Modifier.align(Alignment.BottomEnd).padding(5.dp).size(22.dp).background(vivid(LocalPal.current.type("routine").c), CircleShape), contentAlignment = Alignment.Center) { Pi("check", size = 14.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
     }
 }
 
@@ -236,7 +207,7 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
     }
     val cur = shopMode(s.theme)
     Glass {
-        Head("sun", "Thème", cur?.desc ?: THEME_DESC[s.theme] ?: "Apparence de toute l’interface") { Chip(themeName(s.theme), if (cur != null) "star" else null, p.flame.copy(alpha = .18f), p.ink) }
+        Head("sun", "Thème", cur?.desc ?: THEME_DESC[s.theme] ?: "Apparence de toute l’interface") { Chip(themeName(s.theme), if (cur != null) "star" else null, p.flame) }
         // Thèmes de base, puis une tuile vers les ambiances de la boutique
         Box(Modifier.padding(bottom = 8.dp)) { Eyebrow("De base") }
         val base = THEMES.map { it.first to it.second } + ("shop" to "Ambiances")
@@ -265,24 +236,27 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
             PSwitch(ui.prefs.materialYou && dynOk, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = dynOk)
         }
         if (ui.prefs.materialYou && dynOk) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf(p.flame2, p.flame, p.pink, p.glassStrong, p.bg).forEach { Box(Modifier.size(22.dp).clip(CircleShape).background(it).border(1.dp, p.line, CircleShape)) }
+            listOf(p.flame2, p.flame, p.pink, p.surface, p.bg).forEach { Box(Modifier.size(22.dp).clip(CircleShape).background(it).border(2.dp, p.edge, CircleShape)) }
             Muted(if (cur != null) "Propre à cet appareil · l’ambiance garde son fond et son texte" else "Propre à cet appareil", Modifier.padding(start = 4.dp), small = true)
         }
     }
 }
 
-/** Tuile « Ambiances » : aperçu en éventail de trois ambiances, et accès à la boutique. */
+/** Tuile « Ambiances » : aperçu en éventail de trois ambiances, et accès à la boutique (tuile à marche). */
 @Composable
 private fun ShopModesTile(ui: AppState, owned: Int, modifier: Modifier) {
     val p = LocalPal.current
-    Column(modifier.clip(smoothShape(18.dp)).clickable(onClickLabel = "Ambiances de la boutique") { ui.shopTab = "modes"; ui.push(Screen.Shop) }.padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.fillMaxWidth().height(104.dp).clip(smoothShape(16.dp)).border(1.dp, p.line, smoothShape(16.dp)).background(p.ink.copy(alpha = .05f)), contentAlignment = Alignment.Center) {
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().height(108.dp).chunk(p.surface2, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(20.dp))
+            .springClick(inter, label = "Ambiances de la boutique") { ui.shopTab = "modes"; ui.push(Screen.Shop) }, contentAlignment = Alignment.Center) {
             listOf("m:sakura", "m:neon", "m:mint").forEachIndexed { i, k ->
-                ThemePreview(themeLook(k), Modifier.size(38.dp, 62.dp).graphicsLayer { rotationZ = (i - 1) * 12f; translationX = (i - 1) * 16.dp.toPx() }.clip(RoundedCornerShape(8.dp)).border(1.dp, Color.White.copy(alpha = .6f), RoundedCornerShape(8.dp)))
+                ThemePreview(themeLook(k), Modifier.size(38.dp, 62.dp).graphicsLayer { rotationZ = (i - 1) * 12f; translationX = (i - 1) * 16.dp.toPx() }.clip(RoundedCornerShape(6.dp)).border(2.dp, p.surface, RoundedCornerShape(6.dp)))
             }
-            Text(if (owned > 0) "$owned / ${SHOP_MODES.size}" else "${SHOP_MODES.size}", Modifier.align(Alignment.TopEnd).padding(5.dp).clip(CircleShape).background(p.flame).padding(horizontal = 6.dp, vertical = 2.dp), color = p.onAccent, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+            Badge(if (owned > 0) owned else SHOP_MODES.size, Modifier.align(Alignment.TopEnd).padding(5.dp))
         }
-        FitText(tr("Ambiances"), Modifier.padding(top = 6.dp), size = 12, min = 8, color = p.ink2, weight = FontWeight.Bold)
+        FitText(tr("Ambiances"), Modifier.padding(top = 6.dp), size = 13, min = 9, color = p.ink2, weight = FontWeight.ExtraBold)
     }
 }
 
@@ -295,9 +269,9 @@ private fun ColorSection(ui: AppState, u: User, dynOk: Boolean) {
     val custom = validAccent(s.accentCustom)
     val ownedThemes = SHOP_THEMES.filter { ui.pg.owns("theme:${it.key}", it.price, u) }
     val curName = if (custom) (SHOP_THEMES.firstOrNull { it.colors == s.accentCustom }?.name ?: "Personnalisée") else (ACCENTS.getOrNull(s.accent) ?: ACCENTS[0]).name
-    Glass(Modifier.alpha(if (my) .55f else 1f)) {
+    Glass(Modifier.alpha(if (my) .45f else 1f)) {
         Head("palette", "Couleur", if (my) "Remplacée par Material You sur cet appareil" else "Flammes, boutons et anneau de progression") {
-            Text(tr(curName), Modifier.clip(CircleShape).background(p.ink.copy(alpha = .07f)).padding(horizontal = 10.dp, vertical = 5.dp), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Chip(tr(curName))
         }
         val start = if (custom) 0 else s.accent
         val state = rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, start - 2))
@@ -315,17 +289,21 @@ private fun ColorSection(ui: AppState, u: User, dynOk: Boolean) {
                 }
             }
         }
-        PButton("Thèmes de la boutique", { ui.push(Screen.Shop) }, icon = "star", small = true, kind = "ghost", modifier = Modifier.padding(top = 8.dp))
+        PButton("Thèmes de la boutique", { ui.push(Screen.Shop) }, icon = "star", small = true, modifier = Modifier.padding(top = 8.dp))
     }
 }
 
+/** Pastille de couleur : 44 dp à marche, choisie = bord braise et coche prune. */
 @Composable
 private fun Swatch(b: Brush, on: Boolean, name: String, onClick: () -> Unit) {
     val p = LocalPal.current
-    val sz by animateFloatAsState(if (on) 46f else 40f, label = "sw")
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
     Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-        Box(Modifier.size(sz.dp).clip(CircleShape).background(b).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, CircleShape).clickable(onClickLabel = name, onClick = onClick),
-            contentAlignment = Alignment.Center) { if (on) Pi("check", size = 18.dp, tint = Color.White) }
+        Box(Modifier.size(44.dp, 47.dp).chunk(b, if (on) p.focusEdge else p.edge, 22.dp, 3.dp, if (on) 3.dp else 2.dp, press).clip(CircleShape)
+            .springClick(inter, label = name, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick).semantics { selected = on }, contentAlignment = Alignment.Center) {
+            if (on) Box(Modifier.size(24.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) { Pi("check", size = 16.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
+        }
     }
 }
 
@@ -354,7 +332,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
     val scenes = SHOP_BGS.filter { ui.pg.owns("bg:${it.key}", it.price, u) }
     val more = SHOP_BGS.size - scenes.size
     Glass {
-        Head("image", "Arrière-plan", if (weather) "Le thème Météo affiche le ciel en direct : change de thème pour choisir un fond." else "${bgName(s.bg)} · derrière toute l’application")
+        Head("image", "Arrière-plan", if (weather) "Le thème Météo affiche le ciel en direct : change de thème pour choisir un fond." else "${bgName(s.bg)} · ${when (ui.prefs.bgWhere) { "home" -> "en haut de l’accueil"; "off" -> "masqué"; else -> "sur tout l’écran" }}")
         Box(Modifier.alpha(if (weather) .5f else 1f)) {
             val all = free.map { "f:${it.first}" } + scenes.map { "s:${it.key}" } + listOf("custom", "shop")
             val start = all.indexOfFirst { k -> (k.startsWith("f:") && k.removePrefix("f:") == s.bg) || k == s.bg }.coerceAtLeast(0)
@@ -370,17 +348,30 @@ private fun BackgroundSection(ui: AppState, u: User) {
                     }
                     k == "custom" -> Tile(if (has) "Mon image" else "Ma photo", s.bg == "custom" && has, 86.dp, 132.dp, { if (!weather) { if (has) { s.bg = "custom"; commit(ui) } else openPicker() } }) {
                         if (has) AsyncImage(ImageRequest.Builder(ctx).data(file).memoryCacheKey("bg${ui.prefs.bgStamp}").crossfade(true).build(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        else Box(Modifier.fillMaxSize().background(p.ink.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Pi("plus", size = 26.dp, tint = p.ink2) }
+                        else Box(Modifier.fillMaxSize().background(p.surface2), contentAlignment = Alignment.Center) { Pi("plus", size = 26.dp, tint = p.ink2) }
                     }
                     else -> Tile("Boutique", false, 86.dp, 132.dp, { ui.push(Screen.Shop) }, badge = if (more > 0) "+$more" else null) {
-                        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(p.flame2, p.flame, p.pink))), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) { Pi("star", size = 26.dp, tint = p.onAccent); Text(tr("Fonds"), color = p.onAccent, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp) }
+                        Box(Modifier.fillMaxSize().background(p.flameBrush()), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) { Emoji("🛍️", 28.dp); Text(tr("Fonds"), color = fr.pepsgoal.app.ui.theme.PLUM, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp) }
                         }
                     }
                 }
             }
         }
-        // Image personnalisée : changer, retirer, flou, assombrissement et couleurs extraites
+        // Où voir ton fond, et sa présence (voile)
+        Text(tr("Où voir ton fond"), Modifier.padding(top = 12.dp, start = 4.dp), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        PRadioGroup(listOf("all" to "Partout", "home" to "Accueil seulement", "off" to "Nulle part"), ui.prefs.bgWhere, { ui.prefs.bgWhere = it; ui.themeTick++; ui.bump() },
+            subs = listOf("Accueil, pages, derrière les feuilles", "Le haut de l’accueil", "Deux formes colorées immobiles"), emojis = listOf("🏞️", "🏠", "⚪"))
+        var lvl by remember { mutableIntStateOf(ui.prefs.bgLevel) }
+        val lvlName = listOf("Discrète", "Équilibrée", "Intense")
+        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(tr("Présence du fond"), Modifier.weight(1f).padding(start = 4.dp), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+            Text(tr(lvlName[lvl.coerceIn(0, 2)]), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = p.ink)
+        }
+        PSlider(lvl / 2f, { v -> lvl = (v * 2).roundToInt(); ui.prefs.bgLevel = lvl; ui.themeTick++ }, steps = 2, label = "Présence du fond", enabled = ui.prefs.bgWhere != "off")
+        SliderEnds(tr("Discrète"), tr("Intense"))
+        SetRow("Fond animé", "Figé en économie d’énergie") { PSwitch(ui.prefs.bgAnim, { ui.prefs.bgAnim = it; ui.themeTick++ }) }
+        // Image personnalisée : changer, retirer, voile (plus aucun flou) et couleurs extraites
         if (has) {
             SetRow("Mon image", "Une photo à toi, gardée sur cet appareil.") {
                 PButton("Changer", { openPicker() }, icon = "image", small = true)
@@ -406,7 +397,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
                 Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     pal.forEach { c ->
                         val on = validAccent(s.accentCustom) && Media.accentFrom(c)[1] == s.accentCustom!![1]
-                        Box(Modifier.size(34.dp).clip(CircleShape).background(hex(c)).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, CircleShape)
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(hex(c)).border(if (on) 3.dp else 2.dp, if (on) p.focusEdge else p.edge, CircleShape)
                             .clickable(onClickLabel = "Utiliser la couleur $c") { s.accentCustom = Media.accentFrom(c); commit(ui); ui.toast("Couleur d’accent tirée de ton arrière-plan.", "palette") })
                     }
                 }
@@ -420,7 +411,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
 private fun MiniBackdrop(kind: String, ui: AppState) {
     val p = LocalPal.current
     CompositionLocalProvider(LocalPal provides p.copy(motion = true)) {
-        Box(Modifier.fillMaxSize().background(p.bg)) { Backdrop(kind, null, false, ui.prefs.bgStamp) }
+        Box(Modifier.fillMaxSize().background(p.bg)) { if (kind == "pop" || kind == "blob") PopBg(still = true) else Backdrop(kind, null, false, ui.prefs.bgStamp) }
     }
 }
 
@@ -445,11 +436,11 @@ private fun IconSection(ui: AppState) {
         }
         Carousel(owned.map { it.key } + "shop", start = maxOf(0, owned.indexOfFirst { it.key == cur } - 1)) { k ->
             if (k == "shop") Tile("Boutique", false, 74.dp, 66.dp, { ui.push(Screen.Shop) }, badge = if (more > 0) "+$more" else null) {
-                Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(p.flame2, p.flame, p.pink))), contentAlignment = Alignment.Center) { Pi("star", size = 24.dp, tint = p.onAccent) }
+                Box(Modifier.fillMaxSize().background(p.flameBrush()), contentAlignment = Alignment.Center) { Emoji("🛍️", 28.dp) }
             } else {
                 val ic = AppIcons.ALL.first { it.key == k }
                 Tile(ic.label, cur == k, 74.dp, 66.dp, { AppIcons.set(ctx, ic.key); cur = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") }) {
-                    Box(Modifier.fillMaxSize().background(p.ink.copy(alpha = .04f)), contentAlignment = Alignment.Center) { AppIconPreview(ic, 54.dp, false) }
+                    Box(Modifier.fillMaxSize().background(p.surface2), contentAlignment = Alignment.Center) { AppIconPreview(ic, 54.dp, false) }
                 }
             }
         }
@@ -466,12 +457,7 @@ private fun EffectsSection(ui: AppState, u: User) {
     val season = Season.now()
     Glass {
         Head("sparkle", "Effets et saisons")
-        // Fond animé : jamais derrière toute l'application, seulement en haut de l'accueil (360 dp, fondu)
-        Text(tr("Fond animé"), Modifier.padding(top = 4.dp), fontWeight = FontWeight.ExtraBold)
-        Muted("Ton fond (scène, ciel, ambiance) derrière l’en-tête de l’accueil. Sinon, deux formes colorées immobiles.", Modifier.padding(bottom = 6.dp), small = true)
-        PRadioGroup(listOf("all" to "Partout", "home" to "Accueil seulement", "off" to "Nulle part"), ui.prefs.bgWhere, { ui.prefs.bgWhere = it; ui.themeTick++; ui.bump() },
-            subs = listOf("Accueil, pages, derrière les feuilles", "Le haut de l’accueil", "Deux formes colorées immobiles"), emojis = listOf("🏞️", "🏠", "⚪"))
-        Text(tr("Animations"), Modifier.padding(top = 12.dp), fontWeight = FontWeight.ExtraBold)
+        Text(tr("Animations"), Modifier.padding(top = 4.dp), fontWeight = FontWeight.ExtraBold)
         Muted("Rebonds, flamme qui danse et confettis ; « Réduites » les remplace par des fondus.", Modifier.padding(bottom = 6.dp), small = true)
         Seg(listOf(false to "Complètes", true to "Réduites"), ui.prefs.motion, { ui.prefs.motion = it; ui.themeTick++ }, Modifier.fillMaxWidth())
         Spacer(Modifier.height(6.dp))
@@ -480,7 +466,7 @@ private fun EffectsSection(ui: AppState, u: User) {
         }
         PSelectMenu("Lumière de la scène", listOf("real" to "Suit l’heure réelle", "day" to "Toujours le jour", "theme" to "Suit le thème"), ui.prefs.bgLight, { ui.prefs.bgLight = it; ui.themeTick++ },
             emojis = listOf("🕰️", "☀️", "🌗"), subs = listOf("Aube, jour, crépuscule, nuit", null, "Nuit en thème sombre"))
-        SetRow("Fond qui réagit", "Une lueur chaude monte au fil de tes validations, et des confettis tombent les journées parfaites.") {
+        SetRow("Fond qui réagit", "La marée de braise monte avec tes validations, et des confettis tombent les journées parfaites.") {
             PSwitch(ui.prefs.bgReactive, { ui.prefs.bgReactive = it; ui.themeTick++ })
         }
         SetRow("Fond à la météo", if (ui.pg.me()?.settings?.weather == null) "Choisis ta ville dans Paramètres › Météo : il pleuvra sur ton fond quand il pleut dehors." else "Pluie, neige, orage ou brouillard sur ton fond quand il fait ce temps-là dehors.") {
@@ -504,7 +490,8 @@ private fun LanguageSection(ui: AppState) {
     var lang by remember { mutableStateOf(ui.prefs.raw.getString("lang", "auto") ?: "auto") }
     Glass {
         Head("globe", "Langue · Language", "« Auto » suit la langue du téléphone ; tes contenus restent tels que tu les as écrits.")
-        SegFill(listOf("auto" to "Auto", "fr" to "Français", "en" to "English"), lang, { lang = it; ui.prefs.raw.edit().putString("lang", it).apply(); I18n.apply(ctx, it); ui.themeTick++; ui.bump() })
+        PSelectMenu(null, listOf("auto" to "Auto", "fr" to "Français", "en" to "English"), lang, { lang = it; ui.prefs.raw.edit().putString("lang", it).apply(); I18n.apply(ctx, it); ui.themeTick++; ui.bump() },
+            emojis = listOf("📱", "🇫🇷", "🇬🇧"), subs = listOf("Langue du téléphone", null, null))
     }
 }
 
@@ -516,7 +503,7 @@ private fun AdvancedSection(ui: AppState, u: User) {
     var open by remember { mutableStateOf(false) }
     val rot by animateFloatAsState(if (open) 90f else 0f, label = "adv")
     Glass(Modifier.animateContentSize()) {
-        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable(onClickLabel = if (open) "Replier" else "Déplier") { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).clickable(onClickLabel = if (open) "Replier" else "Déplier") { open = !open }, verticalAlignment = Alignment.CenterVertically) {
             Head("gear", "Réglages avancés", "Carte « En cours »", Modifier.weight(1f))
             Pi("chevronleft", Modifier.rotate(180f + rot), size = 18.dp, tint = p.ink2)
         }
