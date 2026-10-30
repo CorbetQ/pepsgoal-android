@@ -418,6 +418,6 @@ private fun Meter(label: String, r: Float) {
 fun SparkBars(vals: List<Double>, h: androidx.compose.ui.unit.Dp) {
     val p = LocalPal.current; val mx = maxOf(1.0, vals.maxOrNull() ?: 1.0)
     Row(Modifier.fillMaxWidth().height(h), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom) {
-        vals.forEach { v -> Box(Modifier.weight(1f).fillMaxHeight((v / mx).toFloat().coerceAtLeast(.04f)).clip(RoundedCornerShape(3.dp)).background(p.flame)) }
+        vals.forEach { v -> Box(Modifier.weight(1f).fillMaxHeight((v / mx).toFloat().coerceAtLeast(.04f)).clip(RoundedCornerShape(6.dp)).background(p.flame)) }
     }
 }

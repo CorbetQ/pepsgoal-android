@@ -114,6 +114,16 @@ fun Pal.barEdge(tint: Color?): Color = if (contrast || tint == null) edge else l
 
 /* ================================================================== plaques */
 
+/**
+ * Taille d'un titre en Unbounded : suit la taille du texte d'Android jusqu'à 130 %, puis plafonne (à 200 %, un mot
+ * long comme « Accessibilité » se couperait au milieu ; les textes courants, eux, grandissent sans limite).
+ */
+@Composable
+fun titleSp(size: Int): androidx.compose.ui.unit.TextUnit {
+    val k = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    return (size * minOf(1f, 1.3f / k)).sp
+}
+
 /** Plaque : capsule opaque `surface` + bord 2 dp, sans marche (elle ne se presse pas). Porte tout texte posé sur le fond. */
 @Composable
 fun Plaque(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
@@ -145,7 +155,7 @@ fun SectionPlaque(text: String, emoji: String? = null, count: Any? = null, actio
         Row(Modifier.weight(1f, fill = false).semantics(mergeDescendants = true) { heading() }.background(p.surface, RoundedCornerShape(24.dp)).border(2.dp, p.edge, RoundedCornerShape(24.dp))
             .padding(start = 10.dp, end = 12.dp, top = 5.dp, bottom = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (emoji != null) Emoji(emoji, 24.dp)
-            Text(text, Modifier.weight(1f, fill = false), fontSize = 18.sp, fontFamily = Unbounded, fontWeight = FontWeight.Bold, lineHeight = 22.sp, color = p.ink, maxLines = 2)
+            Text(text, Modifier.weight(1f, fill = false), fontSize = titleSp(18), fontFamily = Unbounded, fontWeight = FontWeight.Bold, lineHeight = titleSp(22), color = p.ink, maxLines = 2)
             if (count != null) Count(count)
             extra()
         }
@@ -181,7 +191,7 @@ fun TitlePlaque(text: String, modifier: Modifier = Modifier, size: Int = 28) {
     val p = LocalPal.current
     Box(modifier.semantics(mergeDescendants = true) { heading() }.background(p.surface, RoundedCornerShape(30.dp)).border(2.dp, p.edge, RoundedCornerShape(30.dp))
         .padding(start = 16.dp, end = 18.dp, top = 4.dp, bottom = 6.dp)) {
-        Text(text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = size.sp, lineHeight = (size + 4).sp, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = titleSp(size), lineHeight = titleSp(size + 4), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -222,7 +232,7 @@ fun PageHero(title: String, color: Color, back: String, onBack: () -> Unit, emoj
             .background(p.surface, RoundedCornerShape(24.dp)).border(2.dp, p.edge, RoundedCornerShape(24.dp)).padding(6.dp).padding(end = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (emoji != null) EmojiTile(emoji, color, 48.dp) else EmojiTileBox(color, 48.dp) { Pi(icon ?: "star", size = 24.dp, tint = PLUM) }
-            Text(title, Modifier.weight(1f, fill = false), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, lineHeight = 30.sp, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(title, Modifier.weight(1f, fill = false), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = titleSp(26), lineHeight = titleSp(30), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -246,7 +256,7 @@ fun RowScope.CompactTitle(title: String, color: Color, back: String?, onBack: ((
     val p = LocalPal.current
     if (onBack != null) RoundGlass("Retour : ${back ?: ""}", onBack) { Pi("chevronleft", size = 20.dp, tint = p.ink) } else Spacer(Modifier.width(6.dp))
     if (emoji != null) EmojiTile(emoji, color, 34.dp) else if (icon != null) EmojiTileBox(color, 34.dp) { Pi(icon, size = 18.dp, tint = PLUM) }
-    Text(title, Modifier.weight(1f).semantics { heading() }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Text(title, Modifier.weight(1f).semantics { heading() }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = titleSp(20), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 /* ================================================================== curseur */
@@ -874,6 +884,7 @@ fun PTabs(options: List<Pair<String, String?>>, sel: Int, onSelect: (Int) -> Uni
     val p = LocalPal.current
     val c = color?.let { vivid(it) }
     val scroll = options.size > 3
+    val big = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f
     val ss = rememberScrollState()
     val xs = remember(options.size) { IntArray(options.size) }
     val ws = remember(options.size) { IntArray(options.size) }
@@ -894,7 +905,8 @@ fun PTabs(options: List<Pair<String, String?>>, sel: Int, onSelect: (Int) -> Uni
                 .heightIn(min = 45.dp).padding(horizontal = if (scroll) 14.dp else 6.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
                 val b = badges?.getOrNull(i) ?: 0
-                if (e != null) Emoji(e, 18.dp)
+                // Très grand texte : l'emoji s'efface pour laisser la place au libellé (pas de mot coupé)
+                if (e != null && !big) Emoji(e, 18.dp)
                 // Compteur en pastille posée sur le libellé : il ne lui prend jamais de place (pas de mot coupé)
                 Box {
                     Text(l, Modifier.padding(end = if (b > 0) 10.dp else 0.dp), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (on) PLUM else p.ink2, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 16.sp)

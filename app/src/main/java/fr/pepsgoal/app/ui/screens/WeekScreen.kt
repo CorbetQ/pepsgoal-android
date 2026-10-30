@@ -46,13 +46,14 @@ fun WeekScreen(ui: AppState) {
     ScreenFrame(ui, "Ma semaine", "Retour", { ui.back() }, icon = "cal", color = p.type("period").c, color2 = p.type("routine").c) {
         item("nav") {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconBtn("chevronleft", "Semaine précédente", { off-- }, size = 40.dp)
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                IconBtn("chevronleft", "Semaine précédente", { off-- }, size = 48.dp)
+                // Titre de la semaine sur une plaque (jamais de texte posé sur la scène)
+                Column(Modifier.weight(1f).padding(horizontal = 8.dp).background(p.surface, RoundedCornerShape(24.dp)).border(2.dp, p.edge, RoundedCornerShape(24.dp)).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (off == 0) "Cette semaine" else if (off == -1) "Semaine dernière" else if (off == 1) "Semaine prochaine" else "Semaine du ${fmtDateShort(ymd(ws))}", fontWeight = FontWeight.ExtraBold)
                     Muted("${fmtDateShort(ymd(ws))} – ${fmtDateShort(ymd(ws.plusDays(6)))}", small = true)
                 }
                 // Flèche « suivant » : la flèche « précédent » retournée
-                Box(Modifier.rotate(180f)) { IconBtn("chevronleft", "Semaine suivante", { off++ }, size = 40.dp) }
+                Box(Modifier.rotate(180f)) { IconBtn("chevronleft", "Semaine suivante", { off++ }, size = 48.dp) }
             }
         }
         // Routines « X fois par semaine » : un compteur pour toute la semaine

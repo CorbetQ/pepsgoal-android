@@ -89,6 +89,8 @@ object FluentEmoji {
     }
 }
 
+private val NBSP_BEFORE = Regex(" [?!:;»]")
+
 /** Texte de l'application : identique au texte Material, avec les emojis remplacés par les Fluent Emoji. */
 @Composable
 fun Text(
@@ -99,7 +101,8 @@ fun Text(
 ) {
     // Interface en anglais : traduction à l'affichage (I18n.rev relu pour suivre un changement de langue)
     val lang = I18n.rev
-    val text = remember(text0, lang) { I18n.tr(text0) }
+    // Typographie française : espace insécable avant ? ! : ; » (jamais de ponctuation seule en début de ligne)
+    val text = remember(text0, lang) { I18n.tr(text0).replace(NBSP_BEFORE) { "\u00A0" + it.value.trim() } }
     val r = remember(text) { FluentEmoji.convert(AnnotatedString(text)) }
     if (r == null) androidx.compose.material3.Text(text = text, modifier = modifier, color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight,
         fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow,

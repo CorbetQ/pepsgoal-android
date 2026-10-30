@@ -75,7 +75,7 @@ fun PlacesSettings(ui: AppState) {
                     }
                 }
             }
-            Muted("Les emplacements sont enregistrés avec ton compte. Les rappels par lieu, eux, restent surveillés sur ce téléphone. Carte © contributeurs OpenStreetMap.", small = true)
+            Hint("Les emplacements sont enregistrés avec ton compte. Les rappels par lieu, eux, restent surveillés sur ce téléphone. Carte © contributeurs OpenStreetMap.")
         }
     }
 }

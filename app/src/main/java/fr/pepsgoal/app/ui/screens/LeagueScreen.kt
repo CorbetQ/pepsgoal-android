@@ -79,7 +79,7 @@ fun LeagueScreen(ui: AppState) {
                         }
                     }
                 }
-                item("help") { Muted("Paliers de la semaine : 🥉 Bronze, 🥈 Argent dès 150 flammes, 🥇 Or dès 350, 💎 Diamant dès 700. Tout repart à zéro chaque lundi.", small = true) }
+                item("help") { Hint("Paliers de la semaine : 🥉 Bronze, 🥈 Argent dès 150 flammes, 🥇 Or dès 350, 💎 Diamant dès 700. Tout repart à zéro chaque lundi.") }
             }
         }
     }

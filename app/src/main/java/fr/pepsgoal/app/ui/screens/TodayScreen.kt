@@ -257,8 +257,11 @@ fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
             Box(Modifier.size(92.dp, 97.dp).chunk(Color.White, p.flameStep, 46.dp, 5.dp, 0.dp, press), contentAlignment = Alignment.Center) { Flame(64.dp, dim = !lit) }
         }
         }
-        Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
-        Text(if (n > 1) "jours de série" else "jour de série", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        // Chiffre et légende sur une plaque : jamais de texte posé directement sur la scène
+        Plaque(Modifier.padding(top = 8.dp)) {
+            Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, color = p.ink)
+            Text(if (n > 1) "jours de série" else "jour de série", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        }
     }
 }
 

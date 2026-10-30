@@ -87,7 +87,7 @@ fun JournalScreen(ui: AppState) {
                 CardHead("Humeur des 30 derniers jours", emoji = "🌈")
                 val last = list.take(30).reversed()
                 Row(Modifier.fillMaxWidth().height(90.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
-                    last.forEach { e -> Box(Modifier.weight(1f).fillMaxHeight(e.mood / 5f).clip(RoundedCornerShape(4.dp)).background(androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, (e.mood - 1) / 4f))) }
+                    last.forEach { e -> Box(Modifier.weight(1f).fillMaxHeight(e.mood / 5f).clip(RoundedCornerShape(6.dp)).background(androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, (e.mood - 1) / 4f))) }
                 }
                 insight?.let { Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("sparkle", size = 15.dp, tint = p.flameInk); Muted(it, small = true) } }
             }

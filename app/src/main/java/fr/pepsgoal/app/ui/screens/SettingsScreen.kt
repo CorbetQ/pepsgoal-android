@@ -248,7 +248,7 @@ private fun save(ui: AppState) { ui.pg.store.commit() }
 fun TimeButton(value: String, onChange: (String) -> Unit, desc: String) {
     // Heure : liste qui ouvre le sélecteur d'heure Braise Pop (plus de dialogue Android)
     var open by remember { mutableStateOf(false) }
-    PSelect(null, value, { open = true }, Modifier.width(128.dp), icon = "clock", open = open)
+    PSelect(null, value, { open = true }, Modifier.width(IntrinsicSize.Max), icon = "clock", open = open)
     if (open) PTimePicker(value, onChange, { open = false }, desc)
 }
 

@@ -63,7 +63,7 @@ fun ChallengesScreen(ui: AppState) {
     LaunchedEffect(open) { detail = null; open?.let { id -> detail = try { ui.cloud.challenge(id) } catch (e: Exception) { null } } }
     ScreenFrame(ui, "Défis", "Retour", { ui.back() }, icon = "trophy", color = p.type("challenge").c, color2 = p.type("deadline").c,
         right = { if (pg.isAdmin(u)) PButton(if (creating) "Fermer" else "Créer", { creating = !creating }, icon = if (creating) "x" else "plus", small = true) }) {
-        item("intro") { Muted("Rejoins un défi avec toute la communauté PepsGoal : il s’ajoute à tes objectifs du jour, et chaque validation compte au classement. Ton nom et ton avatar y sont visibles par les participants.", small = true) }
+        item("intro") { Hint("Rejoins un défi avec toute la communauté PepsGoal : il s’ajoute à tes objectifs du jour, et chaque validation compte au classement. Ton nom et ton avatar y sont visibles par les participants.") }
         if (creating) item("new") { NewChallenge(ui) { creating = false; reload() } }
         err?.let { e -> item("err") { Glass { Muted(e, small = true); PButton("Réessayer", reload, small = true) } } }
         val l = list

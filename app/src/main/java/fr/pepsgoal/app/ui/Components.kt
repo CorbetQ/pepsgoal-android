@@ -347,7 +347,7 @@ fun Card(modifier: Modifier = Modifier, radius: Dp = 24.dp, pad: Dp = LocalGlass
 fun CardHead(title: String, modifier: Modifier = Modifier, emoji: String? = null, right: @Composable RowScope.() -> Unit = {}) {
     Row(modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (emoji != null) Emoji(emoji, 22.dp)
-        Text(title, fontSize = 16.sp, fontFamily = Unbounded, fontWeight = FontWeight.Bold, lineHeight = 20.sp, modifier = Modifier.weight(1f).semantics { heading() })
+        Text(title, fontSize = titleSp(16), fontFamily = Unbounded, fontWeight = FontWeight.Bold, lineHeight = titleSp(20), modifier = Modifier.weight(1f).semantics { heading() })
         right()
     }
 }
@@ -786,7 +786,8 @@ fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, mod
     val edge = if (p.contrast) p.ink else p.edge
     @Composable
     fun Label(i: Int, l: String, on: Boolean) {
-        icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
+        // Très grand texte : l'icône s'efface pour laisser la place au libellé
+        if (LocalDensity.current.fontScale < 1.5f) icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
         Text(l, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, fontSize = 15.sp, color = if (on) p.ink else p.ink2, maxLines = 2, lineHeight = 18.sp, textAlign = TextAlign.Center)
     }
     // Très grand texte (200 %) et plus de trois options : liste de choix, rien n'est coupé
@@ -861,7 +862,7 @@ fun SectionTitle(text: String, emoji: String? = null, count: Any? = null, action
     Row(modifier.fillMaxWidth().padding(start = 2.dp, top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (emoji != null) Emoji(emoji, 26.dp)
-            Text(text, Modifier.weight(1f, fill = false), fontSize = 18.sp, fontFamily = Unbounded, fontWeight = FontWeight.Bold, lineHeight = 22.sp, color = p.ink)
+            Text(text, Modifier.weight(1f, fill = false), fontSize = titleSp(18), fontFamily = Unbounded, fontWeight = FontWeight.Bold, lineHeight = titleSp(22), color = p.ink)
             if (count != null) Count(count)
             extra()
         }

@@ -59,7 +59,7 @@ fun SetHero(icon: String, c1: Color, c2: Color, title: String, sub: String, lead
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             if (leading != null) leading() else EmojiTileBox(c2, 56.dp) { Pi(icon, size = 28.dp, tint = PLUM) }
             Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 22.sp)
+                Text(title, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = titleSp(18), lineHeight = titleSp(22))
                 Text(sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2)
             }
         }

@@ -38,7 +38,11 @@ fun StatsScreen(ui: AppState) {
     val wins = remember(ui.rev) { pg.userCheckins(u.id).filter { pg.isWin(it) } }
     val perDay = remember(wins) { wins.groupingBy { it.date }.eachCount() }
     val today = todayDate()
+    var period by remember { mutableIntStateOf(1) }
+    val span = when (period) { 0 -> 7L; 2 -> 365L; else -> 30L }
     ScreenFrame(ui, "Statistiques", "Retour", { ui.back() }, icon = "trend", color = p.type("project").c, color2 = p.type("objective").c) {
+        // Période de la réussite par objectif : semaine, mois ou année (onglets à la couleur de la page)
+        item("period") { PTabs(listOf("Semaine" to "📅", "Mois" to "🗓️", "Année" to "📆"), period, { period = it }, color = p.type("project").c) }
         // Records et chiffres clés
         item("records") {
             val best = perDay.maxByOrNull { it.value }
@@ -83,7 +87,7 @@ fun StatsScreen(ui: AppState) {
                 // Cinq niveaux pleins de chaleur (heat0..4), sans transparence
                 Row(Modifier.horizontalScroll(rememberScrollState(Int.MAX_VALUE))) {
                     Canvas(Modifier.size(width = 13.dp * 53 + 3.dp * 52, height = 13.dp * 7 + 3.dp * 6)) {
-                        val c = 13.dp.toPx(); val g = 3.dp.toPx(); val r = CornerRadius(3.dp.toPx())
+                        val c = 13.dp.toPx(); val g = 3.dp.toPx(); val r = CornerRadius(6.dp.toPx())
                         for (i in cells.indices) {
                             val n = cells[i]; if (n < 0) continue
                             drawRoundRect(p.heat(if (n == 0) 0 else (1 + 3 * n / max).coerceIn(1, 4)), Offset((i / 7) * (c + g), (i % 7) * (c + g)), Size(c, c), r)
@@ -92,20 +96,20 @@ fun StatsScreen(ui: AppState) {
                 }
                 Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Muted("Moins", small = true)
-                    (0..4).forEach { i -> Box(Modifier.size(12.dp).background(p.heat(i), RoundedCornerShape(3.dp))) }
+                    (0..4).forEach { i -> Box(Modifier.size(12.dp).background(p.heat(i), RoundedCornerShape(6.dp))) }
                     Muted("Plus", small = true)
                 }
             }
         }
         // Ton meilleur moment : réussite par jour de la semaine, créneau, heures habituelles
         item("moments") { MomentsCard(ui) }
-        // Réussite de chaque objectif (30 derniers jours)
+        // Réussite de chaque objectif sur la période choisie
         item("goals") {
             Glass {
-                CardHead("Tes objectifs (30 jours)", emoji = "🎯")
+                CardHead("Tes objectifs ($span jours)", emoji = "🎯")
                 // Calcul (30 jours × objectifs) fait une fois par changement de données, pas à chaque recomposition
-                val rows = remember(wins, today) {
-                    val since = today.minusDays(30)
+                val rows = remember(wins, today, span) {
+                    val since = today.minusDays(span)
                     pg.myGoals(u.id).filter { !pg.isClosedGoal(it) }.map { g ->
                         var planned = 0; var d = maxOf(since, parseYmd(ymd(g.createdAt)))
                         while (d <= today) { if (pg.scheduled(g, d)) planned++; d = d.plusDays(1) }
@@ -287,7 +291,7 @@ private fun YearPixels(ui: AppState) {
         }
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             Muted("Rien", small = true)
-            listOf(0.0, .3, .6, .85, 1.0).forEach { r -> Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(pixelColor(r, p))) }
+            listOf(0.0, .3, .6, .85, 1.0).forEach { r -> Box(Modifier.size(12.dp).clip(RoundedCornerShape(6.dp)).background(pixelColor(r, p))) }
             Muted("Tout validé", small = true)
         }
     }
