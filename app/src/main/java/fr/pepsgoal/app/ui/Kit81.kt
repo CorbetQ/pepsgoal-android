@@ -893,10 +893,13 @@ fun PTabs(options: List<Pair<String, String?>>, sel: Int, onSelect: (Int) -> Uni
                 .clip(CircleShape).selectable(on, inter, androidx.compose.foundation.LocalIndication.current, role = Role.Tab) { Feedback.tap(); onSelect(i) }
                 .heightIn(min = 45.dp).padding(horizontal = if (scroll) 14.dp else 6.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
-                if (e != null) Emoji(e, 18.dp)
-                Text(l, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (on) PLUM else p.ink2, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 16.sp)
                 val b = badges?.getOrNull(i) ?: 0
-                if (b > 0) Badge(b)
+                if (e != null) Emoji(e, 18.dp)
+                // Compteur en pastille posée sur le libellé : il ne lui prend jamais de place (pas de mot coupé)
+                Box {
+                    Text(l, Modifier.padding(end = if (b > 0) 10.dp else 0.dp), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (on) PLUM else p.ink2, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 16.sp)
+                    if (b > 0) Badge(b, Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-10).dp))
+                }
             }
         }
     }

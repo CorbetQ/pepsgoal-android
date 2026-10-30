@@ -151,6 +151,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
                 Field(txt("target") { num(g0?.targetOrNull ?: 10.0) }, { t["target"] = it }, "Cible", Modifier.weight(1f), keyboard = NUM, max = 12)
                 Field(txt("unit") { g0?.unit ?: "" }, { t["unit"] = it }, "Unité", Modifier.weight(1f), placeholder = "livres, km, €…", max = 20)
             }
+            TargetSlider(t["target"].orEmpty(), 1.0, 100.0, 1.0, p.type(type).c, t["unit"].orEmpty()) { t["target"] = it }
             DateField("Date cible (optionnelle)", txt("endDate") { g0?.endDate ?: "" }, { t["endDate"] = it }, optional = true)
         }
         "monthly" -> {
@@ -158,6 +159,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
                 Field(txt("target") { num(g0?.targetOrNull ?: 20.0) }, { t["target"] = it }, "Cible par mois", Modifier.weight(1f), keyboard = NUM, max = 12)
                 Field(txt("unit") { g0?.unit ?: "" }, { t["unit"] = it }, "Unité", Modifier.weight(1f), placeholder = "km, séances, €…", max = 20)
             }
+            TargetSlider(t["target"].orEmpty(), 1.0, 200.0, 1.0, p.type(type).c, t["unit"].orEmpty()) { t["target"] = it }
             val cum = txt("cumulate") { if (g0 == null || g0.cumulate) "1" else "" } == "1"
             SetRow("Cumuler les scores de chaque mois", "Le compteur du mois repart à zéro le 1er, et un total cumulé de tous les mois s'affiche en plus.") { PSwitch(cum, { t["cumulate"] = if (it) "1" else "" }) }
         }
@@ -182,6 +184,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
                 Field(txt("target") { num(g0?.targetOrNull ?: 10000.0) }, { t["target"] = it }, "Cap par jour", Modifier.weight(1f), keyboard = NUM, max = 12)
                 Field(txt("unit") { g0?.unit ?: "pas" }, { t["unit"] = it }, "Unité", Modifier.weight(1f), placeholder = "pas, L d'eau, pages…", max = 20)
             }
+            TargetSlider(t["target"].orEmpty(), 500.0, 30000.0, 500.0, p.type(type).c, t["unit"].orEmpty()) { t["target"] = it }
             Muted("Ajoute ta quantité au fil de la journée : l’objectif se valide tout seul dès que le cap est atteint, et la série compte les jours réussis.", small = true)
             if (fr.pepsgoal.app.sys.Health.available(ctx)) {
                 SectionTitle("Remplir avec Santé (optionnel)")
@@ -240,6 +243,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
                 Field(txt("target") { num(g0?.targetOrNull ?: 500.0) }, { t["target"] = it }, "Total commun", Modifier.weight(1f), keyboard = NUM, max = 12)
                 Field(txt("unit") { g0?.unit ?: "km" }, { t["unit"] = it }, "Unité", Modifier.weight(1f), max = 20)
             }
+            TargetSlider(t["target"].orEmpty(), 10.0, 2000.0, 10.0, p.type(type).c, t["unit"].orEmpty()) { t["target"] = it }
             DateField("Date de fin (optionnelle)", txt("endDate") { g0?.endDate ?: "" }, { t["endDate"] = it }, optional = true)
             SectionTitle("Membres du groupe")
             FriendPicker(ui, members, false) { members = it }
@@ -368,6 +372,22 @@ private fun summaryLine(pg: Pg, g: Goal): String = when (g.type) {
 }
 
 private fun dayList(s: String?): List<Int>? = s?.let { if (it.isEmpty()) emptyList() else it.split(",").mapNotNull { x -> x.toIntOrNull() } }
+/**
+ * Curseur de la cible chiffrée, en plus de la saisie : bornes [lo]..[hi] et pas [step] propres au type, bulle de
+ * valeur. Une valeur saisie hors bornes reste telle quelle (le pouce se cale au bout du rail).
+ */
+@Composable
+private fun TargetSlider(value: String, lo: Double, hi: Double, step: Double, color: Color, unit: String, onChange: (String) -> Unit) {
+    val v = numOf(value).takeIf { !it.isNaN() } ?: lo
+    val steps = ((hi - lo) / step).toInt()
+    val f = ((v - lo) / (hi - lo)).toFloat().coerceIn(0f, 1f)
+    val label = { x: Float -> fmtNum(lo + Math.round(x * steps) * step) + if (unit.isNotBlank()) " ${unit.trim()}" else "" }
+    Column {
+        PSlider(f, { x -> onChange(fmtNum(lo + Math.round(x * steps) * step)) }, color = color, bubble = label, label = "Cible")
+        SliderEnds(fmtNum(lo), fmtNum(hi))
+    }
+}
+
 private fun numOf(s: String?): Double = s?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: Double.NaN
 
 /** Valide le formulaire et crée (ou met à jour) l'objectif. Renvoie un message d'erreur, sinon null. */

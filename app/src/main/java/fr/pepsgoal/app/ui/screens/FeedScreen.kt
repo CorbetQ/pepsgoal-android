@@ -54,8 +54,7 @@ fun FeedScreen(ui: AppState) {
         if (!banned) item("stories") { StoriesBar(ui, u) }
         item("tabs") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Seg(listOf("friends" to "Mes amis", "public" to "Découvrir"), ui.feedTab, { ui.feedTab = it; ui.postLimit = 20 }, icons = listOf("users", "globe"))
-                Spacer(Modifier.weight(1f))
+                Seg(listOf("friends" to "Mes amis", "public" to "Découvrir"), ui.feedTab, { ui.feedTab = it; ui.postLimit = 20 }, Modifier.weight(1f), icons = listOf("users", "globe"))
                 if (!banned) PButton("Story", { if (!pg.socialBlocked("de publier une story")) ui.open(Sheet.StoryNew()) }, icon = "image", small = true)
             }
         }

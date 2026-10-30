@@ -130,7 +130,7 @@ fun AppBg(ui: AppState) {
                 val h = maxHeight; val extra = h * .3f
                 val base = (heroY - (h + extra) * focusOf(kind)).coerceIn(-extra, 0.dp)
                 val basePx = with(dens) { base.toPx() }; val capPx = with(dens) { 96.dp.toPx() }
-                Box(Modifier.fillMaxWidth().height(h + extra).graphicsLayer {
+                Box(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true).height(h + extra).graphicsLayer {
                     // Parallaxe : la scène suit le défilement à 0,35, plafonnée à 96 dp (lu au dessin : aucune recomposition)
                     val sc = if (ui.screens.isNotEmpty()) Fx.pageScroll else Fx.scroll
                     translationY = basePx - (sc * .35f).coerceIn(0f, capPx)

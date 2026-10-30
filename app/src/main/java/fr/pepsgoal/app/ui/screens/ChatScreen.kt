@@ -62,6 +62,7 @@ import fr.pepsgoal.core.model.Message
 import fr.pepsgoal.core.model.User
 import fr.pepsgoal.core.model.unit
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.liveRegion
@@ -272,8 +273,13 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 if (g != null || !pg.isOfficial(x)) RoundGlass("Fond, couleur et messages éphémères", { palette = !palette }) { Pi(if (ttl > 0) "timer" else "palette", size = 20.dp, tint = if (palette) p.flameInk else p.ink) }
                 if (g != null || !pg.isOfficial(x)) RoundGlass("Chiffrement de bout en bout : en savoir plus", { e2eOpen = !e2eOpen }) { Pi("lock", size = 20.dp, tint = if (e2eOpen) p.flameInk else p.ink) }
             }
-            AnimatedVisibility(palette && sel.isEmpty()) {
-                Glass(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), strong = true, pad = 12.dp) {
+            // Personnalisation de la conversation : feuille Braise Pop (messages éphémères, fond illustré, couleur)
+            if (palette && sel.isEmpty()) Overlay(true, "Personnaliser la conversation", { palette = false }) {
+                Column(Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Personnaliser la conversation", Modifier.weight(1f).semantics { heading() }, fontFamily = fr.pepsgoal.app.ui.theme.Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, lineHeight = 26.sp, maxLines = 2)
+                        RoundBtn("x", "Fermer", { palette = false })
+                    }
                     Text("Messages éphémères", fontWeight = FontWeight.ExtraBold)
                     Muted("Les messages que tu envoies disparaissent pour tout le monde après ce délai.", Modifier.padding(bottom = 8.dp), small = true)
                     Seg(listOf(0 to "Désactivés", 24 to "24 h", 168 to "7 jours"), ttl, { h -> ttl = h; ui.prefs.chatTtl = ui.prefs.chatTtl.toMutableMap().apply { if (h == 0) remove(key) else put(key, h) } })

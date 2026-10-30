@@ -372,7 +372,7 @@ private fun AccountSettings(ui: AppState, u: User) {
                     if (n.length < 2) { ui.toast("Indique ton nom (2 caractères minimum).", "x"); return@PButton }
                     if (pg.store.acct) ui.run("Profil mis à jour.", "user") { ui.cloud.saveProfile(n, bio.trim()) }
                     else { u.name = n; u.bio = bio.trim(); save(ui); ui.toast("Profil mis à jour.", "user") }
-                }, Modifier.fillMaxWidth(), icon = "check", kind = "primary", enabled = dirty)
+                }, Modifier.fillMaxWidth(), icon = "check", kind = if (pg.isGuest(u) && !pg.db.sandbox) "normal" else "primary", enabled = dirty) // invité : « Créer mon compte » reste le seul principal
             }
             SetItem("Icône de profil", "Photo, emoji, picto ou initiales", "smile", p.type("measure").c, onClick = { ui.open(Sheet.Avatar) }) { Av(u, 32.dp) }
         }
