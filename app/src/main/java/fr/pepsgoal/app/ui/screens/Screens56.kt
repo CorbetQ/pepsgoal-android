@@ -39,6 +39,7 @@ import fr.pepsgoal.app.data.Proofs
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.step
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
 import fr.pepsgoal.core.*
@@ -57,20 +58,20 @@ fun GalleryScreen(ui: AppState, goalId: String) {
     var big by remember { mutableStateOf<Proof?>(null) }
     var mode by remember { mutableStateOf<String?>(null) }
     val photos = remember(list) { list.filter { it.photo != null }.sortedBy { it.date } }
-    ScreenFrame(ui, "Galerie", "Retour", { ui.back() }, icon = "image", color = p.type("measure").c, color2 = p.type("objective").c) {
-        item("head") { Muted("${g?.icon ?: ""} ${g?.title ?: ""} · ${pl(list.size, "souvenir", "souvenirs")}", small = true) }
+    ScreenFrame(ui, "Galerie", "Retour", { ui.back() }, icon = "image", color = p.type("measure").c, color2 = p.type("objective").c, emoji = "🖼️") {
+        item("head") { MiniPlaque("${g?.title ?: ""} · ${pl(list.size, "souvenir", "souvenirs")}", emoji = g?.icon) }
         // Au moins deux photos : comparer la première et la dernière, ou tout revoir en accéléré
         if (photos.size >= 2) item("lapse") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PButton("Avant / après", { mode = "ba" }, Modifier.weight(1f), icon = "image", small = true)
-                PButton("Accéléré", { mode = "lapse" }, Modifier.weight(1f), icon = "play", small = true, kind = "primary")
+                PButton("Accéléré", { mode = "lapse" }, Modifier.weight(1f), icon = "play", small = true, kind = "type", color = p.type("measure").c)
             }
         }
-        if (list.isEmpty()) item("empty") { Glass { Empty("Pas encore de preuve", "Après une validation, ajoute une photo ou une note depuis la fiche de l’objectif.", icon = "image") } }
+        if (list.isEmpty()) item("empty") { Empty("Pas encore de preuve", "Après une validation, ajoute une photo ou une note depuis la fiche de l’objectif.", icon = "image") }
         list.groupBy { it.date.substring(0, 7) }.forEach { (m, items) ->
             item("m$m") {
                 val d = parseYmd("$m-01")
-                Text(cap("${Recaps.MONTHS_LONG[d.monthValue - 1]} ${d.year}"), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 6.dp))
+                SectionPlaque(cap("${Recaps.MONTHS_LONG[d.monthValue - 1]} ${d.year}"), "🗓️")
             }
             items.chunked(3).forEachIndexed { i, row ->
                 item("r$m-$i") {
@@ -85,13 +86,16 @@ fun GalleryScreen(ui: AppState, goalId: String) {
     if (mode == "ba" && photos.size >= 2) BeforeAfterDialog(photos.first(), photos.last()) { mode = null }
     if (mode == "lapse" && photos.size >= 2) TimelapseDialog(photos) { mode = null }
     big?.let { pr ->
-        androidx.compose.ui.window.Dialog({ big = null }) {
-            Column(Modifier.fillMaxWidth().clip(smoothShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Grand format : visionneuse (fond noir du média, date et note en plaque, bouton rond sombre)
+        androidx.compose.ui.window.Dialog({ big = null }, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+            Box(Modifier.fillMaxSize().background(p.mediaBg)) {
                 val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-                if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 440.dp).clip(smoothShape(16.dp)), contentScale = ContentScale.Fit)
-                Text(cap(weekdayLongDate(parseYmd(pr.date))), fontWeight = FontWeight.ExtraBold)
-                if (pr.note.isNotBlank()) Text(pr.note, color = p.ink2)
-                PButton("Fermer", { big = null }, Modifier.fillMaxWidth())
+                if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                Column(Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MiniPlaque(cap(weekdayLongDate(parseYmd(pr.date))))
+                    if (pr.note.isNotBlank()) Text(pr.note, Modifier.chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp).padding(12.dp), color = p.ink)
+                }
+                MediaBtn("x", "Fermer", { big = null }, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp))
             }
         }
     }
@@ -101,11 +105,12 @@ fun GalleryScreen(ui: AppState, goalId: String) {
 private fun GalleryTile(pr: Proof, modifier: Modifier, onClick: () -> Unit) {
     val ctx = LocalContext.current; val p = LocalPal.current
     val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f -> val o = BitmapFactory.Options().apply { inSampleSize = 4 }; BitmapFactory.decodeFile(f.path, o)?.asImageBitmap() } }
-    Box(modifier.aspectRatio(.8f).clip(smoothShape(16.dp)).background(p.glassStrong).border(1.dp, p.line, smoothShape(16.dp)).clickable(onClick = onClick)) {
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Box(modifier.aspectRatio(.78f).chunk(p.surface, p.edge, 18.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Preuve du ${fmtDate(pr.date)}", onClick = onClick)) {
         if (bmp != null) Image(bmp, "Preuve du ${fmtDate(pr.date)}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Text("“${pr.note.take(70)}”", Modifier.padding(8.dp), fontSize = 12.sp, color = p.ink2, maxLines = 5)
-        Text(fmtDateShort(pr.date), Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = if (bmp != null) .55f else 0f)))).padding(6.dp),
-            fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (bmp != null) Color.White else p.ink)
+        MiniPlaque(fmtDateShort(pr.date), Modifier.align(Alignment.BottomStart).padding(5.dp))
     }
 }
 
@@ -218,7 +223,7 @@ fun PetScreen(ui: AppState) {
     var line by remember { mutableStateOf(PET_LINES[pet.mood]!!.random()) }
     var name by remember { mutableStateOf(ui.prefs.petName) }
     var worn by remember { mutableStateOf(ui.prefs.petAcc) }
-    ScreenFrame(ui, "Compagnon", "Retour", { ui.back() }, icon = "flameo", color = p.flame2, color2 = p.pink) {
+    ScreenFrame(ui, "Compagnon", "Retour", { ui.back() }, icon = "flameo", color = p.flame2, color2 = p.type("monthly").c, emoji = "🐣") {
         item("pet") {
             Glass {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PetView(ui, 220.dp) { line = PET_LINES[pet.mood]!!.random() } }
@@ -232,9 +237,10 @@ fun PetScreen(ui: AppState) {
                 CardHead("${pet.stage.name}") { Count("${pet.days} j") }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     PET_STAGES.forEach { s -> val ok = pet.days >= s.min
-                        Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (s.key == pet.stage.key) p.flame.copy(alpha = .18f) else p.ink.copy(alpha = .04f)).padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(if (ok) "✓" else "${s.min}", fontWeight = FontWeight.ExtraBold, color = if (ok) p.ok else p.ink3, fontSize = 12.sp)
-                            FitText(s.name, size = 10, min = 7, color = if (ok) p.ink else p.ink3) } }
+                        val cur = s.key == pet.stage.key
+                        Column(Modifier.weight(1f).clip(RoundedCornerShape(17.dp)).background(if (cur) vivid(p.flame) else p.surface2).padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(if (ok) "✓" else "${s.min}", fontWeight = FontWeight.ExtraBold, color = if (cur) fr.pepsgoal.app.ui.theme.PLUM else if (ok) p.ink else p.ink3, fontSize = 12.sp)
+                            FitText(s.name, size = 12, min = 8, color = if (cur) fr.pepsgoal.app.ui.theme.PLUM else if (ok) p.ink else p.ink3) } }
                 }
                 Spacer(Modifier.height(8.dp))
                 Muted("Il grandit avec tes jours actifs (au moins une validation). Son humeur suit ta journée : fais-le sourire !", small = true)
@@ -247,13 +253,15 @@ fun PetScreen(ui: AppState) {
                     Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         row.forEach { a ->
                             val owned = pg.owns("acc:${a.key}", a.price, u); val on = a.key in worn
-                            Row(Modifier.weight(1f).clip(smoothShape(16.dp)).background(if (on) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .04f)).border(if (on) 2.dp else 1.dp, if (on) p.flame else p.line, smoothShape(16.dp))
-                                .clickable {
+                            val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                            val press = rememberPress(inter)
+                            Row(Modifier.weight(1f).chunk(if (on) p.selTint(p.type("routine").c) else p.surface, if (on) vivid(p.type("routine").c).step() else p.edge, 22.dp, 3.dp, if (on) 3.dp else 2.dp, press).clip(RoundedCornerShape(22.dp))
+                                .springClick(inter, label = a.name) {
                                     if (owned) { worn = if (on) worn - a.key else worn + a.key; ui.prefs.petAcc = worn; ui.bump() }
                                     else pg.buy("acc:${a.key}", a.price)?.let { ui.toast(it, "x") } ?: run { Feedback.success(); worn = worn + a.key; ui.prefs.petAcc = worn; ui.toast("${a.emoji} ${a.name} pour ${ui.prefs.petName} !", "star"); ui.bump() }
                                 }.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Emoji(a.emoji, 26.dp)
-                                Column(Modifier.weight(1f)) { Text(a.name, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, maxLines = 1); Text(if (owned) (if (on) "Porté" else "Possédé") else "${a.price} 🔥", fontSize = 12.sp, color = p.ink2) }
+                                Column(Modifier.weight(1f)) { Text(a.name, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1); Text(if (owned) (if (on) "Porté" else "Possédé") else "${a.price} 🔥", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink2) }
                             }
                         }
                         if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -273,14 +281,14 @@ fun QuestCard(ui: AppState) {
     Glass(onClick = { ui.push(Screen.Quest) }, pad = 0.dp) {
         Box(Modifier.fillMaxWidth().height(86.dp)) {
             SceneBg(st.quest.scene, Modifier.fillMaxSize(), still = true)
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color.Black.copy(alpha = .55f), Color.Transparent))))
-            Column(Modifier.align(Alignment.CenterStart).padding(16.dp)) {
-                Text(if (st.finished) "QUÊTES TERMINÉES" else "QUÊTE · CHAPITRE ${minOf(st.done + 1, 7)}/7", color = Color.White.copy(alpha = .8f), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
-                Text("${st.quest.emoji} ${st.quest.title}", color = Color.White, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            // Titre en plaque sur la scène (plus de dégradé noir)
+            Column(Modifier.align(Alignment.CenterStart).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                MiniPlaque(if (st.finished) "Quêtes terminées" else "Quête · chapitre ${minOf(st.done + 1, 7)}/7")
+                Plaque { Emoji(st.quest.emoji, 20.dp); Text(st.quest.title, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
             }
         }
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Bar(st.done * 100.0 / st.quest.chapters.size, Modifier.weight(1f), height = 6.dp)
+            Bar(st.done * 100.0 / st.quest.chapters.size, Modifier.weight(1f), height = 10.dp)
             if (st.canUnlock) Chip("Nouveau chapitre !", "sparkle", p.flame) else Muted(if (st.finished) "Bravo !" else "Valide un objectif pour la suite", small = true)
         }
     }
@@ -293,12 +301,11 @@ fun QuestScreen(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg
     val st = pg.questState() ?: return
     var fresh by remember { mutableIntStateOf(0) }
-    ScreenFrame(ui, "Quête", "Retour", { ui.back() }, icon = "book", color = p.type("period").c, color2 = p.flame) {
+    ScreenFrame(ui, "Quête", "Retour", { ui.back() }, icon = "book", color = p.type("period").c, color2 = p.type("period").c, emoji = "🗺️") {
         item("hero") {
             Glass(pad = 0.dp) {
                 Box(Modifier.fillMaxWidth().height(170.dp)) { SceneBg(st.quest.scene, Modifier.fillMaxSize(), still = true)
-                    Text("${st.quest.emoji} ${st.quest.title}", Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .6f)))).padding(16.dp),
-                        color = Color.White, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
+                    Plaque(Modifier.align(Alignment.BottomStart).padding(12.dp)) { Emoji(st.quest.emoji, 22.dp); Text(st.quest.title, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp) } }
                 Column(Modifier.padding(16.dp)) {
                     Muted("Chaque journée active (au moins une validation) ouvre le chapitre suivant, un par jour. Fin de l’histoire : +${st.quest.reward} flammes.", small = true)
                     if (st.canUnlock) { Spacer(Modifier.height(10.dp)); PButton("Lire le chapitre ${st.done + 1}", { pg.unlockChapter()?.let { n -> fresh = n; Feedback.success() } }, Modifier.fillMaxWidth(), icon = "book", kind = "primary") }
@@ -311,15 +318,17 @@ fun QuestScreen(ui: AppState) {
                 val open = i < maxOf(st.done, fresh)
                 Glass(border = if (fresh == i + 1) p.flame else null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Box(Modifier.size(30.dp).clip(CircleShape).background(if (open) p.flame.copy(alpha = .2f) else p.ink.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Text("${i + 1}", fontWeight = FontWeight.ExtraBold, color = if (open) p.ink else p.ink3) }
-                        Text(if (open) title else "Chapitre verrouillé", fontWeight = FontWeight.ExtraBold, color = if (open) p.ink else p.ink3)
+                        // Étape cochée quand le chapitre est lu
+                        PCheckbox(open, p.type("period").c)
+                        Text(if (open) "${i + 1}. $title" else "${i + 1}. Chapitre verrouillé", Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, color = if (open) p.ink else p.ink3)
+                        if (!open) Pi("lock", size = 16.dp, tint = p.ink3)
                     }
                     if (open) { Spacer(Modifier.height(8.dp)); Text(text, lineHeight = 22.sp) }
                 }
             }
         }
         val done = pg.questsDone()
-        if (done.isNotEmpty()) item("done") { Muted("Quêtes terminées : ${done.joinToString { "${it.emoji} ${it.title}" }}", small = true) }
+        if (done.isNotEmpty()) item("done") { Hint("Quêtes terminées : ${done.joinToString { "${it.emoji} ${it.title}" }}") }
     }
 }
 
@@ -335,11 +344,13 @@ fun SecretsCard(ui: AppState) {
         SECRETS.chunked(3).forEach { row ->
             Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { s -> val ok = s.key in found
-                    Column(Modifier.weight(1f).clip(smoothShape(16.dp)).background(if (ok) p.flame.copy(alpha = .14f) else p.ink.copy(alpha = .04f)).border(1.dp, if (ok) p.flame.copy(alpha = .5f) else p.line, smoothShape(16.dp))
-                        .clickable { ui.toast(if (ok) "${s.emoji} ${s.name} : ${s.desc}" else "Indice : ${s.hint}", if (ok) "star" else "lock") }.padding(8.dp),
+                    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val press = rememberPress(inter)
+                    Column(Modifier.weight(1f).chunk(if (ok) p.selTint(p.flame) else p.surface2, if (ok) p.focusEdge else p.edge, 22.dp, 3.dp, 2.dp, press).clip(RoundedCornerShape(20.dp))
+                        .springClick(inter, label = if (ok) s.name else "Indice") { ui.toast(if (ok) "${s.emoji} ${s.name} : ${s.desc}" else "Indice : ${s.hint}", if (ok) "star" else "lock") }.padding(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (ok) Emoji(s.emoji, 30.dp) else Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) { Pi("lock", size = 20.dp, tint = p.ink3) }
-                        FitText(if (ok) s.name else "???", size = 11, min = 7, color = if (ok) p.ink else p.ink3, weight = FontWeight.ExtraBold)
+                        FitText(if (ok) s.name else "???", size = 12, min = 8, color = if (ok) p.ink else p.ink3, weight = FontWeight.ExtraBold)
                     }
                 }
                 repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -361,7 +372,7 @@ fun SeasonCard(ui: AppState) {
     val d = todayDate(); val left = d.lengthOfMonth() - d.dayOfMonth
     Glass {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(60.dp).clip(smoothShape(20.dp)).background(Brush.linearGradient(listOf(hex(dc), hex(dc).copy(alpha = .5f)))), contentAlignment = Alignment.Center) { Emoji(de, 34.dp) }
+            EmojiTile(de, hex(dc), 60.dp)
             Column(Modifier.weight(1f)) {
                 Eyebrow("Saison de ${Recaps.MONTHS_LONG[d.monthValue - 1]}")
                 Text("Division $dn", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
@@ -372,8 +383,8 @@ fun SeasonCard(ui: AppState) {
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 hist.forEach { r -> val (_, e, _) = LeagueSeason.DIVISIONS[(r.division + r.move).coerceIn(0, LeagueSeason.DIVISIONS.lastIndex)]; val m = r.season.substring(5).toInt()
-                    Column(Modifier.clip(RoundedCornerShape(12.dp)).background(p.ink.copy(alpha = .05f)).padding(horizontal = 8.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(e, fontSize = 16.sp); Text(Recaps.MONTHS_SHORT[m - 1] + when (r.move) { 1 -> " ↑"; -1 -> " ↓"; else -> "" }, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = when (r.move) { 1 -> p.ok; -1 -> p.danger; else -> p.ink2 })
+                    Column(Modifier.clip(RoundedCornerShape(17.dp)).background(p.surface2).padding(horizontal = 8.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Emoji(e, 18.dp); Text(Recaps.MONTHS_SHORT[m - 1] + when (r.move) { 1 -> " ↑"; -1 -> " ↓"; else -> "" }, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = when (r.move) { 1 -> p.ok; -1 -> p.danger; else -> p.ink2 })
                     } }
             }
         }
