@@ -906,11 +906,20 @@ fun PTabs(options: List<Pair<String, String?>>, sel: Int, onSelect: (Int) -> Uni
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
                 val b = badges?.getOrNull(i) ?: 0
                 // Très grand texte : l'emoji s'efface pour laisser la place au libellé (pas de mot coupé)
-                if (e != null && !big) Emoji(e, 18.dp)
-                // Compteur en pastille posée sur le libellé : il ne lui prend jamais de place (pas de mot coupé)
-                Box {
-                    Text(l, Modifier.padding(end = if (b > 0) 10.dp else 0.dp), fontSize = titleSp(14, 1.3f), fontWeight = FontWeight.ExtraBold, color = if (on) PLUM else p.ink2, maxLines = 2, textAlign = TextAlign.Center, lineHeight = titleSp(16, 1.3f))
+                // Mot coupé en deux : l'emoji reste seul, avec son compteur (libellé lu par TalkBack)
+                val cut = rememberWordCut(l)
+                val iconOnly = e != null && !big && cut.hide
+                if (iconOnly) Box(Modifier.semantics { contentDescription = tr(l) }) {
+                    Emoji(e!!, 22.dp)
                     if (b > 0) Badge(b, Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-10).dp))
+                } else {
+                    if (e != null && !big) Emoji(e, 18.dp)
+                    // Compteur en pastille posée sur le libellé : il ne lui prend jamais de place (pas de mot coupé)
+                    Box {
+                        Text(l, Modifier.padding(end = if (b > 0) 10.dp else 0.dp), fontSize = titleSp(14, 1.3f), fontWeight = FontWeight.ExtraBold, color = if (on) PLUM else p.ink2, maxLines = 2, textAlign = TextAlign.Center, lineHeight = titleSp(16, 1.3f),
+                            onTextLayout = { if (e != null && !big && it.cutsWord()) cut.hide = true })
+                        if (b > 0) Badge(b, Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-10).dp))
+                    }
                 }
             }
         }

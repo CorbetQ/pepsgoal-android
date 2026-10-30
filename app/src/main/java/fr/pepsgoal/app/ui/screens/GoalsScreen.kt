@@ -243,7 +243,8 @@ private fun OverTile(v: String, l: String, emoji: String, c: Color, on: Boolean,
             if (on) Pi("check", size = 16.dp, tint = ink)
         }
         FitText(v, size = 22, min = 12, weight = FontWeight.ExtraBold, family = Unbounded, color = ink)
-        Text(l, color = ink, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        // Libellé qui rétrécit pour tenir sur une ligne (jamais « aujourd’hu » coupé)
+        FitText(l, size = 13, min = 9, weight = FontWeight.ExtraBold, color = ink)
     }
 }
 
