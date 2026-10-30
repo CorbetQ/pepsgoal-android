@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.animation.core.*
 import androidx.compose.animation.animateContentSize
@@ -49,7 +50,7 @@ fun ScreenList(gap: androidx.compose.ui.unit.Dp = 10.dp, content: androidx.compo
     val tap = TabReTap.n
     LaunchedEffect(tap) { if (tap > 0 && (state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 0)) state.animateScrollToItem(0) }
     TrackScroll(state) { Fx.scroll = it }
-    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 4.dp, bottom = bars.calculateBottomPadding() + 80.dp),
+    LazyColumn(Modifier.fillMaxSize().testTag("list"), state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 4.dp, bottom = bars.calculateBottomPadding() + 80.dp),
         verticalArrangement = Arrangement.spacedBy(gap)) {
         // Héros de l'onglet : premier élément, il part avec le contenu (la barre compacte prend le relais)
         if (header != null) item("tabhero") { header() }

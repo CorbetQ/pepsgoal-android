@@ -12,6 +12,8 @@ pluginManagement {
     }
     plugins {
         id("com.android.application") version "8.11.1"
+        id("com.android.test") version "8.11.1"
+        id("androidx.baselineprofile") version "1.3.4"
         kotlin("android") version "2.2.0"
         kotlin("jvm") version "2.2.0"
         kotlin("plugin.serialization") version "2.2.0"
@@ -39,4 +41,8 @@ rootProject.name = "PepsGoal"
 include(":core")
 // Application Android : incluse dès qu'un SDK Android est disponible (Android Studio, CI)
 val hasAndroidSdk = System.getenv("ANDROID_HOME") != null || System.getenv("ANDROID_SDK_ROOT") != null || file("local.properties").exists()
-if (hasAndroidSdk) { include(":app"); include(":wear") }
+if (hasAndroidSdk) {
+    include(":app"); include(":wear")
+    // Mesures : parcours Macrobenchmark et génération du profil de référence (Baseline Profile)
+    include(":benchmark"); include(":baselineprofile")
+}

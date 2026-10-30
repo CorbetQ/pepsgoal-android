@@ -3,6 +3,8 @@ plugins {
     kotlin("android")
     kotlin("plugin.compose")
     kotlin("plugin.serialization")
+    // Profil de référence (Baseline Profile) généré par le module :baselineprofile
+    id("androidx.baselineprofile")
 }
 
 android {
@@ -17,6 +19,7 @@ android {
         versionName = "8.0.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
+        buildConfigField("boolean", "BENCH", "false")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
     }
 
@@ -42,6 +45,15 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
+        }
+        // Mesures de performance (module :benchmark) : comme la publication, signée avec la clé de débogage, profilable
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            buildConfigField("boolean", "BENCH", "true")
+            proguardFiles("benchmark-rules.pro")
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -77,7 +89,16 @@ android {
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
+// Profil de référence : fusionné dans src/main (baseline-prof.txt versionné), généré sur l'appareil géré du module :baselineprofile
+baselineProfile {
+    mergeIntoMain = true
+    saveInSrc = true
+}
+
 dependencies {
+    // Installation du profil de référence au premier lancement (démarrage et défilement plus fluides)
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    baselineProfile(project(":baselineprofile"))
     implementation(project(":core"))
 
     val composeBom = platform("androidx.compose:compose-bom:2025.06.01")

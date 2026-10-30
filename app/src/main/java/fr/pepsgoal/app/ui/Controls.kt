@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
@@ -86,7 +87,7 @@ fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disab
     val press = rememberPress(inter, !lock)
     // Case de progrès (« appui = + 1 pas ») : le pas monte au-dessus de la case et s'efface ; TalkBack propose les deux gestes
     Box(
-        Modifier.size(48.dp).clip(CircleShape).springClick(inter, label = stepLabel?.let { tr("Ajouter $it") } ?: label, onLongClick = onLongClick, onClick = onClick)
+        Modifier.size(48.dp).testTag(if (stepLabel != null) "cap_check" else "check").clip(CircleShape).springClick(inter, label = stepLabel?.let { tr("Ajouter $it") } ?: label, onLongClick = onLongClick, onClick = onClick)
             .semantics {
                 contentDescription = label
                 if (stepLabel != null && onLongClick != null) customActions = listOf(androidx.compose.ui.semantics.CustomAccessibilityAction(tr(inputLabel ?: "Saisir une quantité")) { onLongClick(); true })

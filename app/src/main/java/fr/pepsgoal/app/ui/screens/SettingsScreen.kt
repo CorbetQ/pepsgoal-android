@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.ui.platform.testTag
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -153,7 +154,7 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
         val bar = @Composable { mod: Modifier -> CompactBar(mod, shown = { k }) { CompactTitle(title, tile, back, onBack, em, icon); right() } }
         Column(Modifier.fillMaxSize().imePadding()) {
             // Grand écran : colonne de lecture centrée, à largeur confortable
-            LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp), list,
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp).testTag("page_list"), list,
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp, bottom = if (low) 16.dp else 40.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item("title") { Box(Modifier.enter()) { PageHero(title, tile, back, onBack, em, icon, heroH, right) } }

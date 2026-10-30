@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.drawOutline
 import android.Manifest
 import android.content.pm.PackageManager
@@ -183,7 +184,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     Box(Modifier.fillMaxSize()) { run {
         Box(Modifier.fillMaxSize().imePadding()) {
             // Messages
-            LazyColumn(Modifier.fillMaxSize(), state,
+            LazyColumn(Modifier.fillMaxSize().testTag("chat_list"), state,
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = with(dn) { headH.toDp() } + 14.dp, bottom = with(dn) { footH.toDp() } + 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (list.isEmpty()) item("empty") { Box(Modifier.fillMaxWidth().padding(top = 30.dp), contentAlignment = Alignment.Center) { MiniPlaque(if (g != null) "Aucun message pour l’instant. Dis bonjour au groupe !" else "Aucun message pour l'instant. Lance la conversation !", emoji = "👋") } }
                 var lastDay = ""; var lastFrom = ""

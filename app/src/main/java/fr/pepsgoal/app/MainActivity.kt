@@ -7,6 +7,8 @@ import android.os.Build
 import android.os.Bundle
 import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -36,7 +38,9 @@ class MainActivity : ComponentActivity() {
         val ui = peps.ui
         setContent {
             BackHandler(enabled = ui.fs != null || ui.sheet != null || ui.screens.isNotEmpty() || ui.tab != "today") { ui.back() }
-            PepsRoot(ui)
+            // Identifiants de test lisibles par UiAutomator (parcours de mesure du module :benchmark)
+            @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.semantics { testTagsAsResourceId = true }) { PepsRoot(ui) }
             val meId = ui.watch().let { peps.pg.me()?.id }
             androidx.compose.runtime.LaunchedEffect(meId) { if (meId != null) askNotifications() }
         }
@@ -108,6 +112,12 @@ class MainActivity : ComponentActivity() {
         i ?: return
         val ui = peps.ui; val pg = peps.pg
         // Captures d'écran du Play Store (CI, version debug uniquement) : données de démonstration puis l'écran demandé
+        // Mesures de performance (variante « benchmark » uniquement) : données de démonstration, fond Partout ou Nulle part
+        if (BuildConfig.BENCH) i.getStringExtra("bench")?.let { where ->
+            i.removeExtra("bench"); ui.prefs.bgWhere = where; fr.pepsgoal.app.ui.screens.demoStart(ui); ui.themeTick++
+            i.getStringExtra("open")?.let { o -> when (o) { "stats" -> ui.push(Screen.Stats); "chat" -> pg.friendsOf(pg.meId()).firstOrNull()?.let { ui.push(Screen.Chat(with = it)) } } }
+            return
+        }
         if (BuildConfig.DEBUG) i.getStringExtra("shot")?.let { shot -> i.removeExtra("shot"); i.getStringExtra("lang")?.let { fr.pepsgoal.app.ui.I18n.apply(this, it); peps.ui.themeTick++ }; shot(shot); return }
         if (pg.me() == null) return
         // Liens PepsGoal : objectif partagé (pepsgoal://goal?d=…) ou tag NFC (pepsgoal://nfc/<objectif>)
