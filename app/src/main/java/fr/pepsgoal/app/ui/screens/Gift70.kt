@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.ui.semantics.selected as semSelected
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -111,8 +112,8 @@ fun ShopItemPicker(ui: AppState, selected: String?, onPick: (ShopItem) -> Unit) 
                 val ok = pg.giftItemError(x.key) == null
                 val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                 val press = rememberPress(inter)
-                Column(Modifier.weight(1f).graphicsLayer { alpha = if (ok || on) 1f else .45f }.chunk(p.surface, if (on) p.focusEdge else p.edge, 22.dp, 4.dp, if (on) 3.dp else 2.dp, press).clip(RoundedCornerShape(20.dp))
-                    .springClick(inter, label = "Choisir « ${x.name} »") { onPick(x) }.semantics { selected = on }.padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.weight(1f).graphicsLayer { alpha = if (ok || on) 1f else .45f }.chunk(p.surface, if (on) p.focusEdge else p.edge, 22.dp, 4.dp, if (on) 3.dp else 2.dp, press).clip(RoundedCornerShape(22.dp))
+                    .springClick(inter, label = "Choisir « ${x.name} »") { onPick(x) }.semantics { semSelected = on }.padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     ShopItemPreview(x.key, Modifier.fillMaxWidth().aspectRatio(if (kind == "bg") .72f else 1f), 18.dp)
                     Text(x.name, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(if (x.season != null && seasonWindow(x.season!!) == null) "⏳ Hors saison" else "🔥 ${x.price}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (w >= x.price) p.ink2 else p.ink3)
