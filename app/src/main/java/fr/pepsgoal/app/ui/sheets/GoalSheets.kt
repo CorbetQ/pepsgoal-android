@@ -717,7 +717,7 @@ private fun GoalDetail(ui: AppState, g: Goal, own: Boolean) {
         "cap" -> {
             val v = pg.capDay(g)
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(fmtNum(v), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 40.sp, color = tc.ink)
+                Text(fmtNum(v), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 48.sp, color = tc.ink)
                 Muted("sur ${fmtNum(g.target)}${pg.unitSfx(g)} aujourd'hui")
                 Bar(minOf(100.0, v / g.target * 100), color = tc.c)
             }
@@ -727,7 +727,7 @@ private fun GoalDetail(ui: AppState, g: Goal, own: Boolean) {
         "duration" -> {
             val m = pg.durationLiveMins(g)
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(fmtClock(m * 60), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 40.sp, color = tc.ink)
+                Text(fmtClock(m * 60), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 48.sp, color = tc.ink)
                 Muted("sur ${fmtNum(g.minutes)} min aujourd'hui")
                 Bar(minOf(100.0, m / g.minutes * 100), color = tc.c)
             }
@@ -759,7 +759,7 @@ private fun GoalDetail(ui: AppState, g: Goal, own: Boolean) {
         "group" -> {
             val tot = pg.groupTotal(g)
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(fmtNum(round1(tot)), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, color = tc.ink)
+                Text(fmtNum(round1(tot)), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, color = tc.ink)
                 Muted("sur ${fmtNum(g.target)} ${g.unit} ensemble${if (g.endDate.isNotEmpty()) " · ${pg.endText(g.endDate)}" else ""}")
                 Bar(minOf(100.0, tot / g.target * 100), Modifier.padding(top = 6.dp), tc.c)
             }
