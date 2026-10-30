@@ -21,6 +21,9 @@ import fr.pepsgoal.core.autoPlace
 import fr.pepsgoal.core.autoMin
 import fr.pepsgoal.core.steps
 import fr.pepsgoal.core.stepDate
+import fr.pepsgoal.core.ifThenReminder
+import fr.pepsgoal.core.ifKind
+import fr.pepsgoal.core.ifPlace
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -48,6 +51,16 @@ object GeoReminders {
             LocationServices.getFusedLocationProviderClient(ctx).getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                 .addOnSuccessListener { c.resume(it) }.addOnFailureListener { c.resume(null) }
         }
+    }
+
+    /**
+     * Déclencheur « si j'arrive à… / si je pars de… » de l'objectif : sa zone suit l'emplacement enregistré choisi ;
+     * elle est retirée quand le déclencheur n'est plus un lieu (si c'est lui qui l'avait posée).
+     */
+    fun syncIfThen(ctx: Context, g: fr.pepsgoal.core.model.Goal, old: fr.pepsgoal.core.model.Goal?) {
+        val pl = g.ifPlace?.let { id -> ctx.peps.pg.me()?.places?.firstOrNull { it.id == id } }
+        if (g.ifKind in setOf("arrive", "leave") && pl != null) set(ctx, Place(g.id, pl.lat, pl.lon, pl.radius, g.ifKind == "leave", pl.name))
+        else if (old?.ifKind in setOf("arrive", "leave")) remove(ctx, g.id)
     }
 
     fun set(ctx: Context, p: Place) { save(ctx, all(ctx).filter { it.goalId != p.goalId } + p); register(ctx) }
@@ -112,7 +125,7 @@ class GeoReceiver : BroadcastReceiver() {
             if (key in app.prefs.notifiedIds) continue
             app.prefs.notifiedIds = app.prefs.notifiedIds + key
             Notifier.simple(ctx, key.hashCode(), Notifier.CH_REMIND, "${g.shownIcon()} ${g.shownTitle()}",
-                "${if (pl.exit) "Tu quittes" else "Te voilà à"} ${pl.label.ifBlank { "l’endroit choisi" }} : c’est le moment !", goalId = id.takeIf { g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit") })
+                pg.ifThenReminder(g, "place", "${if (pl.exit) "Tu quittes" else "Te voilà à"} ${pl.label.ifBlank { "l’endroit choisi" }} : c’est le moment !"), goalId = id.takeIf { g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit") })
         }
     }
 }

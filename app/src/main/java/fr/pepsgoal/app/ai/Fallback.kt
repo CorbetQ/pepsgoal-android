@@ -2,6 +2,7 @@ package fr.pepsgoal.app.ai
 
 import android.content.Context
 import fr.pepsgoal.app.peps
+import fr.pepsgoal.app.ui.Wx
 import fr.pepsgoal.core.*
 import java.time.LocalTime
 
@@ -39,6 +40,11 @@ object Fallback {
                     weak?.takeIf { it.second < .7 }?.let { (g, r) -> "Si tu as encore un peu d’énergie : **${g.title}** n’est réussi qu’à ${Math.round(r * 100)} % ce mois-ci, une petite avance ferait du bien." },
                     "Sinon, prépare demain : choisis ton objectif prioritaire et l’heure où tu le feras. $cheer"
                 ).joinToString(" "))
+            }
+            // Prévisions de série : jours à risque des 7 prochains jours et plan B
+            has(t, "prévision|prevision|semaine prochaine|semaine à venir|prochains jours|jours? à risque|forecast|next week") -> {
+                val wx = Wx.cached(ctx, u.settings.weather)?.data
+                Reply(forecastText(pg.streakForecast(wx)) + " $cheer")
             }
             // Niveau et flammes
             has(t, "niveau|combien de flammes|mes flammes|points|level") -> {

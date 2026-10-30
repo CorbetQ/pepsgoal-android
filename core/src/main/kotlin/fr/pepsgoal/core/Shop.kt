@@ -58,17 +58,19 @@ val SHOP_THEMES = listOf(
  * Fond illustré de la boutique. [focus] : point focal vertical (fraction de la hauteur) calé dans le héros des pages ;
  * [tint] / [tintDark] : couleur dominante qui teinte le bord et la marche des barres (par défaut le milieu du ciel).
  */
-class ShopBg(val key: String, val name: String, val desc: String, val price: Int, val sky: List<String>, val dark: Boolean = false, val season: String? = null) {
+class ShopBg(val key: String, val name: String, val desc: String, val price: Int, val sky: List<String>, val dark: Boolean = false, val season: String? = null,
+             /** Scène de saison animée : gratuite pendant la saison [freeIn] (et proposée d'office), achetable toute l'année. */
+             val freeIn: String? = null) {
     val focus: Float get() = BG_FOCUS[key] ?: .3f
     val tint: String get() = BG_TINT[key]?.first ?: sky.getOrElse(1) { sky.first() }
     val tintDark: String get() = BG_TINT[key]?.second ?: sky.getOrElse(1) { sky.first() }
 }
 
 /** Points focaux des scènes dont le sujet n'est pas dans le tiers haut. */
-private val BG_FOCUS = mapOf("loire" to .30f, "mountains" to .62f, "lighthouse" to .55f, "rooftops" to .5f, "angers" to .3f, "balloons" to .3f, "tram" to .45f, "nantes" to .35f,
+private val BG_FOCUS = mapOf("xmastree" to .45f, "loiresummer" to .42f, "loire" to .30f, "mountains" to .62f, "lighthouse" to .55f, "rooftops" to .5f, "angers" to .3f, "balloons" to .3f, "tram" to .45f, "nantes" to .35f,
     "nighttrain" to .5f, "canyon" to .45f, "savanna" to .5f, "lagoon" to .45f, "dunes" to .5f, "vineyard" to .45f, "icefield" to .45f)
 /** Teinte des barres (clair, sombre) des scènes vedettes. */
-private val BG_TINT = mapOf("loire" to ("#5E93CF" to "#2E4670"), "mountains" to ("#F59E8B" to "#3B2F5E"), "balloons" to ("#7FB2E6" to "#2B3F66"),
+private val BG_TINT = mapOf("xmastree" to ("#2B416E" to "#22355C"), "valentine" to ("#F393BB" to "#7A3A5A"), "loiresummer" to ("#4FA3D9" to "#2E4670"), "loire" to ("#5E93CF" to "#2E4670"), "mountains" to ("#F59E8B" to "#3B2F5E"), "balloons" to ("#7FB2E6" to "#2B3F66"),
     "angers" to ("#4F86C6" to "#2B3F66"), "lighthouse" to ("#5E7FB8" to "#2E4670"), "rooftops" to ("#A06A9A" to "#3A3F7A"))
 
 val SHOP_BGS = listOf(
@@ -112,7 +114,20 @@ val SHOP_BGS = listOf(
     ShopBg("flowerfield", "Champ fleuri", "Collines vertes et fleurs des champs", 150, listOf("#BFE8FF", "#E6FFD9", "#8ED16B"), season = "spring"),
     ShopBg("summerbeach", "Plage d’été", "Soleil, vagues et parasols", 150, listOf("#FFE7A3", "#7FD8FF", "#F5D79E"), season = "summer"),
     ShopBg("autumnwood", "Bois d’automne", "Arbres roux et feuilles qui tombent", 150, listOf("#FFE1B3", "#F2A65A", "#9C4A1E"), season = "autumn"),
+    // Scènes de saison animées : gratuites à leur période, achetables le reste de l'année
+    ShopBg("xmastree", "Sapin de Noël", "Neige qui tombe, guirlandes qui clignotent et cadeaux", 150, listOf("#16213F", "#2B416E", "#EEF3FB"), dark = true, freeIn = "noel"),
+    ShopBg("valentine", "Cœurs de la Saint-Valentin", "Nuages roses et cœurs qui montent", 150, listOf("#FFE3EE", "#FFC8DD", "#F393BB"), freeIn = "love"),
+    ShopBg("loiresummer", "Été sur la Loire", "Soleil, vagues, toue et château de tuffeau", 150, listOf("#6FBDF5", "#E1F2FC", "#4FA3D9"), freeIn = "summer"),
 )
+
+/** La scène est offerte en ce moment (scène de saison pendant sa période). */
+fun ShopBg.freeNow(d: java.time.LocalDate = todayDate()): Boolean = freeIn?.let { seasonWindow(it, d) != null } == true
+
+/** Scène de saison animée proposée d'office à cette date (Noël, Saint-Valentin, été), ou null hors saison. */
+fun seasonalScene(d: java.time.LocalDate = todayDate()): ShopBg? = SHOP_BGS.firstOrNull { it.freeNow(d) }
+
+/** Fond utilisable : acheté (ou gratuit), ou scène de saison pendant sa période. */
+fun Pg.ownsBg(b: ShopBg, u: User? = me()): Boolean = owns("bg:${b.key}", b.price, u) || b.freeNow()
 
 /** Applique un arrière-plan illustré (acheté ou gratuit). */
 fun Pg.applyBg(b: ShopBg) {

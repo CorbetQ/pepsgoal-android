@@ -42,6 +42,19 @@ fun StatsScreen(ui: AppState) {
     val span = when (period) { 0 -> 7L; 2 -> 365L; else -> 30L }
     ScreenFrame(ui, "Statistiques", "Retour", { ui.back() }, icon = "trend", color = p.type("project").c, color2 = p.type("objective").c) {
         // Période de la réussite par objectif : semaine, mois ou année (onglets à la couleur de la page)
+        // « Mon mois » : le tableau de bord du mois, avec ses comparaisons
+        item("month") {
+            Glass(onClick = { openMonth(ui) }) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    EmojiTile("🗓️", p.type("objective").c, 44.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text("Mon mois", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        Muted("Carte de chaleur, objectif star, tendances et comparaison avec le mois précédent", small = true)
+                    }
+                    Pi("chevronright", size = 18.dp, tint = p.ink3)
+                }
+            }
+        }
         item("period") { PTabs(listOf("Semaine" to "📅", "Mois" to "🗓️", "Année" to "📆"), period, { period = it }, color = p.type("project").c) }
         // Records et chiffres clés
         item("records") {

@@ -221,6 +221,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null, 
         meta = "🤝 $n · $meta"
     }
     val pend = pg.db.checkins.any { it.goalId == g.id && it.pending && it.userId == pg.meId() }
+    val ifThen = remember(ui.rev, g.id) { pg.ifThenOf(g) }
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val press = rememberPress(inter)
     // Balayage : vers la droite pour valider (ou annuler), vers la gauche pour les actions rapides
@@ -267,6 +268,8 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null, 
                     Text(meta, fontSize = 13.sp, color = if (urgent && !done) p.danger else if (done) tc.ink else p.ink2, fontWeight = if (urgent) FontWeight.Bold else FontWeight.SemiBold,
                         maxLines = if (p.easy) 4 else 2, overflow = TextOverflow.Ellipsis, lineHeight = 17.sp)
                 }
+                // Plan « si… alors… » : la phrase sous la sous-ligne (pas pour un objectif discret)
+                if (!done && !g.discreet) ifThen?.let { Text("⚡ $it", fontSize = 13.sp, color = tc.ink, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 17.sp) }
                 if (tag || p.easy || pend || extra != null) FlowRowCompat(gap = 6.dp) {
                     // Lecture facile : l'état est écrit en toutes lettres
                     if (p.easy) Chip(if (done) "Fait" else if (running) "En cours" else "À faire", if (done) "check" else "clock")

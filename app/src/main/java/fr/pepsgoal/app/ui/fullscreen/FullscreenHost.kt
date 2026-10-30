@@ -433,6 +433,8 @@ private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit)
         is Part.FinalActions -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             PButton(if (ui.pg.socialOn()) "Partager mon récap" else "Copier mon récap", { ui.closeFs(); ui.open(Sheet.ShareHub(text = Recaps.shareText(f.st), period = f.p)) }, Modifier.fillMaxWidth(), icon = "share", kind = "primary")
             // Année : image prête à partager (format story), avec les chiffres clés, les mois et le podium
+            // Mois : le tableau de bord détaillé de ce mois-là
+            if (f.p == "month") PButton("Voir mon mois en détail", { ui.closeFs(); fr.pepsgoal.app.ui.screens.openMonth(ui, f.st.r.s.substring(0, 7)) }, Modifier.fillMaxWidth(), icon = "cal", kind = "type", color = LocalPal.current.type("objective").c)
             if (f.p == "year") { val ctx = androidx.compose.ui.platform.LocalContext.current
                 PButton("Partager en image", { fr.pepsgoal.app.sys.WrappedImage.share(ctx, ui.pg, f.st) }, Modifier.fillMaxWidth(), icon = "image") }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

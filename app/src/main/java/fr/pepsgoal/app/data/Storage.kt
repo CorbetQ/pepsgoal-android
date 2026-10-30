@@ -179,6 +179,8 @@ class DevicePrefs(context: Context) {
     var geoPlaces get() = p.getString("geoPlaces", "") ?: ""; set(v) = p.edit().putString("geoPlaces", v).apply()
     /** Couleurs de saison (Halloween, Noël, printemps…) sur l'arrière-plan. */
     var seasonal get() = p.getBoolean("seasonal", true); set(v) = p.edit().putBoolean("seasonal", v).apply()
+    /** Scène de saison animée (Noël, Saint-Valentin, été) affichée d'office à sa période, à la place du fond choisi. */
+    var bgSeasonAuto get() = p.getBoolean("bgSeasonAuto", true); set(v) = p.edit().putBoolean("bgSeasonAuto", v).apply()
     /** Disposition de l'accueil : compact, normal ou aéré. */
     /** Accueil « simple » (en-tête unifié, tuiles et sections repliables) ou « classic » (toutes les cartes à la suite). */
     var homeStyle get() = p.getString("homeStyle", "simple") ?: "simple"; set(v) = p.edit().putString("homeStyle", v).apply()
@@ -228,6 +230,9 @@ class DevicePrefs(context: Context) {
     var flameFx get() = p.getString("flameFx", "none") ?: "none"; set(v) = p.edit().putString("flameFx", v).apply()
     /** Compagnon : nom et accessoires portés. */
     var petName get() = p.getString("petName", "Braisou") ?: "Braisou"; set(v) = p.edit().putString("petName", v).apply()
+    /** Tenue portée (« » : aucune) et cadre d'avatar choisi (clé de la saison qui l'a offert). */
+    var petOutfit get() = p.getString("petOutfit", "") ?: ""; set(v) = p.edit().putString("petOutfit", v).apply()
+    var avatarFrame get() = p.getString("avatarFrame", "") ?: ""; set(v) = p.edit().putString("avatarFrame", v).apply()
     var petAcc: Set<String> get() = p.getStringSet("petAcc", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("petAcc", v).apply()
     /** Briefing du matin lu à voix haute à la première ouverture de la journée (avant midi). */
     var briefAuto get() = p.getBoolean("briefAuto", false); set(v) = p.edit().putBoolean("briefAuto", v).apply()

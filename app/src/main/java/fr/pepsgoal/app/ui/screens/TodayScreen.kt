@@ -165,6 +165,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
         "weekimg" -> item("weekimg") { WeekImageCard(ui) }
         "evening" -> item("evening") { EveningQuickCard(ui, plan) }
         "quest" -> item("quest") { QuestCard(ui) }
+        "season" -> item("season") { ThemeSeasonCard(ui) }
+        "forecast" -> item("forecast") { WeekAheadCard(ui) }
         "tools" -> item("tools") { QuickTools(ui) }
         "tip" -> item("tip") { AiTipCard(ui) }
         "mood" -> item("mood") { MoodCard(ui) }

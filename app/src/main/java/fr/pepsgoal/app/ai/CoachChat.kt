@@ -150,6 +150,9 @@ object CoachChat {
             val mood = Journal.recent(ctx, 5)
             if (mood.isNotEmpty()) sb.append("\nHumeur des derniers jours : " + mood.joinToString(", ") { "${it.date.takeLast(5)} ${Journal.MOODS.getOrNull(it.mood - 1)?.first?.lowercase() ?: ""}" })
             if (health.isNotBlank()) sb.append("\n$health")
+            // Prévisions de série : le coach peut annoncer les jours à risque et le plan B prévu
+            val fc = pg.streakForecast(fr.pepsgoal.app.ui.Wx.cached(ctx, u.settings.weather)?.data)
+            sb.append("\nPrévisions des 7 prochains jours : " + forecastText(fc).replace("**", ""))
         }
         if (lvl < 2) Coach.weather(ctx)?.let { sb.append("\nMétéo : ${it.first.lowercase()}${it.second?.let { t -> ", ${Math.round(t)} °C" } ?: ""}") }
         return sb.toString()
@@ -180,6 +183,7 @@ ${Personas.coachName(ctx)} :"""
         return listOfNotNull(
             if (h < 12) "Mon briefing du jour" else null,
             if (left > 0) "Par quoi je commence ?" else null,
+            if (todayDate().dayOfWeek.value >= 5) "Mes prévisions pour la semaine prochaine" else "Mes prévisions de série",
             if (!st.lit && st.n > 0 && h >= 17) "Comment sauver ma série ce soir ?" else null,
             if (todayDate().dayOfWeek.value >= 6 || todayDate().dayOfWeek.value == 1) "Fais le point sur ma semaine" else null,
             if (left == 0 && plan.due.isNotEmpty()) "Tout est fait, et maintenant ?" else null,

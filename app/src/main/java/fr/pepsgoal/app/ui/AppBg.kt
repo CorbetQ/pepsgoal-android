@@ -27,6 +27,8 @@ import fr.pepsgoal.app.sys.Perf
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.hex
 import fr.pepsgoal.core.SHOP_BGS
+import fr.pepsgoal.core.ownsBg
+import fr.pepsgoal.core.seasonalScene
 import fr.pepsgoal.core.Weather
 
 /*
@@ -46,6 +48,10 @@ fun AppState.sceneKind(): String {
     SceneOverride.key?.let { return "s:$it" }
     val s = pg.me()?.settings ?: return "pop"
     if (s.theme == "weather") return "sky"
+    // Scène de saison animée, proposée d'office à sa période (option d'Apparence), sauf sur une image perso
+    if (prefs.bgSeasonAuto && s.bg != "custom") seasonalScene()?.let { return "s:${it.key}" }
+    // Scène de saison choisie pendant sa période gratuite, puis ni achetée ni en saison : retour au fond par défaut
+    if (s.bg.startsWith("s:")) SHOP_BGS.firstOrNull { "s:${it.key}" == s.bg }?.let { b -> if (b.freeIn != null && !pg.ownsBg(b)) return "pop" }
     return when (s.bg) { "blob", "" -> "pop"; else -> s.bg }
 }
 

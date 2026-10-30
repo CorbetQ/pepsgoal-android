@@ -329,7 +329,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
     val weather = s.theme == "weather"
     // Tuiles : fonds gratuits (rendus en vrai, figés), fonds illustrés possédés, image perso, boutique
     val free = BGS.filter { it.first != "custom" }
-    val scenes = SHOP_BGS.filter { ui.pg.owns("bg:${it.key}", it.price, u) }
+    val scenes = SHOP_BGS.filter { ui.pg.ownsBg(it, u) }
     val more = SHOP_BGS.size - scenes.size
     Glass {
         Head("image", "Arrière-plan", if (weather) "Le thème Météo affiche le ciel en direct : change de thème pour choisir un fond." else "${bgName(s.bg)} · ${when (ui.prefs.bgWhere) { "home" -> "en haut de l’accueil"; "off" -> "masqué"; else -> "sur tout l’écran" }}")
@@ -461,6 +461,11 @@ private fun EffectsSection(ui: AppState, u: User) {
         Muted("Rebonds, flamme qui danse et confettis ; « Réduites » les remplace par des fondus.", Modifier.padding(bottom = 6.dp), small = true)
         Seg(listOf(false to "Complètes", true to "Réduites"), ui.prefs.motion, { ui.prefs.motion = it; ui.themeTick++ }, Modifier.fillMaxWidth())
         Spacer(Modifier.height(6.dp))
+        val sc = seasonalScene()
+        val base = "Sapin de Noël, cœurs de la Saint-Valentin, été sur la Loire : la scène s’affiche d’office à sa période, gratuitement."
+        SetRow("Fond de saison animé", if (sc == null) base else "$base En ce moment : ${sc.name}.") {
+            PSwitch(ui.prefs.bgSeasonAuto, { ui.prefs.bgSeasonAuto = it; ui.themeTick++ })
+        }
         SetRow("Couleurs de saison", "Halloween, fêtes (avec de la neige), Saint-Valentin, printemps et été colorent l’arrière-plan à leur période.${season?.let { " En ce moment : ${Season.LABELS[it]}." } ?: ""}") {
             PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
         }

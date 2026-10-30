@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -117,98 +118,194 @@ private fun GalleryTile(pr: Proof, modifier: Modifier, onClick: () -> Unit) {
 /* ------------------------------------------------------------------ Compagnon flamme */
 
 private val PET_LINES = mapOf(
+    "proud" to listOf("Regarde-nous, on brille ! ✨", "Journée de champion, je suis fier de toi.", "Je bombe le torse : quelle régularité !"),
     "happy" to listOf("On est en feu aujourd’hui ! 🔥", "Encore une validation et je danse.", "Tu me fais grandir, tu sais ?", "Quelle énergie !"),
     "calm" to listOf("On valide quelque chose ensemble ?", "Je garde la flamme au chaud pour toi.", "Une petite action et je brille !"),
-    "sleepy" to listOf("Zzz… Réveille-moi avec une validation.", "J’ai un peu froid… une petite flamme ?", "Je fais la sieste en t’attendant."),
+    "tired" to listOf("Grosse journée… on y va doucement ?", "Une version mini, ça compte aussi.", "Je bâille… mais je reste avec toi."),
 )
+/** Humeur du compagnon en clair (feuille et page). */
+val PET_MOODS = mapOf("proud" to "Fier", "happy" to "Content", "calm" to "Calme", "tired" to "Fatigué")
 
-/** Le compagnon dessiné : œuf, puis flamme qui grandit, visage selon l'humeur, accessoires portés. */
+/** État du compagnon avec l'humeur notée au journal du jour (gardé sur l'appareil). */
 @Composable
-fun PetView(ui: AppState, size: Dp, onTap: (() -> Unit)? = null) {
-    val p = LocalPal.current; val pet = remember(ui.rev) { ui.pg.pet() }
-    val acc = ui.prefs.petAcc
-    val bob = slowPhaseState(2600, 15, running = !p.motion)
-    val jump = remember { Animatable(0f) }; val scope = rememberCoroutineScope()
-    val cols = LocalFlame.current ?: listOf(p.pink, p.flame, p.flame2)
-    Canvas(Modifier.size(size).then(if (onTap != null) Modifier.clickable(onClickLabel = "Caresser ${ui.prefs.petName}") {
-        Feedback.tick(); scope.launch { jump.snapTo(1f); jump.animateTo(0f, spring(dampingRatio = .35f, stiffness = 400f)) }; onTap() } else Modifier)) {
-        val S = this.size.minDimension; val t = bob.value
-        val lift = sin(t * 6.2832f) * S * .02f + jump.value * S * .12f
-        drawPet(pet.stage.key, pet.mood, acc, cols, S, lift, t)
+fun rememberPet(ui: AppState): PetState {
+    val ctx = LocalContext.current; val jr = fr.pepsgoal.app.data.Journal.rev
+    return remember(ui.rev, jr, nowHM().take(2)) {
+        val e = fr.pepsgoal.app.data.Journal.get(ctx, today())
+        ui.pg.pet(journal = e?.mood, tiredTag = e?.tags?.any { it == "fatigué" || it == "malade" } == true)
     }
 }
 
-private fun DrawScope.drawPet(stage: String, mood: String, acc: Set<String>, cols: List<Color>, S: Float, lift: Float, t: Float) {
+/**
+ * Le compagnon dessiné en aplats : œuf, puis flamme qui grandit par stades, visage selon l'humeur, tenue et
+ * accessoires portés. Animations Braise Pop par `graphicsLayer` (léger flottement, rebond au toucher et de joie,
+ * clin d'œil de temps en temps), toutes coupées en animations réduites.
+ */
+@Composable
+fun PetView(ui: AppState, size: Dp, onTap: (() -> Unit)? = null) {
+    val p = LocalPal.current; val pet = rememberPet(ui)
+    val acc = ui.prefs.petAcc; val outfit = ui.prefs.petOutfit.takeIf { it.isNotEmpty() && ui.pg.ownsItem("outfit:$it") }
+    val live = !p.motion
+    val bob = slowPhaseState(2600, 15, running = live)
+    val jump = remember { Animatable(0f) }; val scope = rememberCoroutineScope()
+    var wink by remember { mutableStateOf(false) }
+    // Clin d'œil de temps en temps ; petit bond de joie quand il est fier ou content
+    if (live && pet.stage.key != "egg") LaunchedEffect(pet.mood) {
+        var n = 0
+        while (true) {
+            kotlinx.coroutines.delay(3800L + (n % 3) * 1100L); n++
+            if (pet.mood in setOf("proud", "happy") && n % 2 == 0) { jump.snapTo(.6f); jump.animateTo(0f, spring(dampingRatio = .35f, stiffness = 420f)) }
+            else if (pet.mood != "tired") { wink = true; kotlinx.coroutines.delay(180); wink = false }
+        }
+    }
+    val cols = LocalFlame.current ?: listOf(p.pink, p.flame, p.flame2)
+    Canvas(Modifier.size(size).graphicsLayer {
+        // Flottement et rebond lus au dessin : aucune recomposition
+        val S = this.size.minDimension
+        val bounce = jump.value
+        translationY = (if (live) sin(bob.value * 6.2832f) * S * .02f else 0f) - bounce * S * .12f
+        scaleY = 1f + bounce * .08f; scaleX = 1f - bounce * .05f
+        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, .92f)
+    }.then(if (onTap != null) Modifier.clickable(onClickLabel = "Caresser ${ui.prefs.petName}") {
+        Feedback.tick(); if (live) scope.launch { jump.snapTo(1f); jump.animateTo(0f, spring(dampingRatio = .35f, stiffness = 400f)) }; onTap() } else Modifier)) {
+        drawPet(pet.stage.key, pet.mood, acc, outfit, cols, this.size.minDimension, wink)
+    }
+}
+
+private fun DrawScope.drawPet(stage: String, mood: String, acc: Set<String>, outfit: String?, cols: List<Color>, S: Float, wink: Boolean) {
     val cx = S / 2f
-    // Ombre au sol
-    drawOval(Color.Black.copy(alpha = .18f), Offset(cx - S * .22f, S * .9f), Size(S * .44f, S * .06f))
+    // Ombre au sol (aplat)
+    drawOval(Color(0x2E2A1420), Offset(cx - S * .22f, S * .9f), Size(S * .44f, S * .06f))
     if (stage == "egg") {
-        val top = S * .28f - lift; val bot = S * .9f - lift
+        val top = S * .28f; val bot = S * .9f
         val egg = Path().apply { moveTo(cx, top); cubicTo(cx + S * .26f, top, cx + S * .3f, bot - S * .12f, cx, bot); cubicTo(cx - S * .3f, bot - S * .12f, cx - S * .26f, top, cx, top); close() }
-        drawPath(egg, Brush.verticalGradient(listOf(Color(0xFFFFF4DA), Color(0xFFFFC98A)), startY = top, endY = bot))
-        // Fissure et lueur qui perce
-        drawPath(Path().apply { moveTo(cx - S * .2f, S * .58f - lift); lineTo(cx - S * .08f, S * .52f - lift); lineTo(cx, S * .6f - lift); lineTo(cx + S * .09f, S * .5f - lift); lineTo(cx + S * .2f, S * .57f - lift) }, cols[1], style = Stroke(S * .018f))
-        drawCircle(Brush.radialGradient(listOf(cols[1].copy(alpha = .35f + .2f * sin(t * 6.28f)), Color.Transparent), center = Offset(cx, S * .55f - lift), radius = S * .3f), S * .3f, Offset(cx, S * .55f - lift))
-        face(cx, S * .66f - lift, S * .7f, mood)
+        drawPath(egg, Color(0xFFFFE2B8))
+        clipPath(egg) { drawRect(Color(0xFFFFC98A), Offset(cx - S * .3f, S * .74f), Size(S * .6f, S * .2f)) }
+        // Fissure d'où perce la braise
+        drawPath(Path().apply { moveTo(cx - S * .2f, S * .58f); lineTo(cx - S * .08f, S * .52f); lineTo(cx, S * .6f); lineTo(cx + S * .09f, S * .5f); lineTo(cx + S * .2f, S * .57f) }, cols[1], style = Stroke(S * .018f))
+        face(cx, S * .66f, S * .7f, mood, wink)
         return
     }
     val h = S * when (stage) { "baby" -> .5f; "young" -> .62f; "adult" -> .72f; else -> .76f }; val w = h * .78f
-    val bot = S * .9f - lift; val top = bot - h
-    // Ailes de phénix
-    if (stage == "legend") for (sd in listOf(-1f, 1f)) {
-        val wing = Path().apply { moveTo(cx + sd * w * .3f, top + h * .55f); cubicTo(cx + sd * w * 1.2f, top + h * .2f - sin(t * 12.56f) * S * .05f, cx + sd * w * 1.15f, top + h * .7f, cx + sd * w * .35f, top + h * .78f); close() }
-        drawPath(wing, Brush.linearGradient(listOf(cols[2], cols[0]), start = Offset(cx, top), end = Offset(cx + sd * w, top + h)))
-    }
-    val sway = sin(t * 6.2832f * 2f) * w * .05f
+    val bot = S * .9f; val top = bot - h
     val body = Path().apply {
-        moveTo(cx + sway, top)
+        moveTo(cx, top)
         cubicTo(cx + w * .62f, top + h * .34f, cx + w * .56f, bot - h * .02f, cx, bot)
-        cubicTo(cx - w * .56f, bot - h * .02f, cx - w * .62f, top + h * .34f, cx + sway, top); close()
+        cubicTo(cx - w * .56f, bot - h * .02f, cx - w * .62f, top + h * .34f, cx, top); close()
     }
-    drawCircle(Brush.radialGradient(listOf(cols[1].copy(alpha = .3f), Color.Transparent), center = Offset(cx, bot - h * .4f), radius = h * .8f), h * .8f, Offset(cx, bot - h * .4f))
-    drawPath(body, Brush.verticalGradient(cols, startY = bot, endY = top))
-    drawOval(Brush.verticalGradient(listOf(Color(0xFFFFF6CC), cols.last().copy(alpha = .6f)), startY = bot - h * .5f, endY = bot), Offset(cx - w * .26f, bot - h * .48f), Size(w * .52f, h * .44f))
-    val fy = bot - h * .42f; face(cx, fy, h, mood)
+    // Ailes de phénix et capes : derrière le corps
+    if (stage == "legend") for (sd in listOf(-1f, 1f)) {
+        val wing = Path().apply { moveTo(cx + sd * w * .3f, top + h * .55f); cubicTo(cx + sd * w * 1.2f, top + h * .2f, cx + sd * w * 1.15f, top + h * .7f, cx + sd * w * .35f, top + h * .78f); close() }
+        drawPath(wing, cols[0])
+    }
+    if (outfit == "hero" || outfit == "cape") {
+        val cape = Path().apply { moveTo(cx - w * .32f, top + h * .42f); lineTo(cx + w * .32f, top + h * .42f); lineTo(cx + w * .66f, bot); lineTo(cx - w * .66f, bot); close() }
+        drawPath(cape, if (outfit == "hero") Color(0xFFE8412C) else Color(0xFF3B2F7A))
+        if (outfit == "cape") for (i in 0 until 5) drawCircle(listOf(Color(0xFF3DFF8A), Color(0xFF7DF9FF), Color(0xFFB98CFF))[i % 3], h * .018f, Offset(cx + (i - 2) * w * .26f, bot - h * (.08f + (i % 2) * .1f)))
+    }
+    // Corps en aplats : flamme, puis ventre clair
+    drawPath(body, cols[1])
+    clipPath(body) { drawOval(cols[0], Offset(cx - w * .7f, top - h * .1f), Size(w * .8f, h * .7f)) }
+    drawOval(Color(0xFFFFF0C2), Offset(cx - w * .26f, bot - h * .48f), Size(w * .52f, h * .44f))
+    // Tenue sur le bas du corps (découpée à la silhouette)
+    if (outfit != null) clipPath(body) { outfitBody(outfit, cx, top, bot, w, h) }
+    val fy = bot - h * .42f; face(cx, fy, h, mood, wink)
     val headY = top + h * .3f
+    if (outfit != null) outfitHead(outfit, cx, top, fy, w, h)
     // Accessoires
     if ("scarf" in acc) { drawRoundRect(Color(0xFF2E6FD8), Offset(cx - w * .42f, fy + h * .15f), Size(w * .84f, h * .09f), CornerRadius(h * .04f)); drawRoundRect(Color(0xFF2E6FD8), Offset(cx + w * .1f, fy + h * .18f), Size(w * .12f, h * .22f), CornerRadius(h * .03f)) }
     if ("bow" in acc) { val by = fy + h * .2f; drawPath(Path().apply { moveTo(cx, by); lineTo(cx - w * .2f, by - h * .06f); lineTo(cx - w * .2f, by + h * .06f); close(); moveTo(cx, by); lineTo(cx + w * .2f, by - h * .06f); lineTo(cx + w * .2f, by + h * .06f); close() }, Color(0xFFE8412C)); drawCircle(Color(0xFFB3121F), h * .03f, Offset(cx, by)) }
     if ("glasses" in acc) { val gy = fy - h * .06f; for (sd in listOf(-1f, 1f)) drawRoundRect(Color(0xFF15161C), Offset(cx + sd * w * .2f - w * .14f, gy - h * .05f), Size(w * .28f, h * .11f), CornerRadius(h * .04f)); drawLine(Color(0xFF15161C), Offset(cx - w * .06f, gy), Offset(cx + w * .06f, gy), h * .02f) }
     if ("headphones" in acc) { drawArc(Color(0xFF2A2E36), 200f, 140f, false, Offset(cx - w * .5f, headY - h * .12f), Size(w, h * .6f), style = Stroke(h * .04f)); for (sd in listOf(-1f, 1f)) drawRoundRect(Color(0xFFE8412C), Offset(cx + sd * w * .46f - w * .08f, headY + h * .1f), Size(w * .16f, h * .18f), CornerRadius(h * .05f)) }
-    if ("beret" in acc) { drawOval(Color(0xFF8C1F3F), Offset(cx - w * .36f, top - h * .02f), Size(w * .72f, h * .16f)); drawCircle(Color(0xFF8C1F3F), h * .025f, Offset(cx + sway, top - h * .02f)) }
-    if ("crown" in acc) { val cy0 = top + h * .02f; drawPath(Path().apply { moveTo(cx - w * .28f, cy0 + h * .06f); lineTo(cx - w * .28f, cy0 - h * .08f); lineTo(cx - w * .14f, cy0 - h * .01f); lineTo(cx, cy0 - h * .12f); lineTo(cx + w * .14f, cy0 - h * .01f); lineTo(cx + w * .28f, cy0 - h * .08f); lineTo(cx + w * .28f, cy0 + h * .06f); close() }, Brush.verticalGradient(listOf(Color(0xFFFFE7A1), Color(0xFFE8B730)))) }
-    if ("party" in acc) { val cy0 = top + h * .04f; drawPath(Path().apply { moveTo(cx - w * .18f, cy0); lineTo(cx + w * .02f + sway, cy0 - h * .3f); lineTo(cx + w * .2f, cy0); close() }, Brush.linearGradient(listOf(Color(0xFF7B5CFF), Color(0xFFFF7AD9)))); drawCircle(Color(0xFFFFD23F), h * .035f, Offset(cx + w * .02f + sway, cy0 - h * .3f)) }
+    if ("beret" in acc) { drawOval(Color(0xFF8C1F3F), Offset(cx - w * .36f, top - h * .02f), Size(w * .72f, h * .16f)); drawCircle(Color(0xFF8C1F3F), h * .025f, Offset(cx, top - h * .02f)) }
+    if ("crown" in acc) { val cy0 = top + h * .02f; drawPath(Path().apply { moveTo(cx - w * .28f, cy0 + h * .06f); lineTo(cx - w * .28f, cy0 - h * .08f); lineTo(cx - w * .14f, cy0 - h * .01f); lineTo(cx, cy0 - h * .12f); lineTo(cx + w * .14f, cy0 - h * .01f); lineTo(cx + w * .28f, cy0 - h * .08f); lineTo(cx + w * .28f, cy0 + h * .06f); close() }, Color(0xFFFFC53D)) }
+    if ("party" in acc) { val cy0 = top + h * .04f; drawPath(Path().apply { moveTo(cx - w * .18f, cy0); lineTo(cx + w * .02f, cy0 - h * .3f); lineTo(cx + w * .2f, cy0); close() }, Color(0xFF7B5CFF)); drawCircle(Color(0xFFFFD23F), h * .035f, Offset(cx + w * .02f, cy0 - h * .3f)) }
     if ("cap" in acc) { val cy0 = top + h * .08f; drawRoundRect(Color(0xFF1E2A44), Offset(cx - w * .3f, cy0 - h * .1f), Size(w * .6f, h * .14f), CornerRadius(h * .05f)); drawRoundRect(Color(0xFF1E2A44), Offset(cx - w * .02f, cy0 + h * .01f), Size(w * .42f, h * .04f), CornerRadius(h * .02f)); drawCircle(Color(0xFFFFD27A), h * .025f, Offset(cx, cy0 - h * .03f)) }
+    // Fier : petites étoiles à quatre branches autour de lui
+    if (mood == "proud") for ((dx, dy, r) in listOf(Triple(-.62f, .2f, .05f), Triple(.6f, .1f, .04f), Triple(.55f, .5f, .03f))) sparkle(cx + dx * w, top + dy * h, r * h, Color(0xFFFFC53D))
+    // Fatigué : « z » qui flottent
+    if (mood == "tired") for ((i, k) in listOf(.05f, .09f).withIndex()) { val x = cx + w * (.45f + i * .16f); val y = top + h * (.12f - i * .14f); val z = h * k
+        drawPath(Path().apply { moveTo(x, y); lineTo(x + z, y); lineTo(x, y + z); lineTo(x + z, y + z) }, Color(0xFF6A5A8A), style = Stroke(h * .018f)) }
 }
 
-/** Yeux, joues et bouche selon l'humeur. */
-private fun DrawScope.face(cx: Float, y: Float, h: Float, mood: String) {
+/** Étoile à quatre branches en aplat. */
+private fun DrawScope.sparkle(x: Float, y: Float, r: Float, c: Color) {
+    drawPath(Path().apply { moveTo(x, y - r); lineTo(x + r * .28f, y - r * .28f); lineTo(x + r, y); lineTo(x + r * .28f, y + r * .28f); lineTo(x, y + r); lineTo(x - r * .28f, y + r * .28f); lineTo(x - r, y); lineTo(x - r * .28f, y - r * .28f); close() }, c)
+}
+
+/** Tenue : la partie qui habille le corps (dessinée découpée à la silhouette). */
+private fun DrawScope.outfitBody(o: String, cx: Float, top: Float, bot: Float, w: Float, h: Float) {
+    val y0 = bot - h * .34f
+    fun lower(c: Color) = drawRect(c, Offset(cx - w, y0), Size(w * 2, h * .4f))
+    when (o) {
+        "sport" -> { lower(Color(0xFF2E6FD8)); drawRect(Color.White, Offset(cx - w, y0 + h * .05f), Size(w * 2, h * .03f)) }
+        "pyjama" -> { lower(Color(0xFF4D5BD8)); for (i in 0 until 6) sparkle(cx - w * .45f + i * w * .18f, y0 + h * (.1f + (i % 2) * .1f), h * .025f, Color(0xFFFFE45C)) }
+        "pull" -> { lower(Color(0xFFD7263D)); val z = Path(); z.moveTo(cx - w, y0 + h * .1f); var x = cx - w; var up = true; while (x < cx + w) { x += w * .1f; z.lineTo(x, y0 + h * if (up) .06f else .12f); up = !up }
+            drawPath(z, Color.White, style = Stroke(h * .02f)) }
+        "kimono" -> { lower(Color(0xFFFF8FB1)); drawPath(Path().apply { moveTo(cx - w * .3f, y0); lineTo(cx, y0 + h * .16f); lineTo(cx + w * .3f, y0) }, Color.White, style = Stroke(h * .035f))
+            drawRect(Color(0xFF8C1F3F), Offset(cx - w, y0 + h * .17f), Size(w * 2, h * .05f)) }
+        "astro" -> { lower(Color(0xFFE6ECF5)); drawRoundRect(Color(0xFFE8412C), Offset(cx - w * .12f, y0 + h * .06f), Size(w * .24f, h * .08f), CornerRadius(h * .02f)) }
+        "hawaii" -> { lower(Color(0xFFFF7A3D)); for (i in 0 until 5) drawCircle(Color(0xFFFFE45C), h * .025f, Offset(cx - w * .4f + i * w * .2f, y0 + h * (.08f + (i % 2) * .12f))) }
+        "marin" -> { lower(Color.White); for (i in 0 until 4) drawRect(Color(0xFF1E2A5A), Offset(cx - w, y0 + h * (.04f + i * .08f)), Size(w * 2, h * .035f)) }
+        "vigneron" -> { drawRoundRect(Color(0xFF7B3FA0), Offset(cx - w * .28f, y0 - h * .04f), Size(w * .56f, h * .42f), CornerRadius(h * .04f))
+            for (i in 0 until 3) drawCircle(Color(0xFF3DFF8A), h * .022f, Offset(cx - w * .06f + i * w * .06f, y0 + h * .1f)) }
+        "cire" -> lower(Color(0xFFFFC53D))
+        "hero" -> drawPath(Path().apply { moveTo(cx - w * .14f, y0); lineTo(cx + w * .14f, y0); lineTo(cx, y0 + h * .14f); close() }, Color(0xFFFFD23F))
+        "cape" -> drawRect(Color(0xFF3B2F7A), Offset(cx - w, y0 + h * .16f), Size(w * 2, h * .04f))
+    }
+}
+
+/** Tenue : ce qui se porte sur la tête (bandeau, bonnet, capuche, casque). */
+private fun DrawScope.outfitHead(o: String, cx: Float, top: Float, fy: Float, w: Float, h: Float) {
+    when (o) {
+        "sport" -> drawRoundRect(Color(0xFFE8412C), Offset(cx - w * .34f, fy - h * .2f), Size(w * .68f, h * .06f), CornerRadius(h * .03f))
+        "pyjama" -> { drawPath(Path().apply { moveTo(cx - w * .3f, top + h * .14f); lineTo(cx + w * .3f, top + h * .14f); lineTo(cx + w * .5f, top - h * .06f); close() }, Color(0xFF4D5BD8)); drawCircle(Color.White, h * .04f, Offset(cx + w * .5f, top - h * .06f)) }
+        "pull" -> { drawRoundRect(Color(0xFFD7263D), Offset(cx - w * .3f, top - h * .02f), Size(w * .6f, h * .16f), CornerRadius(h * .07f)); drawCircle(Color.White, h * .045f, Offset(cx, top - h * .03f)) }
+        "astro" -> { drawCircle(Color(0xFFBFE6FF).copy(alpha = .35f), h * .36f, Offset(cx, fy - h * .02f)); drawCircle(Color(0xFFE6ECF5), h * .36f, Offset(cx, fy - h * .02f), style = Stroke(h * .03f))
+            drawArc(Color.White, 200f, 50f, false, Offset(cx - h * .28f, fy - h * .3f), Size(h * .56f, h * .56f), style = Stroke(h * .02f)) }
+        "hawaii" -> for (i in 0 until 5) drawCircle(listOf(Color(0xFFFF4F8B), Color(0xFFFFE45C))[i % 2], h * .035f, Offset(cx - w * .3f + i * w * .15f, top + h * .12f))
+        "cire" -> drawArc(Color(0xFFFFC53D), 180f, 180f, true, Offset(cx - w * .4f, top - h * .04f), Size(w * .8f, h * .44f))
+        "kimono" -> drawCircle(Color(0xFFFF4F8B), h * .05f, Offset(cx + w * .26f, top + h * .14f))
+        "marin" -> { drawRoundRect(Color(0xFF1E2A5A), Offset(cx - w * .26f, top), Size(w * .52f, h * .1f), CornerRadius(h * .03f)); drawCircle(Color(0xFFE8412C), h * .025f, Offset(cx, top)) }
+        "vigneron" -> drawOval(Color(0xFFC9A87A), Offset(cx - w * .42f, top + h * .02f), Size(w * .84f, h * .1f))
+        else -> {}
+    }
+}
+
+/** Yeux, joues et bouche selon l'humeur ; [wink] ferme l'œil droit un instant. */
+private fun DrawScope.face(cx: Float, y: Float, h: Float, mood: String, wink: Boolean = false) {
     val ink = Color(0xFF2A1420); val e = h * .07f
     for (sd in listOf(-1f, 1f)) {
         val ex = cx + sd * h * .13f
-        if (mood == "sleepy") drawLine(ink, Offset(ex - e * .7f, y), Offset(ex + e * .7f, y), h * .022f)
-        else { drawOval(ink, Offset(ex - e * .5f, y - e * .7f), Size(e, e * 1.4f)); drawCircle(Color.White, e * .22f, Offset(ex + e * .12f, y - e * .25f)) }
-        drawOval(Color(0xFFFF6F9E).copy(alpha = .55f), Offset(ex - e * .7f + sd * e * .4f, y + e * .9f), Size(e * 1.3f, e * .7f))
+        when {
+            mood == "proud" -> drawArc(ink, 200f, 140f, false, Offset(ex - e * .6f, y - e * .4f), Size(e * 1.2f, e * 1.1f), style = Stroke(h * .022f))
+            mood == "tired" -> { drawLine(ink, Offset(ex - e * .7f, y), Offset(ex + e * .7f, y), h * .022f); drawArc(ink, 20f, 140f, false, Offset(ex - e * .6f, y - e * .5f), Size(e * 1.2f, e * 1f), style = Stroke(h * .018f)) }
+            wink && sd > 0 -> drawArc(ink, 20f, 140f, false, Offset(ex - e * .6f, y - e * .6f), Size(e * 1.2f, e * 1f), style = Stroke(h * .022f))
+            else -> { drawOval(ink, Offset(ex - e * .5f, y - e * .7f), Size(e, e * 1.4f)); drawCircle(Color.White, e * .22f, Offset(ex + e * .12f, y - e * .25f)) }
+        }
+        drawOval(Color(0x8CFF6F9E), Offset(ex - e * .7f + sd * e * .4f, y + e * .9f), Size(e * 1.3f, e * .7f))
     }
     val my = y + h * .12f
     when (mood) {
+        "proud" -> drawArc(ink, 0f, 180f, true, Offset(cx - h * .1f, my - h * .06f), Size(h * .2f, h * .14f))
         "happy" -> drawArc(ink, 10f, 160f, false, Offset(cx - h * .09f, my - h * .06f), Size(h * .18f, h * .12f), style = Stroke(h * .025f))
         "calm" -> drawLine(ink, Offset(cx - h * .05f, my), Offset(cx + h * .05f, my), h * .022f)
-        else -> drawOval(ink, Offset(cx - h * .03f, my - h * .02f), Size(h * .06f, h * .05f))
+        else -> drawArc(ink, 200f, 140f, false, Offset(cx - h * .06f, my - h * .01f), Size(h * .12f, h * .08f), style = Stroke(h * .022f))
     }
 }
 
 /** Carte du profil : le compagnon, son stade et l'accès à sa page. */
 @Composable
 fun PetCard(ui: AppState) {
-    val p = LocalPal.current; val pet = remember(ui.rev) { ui.pg.pet() }
+    val p = LocalPal.current; val pet = rememberPet(ui)
     Glass(onClick = { ui.push(Screen.Pet) }) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             PetView(ui, 84.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Eyebrow("Ton compagnon")
                 Text("${ui.prefs.petName} · ${pet.stage.name}", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
-                pet.next?.let { n -> Bar((pet.days - pet.stage.min) * 100.0 / (n.min - pet.stage.min), height = 6.dp); Muted("${n.min - pet.days} jours actifs avant « ${n.name} »", small = true) } ?: Muted("Stade ultime atteint 👑", small = true)
+                Muted("Humeur : ${PET_MOODS[pet.mood] ?: ""}", small = true)
+                pet.next?.let { n -> Bar(pet.progress * 100, height = 6.dp); Muted("Vers « ${n.name} » : ${petNextHint(pet)}", small = true) } ?: Muted("Stade ultime atteint 👑", small = true)
             }
             Text("›", color = p.ink3, fontSize = 22.sp)
         }
@@ -219,8 +316,8 @@ fun PetCard(ui: AppState) {
 @Composable
 fun PetScreen(ui: AppState) {
     ui.watch()
-    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return; val pet = pg.pet()
-    var line by remember { mutableStateOf(PET_LINES[pet.mood]!!.random()) }
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return; val pet = rememberPet(ui)
+    var line by remember(pet.mood) { mutableStateOf(PET_LINES[pet.mood]!!.random()) }
     var name by remember { mutableStateOf(ui.prefs.petName) }
     var worn by remember { mutableStateOf(ui.prefs.petAcc) }
     ScreenFrame(ui, "Compagnon", "Retour", { ui.back() }, icon = "flameo", color = p.flame2, color2 = p.type("monthly").c, emoji = "🐣") {
@@ -234,18 +331,23 @@ fun PetScreen(ui: AppState) {
         }
         item("stage") {
             Glass {
-                CardHead("${pet.stage.name}") { Count("${pet.days} j") }
+                CardHead("${pet.stage.name}") { Count(PET_MOODS[pet.mood] ?: "") }
+                val idx = PET_STAGES.indexOf(pet.stage)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    PET_STAGES.forEach { s -> val ok = pet.days >= s.min
+                    PET_STAGES.forEachIndexed { i, s -> val ok = i <= idx
                         val cur = s.key == pet.stage.key
                         Column(Modifier.weight(1f).clip(RoundedCornerShape(17.dp)).background(if (cur) vivid(p.flame) else p.surface2).padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(if (ok) "✓" else "${s.min}", fontWeight = FontWeight.ExtraBold, color = if (cur) fr.pepsgoal.app.ui.theme.PLUM else if (ok) p.ink else p.ink3, fontSize = 12.sp)
+                            Text(if (ok) "✓" else "${s.streak} j", fontWeight = FontWeight.ExtraBold, color = if (cur) fr.pepsgoal.app.ui.theme.PLUM else if (ok) p.ink else p.ink3, fontSize = 12.sp)
                             FitText(s.name, size = 12, min = 8, color = if (cur) fr.pepsgoal.app.ui.theme.PLUM else if (ok) p.ink else p.ink3) } }
                 }
                 Spacer(Modifier.height(8.dp))
-                Muted("Il grandit avec tes jours actifs (au moins une validation). Son humeur suit ta journée : fais-le sourire !", small = true)
+                pet.next?.let { Bar(pet.progress * 100, height = 8.dp); Spacer(Modifier.height(6.dp)) }
+                Muted("Il grandit avec ta meilleure série (${pl(pet.best, "jour", "jours")}) et ton niveau (${pet.level}) : le premier des deux qui atteint le seuil le fait passer au stade suivant.", small = true)
+                petNextHint(pet)?.let { Muted("Encore $it.", small = true) }
+                Muted("Son humeur suit ta journée et ton journal : fier d’une journée parfaite, content quand ta flamme brille, fatigué les jours difficiles.", small = true)
             }
         }
+        item("outfit") { OutfitsCard(ui) }
         item("acc") {
             Glass {
                 CardHead("Accessoires", emoji = "🎀") { Count("${pg.wallet(u)} 🔥") }
@@ -267,6 +369,44 @@ fun PetScreen(ui: AppState) {
                         if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Tenues du compagnon : boutique (flammes) ou passe de saison ; une seule portée à la fois. */
+@Composable
+private fun OutfitsCard(ui: AppState) {
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    var cur by remember { mutableStateOf(ui.prefs.petOutfit) }
+    val season = themeSeasonAt()
+    Glass {
+        CardHead("Tenues", emoji = "👕") { Count("${pg.wallet(u)} 🔥") }
+        Muted("Une tenue à la fois, par-dessus les accessoires. Celles des saisons se gagnent avec le passe.", small = true)
+        Spacer(Modifier.height(6.dp))
+        PET_OUTFITS.chunked(2).forEach { row ->
+            Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { o ->
+                    val owned = pg.ownsItem("outfit:${o.key}"); val on = cur == o.key && owned
+                    val st = THEME_SEASONS.firstOrNull { it.key == o.season }
+                    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val press = rememberPress(inter)
+                    Row(Modifier.weight(1f).chunk(if (on) p.selTint(p.type("monthly").c) else p.surface, if (on) vivid(p.type("monthly").c).step() else p.edge, 22.dp, 3.dp, if (on) 3.dp else 2.dp, press).clip(RoundedCornerShape(22.dp))
+                        .springClick(inter, label = o.name) {
+                            when {
+                                owned -> { cur = if (on) "" else o.key; ui.prefs.petOutfit = cur; ui.bump() }
+                                o.price > 0 -> pg.buy("outfit:${o.key}", o.price)?.let { ui.toast(it, "x") } ?: run { Feedback.success(); cur = o.key; ui.prefs.petOutfit = o.key; ui.toast("${o.emoji} ${o.name} pour ${ui.prefs.petName} !", "star"); ui.bump() }
+                                else -> ui.toast(if (st?.key == season.theme.key) "À gagner dans le passe de la saison « ${st.name} »." else "Tenue de la saison « ${st?.name ?: ""} » : elle reviendra avec elle.", "star")
+                            }
+                        }.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Emoji(o.emoji, 26.dp)
+                        Column(Modifier.weight(1f)) {
+                            Text(o.name, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 2)
+                            Text(when { on -> "Portée"; owned -> "Possédée"; o.price > 0 -> "${o.price} 🔥"; else -> "Passe ${st?.emoji ?: ""}" }, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink2)
+                        }
+                    }
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
