@@ -77,8 +77,9 @@ fun FullscreenHost(ui: AppState) {
     BackHandler { ui.closeFs() }
     val p = LocalPal.current
     // Fête, focus, fractionné et tutoriel : la scène de l'arrière-plan est le décor ; récap et stories ont leur fond.
-    // Fête (ou fenêtre ouverte dessous) : voile qui laisse voir la scène en haut et masque ce qui est derrière, pour la lisibilité
-    val veil = f is Fs.Celebrate || (ui.sceneFs() && ui.sheet != null)
+    // Tous les plein écran sur la scène (fête, focus, fractionné, tutoriel) : voile qui laisse voir la scène en haut et
+    // masque ce qui est derrière, pour la lisibilité
+    val veil = ui.sceneFs()
     val back = when {
         veil -> Modifier.background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to p.bg.copy(alpha = .55f), .22f to p.bg.copy(alpha = .96f), 1f to p.bg))
         ui.sceneFs() -> Modifier
