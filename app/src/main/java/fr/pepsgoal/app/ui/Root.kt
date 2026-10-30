@@ -352,6 +352,7 @@ private fun Shell(ui: AppState) {
         val heroPx = with(d) { (if (navTab == "today") 150.dp else 120.dp).toPx() - 56.dp.toPx() }
         val passed by remember(heroPx) { derivedStateOf { Fx.scroll > heroPx } }
         val k by animateFloatAsState(if (passed && !p.oneHand) 1f else 0f, if (p.motion) snap() else tween(180), label = "compact")
+        if (k > .01f) StatusScrim { k }
         if (k > .01f) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().then(if (wide) Modifier.widthIn(max = 640.dp) else Modifier).statusBarsPadding().padding(horizontal = 8.dp, vertical = 2.dp)) {
             CompactBar(shown = { k }) {
                 CompactTitle(NAV_TITLES[ui.tab] ?: "PepsGoal", p.flame2, null, null, emoji = TAB_EMOJI[ui.tab])

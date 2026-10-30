@@ -345,10 +345,16 @@ fun Card(modifier: Modifier = Modifier, radius: Dp = 24.dp, pad: Dp = LocalGlass
 /** Titre de carte : emoji Fluent de 22 dp facultatif, puis titre en Unbounded 16. */
 @Composable
 fun CardHead(title: String, modifier: Modifier = Modifier, emoji: String? = null, right: @Composable RowScope.() -> Unit = {}) {
-    Row(modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (emoji != null) Emoji(emoji, 22.dp)
-        Text(title, fontSize = titleSp(16), fontFamily = Unbounded, fontWeight = FontWeight.Bold, lineHeight = titleSp(20), modifier = Modifier.weight(1f).semantics { heading() })
-        right()
+    // Si les actions de droite écrasent le titre au point d'en couper un mot, elles passent sur une ligne à part, dessous
+    val cut = rememberWordCut(title)
+    Column(modifier.fillMaxWidth().padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (emoji != null) Emoji(emoji, 22.dp)
+            Text(title, fontSize = titleSp(16), fontFamily = Unbounded, fontWeight = FontWeight.Bold, lineHeight = titleSp(20), modifier = Modifier.weight(1f).semantics { heading() },
+                onTextLayout = { if (!cut.hide && it.cutsWord()) cut.hide = true })
+            if (!cut.hide) right()
+        }
+        if (cut.hide) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), content = right)
     }
 }
 

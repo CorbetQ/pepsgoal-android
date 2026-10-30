@@ -250,6 +250,19 @@ fun CompactBar(modifier: Modifier = Modifier, shown: () -> Float = { 1f }, conte
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), content = content)
 }
 
+/**
+ * Voile de la barre d'état : quand la barre compacte est affichée, le contenu qui défile ne passe plus, lisible, sous
+ * l'heure et les icônes du téléphone (aplat `bg` qui s'estompe juste sous le haut de la barre).
+ */
+@Composable
+fun BoxScope.StatusScrim(shown: () -> Float) {
+    val p = LocalPal.current
+    Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().graphicsLayer { alpha = shown().coerceIn(0f, 1f) }
+        .background(Brush.verticalGradient(0f to p.bg, .72f to p.bg, 1f to p.bg.copy(alpha = 0f)))) {
+        Spacer(Modifier.statusBarsPadding().height(34.dp))
+    }
+}
+
 /** Contenu habituel d'une barre compacte : retour, tuile emoji 34, titre Unbounded 20, actions. */
 @Composable
 fun RowScope.CompactTitle(title: String, color: Color, back: String?, onBack: (() -> Unit)?, emoji: String? = null, icon: String? = null) {
