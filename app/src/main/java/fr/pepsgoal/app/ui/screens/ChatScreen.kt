@@ -23,8 +23,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import fr.pepsgoal.app.ui.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.runtime.*
@@ -69,6 +67,8 @@ import androidx.compose.ui.semantics.contentDescription
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
+import fr.pepsgoal.app.ui.theme.step
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.animateContentSize
@@ -176,20 +176,19 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     val dn = androidx.compose.ui.platform.LocalDensity.current
     var headH by remember { mutableIntStateOf(0) }; var footH by remember { mutableIntStateOf(0) }
     remember(key) { Stagger.reset() }
+    // Fond de la conversation : la scène choisie remplace celle de l'application (un seul fond, dessiné par AppBg)
+    DisposableEffect(bgKey) { SceneOverride.key = bgKey; onDispose { SceneOverride.key = null } }
+    TrackScroll(state) { Fx.pageScroll = it }
     Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
-        Box(Modifier.fillMaxSize()) {
-            if (bgKey != null) { SceneBg(bgKey, Modifier.fillMaxSize()); Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = .18f))) }
-            else PageBackdrop(cc, chosen?.get(2) ?: p.pink)
-        }
         Box(Modifier.fillMaxSize().imePadding()) {
             // Messages
             LazyColumn(Modifier.fillMaxSize(), state,
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = with(dn) { headH.toDp() } + 14.dp, bottom = with(dn) { footH.toDp() } + 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (list.isEmpty()) item("empty") { Muted(if (g != null) "Aucun message pour l’instant. Dis bonjour au groupe !" else "Aucun message pour l'instant. Lance la conversation !", Modifier.fillMaxWidth().padding(top = 30.dp), small = true, center = true) }
+                if (list.isEmpty()) item("empty") { Box(Modifier.fillMaxWidth().padding(top = 30.dp), contentAlignment = Alignment.Center) { MiniPlaque(if (g != null) "Aucun message pour l’instant. Dis bonjour au groupe !" else "Aucun message pour l'instant. Lance la conversation !", emoji = "👋") } }
                 var lastDay = ""; var lastFrom = ""
                 list.forEach { m ->
                     val d = ymd(m.at)
-                    if (d != lastDay) { val dd = d; item("d:$d") { Muted(if (dd == today()) "Aujourd'hui" else fmtDate(dd), Modifier.fillMaxWidth().padding(vertical = 8.dp), small = true, center = true) }; lastFrom = ""; lastDay = d }
+                    if (d != lastDay) { val dd = d; item("d:$d") { Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { MiniPlaque(if (dd == today()) "Aujourd'hui" else fmtDate(dd)) } }; lastFrom = ""; lastDay = d }
                     if (Social.body(ui, m)?.str("k") == "shot") { item("m:${m.id}") { ShotNotice(ui, m) }; lastFrom = ""; return@forEach }
                     val mine = m.from == u.id
                     val who = if (g != null && !mine && m.from != lastFrom) (pg.userById(m.from)?.name ?: "Ancien membre") else null
@@ -219,9 +218,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 val one = picked.singleOrNull()
                 val editable = one != null && one.from == u.id && one.id !in gone && Social.body(ui, one)?.str("k") == "text" && pg.store.online
                 val clip = androidx.compose.ui.platform.LocalClipboardManager.current
-                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp).shadow((if (p.transp) 0.dp else 12.dp).ifShadows(), smoothShape(26.dp))
-                    .clip(smoothShape(26.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(26.dp)).padding(4.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                CompactBar(Modifier.statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp)) {
                     IconBtn("x", "Annuler la sélection", { sel = emptySet(); askDel = false }, plain = true, size = 44.dp)
                     Text(pl(sel.size, "sélectionné", "sélectionnés"), Modifier.weight(1f).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }, fontWeight = FontWeight.ExtraBold)
                     if (one != null && one.id !in gone) IconBtn("reply", "Répondre", { replyTo = one; sel = emptySet() }, plain = true, size = 44.dp)
@@ -236,44 +233,43 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                     }, plain = true, size = 44.dp)
                     IconBtn("trash", "Supprimer", { askDel = true }, plain = true, size = 44.dp, tint = p.danger)
                 }
-                AnimatedVisibility(askDel) {
-                    Glass(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), strong = true, pad = 14.dp) {
-                        Text("Supprimer ${pl(sel.size, "message", "messages")} ?", fontWeight = FontWeight.ExtraBold)
-                        Muted(if (allMine) "« Pour tout le monde » remplace le message par « Message supprimé » chez chacun. « Pour moi » le masque seulement sur ce téléphone." else "Tu ne peux supprimer pour tout le monde que tes propres messages. Ils seront masqués sur ce téléphone.", Modifier.padding(vertical = 6.dp), small = true)
-                        FlowRowCompat(gap = 6.dp) {
-                            if (allMine && pg.store.online) PButton("Pour tout le monde", {
-                                picked.forEach { m -> send(buildJsonObject { put("k", "del"); put("p", m.id) }, null, null) }
-                                sel = emptySet(); askDel = false; ui.toast(if (picked.size > 1) "Messages supprimés." else "Message supprimé.", "trash")
-                            }, icon = "trash", kind = "danger", small = true)
-                            PButton("Pour moi", {
-                                val ids = picked.map { it.id }.toSet(); hidden = hidden + ids; ui.prefs.hiddenMsgs = hidden; sel = emptySet(); askDel = false
-                                ui.undoable(if (ids.size > 1) "Messages masqués." else "Message masqué.", "trash") { hidden = hidden - ids; ui.prefs.hiddenMsgs = hidden }
-                            }, small = true)
-                            PButton("Annuler", { askDel = false }, kind = "ghost", small = true)
-                        }
+                if (askDel) {
+                    val delAll = allMine && pg.store.online
+                    val forMe = {
+                        val ids = picked.map { it.id }.toSet(); hidden = hidden + ids; ui.prefs.hiddenMsgs = hidden; sel = emptySet(); askDel = false
+                        ui.undoable(if (ids.size > 1) "Messages masqués." else "Message masqué.", "trash") { hidden = hidden - ids; ui.prefs.hiddenMsgs = hidden }
+                    }
+                    PDialog({ askDel = false }, "🗑️", "Supprimer ${pl(sel.size, "message", "messages")} ?",
+                        if (allMine) "« Pour tout le monde » remplace le message par « Message supprimé » chez chacun. « Pour moi » le masque seulement sur ce téléphone." else "Tu ne peux supprimer pour tout le monde que tes propres messages. Ils seront masqués sur ce téléphone.",
+                        if (delAll) "Pour tout le monde" else "Pour moi", {
+                            if (delAll) { picked.forEach { m -> send(buildJsonObject { put("k", "del"); put("p", m.id) }, null, null) }; sel = emptySet(); askDel = false; ui.toast(if (picked.size > 1) "Messages supprimés." else "Message supprimé.", "trash") }
+                            else forMe()
+                        }, danger = true) {
+                        if (delAll) PButton("Pour moi", forMe, Modifier.fillMaxWidth())
                     }
                 }
             } else
-            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconBtn("chevronleft", "Retour", { ui.back() }, size = 44.dp)
-                val headInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                val pill = smoothShape(26.dp)
-                Row(Modifier.weight(1f).bounce(headInter, .97f).shadow((if (p.transp) 0.dp else 12.dp).ifShadows(), pill, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
-                    .clip(pill).background(p.glassStrong).border(1.dp, p.glassEdge, pill)
-                    .springClick(headInter) { if (g != null) ui.open(Sheet.GroupInfo(g.id)) else ui.open(Sheet.User(x!!.id)) }.padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (g != null) GroupAv(g.emoji, 40) else Av(x, 40.dp)
+            // En-tête : barre compacte (retour, avatar dans l'anneau de la flamme, nom, statut, actions)
+            CompactBar(Modifier.statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp)) {
+                RoundGlass("Retour", { ui.back() }) { Pi("chevronleft", size = 20.dp, tint = p.ink) }
+                Row(Modifier.weight(1f).clip(RoundedCornerShape(17.dp)).clickable(onClickLabel = if (g != null) "Infos du groupe" else "Profil") { if (g != null) ui.open(Sheet.GroupInfo(g.id)) else ui.open(Sheet.User(x!!.id)) }
+                    .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (g != null) GroupAv(g.emoji, 40) else AvatarFace(x, 34.dp)
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(g?.name ?: x!!.name, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(g?.name ?: x!!.name, fontFamily = fr.pepsgoal.app.ui.theme.Unbounded, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (x != null && pg.isOfficial(x)) Verified()
                             if (x?.demo == true) Chip("démo")
                         }
-                        Muted(if (g != null) "${pl(g.members.size, "membre", "membres")} · infos et membres" else if (pg.isOfficial(x)) "Compte officiel" else "@${x!!.username}", small = true, maxLines = 1)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (g == null && x != null && !pg.isOfficial(x) && pg.globalStreak(x.id).lit) Box(Modifier.size(8.dp).background(vivid(p.type("routine").c), CircleShape))
+                            Text(if (g != null) "${pl(g.members.size, "membre", "membres")} · infos et membres" else if (pg.isOfficial(x)) "Compte officiel" else "@${x!!.username}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
-                IconBtn("search", "Rechercher dans la conversation", { searching = !searching; if (!searching) sq = "" }, size = 44.dp, tint = if (searching) p.flame else null)
-                if (g != null || !pg.isOfficial(x)) IconBtn(if (ttl > 0) "timer" else "palette", "Fond, couleur et messages éphémères", { palette = !palette }, size = 44.dp, tint = if (palette) p.flame else null)
-                if (g != null || !pg.isOfficial(x)) IconBtn("lock", "Chiffrement de bout en bout : en savoir plus", { e2eOpen = !e2eOpen }, size = 44.dp, tint = if (e2eOpen) p.flame else null)
+                RoundGlass("Rechercher dans la conversation", { searching = !searching; if (!searching) sq = "" }) { Pi("search", size = 20.dp, tint = if (searching) p.flameInk else p.ink) }
+                if (g != null || !pg.isOfficial(x)) RoundGlass("Fond, couleur et messages éphémères", { palette = !palette }) { Pi(if (ttl > 0) "timer" else "palette", size = 20.dp, tint = if (palette) p.flameInk else p.ink) }
+                if (g != null || !pg.isOfficial(x)) RoundGlass("Chiffrement de bout en bout : en savoir plus", { e2eOpen = !e2eOpen }) { Pi("lock", size = 20.dp, tint = if (e2eOpen) p.flameInk else p.ink) }
             }
             AnimatedVisibility(palette && sel.isEmpty()) {
                 Glass(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), strong = true, pad = 12.dp) {
@@ -287,10 +283,10 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                     Muted("Le fond et tes bulles prennent cette couleur, sur ce téléphone.", Modifier.padding(bottom = 8.dp), small = true)
                     FlowRowCompat(gap = 8.dp) {
                         val pick = { i: Int? -> colorIdx = i; ui.prefs.chatColors = ui.prefs.chatColors.toMutableMap().apply { if (i == null) remove(key) else put(key, i) }; Feedback.tick() }
-                        Box(Modifier.size(40.dp).clip(CircleShape).background(p.ink.copy(alpha = .08f)).border(if (colorIdx == null) 3.dp else 1.dp, if (colorIdx == null) p.ink else p.line, CircleShape)
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(p.surface2).border(if (colorIdx == null) 3.dp else 2.dp, if (colorIdx == null) p.focusEdge else p.edge, CircleShape)
                             .clickable(onClickLabel = "Couleur par défaut") { pick(null) }.semantics { contentDescription = "Couleur par défaut"; selected = colorIdx == null }, contentAlignment = Alignment.Center) { Pi("x", size = 16.dp, tint = p.ink2) }
                         fr.pepsgoal.core.ACCENTS.forEachIndexed { i, a ->
-                            Box(Modifier.size(40.dp).clip(CircleShape).background(Brush.linearGradient(a.c.map(::hex))).border(if (colorIdx == i) 3.dp else 1.dp, if (colorIdx == i) p.ink else Color.White.copy(alpha = .5f), CircleShape)
+                            Box(Modifier.size(44.dp).clip(CircleShape).background(Brush.linearGradient(a.c.map(::hex))).border(if (colorIdx == i) 3.dp else 2.dp, if (colorIdx == i) p.focusEdge else p.edge, CircleShape)
                                 .clickable(onClickLabel = a.name) { pick(i) }.semantics { contentDescription = a.name; selected = colorIdx == i })
                         }
                     }
@@ -299,21 +295,22 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
             // Duel en cours avec cet ami : mini tableau des scores en haut de la conversation
             if (x != null && sel.isEmpty()) pg.db.goals.firstOrNull { it.type == "duel" && it.completedAt == null && it.members?.containsAll(listOf(u.id, x.id)) == true }?.let { dg ->
                 val a = pg.duelScore(dg, u.id); val b = pg.duelScore(dg, x.id)
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(smoothShape(16.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(16.dp))
+                val dc = vivid(p.type("duel").c)
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().chunk(dc, dc.step(), 22.dp, 4.dp, 0.dp).clip(RoundedCornerShape(20.dp))
                     .clickable(onClickLabel = "Ouvrir le duel") { ui.open(Sheet.Goal(dg.id)) }.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("⚔️", fontSize = 18.sp)
+                    Emoji("⚔️", 22.dp)
                     Column(Modifier.weight(1f)) {
-                        Text("${dg.title} · ${dg.unit}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("Toi ${fmtNum(round1(a))} – ${fmtNum(round1(b))} ${first(x.name)}", fontWeight = FontWeight.ExtraBold, color = if (a >= b) p.ok else p.ink)
+                        Text("${dg.title} · ${dg.unit}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("Toi ${fmtNum(round1(a))} – ${fmtNum(round1(b))} ${first(x.name)}", fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM)
                     }
-                    Text(if (a > b) "En tête" else if (a < b) "À rattraper" else "Égalité", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3)
+                    Text(if (a > b) "En tête" else if (a < b) "À rattraper" else "Égalité", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM)
                 }
             }
             if (pinId != null && sel.isEmpty()) {
                 val pm = list.first { it.id == pinId }
                 val scope = rememberCoroutineScope()
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(smoothShape(16.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(16.dp))
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp).clip(RoundedCornerShape(20.dp))
                     .clickable(onClickLabel = "Aller au message épinglé") {
                         // Position dans la liste : chaque changement de jour ajoute un séparateur
                         var i = 0; var day = ""
@@ -323,7 +320,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Pi("pinned", size = 16.dp, tint = p.flameInk)
                     Column(Modifier.weight(1f)) {
-                        Text("Épinglé", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
+                        Text("Épinglé", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
                         Text(edits[pm.id] ?: Social.preview(ui, pm), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (pg.store.online) IconBtn("x", "Désépingler", { send(buildJsonObject { put("k", "pin"); put("p", pm.id); put("on", false) }, null, null) }, plain = true, size = 36.dp)
@@ -360,8 +357,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 !pg.store.online -> "Hors ligne : la messagerie revient avec la connexion."
                 else -> null
             }
-            if (status != null) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp).shadow((if (p.transp) 0.dp else 14.dp).ifShadows(), smoothShape(22.dp), ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
-                .clip(smoothShape(22.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(22.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (status != null) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp).chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (status == "blocked") { Muted("Tu as bloqué ce compte.", Modifier.weight(1f), small = true); PButton("Débloquer", { ui.run("${x!!.name} est débloqué.") { ui.cloud.unblock(x.id) } }, kind = "ghost", small = true) }
                 else Muted(status, small = true)
             } else Column { ScheduledStrip(key); Composer(ui, u, key, g?.members, replyTo, { replyTo = null }, send, editing, edits[editing?.id ?: ""], { editing = null }) }
@@ -399,32 +395,40 @@ private fun MessageRow(
         val k = sw.progress(.2f); val armed = sw.armed != 0
         val pop by androidx.compose.animation.core.animateFloatAsState(if (armed) 1.12f else .55f + .4f * k, androidx.compose.animation.core.spring(dampingRatio = .45f, stiffness = 600f), label = "replyPop")
         Box(Modifier.align(Alignment.CenterStart).padding(start = 6.dp).size(34.dp).graphicsLayer { scaleX = pop; scaleY = pop; alpha = (k * 1.4f).coerceAtMost(1f) }
-            .clip(CircleShape).background(if (armed) p.flame else p.glassStrong), contentAlignment = Alignment.Center) {
-            Pi("reply", size = 18.dp, tint = if (armed) p.onAccent else p.ink)
+            .clip(CircleShape).background(if (armed) vivid(p.flame) else p.surface).border(2.dp, if (armed) vivid(p.flame) else p.edge, CircleShape), contentAlignment = Alignment.Center) {
+            Pi("reply", size = 18.dp, tint = if (armed) fr.pepsgoal.app.ui.theme.PLUM else p.ink)
         }
     }
     Column(Modifier.fillMaxWidth().swipeable(sw, left = false, right = true, threshold = .2f, enabled = canAct && !selecting) { onReply() }
-        .clip(smoothShape(16.dp)).background(if (selected) p.flame.copy(alpha = .16f) else Color.Transparent)
+        .clip(RoundedCornerShape(17.dp)).background(if (selected) p.selTint(p.flame) else Color.Transparent)
         .semantics { this.selected = selected; customActions = if (canAct && !selecting) listOf(androidx.compose.ui.semantics.CustomAccessibilityAction("Répondre") { onReply(); true }) else emptyList() },
         horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
         who?.let { Text(it, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 10.dp, top = 6.dp)) }
-        val shape = RoundedCornerShape(20.dp, 20.dp, if (mine) 6.dp else 20.dp, if (mine) 20.dp else 6.dp)
-        // Bulles en relief : ombre douce, dégradé (les miennes aux couleurs de PepsGoal), reflet en haut ; arrivée à ressort
+        val shape = RoundedCornerShape(22.dp, 22.dp, if (mine) 6.dp else 22.dp, if (mine) 22.dp else 6.dp)
+        // Bulles à marche : à moi = aplat de la couleur de la conversation (flamme par défaut) et encre prune ; reçue =
+        // surface, bord et marche ; arrivée à ressort
+        val vivid0 = mine && !gone && !p.contrast
         val bg: Brush = when {
-            m.official -> Brush.linearGradient(listOf(p.type("objective").c.copy(alpha = .3f), p.type("period").c.copy(alpha = .2f)))
-            gone -> SolidColor(p.ink.copy(alpha = .06f))
-            mine && accent != null -> Brush.linearGradient(listOf(accent[0].copy(alpha = .5f), accent[2].copy(alpha = .42f)))
-            mine -> Brush.linearGradient(listOf(p.flame2.copy(alpha = if (p.materialYou) .5f else .38f), p.pink.copy(alpha = if (p.materialYou) .45f else .32f)))
-            // Bulle reçue : verre plus léger quand le fond est flouté derrière, pour laisser voir le givre
-            else -> SolidColor(if (blur != null) p.glass.copy(alpha = maxOf(p.glass.alpha, .5f)) else p.glassStrong)
+            p.contrast -> SolidColor(p.surface)
+            m.official -> SolidColor(p.selTint(p.type("objective").c))
+            gone -> SolidColor(p.surface2)
+            mine && accent != null -> Brush.linearGradient(accent.map { vivid(it) })
+            mine -> p.flameBrush()
+            else -> SolidColor(p.surface)
         }
+        val bubbleEdge = when { selected || mentioned -> p.focusEdge; vivid0 && accent != null -> vivid(accent[1]).step(); vivid0 -> p.flameStep; else -> p.edge }
+        val fg = if (vivid0) fr.pepsgoal.app.ui.theme.PLUM else p.ink
         // Flou de l'arrière-plan sous la bulle (les calques de messages ne sont jamais floutés, seulement le fond)
         // Aucun flou sous les bulles : aplats seulement
         val frost = Modifier
-        Column(Modifier.widthIn(max = 300.dp).msgEnter(mine).shadow((if (p.transp || bare) 0.dp else 6.dp).ifShadows(), shape, ambientColor = Color(0x3328186E), spotColor = if (mine) p.flame.copy(alpha = .5f) else Color(0x4428186E))
-            .clip(shape).then(frost).then(if (bare) Modifier else Modifier.background(if (p.contrast) SolidColor(p.glassStrong) else bg))
-            .then(if (p.contrast || p.transp || bare) Modifier else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (p.dark) .06f else .22f), .5f to Color.Transparent))).then(if (mentioned) Modifier.border(2.dp, p.flame2, shape) else Modifier)
-            .then(if (selected) Modifier.border(2.dp, p.flame, shape) else Modifier)
+        Column(Modifier.widthIn(max = 300.dp).msgEnter(mine)
+            .then(if (bare) Modifier else Modifier.drawBehind {
+                // Bord et marche de 3 dp : une forme pleine sous la bulle
+                val st = 3.dp.toPx()
+                val o = shape.createOutline(androidx.compose.ui.geometry.Size(size.width, size.height), layoutDirection, this)
+                drawOutline(o, bubbleEdge)
+            }.padding(start = if (vivid0) 0.dp else 2.dp, end = if (vivid0) 0.dp else 2.dp, top = if (vivid0) 0.dp else 2.dp, bottom = if (vivid0) 3.dp else 5.dp))
+            .clip(shape).then(frost).then(if (bare) Modifier else Modifier.background(bg))
             .combinedClickable(enabled = canAct || selecting || gone, onClick = onTap, onLongClick = onMenu,
                 // Double appui : ❤️ (comme sur les autres messageries)
                 onDoubleClick = if (canAct && !selecting) ({ Feedback.tick(); onReact("❤️") }) else null, onLongClickLabel = "Sélectionner (réagir, répondre, copier, modifier, supprimer)", onClickLabel = if (selecting) (if (selected) "Désélectionner" else "Sélectionner") else null).padding(if (kind == "photo" || bare) 4.dp else 12.dp, if (kind == "photo" || bare) 4.dp else 9.dp)) {
@@ -437,7 +441,7 @@ private fun MessageRow(
                     val data = Att.get(ui, m, b.obj("a"))
                     val a = b.obj("a"); val ratio = (a.int("w").takeIf { it > 0 }?.toFloat() ?: 4f) / (a.int("h").takeIf { it > 0 }?.toFloat() ?: 3f)
                     val bmp = rememberDecoded(data) { data?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
-                    Box(Modifier.width(240.dp).aspectRatio(ratio.coerceIn(.5f, 2f)).clip(smoothShape(16.dp)).background(p.glass).clickable(enabled = data != null) { data?.let(onPhoto) }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.width(240.dp).aspectRatio(ratio.coerceIn(.5f, 2f)).clip(RoundedCornerShape(18.dp)).background(p.surface2).clickable(enabled = data != null) { data?.let(onPhoto) }, contentAlignment = Alignment.Center) {
                         if (bmp != null) androidx.compose.foundation.Image(bmp, "Photo envoyée", Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Pi("image", tint = p.ink3)
                     }
                     b.strN("t")?.takeIf { it.isNotEmpty() }?.let { Text(it, Modifier.padding(6.dp)) }
@@ -450,7 +454,7 @@ private fun MessageRow(
                 kind == "poll" -> ChatPoll(ui, m, b, votes ?: emptyMap(), onVote)
                 kind == "goal" -> {
                     val sg = b.obj("g"); val type = sg.str("type").takeIf { it in TYPES } ?: "routine"; val tc = p.type(type)
-                    Row(Modifier.clip(smoothShape(14.dp)).background(tc.c.copy(alpha = .2f)).clickable {
+                    Row(Modifier.clip(RoundedCornerShape(17.dp)).background(p.selTint(tc.c)).border(2.dp, tc.c, RoundedCornerShape(17.dp)).clickable {
                         val gg = pg.goalById(sg.str("id"))
                         if (gg != null && gg.userId == me) ui.open(Sheet.Goal(gg.id)) else if (pg.userById(sg.str("owner")) != null) ui.open(Sheet.User(sg.str("owner"))) else ui.toast("Cet objectif n’est plus visible.", "target")
                     }.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -462,24 +466,28 @@ private fun MessageRow(
                 kind == "duo" -> DuoInvite(ui, m, b, mine)
                 else -> MsgText(ui, b, members)
             }
-            Text("${if (b?.get("x") != null && !gone) "⏳ " else ""}${if (editedText != null && !gone) "modifié · " else ""}${hm(m.at)}", Modifier.align(Alignment.End).padding(top = 2.dp, end = if (kind == "photo") 6.dp else 0.dp), fontSize = 11.sp, color = p.ink3)
+            Text("${if (b?.get("x") != null && !gone) "⏳ " else ""}${if (editedText != null && !gone) "modifié · " else ""}${hm(m.at)}", Modifier.align(Alignment.End).padding(top = 2.dp, end = if (kind == "photo") 6.dp else 0.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (vivid0 && !bare) fg else p.ink3)
         }
         val items = reacts?.filter { it.value.isNotEmpty() }
         if (!items.isNullOrEmpty()) Row(Modifier.padding(top = 2.dp, start = 6.dp, end = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             items.forEach { (e, set) ->
                 val on = set.contains(me)
-                Row(Modifier.clip(CircleShape).background(if (on) p.flame.copy(alpha = .3f) else p.glassStrong).border(1.dp, p.line, CircleShape).clickable(enabled = canAct) { onReact(e) }.padding(horizontal = 7.dp, vertical = 2.dp),
+                Row(Modifier.clip(CircleShape).background(if (on) p.selTint(p.flame) else p.surface).border(2.dp, if (on) p.focusEdge else p.edge, CircleShape).clickable(enabled = canAct, onClickLabel = "Réagir $e") { onReact(e) }.padding(horizontal = 7.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) { Emoji(e, 16.dp); Text("${set.size}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold) }
             }
         }
-        if (menuOpen && canAct && b != null) Column(Modifier.padding(top = 4.dp).clip(smoothShape(20.dp)).background(p.glassStrong).border(1.dp, p.line, smoothShape(20.dp)).padding(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                QUICK_REACTS.forEach { e -> val on = reacts?.get(e)?.contains(me) == true; Box(Modifier.size(38.dp).clip(CircleShape).background(if (on) p.flame.copy(alpha = .3f) else Color.Transparent).clickable(onClickLabel = "Réagir $e") { onReact(e) }, contentAlignment = Alignment.Center) { Emoji(e, 24.dp) } }
-                IconBtn(if (more) "minus" else "plus", if (more) "Revenir aux emojis de base" else "Plus d’emojis", onMore, plain = true, size = 36.dp)
-            }
-            if (more) FlowRowCompat(Modifier.widthIn(max = 300.dp), gap = 2.dp) { MORE_REACTS.forEach { e -> Box(Modifier.size(36.dp).clip(CircleShape).clickable { onReact(e) }, contentAlignment = Alignment.Center) { Emoji(e, 22.dp) } } }
-            PButton("Répondre", onReply, icon = "reply", kind = "ghost", small = true)
-        }
+        // Menu du message (appui long) : PMenu avec la rangée de réactions en tête
+        PMenu(menuOpen && canAct && b != null, onMenu, listOf(MenuItem("Répondre", "reply") { onReply() }),
+            title = "Message", header = {
+                Column(Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        QUICK_REACTS.take(5).forEach { e -> val on = reacts?.get(e)?.contains(me) == true
+                            Box(Modifier.size(40.dp).clip(CircleShape).background(if (on) p.selTint(p.flame) else p.surface2).clickable(onClickLabel = "Réagir $e") { onReact(e) }, contentAlignment = Alignment.Center) { Emoji(e, 24.dp) } }
+                        Box(Modifier.size(40.dp).clip(CircleShape).background(p.surface2).clickable(onClickLabel = if (more) "Revenir aux emojis de base" else "Plus d’emojis", onClick = onMore), contentAlignment = Alignment.Center) { Pi(if (more) "minus" else "plus", size = 18.dp, tint = p.ink) }
+                    }
+                    if (more) FlowRowCompat(Modifier.padding(top = 4.dp), gap = 2.dp) { MORE_REACTS.forEach { e -> Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClickLabel = "Réagir $e") { onReact(e) }, contentAlignment = Alignment.Center) { Emoji(e, 22.dp) } } }
+                }
+            })
     }
     }
 }
@@ -488,7 +496,7 @@ private fun MessageRow(
 private fun MsgText(ui: AppState, b: JsonObject, members: List<String>?) {
     val p = LocalPal.current; val pg = ui.pg; val me = pg.meId()
     b.obj("r")?.let { r ->
-        Column(Modifier.padding(bottom = 6.dp).clip(RoundedCornerShape(10.dp)).background(p.ink.copy(alpha = .07f)).padding(horizontal = 8.dp, vertical = 5.dp)) {
+        Column(Modifier.padding(bottom = 6.dp).clip(RoundedCornerShape(17.dp)).background(p.surface2).padding(horizontal = 10.dp, vertical = 5.dp)) {
             Text(if (r.str("f") == me) "Toi" else first(pg.userById(r.str("f"))?.name ?: "Message"), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
             Text(r.str("s", "…"), fontSize = 12.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
@@ -523,19 +531,22 @@ private fun VoicePlayer(ui: AppState, m: Message, b: JsonObject) {
     LaunchedEffect(active) { while (active) { Voice.update(); delay(100) } }
     var rate by remember { mutableFloatStateOf(ui.prefs.voiceRate) }
     Row(Modifier.width(250.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.size(38.dp).clip(CircleShape).background(p.ink).clickable(enabled = data != null) { Voice.toggle(ctx, m.id, data!!, rate) }, contentAlignment = Alignment.Center) {
-            if (data == null) androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), color = p.bg, strokeWidth = 2.dp)
-            else Pi(if (active && !Voice.paused) "pause" else "play", size = 18.dp, tint = p.bg)
+        // Lecture : bouton rond de la flamme à marche ; chargement : pastilles qui sautent
+        val vInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+        val vPress = rememberPress(vInter, data != null)
+        Box(Modifier.size(44.dp, 47.dp).chunk(p.flameBrush(), p.flameStep, 22.dp, 3.dp, 0.dp, vPress).clip(CircleShape).springClick(vInter, enabled = data != null, label = "Écouter") { Voice.toggle(ctx, m.id, data!!, rate) }, contentAlignment = Alignment.Center) {
+            if (data == null) PSpinner(5.dp)
+            else Pi(if (active && !Voice.paused) "pause" else "play", size = 18.dp, tint = fr.pepsgoal.app.ui.theme.PLUM)
         }
         val prog = if (active) Voice.progress else 0f
         Row(Modifier.weight(1f).height(30.dp).pointerInput(m.id) { detectTapGestures { o -> Voice.seek(m.id, o.x / size.width) } }, horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-            bars.forEachIndexed { i, v -> Box(Modifier.weight(1f).height((v * 3).dp).clip(RoundedCornerShape(2.dp)).background(if ((i + .5f) / bars.size <= prog) p.flame else p.ink.copy(alpha = .35f))) }
+            bars.forEachIndexed { i, v -> Box(Modifier.weight(1f).height((v * 3).dp).clip(RoundedCornerShape(2.dp)).background(if ((i + .5f) / bars.size <= prog) fr.pepsgoal.app.ui.theme.PLUM else p.rail)) }
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(fmtDur(if (active && Voice.position > 0) Voice.position.toDouble() else dur), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Text("${if (rate == 1f) "1" else fmtNum(rate.toDouble())}×", Modifier.clip(RoundedCornerShape(6.dp)).clickable {
+            Text(fmtDur(if (active && Voice.position > 0) Voice.position.toDouble() else dur), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("${if (rate == 1f) "1" else fmtNum(rate.toDouble())}×", Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClickLabel = "Vitesse de lecture") {
                 rate = when (rate) { 1f -> 1.5f; 1.5f -> 2f; else -> 1f }; ui.prefs.voiceRate = rate; Voice.setRate(rate)
-            }.padding(horizontal = 4.dp), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+            }.padding(horizontal = 4.dp, vertical = 4.dp), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
         }
     }
 }
@@ -581,16 +592,15 @@ private fun Composer(ui: AppState, u: User, key: String, members: List<String>?,
     DisposableEffect(Unit) { onDispose { Voice.stop(true) } }
 
     // Zone de saisie : carte de verre flottante au-dessus des messages
-    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)
-        .shadow((if (p.transp) 0.dp else 16.dp).ifShadows(), smoothShape(26.dp), ambientColor = Color(0x5528186E), spotColor = Color(0x4428186E))
-        .clip(smoothShape(26.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(26.dp)).padding(8.dp)
-        .animateContentSize(spring(dampingRatio = .75f, stiffness = 500f)), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Panneaux (outils, emojis, sondage…) : carte à marche au-dessus de la barre de saisie
+        val tray = panel != null || editing != null || replyTo != null || Voice.recording
+        if (tray) Column(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 24.dp, 4.dp, 2.dp).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (Voice.recording) {
             VoiceRecorderBar(
                 onCancel = { Voice.stop(true) },
                 onSend = { Voice.stop(false)?.let { (d, dur, w) -> sendVoice(send, d, dur, w) } })
-            return@Column
-        }
+        } else {
         when (panel) {
             "tools" -> FlowRowCompat(gap = 6.dp) {
                 PButton("Photo", { panel = null; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image", small = true)
@@ -600,7 +610,7 @@ private fun Composer(ui: AppState, u: User, key: String, members: List<String>?,
                 if (key.startsWith("u:")) PButton("Cadeau", { panel = null; ui.open(Sheet.Gift(key.removePrefix("u:"))) }, icon = "gift", small = true)
             }
             "emoji", "stk" -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { FChip("Emojis", panel == "emoji", { panel = "emoji" }); FChip("Stickers", panel == "stk", { panel = "stk" }) }
+                PTabs(listOf("Emojis" to "😊", "Stickers" to "🔥"), if (panel == "stk") 1 else 0, { panel = if (it == 1) "stk" else "emoji" })
                 if (panel == "stk") Box(Modifier.heightIn(max = 220.dp).verticalScrollCompat()) { StickerPicker { d -> panel = null; Feedback.tick(); send(buildJsonObject { put("k", "stk"); put("s", d.id); put("t", d.emoji) }, null, null) } }
                 else EmojiPicker(height = 200) { e -> val s = tv.selection; val t = tv.text.replaceRange(s.min, s.max, e); if (t.length <= 500) tv = TextFieldValue(t, TextRange(s.min + e.length)) }
             }
@@ -617,7 +627,7 @@ private fun Composer(ui: AppState, u: User, key: String, members: List<String>?,
                 Column(Modifier.heightIn(max = 240.dp).verticalScrollCompat(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     goals.forEach { g ->
                         val s = pg.statBig(g); val tc = p.type(g.type)
-                        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(tc.c.copy(alpha = .18f)).clickable {
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(p.selTint(tc.c)).clickable {
                             panel = null; send(buildJsonObject { put("k", "goal"); putJsonObject("g") { put("id", g.id); put("owner", g.userId); put("title", g.title); put("icon", g.icon); put("type", g.type); put("v", s.v); put("l", s.l) } }, null, null)
                         }.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Emoji(g.icon, 26.dp); Column { Text(g.title, fontWeight = FontWeight.ExtraBold); Text("${typeInfo(g.type).label} · ${s.v} ${s.l}", fontSize = 12.sp, color = tc.ink) }
@@ -627,54 +637,60 @@ private fun Composer(ui: AppState, u: User, key: String, members: List<String>?,
             }
         }
         editing?.let { e ->
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(p.flame.copy(alpha = .12f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(p.selTint(p.flame)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pi("edit", size = 16.dp, tint = p.flameInk)
                 Column(Modifier.weight(1f)) { Text("Modifier le message", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold); Text(editedText ?: Social.preview(ui, e), fontSize = 12.sp, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 IconBtn("x", "Annuler la modification", { clearEdit(); tv = TextFieldValue("") }, plain = true, size = 32.dp)
             }
         }
         replyTo?.let { r ->
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(p.ink.copy(alpha = .06f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(p.surface2).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pi("reply", size = 16.dp)
                 Column(Modifier.weight(1f)) { Text("Réponse à ${if (r.from == u.id) "toi-même" else first(pg.userById(r.from)?.name)}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold); Text(Social.preview(ui, r), fontSize = 12.sp, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 IconBtn("x", "Annuler la réponse", clearReply, plain = true, size = 32.dp)
             }
         }
-        // Mentions dans un groupe
-        if (members != null) {
+        }
+        }
+        // Mentions dans un groupe : carte à marche des membres proposés
+        if (members != null && !Voice.recording) {
             val before = tv.text.substring(0, tv.selection.min.coerceAtMost(tv.text.length))
             Regex("(^|\\s)@([\\w.]{0,30})$").find(before)?.let { mt ->
                 val q = mt.groupValues[2].lowercase()
                 val opts = members.filter { it != u.id }.mapNotNull { pg.userById(it) }.filter { it.username.startsWith(q) || it.name.lowercase().contains(q) || pg.realName(it).lowercase().contains(q) }.take(6)
-                opts.forEach { x ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable {
+                if (opts.isNotEmpty()) Column(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 24.dp, 4.dp, 2.dp).padding(6.dp)) { opts.forEach { x ->
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).clickable {
                         val pre = before.replace(Regex("@([\\w.]{0,30})$"), "@${x.username} "); val t = pre + tv.text.substring(before.length)
                         tv = TextFieldValue(t, TextRange(pre.length))
-                    }.padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 28.dp); Text(x.name, fontWeight = FontWeight.ExtraBold); Muted("@${x.username}", small = true) }
-                }
+                    }.heightIn(min = 48.dp).padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 28.dp); Text(x.name, fontWeight = FontWeight.ExtraBold); Muted("@${x.username}", small = true) }
+                } }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            IconBtn("plus", "Joindre une photo, un objectif ou un sondage", { panel = if (panel == "tools" || panel == "goal" || panel == "poll") null else "tools" }, plain = true, size = 40.dp)
-            IconBtn("smile", "Emojis et stickers", { panel = if (panel == "emoji" || panel == "stk") null else "emoji" }, plain = true, size = 40.dp)
+        if (!Voice.recording) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            RoundGlass("Joindre une photo, un objectif ou un sondage", { panel = if (panel == "tools" || panel == "goal" || panel == "poll") null else "tools" }) { Pi(if (panel == "tools") "x" else "plus", size = 20.dp, tint = p.ink) }
             val composeInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val composeFocus by composeInter.collectIsFocusedAsState()
-            TextField(tv, { if (it.text.length <= 500) tv = it }, Modifier.weight(1f).border(if (composeFocus) 1.5.dp else 1.dp, if (composeFocus) p.focus else ctlEdge(p), smoothShape(24.dp)),
-                placeholder = { Text("Écrire un message…", color = p.ink3) }, maxLines = 5, shape = smoothShape(24.dp), interactionSource = composeInter,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                colors = TextFieldDefaults.colors(focusedContainerColor = p.glassStrong, unfocusedContainerColor = p.glassStrong, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = p.flame, focusedTextColor = p.ink, unfocusedTextColor = p.ink))
-            if (tv.text.isBlank()) IconBtn("mic", "Enregistrer un message vocal", {
+            // Champ capsule à marche (bord braise au focus), emoji à droite
+            androidx.compose.foundation.text.BasicTextField(tv, { if (it.text.length <= 500) tv = it }, Modifier.weight(1f).semantics { contentDescription = tr("Écrire un message…") },
+                maxLines = 5, interactionSource = composeInter, textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold, color = p.ink),
+                cursorBrush = SolidColor(p.focusEdge), decorationBox = { inner ->
+                    Row(Modifier.fillMaxWidth().chunk(p.surface, if (composeFocus) p.focusEdge else p.edge, 26.dp, 3.dp, 2.dp).heightIn(min = 47.dp).padding(start = 16.dp, end = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f).padding(vertical = 10.dp)) { if (tv.text.isEmpty()) Text("Écrire un message…", color = p.ink3, fontWeight = FontWeight.SemiBold); inner() }
+                        Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClickLabel = "Emojis et stickers") { panel = if (panel == "emoji" || panel == "stk") null else "emoji" }, contentAlignment = Alignment.Center) { Emoji("😊", 24.dp) }
+                    }
+                })
+            if (tv.text.isBlank()) RoundGlass("Enregistrer un message vocal", {
                 if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRec() else micPerm.launch(Manifest.permission.RECORD_AUDIO)
-            }, plain = true, size = 40.dp)
+            }) { Pi("mic", size = 20.dp, tint = p.ink) }
             else {
             // Programmer l'envoi (texte simple, hors modification et réponse)
-            if (editing == null && replyTo == null) IconBtn("clock", "Programmer l’envoi", { panel = if (panel == "sched") null else "sched" }, plain = true, size = 40.dp, tint = if (panel == "sched") p.flame else null)
-            IconBtn(if (editing != null) "check" else "send", if (editing != null) "Enregistrer la modification" else "Envoyer", {
-                val text = tv.text.trim(); if (text.isEmpty()) return@IconBtn
+            if (editing == null && replyTo == null) RoundGlass("Programmer l’envoi", { panel = if (panel == "sched") null else "sched" }) { Pi("clock", size = 20.dp, tint = if (panel == "sched") p.flameInk else p.ink) }
+            SendBtn(if (editing != null) "Enregistrer la modification" else "Envoyer", icon = if (editing != null) "check" else "send") {
+                val text = tv.text.trim(); if (text.isEmpty()) return@SendBtn
                 if (editing != null) {
                     if (text != (editedText ?: Social.body(ui, editing)?.str("t"))) send(buildJsonObject { put("k", "edit"); put("p", editing.id); put("t", text) }, null, null)
-                    tv = TextFieldValue(""); clearEdit(); return@IconBtn
+                    tv = TextFieldValue(""); clearEdit(); return@SendBtn
                 }
                 val o = LinkedHashMap<String, JsonElement>(); o["k"] = JsonPrimitive("text"); o["t"] = JsonPrimitive(text)
                 replyTo?.let { r -> o["r"] = buildJsonObject { put("id", r.id); put("f", r.from); put("s", Social.preview(ui, r).take(90)) } }
@@ -684,7 +700,7 @@ private fun Composer(ui: AppState, u: User, key: String, members: List<String>?,
                 }
                 send(if (o.size > 2) JsonObject(o) else JsonPrimitive(text), null, null)
                 tv = TextFieldValue(""); clearReply(); panel = null
-            }, size = 40.dp, primary = true)
+            }
             }
         }
     }
@@ -704,7 +720,7 @@ private fun ChatPollForm(cancel: () -> Unit, submit: (String, List<String>, Bool
         Field(q, { q = it }, "Question", placeholder = "Ex. On court samedi ou dimanche ?", max = 140)
         opts.forEachIndexed { i, o -> Field(o, { opts[i] = it }, "Choix ${i + 1}", max = 80) }
         if (opts.size < 6) PButton("Ajouter un choix", { opts.add("") }, icon = "plus", kind = "ghost", small = true)
-        SetRow("Plusieurs réponses possibles") { PSwitch(multi, { multi = it }) }
+        PCheckRow("Plusieurs réponses possibles", null, multi, { multi = it })
         Err(err)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PButton("Annuler", cancel, kind = "ghost", small = true)
@@ -712,7 +728,7 @@ private fun ChatPollForm(cancel: () -> Unit, submit: (String, List<String>, Bool
                 val list = opts.map { it.trim() }.filter { it.isNotEmpty() }
                 err = when { q.isBlank() -> "Écris la question du sondage."; list.size < 2 -> "Ajoute au moins deux choix au sondage."; list.map { it.lowercase() }.toSet().size != list.size -> "Deux choix du sondage sont identiques."; else -> null }
                 if (err == null) submit(q.trim(), list, multi)
-            }, icon = "send", kind = "primary", small = true)
+            }, icon = "send", kind = "type", color = LocalPal.current.type("objective").c, small = true)
         }
     }
 }
@@ -736,15 +752,10 @@ private fun Modifier.msgEnter(mine: Boolean): Modifier {
 @Composable
 private fun VoiceRecorderBar(onCancel: () -> Unit, onSend: () -> Unit) {
     val p = LocalPal.current
-    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "rec")
-    val pulse by inf.animateFloat(1f, if (p.motion) 1f else 1.9f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900), androidx.compose.animation.core.RepeatMode.Restart), label = "pulse")
     Column(Modifier.fillMaxWidth().padding(4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Point rouge avec halo qui s'étend
-            Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(12.dp).graphicsLayer { scaleX = pulse; scaleY = pulse; alpha = (1.9f - pulse) / .9f }.clip(CircleShape).background(p.danger.copy(alpha = .45f)))
-                Box(Modifier.size(12.dp).clip(CircleShape).background(p.danger))
-            }
+            // Enregistrement : pastilles qui sautent (aucun halo)
+            PSpinner(6.dp, label = "Enregistrement en cours")
             Text(fmtDur(Voice.secs.toDouble()), fontFamily = fr.pepsgoal.app.ui.theme.Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
             // Onde en direct : barres arrondies, les plus récentes à droite
             androidx.compose.foundation.Canvas(Modifier.weight(1f).height(34.dp)) {
@@ -753,19 +764,19 @@ private fun VoiceRecorderBar(onCancel: () -> Unit, onSend: () -> Unit) {
                 for (i in 0 until n) {
                     val v = lv.getOrNull(lv.size - n + i) ?: 0f
                     val bh = (size.height * (.12f + .88f * v)).coerceAtLeast(bw)
-                    drawRoundRect(Brush.verticalGradient(listOf(p.flame2, p.pink)), androidx.compose.ui.geometry.Offset(i * gap + (gap - bw) / 2, (size.height - bh) / 2),
-                        androidx.compose.ui.geometry.Size(bw, bh), androidx.compose.ui.geometry.CornerRadius(bw / 2), alpha = if (i < n - lv.size) .25f else 1f)
+                    drawRoundRect(if (i < n - lv.size) SolidColor(p.rail) else p.flameBrush(), androidx.compose.ui.geometry.Offset(i * gap + (gap - bw) / 2, (size.height - bh) / 2),
+                        androidx.compose.ui.geometry.Size(bw, bh), androidx.compose.ui.geometry.CornerRadius(bw / 2))
                 }
             }
         }
         // Temps restant
         val left = (Voice.MAX_SECS - Voice.secs).coerceAtLeast(0f)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Bar(Voice.secs / Voice.MAX_SECS * 100.0, height = 5.dp, color = if (left < 15) p.danger else null)
+            Bar(Voice.secs / Voice.MAX_SECS * 100.0, height = 10.dp, color = if (left < 15) vivid(p.danger) else null)
             Muted("Enregistrement en cours · encore ${fmtDur(left.toDouble())}", small = true, maxLines = 1)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconBtn("trash", "Annuler l’enregistrement", onCancel, size = 46.dp, tint = p.danger)
+            IconBtn("trash", "Annuler l’enregistrement", onCancel, size = 44.dp, tint = p.danger)
             PButton("Envoyer le vocal", onSend, Modifier.weight(1f), icon = "send", kind = "primary")
         }
     }
@@ -778,14 +789,16 @@ private fun DuoInvite(ui: AppState, m: Message, b: JsonObject, mine: Boolean) {
     val sg = b.obj("g"); val type = sg.str("type").takeIf { it in TYPES } ?: "routine"; val tc = p.type(type); val id = b.str("id")
     val local = pg.db.goals.firstOrNull { it.duoId == id && it.userId == pg.meId() }
     var busy by remember { mutableStateOf(false) }
-    Column(Modifier.clip(smoothShape(14.dp)).background(tc.c.copy(alpha = .2f)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("🤝 Objectif en duo", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = tc.ink)
+    // Carte néon « duel » : aplat, encre prune
+    val dc = vivid(p.type("duel").c)
+    Column(Modifier.chunk(dc, dc.step(), 22.dp, 3.dp, 0.dp).padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("🤝 Objectif en duo", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Emoji(sg.str("icon", "🎯"), 30.dp)
-            Column { Text(sg.str("title", "Objectif"), fontWeight = FontWeight.ExtraBold); Text(TYPES.getValue(type).label, fontSize = 12.sp, color = tc.ink) }
+            Column { Text(sg.str("title", "Objectif"), fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM); Text(TYPES.getValue(type).label, fontSize = 12.sp, color = fr.pepsgoal.app.ui.theme.PLUM, fontWeight = FontWeight.Bold) }
         }
         when {
-            mine -> Muted(if (local != null && fr.pepsgoal.app.sys.Duo.state(app, local) == fr.pepsgoal.app.sys.Duo.State.JOINED) "Invitation acceptée : votre flamme commune est lancée." else "Une flamme commune, qui ne brûle que si vous validez tous les deux.", small = true)
+            mine -> Text(if (local != null && fr.pepsgoal.app.sys.Duo.state(app, local) == fr.pepsgoal.app.sys.Duo.State.JOINED) "Invitation acceptée : votre flamme commune est lancée." else "Une flamme commune, qui ne brûle que si vous validez tous les deux.", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = fr.pepsgoal.app.ui.theme.PLUM)
             local != null -> PButton("Ouvrir l’objectif", { ui.open(Sheet.Goal(local.id)) }, icon = "target", small = true)
             else -> PButton(if (busy) "…" else "Rejoindre le duo", {
                 if (busy) return@PButton
@@ -795,7 +808,7 @@ private fun DuoInvite(ui: AppState, m: Message, b: JsonObject, mine: Boolean) {
                     busy = false
                     if (g != null) { ui.toast("Duo lancé : « ${g.title} » est dans tes objectifs.", "users"); ui.open(Sheet.Goal(g.id)) } else ui.toast("Impossible de rejoindre ce duo.", "x")
                 }
-            }, icon = "users", small = true, kind = "primary", enabled = !busy)
+            }, icon = "users", small = true, enabled = !busy)
         }
     }
 }

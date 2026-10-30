@@ -1057,3 +1057,43 @@ fun veilStops(level: Int, dark: Boolean): Triple<Float, Float, Float> = when (le
     -1 -> Triple(0f, 0f, 0f)
     else -> if (dark) Triple(.12f, .40f, .55f) else Triple(.06f, .38f, .55f)
 }
+
+/* ================================================================== visionneuses, envoi */
+
+/** Bouton rond sombre à marche, posé sur un média (visionneuses de photos et de stories). */
+@Composable
+fun MediaBtn(icon: String, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val inter = remember { MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Box(modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp, 47.dp).chunk(MEDIA_BTN, Color.Black, 22.dp, 3.dp, 2.dp, press).clip(CircleShape).springClick(inter, label = desc, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = tr(desc) }, contentAlignment = Alignment.Center) { Pi(icon, size = 20.dp, tint = CREAM) }
+    }
+}
+private val MEDIA_BTN = Color(0xFF241A2B)
+
+/** Bouton Envoyer : rond de la flamme à marche, seul bouton principal d'une barre de saisie. */
+@Composable
+fun SendBtn(desc: String, enabled: Boolean = true, icon: String = "send", onClick: () -> Unit) {
+    val p = LocalPal.current
+    val inter = remember { MutableInteractionSource() }
+    val press = rememberPress(inter, enabled)
+    Box(Modifier.size(52.dp, 56.dp).graphicsLayer { alpha = if (enabled) 1f else .45f }.chunk(p.flameBrush(), p.flameStep, 26.dp, 4.dp, 0.dp, press).clip(CircleShape)
+        .springClick(inter, enabled = enabled, label = desc, role = Role.Button, onClick = onClick).semantics { contentDescription = tr(desc) }, contentAlignment = Alignment.Center) {
+        Pi(icon, size = 22.dp, tint = if (p.contrast) p.bg else p.onAccent)
+    }
+}
+
+/** Tuile de fond (Apparence, fond d'une conversation) : 78 × 104 à marche, aperçu figé, choisie = bord braise 3 dp. */
+@Composable
+fun BgTile(label: String, sub: String?, on: Boolean, onClick: () -> Unit, enabled: Boolean = true, content: @Composable BoxScope.() -> Unit) {
+    val p = LocalPal.current
+    val inter = remember { MutableInteractionSource() }
+    val press = rememberPress(inter, enabled)
+    Column(Modifier.width(80.dp).graphicsLayer { alpha = if (enabled) 1f else .45f }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.size(78.dp, 104.dp).chunk(p.surface, if (on) p.focusEdge else p.edge, 18.dp, 4.dp, if (on) 3.dp else 2.dp, press).padding(2.dp).clip(RoundedCornerShape(14.dp))
+            .springClick(inter, enabled = enabled, label = label, role = Role.RadioButton, onClick = onClick).semantics { selected = on }, content = content)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) p.ink else p.ink2, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 16.sp)
+        if (sub != null) Text(sub, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3, maxLines = 1, textAlign = TextAlign.Center)
+    }
+}

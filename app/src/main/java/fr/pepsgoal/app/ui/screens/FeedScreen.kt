@@ -33,6 +33,7 @@ import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
+import fr.pepsgoal.app.ui.theme.PLUM
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.cloud.*
@@ -70,7 +71,7 @@ fun FeedScreen(ui: AppState) {
 fun BanBanner(ui: AppState, u: User) {
     val p = LocalPal.current; val pg = ui.pg
     val ap = pg.db.appeals.filter { it.userId == u.id }.maxByOrNull { it.at }
-    Glass(border = p.danger.copy(alpha = .45f)) {
+    Glass(border = p.danger) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Pi("ban", tint = p.danger); Text("Accès social suspendu", fontWeight = FontWeight.ExtraBold, color = p.danger, fontSize = 17.sp) }
         Spacer(Modifier.height(8.dp))
         Text("Tu ne peux plus publier, commenter, encourager ni envoyer de messages ${pg.banText(u)}.${u.ban?.reason?.takeIf { it.isNotEmpty() }?.let { " Motif : $it." } ?: ""} Tes objectifs et ta série restent intacts.")
@@ -91,7 +92,7 @@ fun GelCard(ui: AppState, u: User, compact: Boolean) {
     else "$c/$FREEZE_EVERY encouragements reçus avant ton prochain gel. Un gel protège automatiquement ta série un jour où tu n'as rien validé."
     Glass {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(48.dp).clip(smoothShape(16.dp)).background(p.type("objective").c.copy(alpha = .22f)), contentAlignment = Alignment.Center) { Pi("snow", size = 26.dp, tint = p.type("objective").ink) }
+            EmojiTile("🧊", p.ice, 48.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(pl(u.freezes, "gel de série", "gels de série"), fontWeight = FontWeight.ExtraBold)
                 if (social) Bar(c * 100.0 / FREEZE_EVERY, color = p.type("objective").c)
@@ -108,7 +109,7 @@ fun StoriesBar(ui: AppState, u: User) {
     Glass(pad = 14.dp) {
         Row(Modifier.fillMaxWidth().bleed(14.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             StoryBubble("Ta story", u, if (mine != null) "ring" else "none", { if (mine != null) openStories(ui, u.id) else if (!pg.socialBlocked("de publier une story")) ui.open(Sheet.StoryNew()) }) {
-                Box(Modifier.size(24.dp).clip(CircleShape).background(p.ink).border(2.dp, p.bg, CircleShape).clickable { if (!pg.socialBlocked("de publier une story")) ui.open(Sheet.StoryNew()) }, contentAlignment = Alignment.Center) { Pi("plus", size = 14.dp, tint = p.bg) }
+                Box(Modifier.size(26.dp).clip(CircleShape).background(p.flameBrush()).border(2.dp, p.surface, CircleShape).clickable(onClickLabel = "Nouvelle story") { if (!pg.socialBlocked("de publier une story")) ui.open(Sheet.StoryNew()) }, contentAlignment = Alignment.Center) { Pi("plus", size = 14.dp, tint = PLUM) }
             }
             others.forEach { g -> StoryBubble(first(g.u.name), g.u, if (g.unseen) "ring" else "seen", { openStories(ui, g.u.id) }) }
             if (others.isEmpty()) Muted("Les stories de tes amis s'affichent ici pendant 24 h.", Modifier.width(220.dp).align(Alignment.CenterVertically), small = true)
@@ -127,9 +128,9 @@ private fun StoryBubble(label: String, u: User, ring: String, onClick: () -> Uni
     val p = LocalPal.current
     Column(Modifier.width(70.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Box {
-            Box(Modifier.size(66.dp).clip(CircleShape).background(when (ring) { "ring" -> Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)); "seen" -> androidx.compose.ui.graphics.SolidColor(p.line); else -> androidx.compose.ui.graphics.SolidColor(Color.Transparent) })
-                .then(if (ring == "none") Modifier.border(2.dp, p.line, CircleShape) else Modifier).clickable(onClick = onClick).padding(3.dp), contentAlignment = Alignment.Center) {
-                Box(Modifier.border(3.dp, p.bg, CircleShape)) { Av(u, 58.dp) }
+            Box(Modifier.size(66.dp).clip(CircleShape).background(when (ring) { "ring" -> p.flameBrush(); "seen" -> androidx.compose.ui.graphics.SolidColor(p.control); else -> androidx.compose.ui.graphics.SolidColor(p.surface2) })
+                .clickable(onClickLabel = label, onClick = onClick).padding(3.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.border(3.dp, p.surface, CircleShape)) { Av(u, 58.dp) }
             }
             if (add != null) Box(Modifier.align(Alignment.BottomEnd)) { add() }
         }
@@ -141,7 +142,9 @@ private fun StoryBubble(label: String, u: User, ring: String, onClick: () -> Uni
 fun GoalAttach(ui: AppState, g: Goal?) {
     val pg = ui.pg; if (g == null || !pg.canSeeGoal(g, pg.meId())) return
     val p = LocalPal.current; val tc = p.type(g.type); val s = pg.statBig(g)
-    Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(tc.c.copy(alpha = .16f)).clickable { if (g.userId == pg.meId()) ui.open(Sheet.Goal(g.id)) else ui.open(Sheet.User(g.userId)) }.padding(10.dp),
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Row(Modifier.fillMaxWidth().chunk(p.selTint(tc.c), tc.c, 22.dp, 3.dp, 2.dp, press).clip(RoundedCornerShape(20.dp)).springClick(inter, label = g.title) { if (g.userId == pg.meId()) ui.open(Sheet.Goal(g.id)) else ui.open(Sheet.User(g.userId)) }.padding(10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         GoalIcon(g, 38.dp)
         Column { Text(g.title, fontWeight = FontWeight.ExtraBold); Muted("${typeInfo(g.type).label} · ${s.v} ${s.l}", small = true) }
@@ -161,23 +164,23 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
     val flavor = when {
         pend -> null
         post.kind == "milestone" -> Triple("medal", "Palier atteint", p.flame)
-        post.text.startsWith("Nouveau badge") -> Triple("trophy", "Badge débloqué", androidx.compose.ui.graphics.Color(0xFFFFB000))
+        post.text.startsWith("Nouveau badge") -> Triple("trophy", "Badge débloqué", p.type("challenge").c)
         post.poll != null -> Triple("poll", "Sondage", p.type("objective").c)
         else -> null
     }
     Glass(border = if (pend) p.type("limit").c else null, pad = 0.dp) {
         // Bandeau de saveur : dégradé discret sur toute la largeur
-        if (flavor != null) Row(Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(flavor.third.copy(alpha = .28f), flavor.third.copy(alpha = .04f))))
+        if (flavor != null) Row(Modifier.fillMaxWidth().background(vivid(flavor.third))
             .padding(horizontal = 18.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pi(flavor.first, size = 15.dp, tint = flavor.third)
-            Text(flavor.second.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, color = p.ink2)
+            Pi(flavor.first, size = 16.dp, tint = PLUM)
+            Text(flavor.second.uppercase(), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, color = PLUM)
         }
         Column(Modifier.padding(start = 18.dp, end = 10.dp, top = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(Modifier.weight(1f).clip(smoothShape(14.dp)).clickable { ui.open(Sheet.User(a.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                Row(Modifier.weight(1f).clip(RoundedCornerShape(17.dp)).clickable(onClickLabel = a.name) { ui.open(Sheet.User(a.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                     Av(a, 44.dp)
                     Column(Modifier.weight(1f)) {
-                        Text(if (a.id == u.id) "Toi" else a.name, fontWeight = FontWeight.ExtraBold, fontSize = 15.5.sp, maxLines = 1)
+                        Text(if (a.id == u.id) "Toi" else a.name, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, maxLines = 1)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             Muted("@${a.username} · ${ago(post.at)}", small = true, maxLines = 1)
                             VIS[post.visibility]?.let { (_, ic) -> Pi(ic, size = 12.dp, tint = p.ink3) }
@@ -196,10 +199,10 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
             if (pend) Chip("En attente de validation par la modération", "clock", p.type("limit").c, p.type("limit").ink)
             // Texte court sans pièce jointe : mis en valeur, comme une citation
             val short = post.text.length <= 90 && post.photo == null && post.poll == null
-            if (post.text.isNotEmpty()) Text(post.text, fontSize = if (short) 18.sp else 15.5.sp, lineHeight = if (short) 25.sp else 22.sp, fontWeight = if (short) FontWeight.Bold else FontWeight.Medium)
+            if (post.text.isNotEmpty()) Text(post.text, fontSize = if (short) 18.sp else 15.sp, lineHeight = if (short) 25.sp else 22.sp, fontWeight = if (short) FontWeight.Bold else FontWeight.SemiBold)
             post.poll?.let { PollView(ui, post) }
             post.photo?.let { url ->
-                AsyncImage(url, "Photo partagée par ${a.name}", Modifier.fillMaxWidth().heightIn(max = 440.dp).clip(smoothShape(20.dp)).clickable { photo = true }, contentScale = ContentScale.Crop)
+                AsyncImage(url, "Photo partagée par ${a.name}", Modifier.fillMaxWidth().heightIn(max = 440.dp).clip(RoundedCornerShape(18.dp)).clickable(onClickLabel = "Agrandir la photo") { photo = true }, contentScale = ContentScale.Crop)
                 if (photo) PhotoViewer(url) { photo = false }
             }
             post.goalId?.let { GoalAttach(ui, pg.goalById(it)) }
@@ -218,28 +221,29 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
                 if (sum.isNotEmpty()) Row(Modifier.clip(CircleShape).clickable { ui.open(Sheet.Likers(post.id)) }.padding(end = 6.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     sum.take(3).forEachIndexed { i, (e, _) ->
-                        Box(Modifier.offset(x = (-6 * i).dp).size(24.dp).clip(CircleShape).background(p.glassStrong).border(1.5.dp, p.bg, CircleShape), contentAlignment = Alignment.Center) { Text(e, fontSize = 12.sp) }
+                        Box(Modifier.offset(x = (-6 * i).dp).size(26.dp).clip(CircleShape).background(p.surface2).border(2.dp, p.surface, CircleShape), contentAlignment = Alignment.Center) { Emoji(e, 16.dp) }
                     }
                     Text(pl(post.likes.size, "réaction", "réactions"), Modifier.offset(x = (-6 * (sum.size.coerceAtMost(3) - 1)).dp).padding(start = 6.dp), fontSize = 13.sp, color = p.ink2, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.weight(1f))
-                if (nc > 0 && !inPage) Text(pl(nc, "commentaire", "commentaires"), Modifier.clip(RoundedCornerShape(10.dp)).clickable { ui.push(Screen.Comments(post.id)) }.padding(4.dp), fontSize = 13.sp, color = p.ink2, fontWeight = FontWeight.Bold)
+                if (nc > 0 && !inPage) Text(pl(nc, "commentaire", "commentaires"), Modifier.clip(RoundedCornerShape(17.dp)).clickable { ui.push(Screen.Comments(post.id)) }.heightIn(min = 48.dp).padding(horizontal = 6.dp, vertical = 14.dp), fontSize = 13.sp, color = p.ink2, fontWeight = FontWeight.Bold)
             }
             // Barre d'actions : encourager (réaction choisie), autres réactions, commenter
-            Box(Modifier.fillMaxWidth().height(1.dp).background(p.line.copy(alpha = .6f)))
+            Box(Modifier.fillMaxWidth().height(2.dp).background(p.surface2))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CheerButton(liked, post.likes.size, reactionEmoji(mine).takeIf { mine != null && mine != "fire" }, Modifier.weight(1f)) { react(mine ?: "fire") }
                 ActionPill("smile", if (picker) "Fermer" else "Réagir", picker, Modifier.weight(1f)) { picker = !picker }
                 if (!pend && !inPage) ActionPill("comment", "Commenter", false, Modifier.weight(1f)) { ui.push(Screen.Comments(post.id)) }
             }
-            if (picker) Row(Modifier.fillMaxWidth().clip(CircleShape).background(p.glassStrong).border(1.dp, p.line, CircleShape).padding(horizontal = 8.dp, vertical = 4.dp),
+            if (picker) Row(Modifier.fillMaxWidth().popIn().chunk(p.surface, p.edge, 28.dp, 4.dp, 2.dp).padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly) {
                 val cur = if (post.likes.contains(u.id)) post.reactions[u.id] ?: "fire" else null
                 REACTIONS.forEach { (k, e) ->
                     val sel = cur == k
                     val sc by androidx.compose.animation.core.animateFloatAsState(if (sel) 1.25f else 1f, label = "reac")
-                    Box(Modifier.size(46.dp).scale(sc).clip(CircleShape).background(if (sel) p.flame.copy(alpha = .2f) else androidx.compose.ui.graphics.Color.Transparent)
-                        .clickable { react(k) }, contentAlignment = Alignment.Center) { Text(e, fontSize = 24.sp) }
+                    Box(Modifier.size(48.dp).scale(sc).clip(CircleShape).background(if (sel) p.selTint(p.flame) else androidx.compose.ui.graphics.Color.Transparent)
+                        .border(2.dp, if (sel) p.focusEdge else androidx.compose.ui.graphics.Color.Transparent, CircleShape)
+                        .clickable(onClickLabel = k) { react(k) }, contentAlignment = Alignment.Center) { Emoji(e, 28.dp) }
                 }
             }
             // Réponses rapides sous la réussite d'un ami : encouragement et commentaire en un geste
@@ -255,22 +259,23 @@ fun PostCard(ui: AppState, post: Post, inPage: Boolean = false) {
             // Aperçu : les deux derniers commentaires
             val shown = if (inPage) emptyList() else post.comments.filter { !pg.isBlockedPair(it.userId, u.id) }
             shown.takeLast(2).forEach { c -> CommentBubble(ui, c.userId, c.text, c.at, compact = true) }
-            if (shown.size > 2) Text("Voir les ${shown.size} commentaires", Modifier.clip(RoundedCornerShape(10.dp)).clickable { ui.push(Screen.Comments(post.id)) }.padding(4.dp), color = p.ink2, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+            if (shown.size > 2) PButton("Voir les ${shown.size} commentaires", { ui.push(Screen.Comments(post.id)) }, kind = "ghost", small = true)
             if (post.commentsLocked && !inPage) Muted("🔒 Les commentaires sont fermés sur cette publication.", small = true)
         }
     }
 }
 
-/** Bouton de la barre d'actions d'une publication : icône et libellé, pleine largeur de sa part. */
+/** Bouton de la barre d'actions d'une publication : capsule à marche, icône et libellé, pleine largeur de sa part. */
 @Composable
 private fun ActionPill(icon: String, label: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(modifier.bounce(inter, .92f).height(40.dp).clip(CircleShape).background(if (on) p.ink.copy(alpha = .1f) else if (p.dark) Color.White.copy(alpha = .06f) else Color.White.copy(alpha = .5f))
+    val press = rememberPress(inter)
+    Row(modifier.height(47.dp).chunk(if (on) p.surface2 else p.surface, p.edge, 22.dp, 3.dp, 2.dp, press).clip(CircleShape)
         .springClick(inter, label = label, onClick = onClick).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
-        Pi(icon, size = 17.dp, tint = p.ink2)
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ink2, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        Pi(icon, size = 18.dp, tint = p.ink2)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
 }
 
@@ -291,13 +296,14 @@ fun CheerButton(on: Boolean, n: Int, emoji: String? = null, modifier: Modifier =
         was = on
     }
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    // Encouragé : bonbon de l'accent avec halo ; sinon pastille de verre clair
-    Row(modifier.bounce(inter, .88f).graphicsLayer { scaleX = pop.value; scaleY = pop.value }.height(40.dp)
-        .then(if (on && !p.contrast) Modifier.candy(CircleShape, listOf(p.flame2, p.flame, p.pink), p, elevation = 6.dp) else Modifier.background(if (on) p.ink.copy(alpha = .14f) else if (p.dark) Color.White.copy(alpha = .06f) else Color.White.copy(alpha = .5f), CircleShape))
+    val press = rememberPress(inter)
+    // Encouragé : aplat de la flamme à marche (encre prune) ; sinon capsule neutre à marche
+    Row(modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value }.height(47.dp)
+        .then(if (on) Modifier.chunk(p.flameBrush(), p.flameStep, 22.dp, 3.dp, 0.dp, press) else Modifier.chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp, press))
         .clip(CircleShape)
         .springClick(inter, label = "Encourager", onClick = onClick).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
-        if (emoji != null) Text(emoji, fontSize = 16.sp) else Flame(18.dp, dim = !on)
+        if (emoji != null) Emoji(emoji, 18.dp) else Flame(18.dp, dim = !on)
         Text(if (n > 0) "$n" else "Bravo", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (on && !p.contrast) p.onAccent else if (on) p.ink else p.ink2, maxLines = 1)
     }
 }
@@ -319,10 +325,11 @@ fun PollView(ui: AppState, post: Post) {
 
 @Composable
 fun PhotoViewer(model: Any, onClose: () -> Unit) {
+    // Visionneuse (exception au fond partout) : fond noir du média, commandes sur boutons ronds sombres
     Dialog(onClose, DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .94f)).clickable(onClick = onClose), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().background(LocalPal.current.mediaBg).clickable(onClick = onClose), contentAlignment = Alignment.Center) {
             AsyncImage(model, "Photo", Modifier.fillMaxWidth(), contentScale = ContentScale.Fit)
-            Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp)) { IconBtn("x", "Fermer la photo", onClose) }
+            Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp)) { MediaBtn("x", "Fermer la photo", onClose) }
         }
     }
 }
@@ -333,8 +340,10 @@ fun CommentBubble(ui: AppState, userId: String, text: String, at: Long, compact:
     val p = LocalPal.current; val pg = ui.pg; val cu = pg.userById(userId)
     Row(Modifier.fillMaxWidth().then(if (compact) Modifier else Modifier.enter()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Av(cu, if (compact) 28.dp else 36.dp, modifier = Modifier.clickable { cu?.let { ui.open(Sheet.User(it.id)) } })
-        Column(Modifier.weight(1f, fill = false).clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)).background(if (compact) p.ink.copy(alpha = .06f) else p.glassStrong)
-            .then(if (compact) Modifier else Modifier.border(1.dp, p.glassEdge, RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))).padding(horizontal = 12.dp, vertical = 8.dp)) {
+        // Bulle reçue : surface à marche (aperçu dans une carte : creux neutre), coin de la queue 6
+        val sh = RoundedCornerShape(6.dp, 22.dp, 22.dp, 22.dp)
+        Column(Modifier.weight(1f, fill = false).then(if (compact) Modifier.clip(sh).background(p.surface2) else Modifier.chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp).clip(sh))
+            .padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(if (cu?.id == pg.meId()) "Toi" else cu?.name ?: "Membre", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Muted(ago(at), small = true, maxLines = 1)
@@ -357,25 +366,24 @@ fun CommentsScreen(ui: AppState, postId: String) {
     var comment by remember { mutableStateOf("") }
     val canWrite = !post.commentsLocked && pg.canComment(u, post) && post.status != "pending"
     ScreenFrame(ui, "Commentaires", "Feed", { ui.back() }, icon = "comment", color = p.type("measure").c, color2 = p.flame2, state = state, bottom = {
-        val shape = smoothShape(26.dp)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp).shadow((if (p.transp) 0.dp else 14.dp).ifShadows(), shape, ambientColor = Color(0x4428186E), spotColor = Color(0x4428186E))
-            .clip(shape).background(p.glassStrong).border(1.dp, p.glassEdge, shape).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Barre de saisie : champ capsule, bouton Envoyer de la flamme (seul principal de l'écran)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             when {
-                post.commentsLocked -> Muted("🔒 Les commentaires sont fermés sur cette publication.", Modifier.padding(8.dp), small = true)
-                !canWrite -> Muted("Tu ne peux pas commenter pour le moment.", Modifier.padding(8.dp), small = true)
+                post.commentsLocked -> MiniPlaque("Les commentaires sont fermés sur cette publication.", emoji = "🔒")
+                !canWrite -> MiniPlaque("Tu ne peux pas commenter pour le moment.")
                 else -> {
-                    Field(comment, { comment = it }, "Écrire un encouragement…", Modifier.weight(1f), max = 280)
-                    IconBtn("send", "Envoyer le commentaire", {
-                        val t = comment.trim(); if (t.isEmpty() || pg.socialBlocked("de commenter")) return@IconBtn
+                    PTextField(comment, { comment = it }, "", Modifier.weight(1f), "Écrire un encouragement…", max = 280, capsule = true)
+                    SendBtn("Envoyer le commentaire", comment.isNotBlank()) {
+                        val t = comment.trim(); if (t.isEmpty() || pg.socialBlocked("de commenter")) return@SendBtn
                         comment = ""; ui.run { ui.cloud.comment(post, t) }
-                    }, size = 46.dp, tint = p.flameInk)
+                    }
                 }
             }
         }
     }) {
         item("post") { PostCard(ui, post, inPage = true) }
-        item("head") { Row(verticalAlignment = Alignment.CenterVertically) { Eyebrow(pl(list.size, "commentaire", "commentaires")) } }
-        if (list.isEmpty()) item("empty") { Muted("Aucun commentaire pour l’instant. Sois le premier à encourager !", Modifier.fillMaxWidth().padding(vertical = 20.dp), center = true) }
+        item("head") { SectionPlaque(pl(list.size, "commentaire", "commentaires"), "💬") }
+        if (list.isEmpty()) item("empty") { Empty("", "Aucun commentaire pour l’instant. Sois le premier à encourager !") }
         list.forEach { c -> item("c:${c.id}") { CommentBubble(ui, c.userId, c.text, c.at) } }
         item("end") { Spacer(Modifier.height(4.dp)) }
     }
