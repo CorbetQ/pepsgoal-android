@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -131,10 +134,14 @@ fun SetItem(title: String, sub: String? = null, icon: String? = null, tint: Colo
 
 /** Interrupteur : toute la ligne est touchable. */
 @Composable
-fun SetToggle(title: String, sub: String? = null, icon: String? = null, tint: Color? = null, on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) =
-    SetItem(title, sub, icon, tint, onClick = if (enabled) ({ onChange(!on) }) else null, chevron = false, enabled = enabled, toggled = on) {
-        PSwitch(on, null, enabled)
+fun SetToggle(title: String, sub: String? = null, icon: String? = null, tint: Color? = null, on: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+    // État local : l'interrupteur bascule tout de suite, même si le réglage lu par l'appelant n'est pas observable
+    // (préférence relue au prochain affichage) ; il se recale sur [on] dès que celui-ci change.
+    var cur by remember(on) { mutableStateOf(on) }
+    SetItem(title, sub, icon, tint, onClick = if (enabled) ({ cur = !cur; onChange(cur) }) else null, chevron = false, enabled = enabled, toggled = cur) {
+        PSwitch(cur, null, enabled)
     }
+}
 
 /** Contenu libre dans un groupe (champs, puces…), avec les marges des lignes. */
 @Composable
@@ -159,7 +166,11 @@ fun SetSlider(title: String, valueText: String, value: Float, onChange: (Float) 
 
 /** Ligne de liste déroulante (PSelect + PMenu). */
 @Composable
-fun <T> SetSelect(title: String, options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, sub: String? = null, emojis: List<String?>? = null, subs: List<String?>? = null) {
+fun <T> SetSelect(title: String, options: List<Pair<T, String>>, value0: T, onChange: (T) -> Unit, sub: String? = null, emojis: List<String?>? = null, subs: List<String?>? = null) {
+    // Choix affiché tout de suite (état local recalé sur la valeur de l'appelant)
+    var value by remember(value0) { mutableStateOf(value0) }
+    val onChange0 = onChange
+    @Suppress("NAME_SHADOWING") val onChange: (T) -> Unit = { value = it; onChange0(it) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         PSelectMenu(title, options, value, onChange, emojis = emojis, subs = subs)
         if (sub != null) Text(sub, Modifier.padding(start = 4.dp), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = LocalPal.current.ink2, lineHeight = 17.sp)
@@ -168,7 +179,11 @@ fun <T> SetSelect(title: String, options: List<Pair<T, String>>, value: T, onCha
 
 /** Groupe de choix unique en lignes radio (titre facultatif au-dessus). */
 @Composable
-fun <T> SetRadioGroup(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, title: String? = null, subs: List<String?>? = null, emojis: List<String?>? = null, color: Color? = null) {
+fun <T> SetRadioGroup(options: List<Pair<T, String>>, value0: T, onChange: (T) -> Unit, title: String? = null, subs: List<String?>? = null, emojis: List<String?>? = null, color: Color? = null) {
+    // Choix affiché tout de suite (état local recalé sur la valeur de l'appelant)
+    var value by remember(value0) { mutableStateOf(value0) }
+    val onChange0 = onChange
+    @Suppress("NAME_SHADOWING") val onChange: (T) -> Unit = { value = it; onChange0(it) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp)) {
         if (title != null) Text(title, Modifier.padding(start = 10.dp, top = 4.dp, bottom = 2.dp), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink2)
         PRadioGroup(options, value, onChange, subs, emojis, color)

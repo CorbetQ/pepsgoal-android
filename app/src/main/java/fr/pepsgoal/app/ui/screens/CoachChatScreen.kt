@@ -37,12 +37,12 @@ import fr.pepsgoal.app.ui.theme.step
 
 /** Avatar du coach : médaillon néon « program » à marche, emoji de sa personnalité ; il saute doucement quand il réfléchit. */
 @Composable
-fun CoachAvatar(size: Dp, thinking: Boolean = false, emoji: String? = null) {
+fun CoachAvatar(size: Dp, modifier: Modifier = Modifier, thinking: Boolean = false, emoji: String? = null) {
     val p = LocalPal.current; val ctx = LocalContext.current
     val e = emoji ?: Personas.current(ctx).emoji
     val c = vivid(p.type("program").c)
     val ph = slowPhaseState(900, 15, running = thinking)
-    Box(Modifier.size(size).graphicsLayer { if (thinking && !p.motion) translationY = -kotlin.math.abs(kotlin.math.sin(ph.value * Math.PI.toFloat())) * 3.dp.toPx() }
+    Box(modifier.size(size).graphicsLayer { if (thinking && !p.motion) translationY = -kotlin.math.abs(kotlin.math.sin(ph.value * Math.PI.toFloat())) * 3.dp.toPx() }
         .chunk(c, c.step(), size / 2, 3.dp, 0.dp), contentAlignment = Alignment.Center) {
         Emoji(e, size * .5f)
     }
@@ -74,7 +74,8 @@ fun CoachChatScreen(ui: AppState) {
                 CoachAvatar(36.dp, thinking = busy)
                 Column(Modifier.weight(1f)) {
                     Text(name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1)
-                    Text(when { busy && partial == null -> "réfléchit…"; busy -> "écrit…"; ready -> "${persona.label} · 100 % sur ton téléphone"; else -> "${persona.label} · mode simple" }, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ink2, maxLines = 1)
+                    // Sous-titre court qui rétrécit pour tenir sur une ligne (jamais coupé en plein mot)
+                    FitText(when { busy && partial == null -> "réfléchit…"; busy -> "écrit…"; ready -> "${persona.label} · sur ton téléphone"; else -> "${persona.label} · mode simple" }, size = 13, min = 9, color = p.ink2)
                 }
                 RoundGlass("Réglages du coach", { ui.push(Screen.Settings("ai")) }) { Pi("gear", size = 20.dp, tint = p.ink) }
                 if (msgs.isNotEmpty()) RoundGlass("Effacer la conversation", { ui.confirm("Effacer la conversation ?", "Les messages échangés avec $name seront supprimés de ce téléphone. Sa mémoire est gardée.", "Effacer") { CoachChat.clear(ctx) } }) { Pi("trash", size = 20.dp, tint = p.danger) }
@@ -153,14 +154,14 @@ private fun Bubble(ui: AppState, m: ChatMsg, last: Boolean) {
     val p = LocalPal.current; val ctx = LocalContext.current; val mine = m.role == "user"; val pg = ui.pg
     val clip = LocalClipboardManager.current
     val shape = RoundedCornerShape(20.dp, 20.dp, if (mine) 6.dp else 20.dp, if (mine) 20.dp else 6.dp)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start, verticalAlignment = Alignment.Bottom) {
-        if (!mine) { CoachAvatar(30.dp); Spacer(Modifier.width(8.dp)) }
+    // Médaillon du coach aligné sur le haut de sa bulle (et non sur la rangée d'actions dessous)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start, verticalAlignment = Alignment.Top) {
+        if (!mine) { CoachAvatar(30.dp, Modifier.padding(top = 4.dp)); Spacer(Modifier.width(8.dp)) }
         Column(Modifier.widthIn(max = 300.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // À moi : aplat de la flamme et encre prune ; coach : bulle reçue (surface à marche) avec pastille ✨
             Box {
                 Column(Modifier.then(if (mine) Modifier.chunk(p.flameBrush(), p.flameStep, 22.dp, 3.dp, 0.dp) else Modifier.chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp)).clip(shape).padding(12.dp)) {
                     Text(if (mine) AnnotatedString(m.text) else rich(m.text), fontSize = 15.sp, color = if (mine) fr.pepsgoal.app.ui.theme.PLUM else p.ink)
-                    if (m.simple) Muted("Mode simple", Modifier.padding(top = 4.dp), small = true)
                 }
                 if (!mine) Box(Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(22.dp).background(vivid(p.type("program").c), CircleShape), contentAlignment = Alignment.Center) { Emoji("✨", 14.dp) }
             }
