@@ -142,7 +142,7 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
             translationX = (if (backEdge == 0) 1f else -1f) * k * 28.dp.toPx()
             shape = RoundedCornerShape(32.dp * k); clip = true
         }
-    }) { CompositionLocalProvider(LocalHaze provides null) {
+    }) { run {
         // Mode une main : la barre compacte (retour et actions) passe en bas de l'écran, sous le pouce
         val low = p.oneHand
         val list = state ?: androidx.compose.foundation.lazy.rememberLazyListState()

@@ -180,7 +180,7 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     // Fond de la conversation : la scène choisie remplace celle de l'application (un seul fond, dessiné par AppBg)
     DisposableEffect(bgKey) { SceneOverride.key = bgKey; onDispose { SceneOverride.key = null } }
     TrackScroll(state) { Fx.pageScroll = it }
-    Box(Modifier.fillMaxSize()) { CompositionLocalProvider(LocalHaze provides null) {
+    Box(Modifier.fillMaxSize()) { run {
         Box(Modifier.fillMaxSize().imePadding()) {
             // Messages
             LazyColumn(Modifier.fillMaxSize(), state,
@@ -197,7 +197,6 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                     item("m:${m.id}") {
                         MessageRow(ui, m, mine, who, g?.members, reacts[m.id], menu == m.id, more,
                             selected = m.id in sel || (searching && hits.getOrNull(hit) == m.id), selecting = sel.isNotEmpty(), editedText = edits[m.id], gone = m.id in gone, accent = chosen,
-                            blur = null,
                             onMenu = { sel = if (m.id in sel) sel - m.id else sel + m.id; more = false; Feedback.tick() }, onMore = { more = !more },
                             onTap = { if (sel.isNotEmpty()) sel = if (m.id in sel) sel - m.id else sel + m.id },
                             onReact = { e -> val on = reacts[m.id]?.get(e)?.contains(u.id) != true; sel = emptySet(); more = false; send(buildJsonObject { put("k", "react"); put("p", m.id); put("e", e); put("on", on) }, null, null) },
@@ -374,9 +373,7 @@ private fun MessageRow(
     ui: AppState, m: Message, mine: Boolean, who: String?, members: List<String>?, reacts: Map<String, Set<String>>?, menuOpen: Boolean, more: Boolean,
     onMenu: () -> Unit, onMore: () -> Unit, onReact: (String) -> Unit, onReply: () -> Unit, onPhoto: (ByteArray) -> Unit, onVote: (JsonObject, String) -> Unit,
     votes: Map<String, List<String>>?, selected: Boolean = false, selecting: Boolean = false, editedText: String? = null, gone: Boolean = false,
-    accent: List<Color>? = null, onTap: () -> Unit = {},
-    /** Verre givré : la bulle floute le fond de la conversation qui passe derrière elle. */
-    blur: dev.chrisbanes.haze.HazeState? = null
+    accent: List<Color>? = null, onTap: () -> Unit = {}
 ) {
     val p = LocalPal.current; val pg = ui.pg; val me = pg.meId()
     val pending = Social.pending(ui, m)

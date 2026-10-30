@@ -453,7 +453,7 @@ private fun timelineBitmap(items: List<TlItem>, nowH: Float, dark: Boolean, w: I
     val b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888); val c = android.graphics.Canvas(b)
     val pad = 34f; val axisY = h - 58f; val W = w - pad * 2
     fun x(hh: Float) = pad + W * ((hh - 6f) / 18f).coerceIn(0f, 1f)
-    val ink = if (dark) 0xFFFFFFFF.toInt() else 0xFF0D0E2B.toInt()
+    val ink = if (dark) 0xFFFFF4EC.toInt() else 0xFF2A1420.toInt()
     val slot = android.graphics.Paint().apply { color = ink; alpha = if (dark) 16 else 12 }
     listOf(6f to 11f, 14f to 18f).forEach { (a, z) -> c.drawRoundRect(android.graphics.RectF(x(a), 6f, x(z), axisY), 18f, 18f, slot) }
     c.drawLine(pad, axisY, w - pad, axisY, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = ink; alpha = 70; strokeWidth = 5f; strokeCap = android.graphics.Paint.Cap.ROUND })

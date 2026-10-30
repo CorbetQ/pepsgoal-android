@@ -310,7 +310,7 @@ fun PSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Modifi
                 drawRoundRect(if (fillC != null) SolidColor(fillC) else p.flameBrush(), Offset(2.dp.toPx(), y), Size((fw - 2.dp.toPx()).coerceAtLeast(rh), rh), r)
                 if (steps > 0) for (i in 0..steps) {
                     val cx = tp / 2 + (size.width - tp) * i / steps
-                    drawCircle(if (cx <= fw) PLUM.copy(alpha = .55f) else p.control, 3.dp.toPx(), Offset(cx, size.height / 2))
+                    drawCircle(if (cx <= fw) PLUM else p.control, 3.dp.toPx(), Offset(cx, size.height / 2))
                 }
             }
             Box(Modifier.offset { IntOffset(((w - thumb).toPx() * v).roundToInt(), 0) }.align(Alignment.CenterStart).size(thumb, thumb + 3.dp)
@@ -1039,7 +1039,7 @@ fun AvatarMedallion(size: Dp, level: Int?, crown: Float?, onClick: (() -> Unit)?
     val ph = slowPhaseState(2400, 15, running = live && crown != null && fr.pepsgoal.app.sys.Perf.flags.fx)
     Box(Modifier.size(size + 92.dp), contentAlignment = Alignment.Center) {
         if (crown != null && !p.contrast) Box(Modifier.size(size + 8.dp).flameCrown(crown, (size + 8.dp) / 2 - 3.dp, crownColors) { ph.value })
-        Box(Modifier.offset(y = 2.dp).size(size + 8.dp, size + 13.dp).chunk(Color.White, if (p.contrast) p.ink else p.flameStep.copy(alpha = .55f), (size + 8.dp) / 2, 5.dp, 0.dp, press)
+        Box(Modifier.offset(y = 2.dp).size(size + 8.dp, size + 13.dp).chunk(Color.White, if (p.contrast) p.ink else p.flameStep, (size + 8.dp) / 2, 5.dp, 0.dp, press)
             .clip(CircleShape).then(if (onClick != null) Modifier.springClick(inter, label = desc, role = Role.Button, onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center, content = content)
         if (level != null) Box(Modifier.align(Alignment.Center).offset(x = size * .42f, y = size * .44f).chunk(PLUM, PLUM_DEEP, 14.dp, 3.dp, 0.dp).padding(horizontal = 9.dp, vertical = 2.dp)) {

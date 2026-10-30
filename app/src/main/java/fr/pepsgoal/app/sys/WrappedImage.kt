@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -31,10 +30,10 @@ object WrappedImage {
         val body = ResourcesCompat.getFont(ctx, R.font.manrope_extrabold) ?: Typeface.DEFAULT_BOLD
         val bodyR = ResourcesCompat.getFont(ctx, R.font.manrope_semibold) ?: Typeface.DEFAULT
         fun paint(tf: Typeface, size: Float, col: Int, center: Boolean = false, spacing: Float = 0f) = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = tf; textSize = size; color = col; letterSpacing = spacing; if (center) textAlign = Paint.Align.CENTER }
-        // Fond : nuit violette vers braise, halos lumineux
+        // Fond : nuit violette vers braise, disques pleins
         cv.drawRect(0f, 0f, W, H, Paint().apply { shader = LinearGradient(0f, 0f, W * .3f, H, intArrayOf(Color.rgb(20, 14, 58), Color.rgb(92, 32, 120), Color.rgb(255, 106, 58)), floatArrayOf(0f, .55f, 1f), Shader.TileMode.CLAMP) })
         for ((x, y, r, c) in listOf(Quad(W * .85f, H * .12f, 520f, Color.argb(90, 255, 79, 216)), Quad(W * .1f, H * .55f, 620f, Color.argb(70, 124, 92, 255)), Quad(W * .6f, H * .95f, 700f, Color.argb(110, 255, 210, 122))))
-            cv.drawCircle(x, y, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = RadialGradient(x, y, r, c, Color.TRANSPARENT, Shader.TileMode.CLAMP) })
+            cv.drawCircle(x, y, r * .62f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = androidx.core.graphics.ColorUtils.compositeColors(c, Color.rgb(42, 20, 48)) })
         val white = Color.WHITE; val soft = Color.argb(200, 255, 255, 255)
         val year = parseYmd(st.r.s).year
         cv.drawText("MA RÉTROSPECTIVE PEPSGOAL", W / 2, 170f, paint(body, 34f, soft, true, .18f))

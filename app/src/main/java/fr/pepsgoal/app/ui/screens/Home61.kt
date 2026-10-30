@@ -153,7 +153,7 @@ fun StreakMedal(ui: AppState, st: Streak) {
     // Médaillon à marche qui s'enfonce sous le doigt (comme les boutons)
     val inter = remember { MutableInteractionSource() }
     val press = rememberPress(inter)
-    Box(Modifier.popOnChange(st.n).graphicsLayer { rotationZ = -6f }.size(88.dp, 93.dp).chunk(Color.White, p.flameStep.copy(alpha = .55f), 44.dp, 5.dp, 0.dp, press)
+    Box(Modifier.popOnChange(st.n).graphicsLayer { rotationZ = -6f }.size(88.dp, 93.dp).chunk(Color.White, p.flameStep, 44.dp, 5.dp, 0.dp, press)
         .clickable(interactionSource = inter, indication = null, onClickLabel = "Flamme") {
             awake++
             val now = System.currentTimeMillis(); taps.removeAll { now - it > 2500 }; taps.add(now)

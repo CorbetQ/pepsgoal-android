@@ -58,7 +58,7 @@ object GoalLink {
     /** Code QR (noir sur blanc, avec marge) du texte donné. */
     fun qr(text: String, size: Int = 720): Bitmap {
         val m = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size, mapOf(EncodeHintType.MARGIN to 1))
-        val px = IntArray(size * size) { i -> if (m[i % size, i / size]) 0xFF10102A.toInt() else 0xFFFFFFFF.toInt() }
+        val px = IntArray(size * size) { i -> if (m[i % size, i / size]) 0xFF2A1420.toInt() else 0xFFFFFFFF.toInt() }
         return Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888)
     }
 }

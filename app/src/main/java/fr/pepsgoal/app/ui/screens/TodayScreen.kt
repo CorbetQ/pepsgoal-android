@@ -253,7 +253,7 @@ fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
         }) {
             // Médaillon blanc à marche qui s'enfonce sous le doigt
-            Box(Modifier.size(92.dp, 97.dp).chunk(Color.White, p.flameStep.copy(alpha = .55f), 46.dp, 5.dp, 0.dp, press), contentAlignment = Alignment.Center) { Flame(64.dp, dim = !lit) }
+            Box(Modifier.size(92.dp, 97.dp).chunk(Color.White, p.flameStep, 46.dp, 5.dp, 0.dp, press), contentAlignment = Alignment.Center) { Flame(64.dp, dim = !lit) }
         }
         }
         Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)

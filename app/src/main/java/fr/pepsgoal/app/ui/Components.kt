@@ -171,8 +171,6 @@ fun Emoji(e: String, size: Dp, modifier: Modifier = Modifier, colorFilter: Color
 }
 
 /* ------------------------------------------------------------------ cartes, boutons, puces */
-/** Source du flou des panneaux en verre (null : pas de flou, ex. dans une fenêtre du bas). */
-val LocalHaze = staticCompositionLocalOf<dev.chrisbanes.haze.HazeState?> { null }
 
 /** Flammes de collection : de nouvelles couleurs se débloquent avec la meilleure série (classique = couleurs du thème). */
 class FlameSkin(val key: String, val name: String, val min: Int, val colors: List<String>?)
@@ -215,8 +213,6 @@ object Stagger {
     fun next(): Long = if (active()) (n++ * 45L).coerceAtMost(315L) else 0L
 }
 
-/** Ancienne ombre portée : plus aucune ombre floue (la marche la remplace). Gardé pour la compatibilité des appels. */
-fun Dp.ifShadows(): Dp = 0.dp
 
 @Composable
 fun Modifier.enter(): Modifier {
@@ -234,16 +230,6 @@ fun Modifier.enter(): Modifier {
     }
 }
 
-/**
- * Fond des pages secondaires (réglages, messages, historique…) : fond uni et deux grands cercles de décor en aplat,
- * immobiles (aucun flou, aucun coût d'animation). [c1] et [c2] gardés pour la compatibilité des appels.
- */
-@Suppress("UNUSED_PARAMETER")
-@Composable
-fun PageBackdrop(c1: Color, c2: Color, modifier: Modifier = Modifier) {
-    val p = LocalPal.current
-    Box(modifier.fillMaxSize().background(p.bg).decoCircles(p))
-}
 
 /** Décor de l'en-tête : deux cercles en aplat derrière le haut de l'écran (zéro flou). */
 fun Modifier.decoCircles(p: fr.pepsgoal.app.ui.theme.Pal): Modifier = if (p.contrast) this else this.drawBehind {
@@ -276,13 +262,6 @@ fun EmojiTileBox(c: Color, size: Dp = 32.dp, radius: Dp = size * .32f, content: 
     Box(Modifier.size(size).chunk(c, if (p.contrast) p.ink else c.step(), radius, st, 0.dp), contentAlignment = Alignment.Center, content = content)
 }
 
-/**
- * Ancien voile givré des barres flottantes : les barres sont désormais opaques, il n'y a plus rien à dessiner.
- * Gardé pour la compatibilité des appels.
- */
-@Suppress("UNUSED_PARAMETER")
-@Composable
-fun EdgeFrost(modifier: Modifier, top: Boolean, cover: Dp, haze: dev.chrisbanes.haze.HazeState? = LocalHaze.current) {}
 
 /**
  * Option de sondage (feed et messagerie) : barre de résultat qui progresse avec les votes, case cochée pour ton choix,
@@ -315,43 +294,11 @@ fun PollOption(text: String, pct: Float, show: Boolean, mine: Boolean, top: Bool
 /** Couleurs du contour « IA » (arc-en-ciel doux qui tourne). */
 private val AI_COLORS = listOf(Color(0xFFFF4A12), Color(0xFFFFB000), Color(0xFF2EF2B0), Color(0xFF22D3FF), Color(0xFF7C8CFF), Color(0xFFFF4FA3), Color(0xFFFF4A12))
 
-/** Ancien contour animé des cartes IA : retiré (le coach est signalé par une pilule ✨). Gardé pour la compatibilité. */
-@Suppress("UNUSED_PARAMETER")
-@Composable
-fun Modifier.aiGlow(radius: Dp): Modifier = this
 
 /** Ressorts communs : réponses vives avec un léger rebond. */
 object Springs {
     val pop = androidx.compose.animation.core.spring<Float>(dampingRatio = .7f, stiffness = 600f)
     val bar = androidx.compose.animation.core.spring<Float>(dampingRatio = .75f, stiffness = 380f)
-}
-
-/**
- * Effet « ressort » à l'appui : l'élément s'enfonce dès le toucher puis rebondit en le relâchant
- * (même pour un appui très bref). À placer en tête de la chaîne de modificateurs, avec le même
- * [inter] passé au `clickable`.
- */
-@Composable
-fun Modifier.bounce(inter: MutableInteractionSource, pressed0: Float = .96f): Modifier {
-    // Enfoncement discret à l'appui (au plus 4 %), retour souple sans rebond marqué
-    val pressed = maxOf(pressed0, .96f)
-    val motionOff = LocalPal.current.motion
-    val sc = remember { Animatable(1f) }
-    LaunchedEffect(inter, motionOff) {
-        if (motionOff) return@LaunchedEffect
-        inter.interactions.collectLatest { i ->
-            when (i) {
-                is PressInteraction.Press -> sc.animateTo(pressed, spring(dampingRatio = .9f, stiffness = 1800f))
-                is PressInteraction.Release -> {
-                    // Appui très bref : on laisse le temps de voir l'enfoncement avant le rebond
-                    if (sc.value > pressed + .015f) sc.animateTo(pressed, tween(55, easing = Motion.Emphasized))
-                    sc.animateTo(1f, spring(dampingRatio = .75f, stiffness = 600f))
-                }
-                is PressInteraction.Cancel -> sc.animateTo(1f, Motion.standard())
-            }
-        }
-    }
-    return this.graphicsLayer { scaleX = sc.value; scaleY = sc.value }
 }
 
 /** Zone cliquable avec effet ressort et ondulation (à placer après le clip/fond de l'élément). */
@@ -361,10 +308,6 @@ fun Modifier.springClick(inter: MutableInteractionSource, enabled: Boolean = tru
     else this.combinedClickable(interactionSource = inter, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClickLabel = label, role = role,
         onLongClick = { Feedback.armed(); onLongClick() }) { Feedback.tap(); onClick() }
 
-/** Ancien fond « verre givré » : désormais une surface opaque (aucun flou). */
-@Suppress("UNUSED_PARAMETER")
-@Composable
-fun Modifier.glassBg(shape: Shape, strong: Boolean = false): Modifier = this.clip(shape).background(LocalPal.current.surface)
 
 /** Aucun enfoncement (élément non pressable). */
 val NoPress: () -> Float = { 0f }
@@ -926,6 +869,3 @@ fun SectionTitle(text: String, emoji: String? = null, count: Any? = null, action
     }
 }
 
-/** Ancien lavis coloré des cartes vedettes : retiré (aplats seulement). Gardé pour la compatibilité des appels. */
-@Suppress("UNUSED_PARAMETER")
-fun Modifier.washOf(cols: List<Color>, dark: Boolean): Modifier = this

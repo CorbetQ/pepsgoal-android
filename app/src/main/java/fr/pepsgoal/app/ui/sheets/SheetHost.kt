@@ -61,7 +61,7 @@ fun SheetHost(ui: AppState) {
         val slot = remember(s) { FootSlot() }
         PSheet(visible = target != null, onDismiss = { if (ui.sheet === s || ui.sheet === confirm) ui.back() }, onGone = { if (last.value === s) last.value = null },
             title = sheetTitle(s), handle = s !is Sheet.Goal, back = { backK }) {
-            key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true, LocalFootSlot provides slot) {
+            key(s) { CompositionLocalProvider(LocalInSheet provides true, LocalFootSlot provides slot) {
                 val p = LocalPal.current
                 val foot = slot.content
                 // Contenu d'une fenêtre (ou de l'étape suivante dans la même fenêtre) : fondu et léger glissement vers le haut

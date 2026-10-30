@@ -271,7 +271,7 @@ fun FlameQuestsCard(ui: AppState, modifier: Modifier = Modifier) {
     // Carte de la flamme à marche, encre prune
     Column(modifier.fillMaxWidth().enter().chunk(p.flameBrush(), p.flameStep, 24.dp, 5.dp, 0.dp).padding(16.dp)) {
         Row(Modifier.padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.size(44.dp, 48.dp).chunk(Color.White, p.flameStep.copy(alpha = .55f), 22.dp, 4.dp, 0.dp), contentAlignment = Alignment.Center) { Emoji("🎯", 26.dp) }
+            Box(Modifier.size(44.dp, 48.dp).chunk(Color.White, p.flameStep, 22.dp, 4.dp, 0.dp), contentAlignment = Alignment.Center) { Emoji("🎯", 26.dp) }
             Text("Gagner des flammes", fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = fr.pepsgoal.app.ui.theme.PLUM)
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

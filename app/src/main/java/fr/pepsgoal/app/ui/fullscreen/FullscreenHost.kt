@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.Image
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.SolidColor
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Fs

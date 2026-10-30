@@ -70,7 +70,7 @@ data class Pal(
     val dark: Boolean,
     val oled: Boolean,
     val bg: Color, val ink: Color, val ink2: Color, val ink3: Color,
-    val glass: Color, val glassStrong: Color, val glassEdge: Color, val line: Color, val scrim: Color,
+    val line: Color, val scrim: Color,
     val flame2: Color, val flame: Color, val pink: Color, val onAccent: Color,
     /** Accent utilisable comme couleur de texte (assombri sur fond clair, éclairci sur fond sombre si besoin). */
     val flameInk: Color,
@@ -79,7 +79,6 @@ data class Pal(
     val types: Map<String, TypeColor>,
     val materialYou: Boolean,
     val contrast: Boolean, val transp: Boolean, val mono: Boolean, val motion: Boolean,
-    val blur: Float,
     /** Mode Lecture facile : statuts en toutes lettres, mots simples, sans effets. */
     val easy: Boolean = false,
     /** Grandes cibles tactiles (48 dp) : TalkBack actif ou Lecture facile. */
@@ -166,12 +165,10 @@ private val CVD = mapOf(
 )
 
 class ThemeInput(
-    val theme: String, val accent: Int, val accentCustom: List<String>?, val glassBlur: String,
+    val theme: String, val accent: Int, val accentCustom: List<String>?,
     val materialYou: Boolean, val contrast: Boolean, val cvd: String, val mono: Boolean, val motion: Boolean, val transp: Boolean,
     /** Thème Météo : sombre la nuit et au crépuscule. */
     val skyDark: Boolean,
-    /** Opacité du verre givré (réglage de l'appareil) : low, mid, high. */
-    val glassOpacity: String = "mid",
     val easy: Boolean = false, val big: Boolean = false, val oneHand: Boolean = false,
     /** Couleurs de saison de l'arrière-plan (null : aucune). */
     val season: List<Long>? = null,
@@ -256,8 +253,6 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         deco = mode.blobs.take(2).map { mix(bg, hex(it), if (dark) .35f else .3f) }
     } else if (input.season != null && dyn == null) deco = input.season.take(2).map { mix(bg, Color(it).copy(alpha = 1f), if (dark) .3f else .25f) }
     if (input.contrast) { ink = if (dark) Color.White else Color.Black; ink2 = ink; ink3 = if (dark) Color(0xFFDDDDDD) else Color(0xFF222222); edge = ink; control = ink; deco = listOf(bg, bg) }
-    // Compatibilité : l'ancien verre est désormais une surface opaque
-    val glass = surface; val glassStrong = surface
     val line = edge
     // Base de tous les calculs de lisibilité : la surface des cartes
     val card = surface
@@ -275,13 +270,12 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     }.toMap()
 
     val pal = Pal(
-        dark, oled, bg, ink, ink2, ink3, glass, glassStrong, edge, line,
+        dark, oled, bg, ink, ink2, ink3, line,
         if (dark) Color(0xB3000000) else Color(0x802A1420),
         ac2[0], ac2[1], ac2[2], onAc, flameInk,
         if (dark) hex("#4FD08A") else hex("#1E7F45"), if (dark) hex("#FF7A84") else hex("#C0392B"), if (dark) hex("#6FE3FF") else hex("#0057D9"),
         if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: mode?.let { m -> m.blobs.map(::hex) + ac[1] } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
         if (oled) .22f else if (dark) .42f else .55f, types, dyn != null, input.contrast, transp, input.mono, motion,
-        when (input.glassBlur) { "xlow" -> 20f; "low" -> 40f; "high" -> 110f; else -> 70f },
         input.easy, input.big || input.easy, input.oneHand,
         surface = surface, surface2 = surface2, edge = edge, control = control, flameStep = flameStep, deco = deco
     )

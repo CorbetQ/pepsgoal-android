@@ -101,8 +101,6 @@ dependencies {
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
-    // Verre givré : flou de l'arrière-plan derrière les cartes et les barres (backdrop-filter de la version web)
-    implementation("dev.chrisbanes.haze:haze:1.6.10")
     // Assistant IA 100 % local : exécution d'un petit modèle de langage sur le téléphone (MediaPipe LLM Inference)
     implementation("com.google.mediapipe:tasks-genai:0.10.24")
     // Health Connect (Santé d'Android) : validation automatique à partir des pas, du sommeil, du sport, de l'eau

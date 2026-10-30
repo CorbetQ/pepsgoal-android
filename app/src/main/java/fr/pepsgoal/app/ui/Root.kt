@@ -108,8 +108,8 @@ fun PepsRoot(ui: AppState) {
     val theme = fr.pepsgoal.core.shopMode(theme0)?.let { m -> if (ui.themePreview != null || pg.owns("mode:${m.key}", m.price, u)) theme0 else fr.pepsgoal.core.baseTheme(theme0) } ?: theme0
     // Animations coupées dans Android (Options pour les développeurs ou Accessibilité) : « Animations réduites »
     val sysNoAnim = remember { try { android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f } catch (e: Exception) { false } }
-    val input = ThemeInput(theme, s?.accent ?: 0, s?.accentCustom, s?.glassBlur ?: "mid", ui.prefs.materialYou,
-        ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion || sysNoAnim, ui.prefs.transp, Weather.skyDark(wx?.data), ui.prefs.glassOpacity,
+    val input = ThemeInput(theme, s?.accent ?: 0, s?.accentCustom, ui.prefs.materialYou,
+        ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion || sysNoAnim, ui.prefs.transp, Weather.skyDark(wx?.data),
         ui.prefs.easy, rememberTalkBack(), ui.prefs.oneHand,
         if (ui.prefs.seasonal) fr.pepsgoal.app.sys.Season.now()?.let { fr.pepsgoal.app.sys.Season.COLORS[it] } else null,
         if (ui.prefs.sunTheme && theme == "system") sunTick.let { fr.pepsgoal.core.sunDark(wx?.data) } else null)
@@ -158,7 +158,7 @@ fun PepsRoot(ui: AppState) {
                 val t = fr.pepsgoal.core.today(); val h = java.time.LocalTime.now().hour
                 if (u != null && ui.prefs.briefAuto && ui.prefs.briefDay != t && h in 5..11) { ui.prefs.briefDay = t; kotlinx.coroutines.delay(1200); fr.pepsgoal.app.sys.Speaker.briefing(bctx) }
             }
-            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides null, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses,
+            CompositionLocalProvider(LocalContentColor provides p.ink, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses,
                 LocalSceneTint provides rememberSceneTint(ui)) {
                 Box(Modifier.fillMaxSize()) { Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
@@ -342,7 +342,7 @@ private fun Shell(ui: AppState) {
         // Volet latéral de la fiche (grand écran)
         if (side != null) Box(Modifier.align(Alignment.TopEnd).padding(top = sb + 8.dp, bottom = with(d) { botH.toDp() } + 8.dp, end = 12.dp).width(440.dp).fillMaxHeight()
             .chunk(p.bg, p.edge, 28.dp, 4.dp, 2.dp).clip(RoundedCornerShape(26.dp))) {
-            CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true) {
+            CompositionLocalProvider(LocalInSheet provides true) {
                 Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     key(side.id) { fr.pepsgoal.app.ui.sheets.GoalSheet(ui, side.id) }
                 }
@@ -405,7 +405,7 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
         Box(Modifier.align(Alignment.TopCenter).padding(top = top + 6.dp).graphicsLayer {
             val f = if (refreshing) 1f else st.distanceFraction.coerceIn(0f, 1.3f)
             alpha = f.coerceAtMost(1f); translationY = (f - 1f) * 24.dp.toPx(); val sc = .6f + .4f * f.coerceAtMost(1f); scaleX = sc; scaleY = sc
-        }.size(48.dp, 52.dp).chunk(Color.White, p.flameStep.copy(alpha = .55f), 24.dp, 4.dp, 0.dp), contentAlignment = Alignment.Center) {
+        }.size(48.dp, 52.dp).chunk(Color.White, p.flameStep, 24.dp, 4.dp, 0.dp), contentAlignment = Alignment.Center) {
             Box(Modifier.graphicsLayer {
                 // Flamme qui vacille pendant le chargement
                 val w = if (refreshing) kotlin.math.sin(spin.value * 2f * kotlin.math.PI.toFloat()) else 0f
