@@ -122,7 +122,7 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
         if (own && doneNow && todayProof == null && !editing) { val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }; val press = rememberPress(inter)
         Column(Modifier.width(104.dp).height(132.dp).chunk(p.selTint(tc.c), tc.c, 18.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Ajouter une preuve") { editing = true },
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Box(Modifier.size(38.dp).clip(CircleShape).background(vivid(tc.c)), contentAlignment = Alignment.Center) { Pi("plus", size = 20.dp, tint = PLUM) }
+            Box(Modifier.size(38.dp).clip(androidx.compose.foundation.shape.CircleShape).background(vivid(tc.c)), contentAlignment = Alignment.Center) { Pi("plus", size = 20.dp, tint = PLUM) }
             Text("Ajouter", Modifier.padding(top = 8.dp), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
             Text("photo ou note", fontSize = 12.sp, color = p.ink2)
         } }
