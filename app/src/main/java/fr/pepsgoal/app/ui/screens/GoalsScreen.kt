@@ -39,25 +39,16 @@ fun ChipsRow(content: @Composable RowScope.() -> Unit) = ChipScroller(bleed = 16
  * Onglet Objectifs : vue d'ensemble, recherche, filtres par état et par type, tri, regroupement et deux affichages
  * (liste compacte avec validation directe, ou cartes détaillées).
  */
-@Composable
-fun GoalsScreen(ui: AppState) {
-    ui.watch(); ui.themeTick
-    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+/** Résultat des filtres de l'onglet Objectifs (partagé par l'écran et la fenêtre Filtrer). */
+class GoalView(val all: List<Goal>, val open: List<Goal>, val types: List<String>, val type: String, val group: String, val list: List<Goal>, val active: Int)
+
+/** Applique l'état, le dossier, le type, la recherche et le tri choisis. */
+fun goalView(ui: AppState, query: String = ""): GoalView? {
+    val pg = ui.pg; val u = pg.me() ?: return null
     val all = pg.myGoals(u.id)
     val open = all.filter { !pg.isClosedGoal(it) }
-    val plan = pg.todayPlan(u.id); val dueIds = plan.due.associate { it.g.id to it.done }
-    val doneToday = plan.due.count { it.done }
-    // État de l'écran (gardé pendant la session ; affichage et regroupement mémorisés)
+    val dueIds = pg.todayPlan(u.id).due.associate { it.g.id to it.done }
     if (ui.goalFilter !in setOf("active", "today", "fav", "done")) ui.goalFilter = "active"
-    var query by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("all") }
-    var sort by remember { mutableStateOf("fav") }
-    var compact by remember { mutableStateOf(ui.prefs.goalView != "cards") }
-    var grouped by remember { mutableStateOf(ui.prefs.goalGroupBy) }
-    var collapsed by remember { mutableStateOf(ui.prefs.collapsed) }
-    var aiOpen by remember { mutableStateOf(false) }
-    val aiOn = fr.pepsgoal.app.ai.LocalAi.on(androidx.compose.ui.platform.LocalContext.current, ui.prefs.aiCreate)
-
     val base = when (ui.goalFilter) {
         "today" -> open.filter { it.id in dueIds }
         "fav" -> open.filter { pg.isFav(it) }
@@ -65,17 +56,41 @@ fun GoalsScreen(ui: AppState) {
         else -> open
     }
     val types = TYPE_GROUPS.flatMap { it.second }.filter { t -> base.any { it.type == t } }
-    if (type != "all" && type !in types) type = "all"
-    val q = query.trim().lowercase()
+    val type = ui.goalType.takeIf { it in types } ?: "all"
     val gf = ui.groupFilter.takeIf { f -> f == "none" || u.goalGroups.any { it.id == f } } ?: "all"
+    val q = query.trim().lowercase()
     val list = base.filter { (type == "all" || it.type == type) && (q.isEmpty() || it.title.lowercase().contains(q) || it.note.lowercase().contains(q)) &&
         (gf == "all" || (gf == "none" && pg.groupOfGoal(u, it.id) == null) || pg.groupOfGoal(u, it.id)?.id == gf) }
-        .let { l -> when (sort) {
+        .let { l -> when (ui.goalSort) {
             "az" -> l.sortedBy { it.title.lowercase() }
             "progress" -> l.sortedByDescending { pg.barPct(it) ?: -1.0 }
             "recent" -> l.sortedByDescending { it.createdAt }
             else -> l.sortedWith(compareByDescending<Goal> { pg.isFav(it) }.thenBy { dueIds[it.id] ?: true }.thenBy { it.title.lowercase() })
         } }
+    val active = (if (ui.goalFilter == "done") 1 else 0) + (if (gf != "all") 1 else 0) + (if (type != "all") 1 else 0)
+    return GoalView(all, open, types, type, gf, list, active)
+}
+
+/**
+ * Onglet Objectifs : vue d'ensemble, une barre (recherche, Filtrer, Trier, autres actions), les filtres actifs sur une
+ * ligne qu'on peut effacer, puis la liste. Filtres et tri vivent dans leurs fenêtres pour laisser la place aux objectifs.
+ */
+@Composable
+fun GoalsScreen(ui: AppState) {
+    ui.watch(); ui.themeTick
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
+    var query by remember { mutableStateOf("") }
+    val v = goalView(ui, query) ?: return
+    val all = v.all; val open = v.open; val list = v.list; val type = v.type; val gf = v.group; val q = query.trim().lowercase()
+    val plan = pg.todayPlan(u.id); val dueIds = plan.due.associate { it.g.id to it.done }
+    val doneToday = plan.due.count { it.done }
+    val compact = ui.prefs.goalView != "cards"
+    val grouped = ui.prefs.goalGroupBy
+    var collapsed by remember { mutableStateOf(ui.prefs.collapsed) }
+    var aiOpen by remember { mutableStateOf(false) }
+    var more by remember { mutableStateOf(false) }
+    val aiOn = fr.pepsgoal.app.ai.LocalAi.on(androidx.compose.ui.platform.LocalContext.current, ui.prefs.aiCreate)
+    val sctx = androidx.compose.ui.platform.LocalContext.current
 
     ScreenList {
         // Vue d'ensemble : trois raccourcis
@@ -86,36 +101,32 @@ fun GoalsScreen(ui: AppState) {
                 OverTile("${open.count { pg.isFav(it) }}", "favoris", "⭐", p.type("deadline").c, ui.goalFilter == "fav", Modifier.weight(1f)) { ui.goalFilter = "fav" }
             }
         }
-        // Recherche, affichage et tri
+        // Une seule barre : recherche, Filtrer (pastille du nombre de filtres actifs), Trier, et le reste dans « Plus »
         item("tools") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(query, { query = it }, "", Modifier.weight(1f), placeholder = "Rechercher un objectif", max = 60, icon = "search")
-                IconBtn("cal", "Ma semaine", { ui.push(fr.pepsgoal.app.Screen.Week) })
-                val sctx = androidx.compose.ui.platform.LocalContext.current
-                IconBtn("link", "Scanner un objectif partagé", { fr.pepsgoal.app.ui.sheets.scanGoal(ui, sctx) })
-                IconBtn(if (compact) "list" else "grip", if (compact) "Afficher en cartes" else "Afficher en liste", { compact = !compact; ui.prefs.goalView = if (compact) "list" else "cards" })
+                Field(query, { query = it }, "", Modifier.weight(1f), placeholder = "Rechercher", max = 60, icon = "search")
+                IconBtn("filter", if (v.active > 0) "Filtrer (${v.active} actif${if (v.active > 1) "s" else ""})" else "Filtrer", { ui.open(Sheet.GoalFilter) }, badge = v.active)
+                IconBtn("sort", "Trier et afficher", { ui.open(Sheet.GoalSort) })
+                Box {
+                    IconBtn("more", "Plus d’actions", { more = true })
+                    PMenu(more, { more = false }, listOf(
+                        MenuItem("Ma semaine", icon = "cal") { more = false; ui.push(fr.pepsgoal.app.Screen.Week) },
+                        MenuItem("Scanner un objectif partagé", icon = "link") { more = false; fr.pepsgoal.app.ui.sheets.scanGoal(ui, sctx) },
+                        MenuItem(if (u.goalGroups.isNotEmpty()) "Gérer les dossiers" else "Créer des dossiers", icon = "folder") { more = false; ui.open(Sheet.GoalGroups) }
+                    ), title = "Plus d’actions")
+                }
             }
         }
-        item("filters") {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChipsRow {
-                    FChip("Terminés et archivés", ui.goalFilter == "done", { ui.goalFilter = if (ui.goalFilter == "done") "active" else "done" }, leading = { Pi("archive", size = 15.dp) })
-                    SORTS.forEach { (k, l) -> FChip(l, sort == k, { sort = k }) }
-                    if (u.goalGroups.isNotEmpty()) FChip("Par groupe", grouped, { grouped = !grouped; ui.prefs.goalGroupBy = grouped }, leading = { Pi("folder", size = 15.dp) })
-                    FChip(if (u.goalGroups.isNotEmpty()) "Gérer les groupes" else "Créer des groupes", false, { ui.open(Sheet.GoalGroups) }, leading = { Pi(if (u.goalGroups.isNotEmpty()) "edit" else "plus", size = 15.dp) }, dashed = true)
+        // Filtres actifs : une seule ligne, chaque puce (croix en tête) s'efface d'un toucher
+        if (v.active > 0) item("active") {
+            ChipsRow {
+                if (ui.goalFilter == "done") FChip("Terminés et archivés", true, { ui.goalFilter = "active" }, leading = { Pi("x", size = 15.dp) })
+                if (gf != "all") {
+                    val gr = u.goalGroups.firstOrNull { it.id == gf }
+                    FChip(if (gr != null) "${gr.icon} ${gr.name}" else "Sans dossier", true, { ui.groupFilter = "all" }, leading = { Pi("x", size = 15.dp) }, color = gr?.color?.let { fr.pepsgoal.app.ui.theme.hex(it) })
                 }
-                // Dossiers : filtre en un geste, avec leur couleur
-                if (u.goalGroups.isNotEmpty()) ChipsRow {
-                    FChip("Tous les dossiers", gf == "all", { ui.groupFilter = "all" }, leading = { Pi("folder", size = 15.dp) })
-                    // Puce choisie : aplat de la couleur du dossier
-                    u.goalGroups.forEach { gr -> FChip("${gr.icon} ${gr.name}", gf == gr.id, { ui.groupFilter = if (gf == gr.id) "all" else gr.id },
-                        leading = gr.color?.let { c -> { Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(fr.pepsgoal.app.ui.theme.hex(c))) } }, color = gr.color?.let { fr.pepsgoal.app.ui.theme.hex(it) }) }
-                    FChip("Sans dossier", gf == "none", { ui.groupFilter = if (gf == "none") "all" else "none" })
-                }
-                if (types.size > 1) ChipsRow {
-                    FChip("Tous les types", type == "all", { type = "all" })
-                    types.forEach { t -> FChip(TYPES.getValue(t).label, type == t, { type = t }, leading = { Box(Modifier.size(11.dp).clip(CircleShape).background(p.type(t).c).border(1.5.dp, p.type(t).step, CircleShape)) }, color = p.type(t).c) }
-                }
+                if (type != "all") FChip(TYPES.getValue(type).label, true, { ui.goalType = "all" }, leading = { Pi("x", size = 15.dp) }, color = p.type(type).c)
+                if (v.active > 1) FChip("Tout effacer", false, { ui.goalFilter = "active"; ui.groupFilter = "all"; ui.goalType = "all" }, dashed = true)
             }
         }
         // Créer avec le coach : pastille compacte qui s'ouvre à la demande
@@ -160,6 +171,59 @@ fun GoalsScreen(ui: AppState) {
 }
 
 private val SORTS = listOf("fav" to "Pertinence", "az" to "A → Z", "progress" to "Progression", "recent" to "Récents")
+private val SORT_SUBS = listOf("Favoris d’abord, puis ce qui reste à faire aujourd’hui", "Par ordre alphabétique", "Les plus avancés d’abord", "Les derniers créés d’abord")
+
+/** Fenêtre Filtrer : état, dossier et type, avec le nombre d'objectifs trouvés sur le bouton du bas. */
+@Composable
+fun GoalFilterSheet(ui: AppState) {
+    ui.watch()
+    val p = LocalPal.current; val u = ui.pg.me() ?: return
+    val v = goalView(ui) ?: return
+    fr.pepsgoal.app.ui.sheets.SheetHead(ui, "Filtrer")
+    SetGroup("État", emoji = "🎯") {
+        SetRadioGroup(listOf("active" to "En cours", "today" to "À faire aujourd’hui", "fav" to "Favoris", "done" to "Terminés et archivés"), ui.goalFilter, { ui.goalFilter = it },
+            emojis = listOf("🎯", "☀️", "⭐", "🗄️"))
+    }
+    if (u.goalGroups.isNotEmpty()) SetGroup("Dossier", emoji = "📁") {
+        Column(Modifier.fillMaxWidth().padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            PRadioRow("Tous les dossiers", null, v.group == "all", { ui.groupFilter = "all" }, emoji = "🗂️")
+            u.goalGroups.forEach { gr ->
+                PRadioRow(gr.name, null, v.group == gr.id, { ui.groupFilter = gr.id }, emoji = gr.icon, color = gr.color?.let { fr.pepsgoal.app.ui.theme.hex(it) })
+            }
+            PRadioRow("Sans dossier", null, v.group == "none", { ui.groupFilter = "none" }, emoji = "📄")
+        }
+    }
+    if (v.types.size > 1 || v.type != "all") SetGroup("Type", emoji = "🧩") {
+        Column(Modifier.fillMaxWidth().padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            PRadioRow("Tous les types", null, v.type == "all", { ui.goalType = "all" }, emoji = "✨")
+            v.types.forEach { t ->
+                PRadioRow(TYPES.getValue(t).label, null, v.type == t, { ui.goalType = t }, color = p.type(t).c,
+                    leading = { Box(Modifier.size(14.dp).clip(CircleShape).background(p.type(t).c).border(1.5.dp, p.type(t).step, CircleShape)) })
+            }
+        }
+    }
+    fr.pepsgoal.app.ui.sheets.SheetFoot {
+        PButton("Réinitialiser", { ui.goalFilter = "active"; ui.groupFilter = "all"; ui.goalType = "all" }, kind = "ghost", enabled = v.active > 0 || ui.goalFilter != "active")
+        PButton(when (v.list.size) { 0 -> "Aucun objectif"; 1 -> "Voir 1 objectif"; else -> "Voir ${v.list.size} objectifs" }, { ui.close() }, kind = "primary")
+    }
+}
+
+/** Fenêtre Trier : ordre de la liste, affichage (liste ou cartes) et regroupement par dossier. */
+@Composable
+fun GoalSortSheet(ui: AppState) {
+    ui.watch()
+    val u = ui.pg.me() ?: return
+    fr.pepsgoal.app.ui.sheets.SheetHead(ui, "Trier et afficher")
+    SetGroup("Trier par", emoji = "↕️") {
+        SetRadioGroup(SORTS, ui.goalSort, { ui.goalSort = it }, subs = SORT_SUBS, emojis = listOf("✨", "🔤", "📈", "🆕"))
+    }
+    SetGroup("Affichage", emoji = "👀") {
+        SetRadioGroup(listOf("list" to "Liste", "cards" to "Cartes"), if (ui.prefs.goalView != "cards") "list" else "cards", { ui.prefs.goalView = it; ui.bump() },
+            subs = listOf("Une ligne par objectif, à valider d’un geste", "Une carte détaillée par objectif"), emojis = listOf("📋", "🗂️"))
+        if (u.goalGroups.isNotEmpty()) SetToggle("Regrouper par dossier", "Une section repliable par dossier", "folder", on = ui.prefs.goalGroupBy, onChange = { ui.prefs.goalGroupBy = it; ui.bump() })
+    }
+    fr.pepsgoal.app.ui.sheets.SheetFoot { PButton("Fermer", { ui.close() }, kind = "primary") }
+}
 
 /**
  * Tuile de la vue d'ensemble : aplat néon à marche (emoji, chiffre en Unbounded, libellé prune). Choisie, elle porte

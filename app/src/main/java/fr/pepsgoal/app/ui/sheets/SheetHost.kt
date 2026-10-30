@@ -124,6 +124,8 @@ private fun SheetBody(ui: AppState, s: Sheet) {
         is Sheet.Legal -> LegalSheet(ui, s.doc)
         is Sheet.A11y -> { SheetHead(ui, "Accessibilité"); fr.pepsgoal.app.ui.screens.A11yRows(ui); Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", small = true) }
         is Sheet.GoalGroups -> GoalGroupsSheet(ui)
+        is Sheet.GoalFilter -> fr.pepsgoal.app.ui.screens.GoalFilterSheet(ui)
+        is Sheet.GoalSort -> fr.pepsgoal.app.ui.screens.GoalSortSheet(ui)
         is Sheet.ModUser -> ModUserSheet(ui, s.id)
         is Sheet.Appeal -> AppealSheet(ui)
         is Sheet.Report -> ReportSheet(ui, s.postId)
