@@ -41,6 +41,8 @@ sealed class Sheet {
     class Legal(val doc: String) : Sheet()
     object A11y : Sheet()
     object GoalGroups : Sheet()
+    object GoalFilter : Sheet()
+    object GoalSort : Sheet()
     class ModUser(val id: String) : Sheet()
     object Appeal : Sheet()
     class Report(val postId: String) : Sheet()
@@ -157,6 +159,9 @@ class AppState(val app: PepsApp) : Hooks {
     var touch = Offset(540f, 1100f)
     var goalFilter by mutableStateOf("all")
     var groupFilter by mutableStateOf("all")
+    /** Type et tri de l'onglet Objectifs (choisis dans les fenêtres Filtrer et Trier). */
+    var goalType by mutableStateOf("all")
+    var goalSort by mutableStateOf("fav")
     /** Message prérempli pour la prochaine conversation ouverte (bravo pour une série…). */
     var chatDraft: String? = null
     var feedTab by mutableStateOf("friends")

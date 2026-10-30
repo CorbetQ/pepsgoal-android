@@ -17,6 +17,7 @@ internal val ICON_PATHS: Map<String, List<String>> = mapOf(
     "chevronright" to listOf("M9 18l6-6-6-6"),
     "undo" to listOf("M9 14L4 9l5-5", "M4 9h10.5a5.5 5.5 0 0 1 0 11H11"),
     "more" to listOf("M5 12h.01M12 12h.01M19 12h.01"),
+    "sort" to listOf("M7 4v16M3.5 16.5L7 20l3.5-3.5", "M17 20V4M13.5 7.5L17 4l3.5 3.5"),
     "filter" to listOf("M4 5h16l-6 7.5V19l-4 2v-8.5z"),
     "check" to listOf("M5 12.5l4.5 4.5L19 7.5"),
     "clock" to listOf("M3.0,12.0a9.0,9.0 0 1,0 18.0,0a9.0,9.0 0 1,0 -18.0,0", "M12 7v5l3 2"),
