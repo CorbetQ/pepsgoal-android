@@ -46,7 +46,7 @@ fun AiPromoCard(ui: AppState) {
             Column(Modifier.weight(1f)) { Text("Nouveau : ton coach IA", fontWeight = FontWeight.ExtraBold); Muted("100 % local, sur ton téléphone : conseils, recommandations et objectifs en une phrase.", small = true) }
         }
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PButton("Découvrir", { ui.push(Screen.Settings("ai")) }, icon = "sparkle", kind = "primary", small = true)
+            PButton("Découvrir", { ui.push(Screen.Settings("ai")) }, icon = "sparkle", color = p.type("program").c, small = true)
             PButton("Plus tard", { pr.aiPromoHidden = true; ui.themeTick++ }, kind = "ghost", small = true)
         }
     }

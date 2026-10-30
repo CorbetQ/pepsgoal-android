@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -31,10 +33,11 @@ fun MoodPicker(value: Int, onPick: (Int) -> Unit) {
         Journal.MOODS.forEachIndexed { i, (l, e) ->
             val on = value == i + 1
             val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Column(Modifier.bounce(inter, .85f).clip(smoothShape(16.dp)).background(if (on) p.flame.copy(alpha = .18f) else Color.Transparent)
-                .springClick(inter, label = l) { onPick(i + 1) }.padding(horizontal = 6.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            val press = rememberPress(inter)
+            Column(Modifier.chunk(if (on) p.selTint(p.flame) else p.surface, if (on) p.focusEdge else p.edge, 17.dp, 3.dp, if (on) 3.dp else 2.dp, press).clip(RoundedCornerShape(17.dp))
+                .springClick(inter, label = l) { onPick(i + 1) }.semantics { selected = on }.padding(horizontal = 6.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Emoji(e, if (on) 40.dp else 32.dp)
-                Text(l, fontSize = 11.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Medium, color = if (on) p.ink else p.ink2)
+                Text(l, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (on) p.ink else p.ink2)
             }
         }
     }
@@ -48,7 +51,7 @@ fun MoodCard(ui: AppState) {
     var note by remember(e) { mutableStateOf(e?.text ?: "") }
     var open by remember { mutableStateOf(false) }
     Glass {
-        CardHead("Ton humeur du jour", emoji = "😊") { IconBtn("book", "Ouvrir le journal", { ui.push(Screen.Journal) }, plain = true, size = 36.dp) }
+        CardHead("Ton humeur du jour", emoji = "😊") { IconBtn("book", "Ouvrir le journal", { ui.push(Screen.Journal) }, plain = true) }
         MoodPicker(e?.mood ?: 0) { m -> Journal.put(ctx, t, m, note); open = true; if (e == null) ui.toast("Humeur notée.", "check") }
         // Étiquettes : ce qui colore la journée (reprises dans les corrélations de Stats)
         if (e != null) FlowRowCompat(Modifier.padding(top = 8.dp), gap = 6.dp) {
@@ -58,7 +61,7 @@ fun MoodCard(ui: AppState) {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(note, { note = it }, "Un mot sur ta journée (facultatif)", Modifier.weight(1f), max = 1000, singleLine = false)
-                IconBtn("check", "Enregistrer la note", { Journal.put(ctx, t, e?.mood ?: 3, note); open = false; ui.toast("Journal mis à jour.", "book") }, size = 44.dp)
+                IconBtn("check", "Enregistrer la note", { Journal.put(ctx, t, e?.mood ?: 3, note); open = false; ui.toast("Journal mis à jour.", "book") }, primary = true)
             }
         }
     }
@@ -132,17 +135,17 @@ private fun MoodCalendar(all: List<fr.pepsgoal.app.data.JournalEntry>) {
                     if (i in 1..days) {
                         val k = ymd(m0.withDayOfMonth(i)); val e = byDay[k]
                         val col = e?.let { androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, (it.mood - 1) / 4f) }
-                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)).background(col ?: p.ink.copy(alpha = .04f))
-                            .then(if (k == today()) Modifier.border(2.dp, p.ink, RoundedCornerShape(10.dp)) else Modifier), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp)).background(col?.let { vivid(it) } ?: p.surface2)
+                            .then(if (k == today()) Modifier.border(3.dp, p.focusEdge, RoundedCornerShape(6.dp)) else Modifier), contentAlignment = Alignment.Center) {
                             if (e != null) Text(Journal.MOODS.getOrNull(e.mood - 1)?.second ?: "", fontSize = 14.sp)
-                            else Text("$i", fontSize = 11.sp, color = p.ink3)
+                            else Text("$i", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = p.ink3)
                         }
                     }
                 }
             }
         }
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Journal.MOODS.forEachIndexed { i, (l, _) -> Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, i / 4f))) }
+            Journal.MOODS.forEachIndexed { i, (l, _) -> Box(Modifier.size(12.dp).background(vivid(androidx.compose.ui.graphics.lerp(p.type("deadline").c, p.type("routine").c, i / 4f)), RoundedCornerShape(3.dp))) }
             Muted("de « Difficile » à « Super »", small = true)
         }
     }

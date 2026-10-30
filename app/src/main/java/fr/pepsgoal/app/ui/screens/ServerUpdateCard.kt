@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +53,7 @@ fun ServerUpdateCard(ui: AppState) {
         Spacer(Modifier.height(12.dp))
         when (phase) {
             "connecting" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CircularProgressIndicator(Modifier.size(18.dp), color = p.flame, strokeWidth = 2.dp)
+                PSpinner(label = "Connexion…")
                 Muted("Connexion SSH à root@${U.host(ctx)}…", small = true)
             }
             "hostkey" -> U.hostKey?.let { k -> HostKeyBox(k.first, k.second, onTrust = { U.trust(ctx) }, onCancel = { U.cancelTrust() }) }
@@ -68,7 +67,7 @@ fun ServerUpdateCard(ui: AppState) {
                 if (adv) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Field(host, { host = it.trim() }, "Serveur SSH", Modifier.weight(1f), max = 120, keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri))
                     Field(port, { v -> port = v.filter { it.isDigit() }.take(5) }, "Port", Modifier.width(96.dp), keyboard = KeyboardOptions(keyboardType = KeyboardType.Number))
-                } else Text("Connexion : root@$host:$port · Modifier", Modifier.clip(RoundedCornerShape(8.dp)).clickable { adv = true }.padding(vertical = 4.dp), fontSize = 13.sp, color = p.ink2, fontWeight = FontWeight.Bold)
+                } else PButton("Connexion : root@$host:$port · Modifier", { adv = true }, kind = "ghost", small = true)
                 Err(U.error)
                 if (U.hostKey?.third == true) PButton("Oublier la clé enregistrée", { U.forget(ctx, host, port.toIntOrNull() ?: 22) }, icon = "trash", kind = "ghost", small = true)
                 PButton("Mettre à jour le serveur", {
@@ -91,8 +90,8 @@ private fun UpdateProgress(pr: fr.pepsgoal.core.UpdateLog.Progress, running: Boo
         }
         Bar(maxOf(2, pr.pct).toDouble(), height = 10.dp, color = if (pr.done && !pr.ok) p.danger else null)
         if (pr.done) Text(if (pr.ok) "Mise à jour terminée." else "Échec (code ${pr.exit}) : voir le journal ci-dessous.", fontSize = 14.sp, color = if (pr.ok) p.ok else p.danger, fontWeight = FontWeight.Bold)
-        if (pr.lines.isNotEmpty()) Box(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .06f)).padding(10.dp)) {
-            Text(pr.lines.takeLast(10).joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = p.ink2, lineHeight = 15.sp)
+        if (pr.lines.isNotEmpty()) Box(Modifier.fillMaxWidth().background(p.surface2, RoundedCornerShape(17.dp)).padding(10.dp)) {
+            Text(pr.lines.takeLast(10).joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = p.ink2, lineHeight = 16.sp)
         }
         if (running) Muted("Tu peux quitter cet écran : la mise à jour continue sur le serveur.", small = true)
     }
@@ -103,14 +102,14 @@ private fun UpdateProgress(pr: fr.pepsgoal.core.UpdateLog.Progress, running: Boo
 private fun HostKeyBox(type: String, fp: String, onTrust: () -> Unit, onCancel: () -> Unit) {
     val p = LocalPal.current
     val file = when { "ed25519" in type -> "ed25519"; "ecdsa" in type -> "ecdsa"; else -> "rsa" }
-    Column(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(p.flame.copy(alpha = .1f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().chunk(p.selTint(p.flame), p.edge, 22.dp, 4.dp, 2.dp).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Première connexion à ce serveur", fontWeight = FontWeight.ExtraBold)
         Muted("Vérifie que l’empreinte ci-dessous est celle de ton serveur. Sur le VPS : ssh-keygen -lf /etc/ssh/ssh_host_${file}_key.pub", small = true)
         Text(fp, fontFamily = FontFamily.Monospace, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         Muted(type, small = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PButton("Annuler", onCancel, Modifier.weight(1f), kind = "ghost", small = true)
-            PButton("C’est bien elle", onTrust, Modifier.weight(1f), icon = "check", kind = "primary", small = true)
+            PButton("C’est bien elle", onTrust, Modifier.weight(1f), icon = "check", color = p.type("routine").c, small = true)
         }
     }
 }

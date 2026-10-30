@@ -22,6 +22,7 @@ import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.EMBER
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import java.time.LocalDate
@@ -79,19 +80,19 @@ fun StatsScreen(ui: AppState) {
                 val max = (perDay.values.maxOrNull() ?: 1).coerceAtLeast(1)
                 // 371 cases dessinées d'un seul Canvas (et non 371 boîtes découpées, chacune avec son calque)
                 val cells = remember(perDay, today) { val start = weekStart(today).minusWeeks(52); IntArray(53 * 7) { i -> val day = start.plusDays(i.toLong()); if (day > today) -1 else perDay[ymd(day)] ?: 0 } }
-                val empty = p.ink.copy(alpha = .07f); val hot = p.flame
+                // Cinq niveaux pleins de chaleur (heat0..4), sans transparence
                 Row(Modifier.horizontalScroll(rememberScrollState(Int.MAX_VALUE))) {
                     Canvas(Modifier.size(width = 13.dp * 53 + 3.dp * 52, height = 13.dp * 7 + 3.dp * 6)) {
                         val c = 13.dp.toPx(); val g = 3.dp.toPx(); val r = CornerRadius(3.dp.toPx())
                         for (i in cells.indices) {
                             val n = cells[i]; if (n < 0) continue
-                            drawRoundRect(if (n == 0) empty else hot.copy(alpha = .25f + .75f * n / max), Offset((i / 7) * (c + g), (i % 7) * (c + g)), Size(c, c), r)
+                            drawRoundRect(p.heat(if (n == 0) 0 else (1 + 3 * n / max).coerceIn(1, 4)), Offset((i / 7) * (c + g), (i % 7) * (c + g)), Size(c, c), r)
                         }
                     }
                 }
                 Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Muted("Moins", small = true)
-                    listOf(.07f, .3f, .55f, .8f, 1f).forEachIndexed { i, a -> Box(Modifier.size(11.dp).clip(RoundedCornerShape(3.dp)).background(if (i == 0) p.ink.copy(alpha = a) else p.flame.copy(alpha = a))) }
+                    (0..4).forEach { i -> Box(Modifier.size(12.dp).background(p.heat(i), RoundedCornerShape(3.dp))) }
                     Muted("Plus", small = true)
                 }
             }
@@ -116,7 +117,7 @@ fun StatsScreen(ui: AppState) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     rows.forEach { (g, done, planned) ->
                         val pct = if (planned > 0) (done.toDouble() / planned).coerceAtMost(1.0) else 0.0
-                        Row(Modifier.clip(RoundedCornerShape(12.dp)).springClick(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { ui.open(Sheet.Goal(g.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.clip(RoundedCornerShape(17.dp)).springClick(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { ui.open(Sheet.Goal(g.id)) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             GoalIcon(g, 34.dp)
                             Column(Modifier.weight(1f)) {
                                 Row { Text(g.title, Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1); Text(if (planned > 0) "${Math.round(pct * 100)} %" else "$done", fontWeight = FontWeight.ExtraBold) }
@@ -142,10 +143,10 @@ private fun Bars(values: List<Int>, labels: List<String>, hi: Int, height: Int =
             val n = values.size; val gap = size.width / n; val bw = gap * .62f
             values.forEachIndexed { i, v ->
                 val h = (size.height * v / max).coerceAtLeast(3f)
-                drawRoundRect(if (i == hi) p.flame else p.ink.copy(alpha = .18f), Offset(i * gap + (gap - bw) / 2, size.height - h), Size(bw, h), CornerRadius(bw / 3))
+                drawRoundRect(if (i == hi) EMBER else p.surface2, Offset(i * gap + (gap - bw) / 2, size.height - h), Size(bw, h), CornerRadius(bw / 3))
             }
         }
-        Row(Modifier.fillMaxWidth()) { labels.forEach { Text(it, Modifier.weight(1f), fontSize = 10.sp, color = p.ink3, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1) } }
+        Row(Modifier.fillMaxWidth()) { labels.forEach { Text(it, Modifier.weight(1f), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = p.ink3, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1) } }
     }
 }
 
@@ -189,7 +190,7 @@ private fun HealthStatsCard(ui: AppState) {
                         val gap = size.width / 7; val bw = gap * .6f
                         vals.forEachIndexed { i, v ->
                             val h = if (v == null || v <= 0) 2f else (size.height * ((v - lo) / (hi - lo)).toFloat()).coerceIn(3f, size.height)
-                            drawRoundRect(if (i == vals.lastIndex) p.flame else p.ink.copy(alpha = .22f), Offset(i * gap + (gap - bw) / 2, size.height - h), Size(bw, h), CornerRadius(bw / 3))
+                            drawRoundRect(if (i == vals.lastIndex) EMBER else p.surface2, Offset(i * gap + (gap - bw) / 2, size.height - h), Size(bw, h), CornerRadius(bw / 3))
                         }
                     }
                 }
@@ -244,9 +245,9 @@ private fun InsightsCard(ui: AppState) {
 
 /** Couleur d'un jour selon sa réussite : du rouge doux (rien) au vert (tout), gris s'il n'y avait rien de prévu. */
 private fun pixelColor(r: Double?, p: fr.pepsgoal.app.ui.theme.Pal): androidx.compose.ui.graphics.Color = when {
-    r == null -> p.ink.copy(alpha = .06f)
-    r <= 0.0 -> p.danger.copy(alpha = .45f)
-    r < .5 -> androidx.compose.ui.graphics.lerp(p.danger, p.flame2, (r * 2).toFloat()).copy(alpha = .8f)
+    r == null -> p.surface2
+    r <= 0.0 -> androidx.compose.ui.graphics.lerp(p.surface, p.danger, .5f)
+    r < .5 -> androidx.compose.ui.graphics.lerp(androidx.compose.ui.graphics.lerp(p.surface, p.danger, .5f), p.flame2, (r * 2).toFloat())
     else -> androidx.compose.ui.graphics.lerp(p.flame2, p.ok, ((r - .5) * 2).toFloat())
 }
 
@@ -278,7 +279,7 @@ private fun YearPixels(ui: AppState) {
                 val len = LocalDate.of(year, m, 1).lengthOfMonth()
                 for (d in 1..len) {
                     val k = ymd(LocalDate.of(year, m, d))
-                    val c = if (k > td) p.ink.copy(alpha = .03f) else pixelColor(withToday[k], p)
+                    val c = if (k > td) p.surface else pixelColor(withToday[k], p)
                     drawRoundRect(c, Offset((m - 1) * cw + gap / 2, (d - 1) * ch + gap / 2), Size(cw - gap, ch - gap), CornerRadius(3.dp.toPx()))
                     if (k == td) drawRoundRect(p.ink, Offset((m - 1) * cw + gap / 2, (d - 1) * ch + gap / 2), Size(cw - gap, ch - gap), CornerRadius(3.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
                 }
@@ -296,14 +297,14 @@ private fun YearPixels(ui: AppState) {
 private fun yearBitmap(year: Int, rates: Map<String, Double>, p: fr.pepsgoal.app.ui.theme.Pal): android.graphics.Bitmap {
     val w = 1080; val h = 1920; val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
     val c = android.graphics.Canvas(bmp)
-    c.drawPaint(android.graphics.Paint().apply { shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), 0xFF141638.toInt(), 0xFF07081A.toInt(), android.graphics.Shader.TileMode.CLAMP) })
+    c.drawPaint(android.graphics.Paint().apply { color = 0xFF170F1C.toInt() })
     val tp = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; textSize = 64f; isFakeBoldText = true }
     c.drawText(tr("Mon année PepsGoal") + " $year", 80f, 170f, tp)
-    tp.textSize = 34f; tp.isFakeBoldText = false; tp.color = 0xBBFFFFFF.toInt()
+    tp.textSize = 34f; tp.isFakeBoldText = false; tp.color = 0xFFD9C4CF.toInt()
     val done = rates.values.count { it >= 1.0 }
     c.drawText(tr("Journées parfaites") + " : $done", 80f, 230f, tp)
     val left = 110f; val top = 300f; val cw = (w - left - 60f) / 12f; val ch = (h - top - 200f) / 31f
-    val dark = p.copy(ink = androidx.compose.ui.graphics.Color.White)
+    val dark = p.copy(ink = fr.pepsgoal.app.ui.theme.CREAM, surface = androidx.compose.ui.graphics.Color(0xFF241A2B), surface2 = androidx.compose.ui.graphics.Color(0xFF33263A))
     val months = listOf("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
     tp.textSize = 30f; tp.textAlign = android.graphics.Paint.Align.CENTER
     for (m in 1..12) {
@@ -311,7 +312,7 @@ private fun yearBitmap(year: Int, rates: Map<String, Double>, p: fr.pepsgoal.app
         val len = LocalDate.of(year, m, 1).lengthOfMonth()
         for (d in 1..len) {
             val k = ymd(LocalDate.of(year, m, d))
-            val col = if (k > today()) dark.ink.copy(alpha = .05f) else pixelColor(rates[k], dark)
+            val col = if (k > today()) dark.surface else pixelColor(rates[k], dark)
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = col.toArgb() }
             c.drawRoundRect(left + (m - 1) * cw + 4, top + (d - 1) * ch + 4, left + m * cw - 4, top + d * ch - 4, 8f, 8f, paint)
         }

@@ -19,6 +19,9 @@ import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.PLUM
+import fr.pepsgoal.app.ui.theme.step
+import androidx.compose.ui.graphics.lerp
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.fmtNum
 import kotlinx.coroutines.delay
@@ -71,29 +74,32 @@ fun IntervalsFs(ui: AppState, goalId: String) {
         }
         finish()
     }
-    val col = when (phase) { "work" -> p.flame; "rest" -> p.type("routine").c; "done" -> p.ok; else -> p.type("period").c }
+    // Phase courante en aplat néon (effort = duel, repos = glace), texte prune
+    val col = vivid(when (phase) { "work" -> p.type("duel").c; "rest" -> p.type("period").c; "done" -> p.type("routine").c; else -> p.type("challenge").c })
     Box(Modifier.fillMaxSize()) {
-        PageBackdrop(col, p.pink)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Intervalles", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
-                    g?.let { Muted("${it.icon} ${it.title}", small = true) }
+                    TitlePlaque("Intervalles")
+                    g?.let { MiniPlaque(it.title, Modifier.padding(top = 6.dp), emoji = it.icon) }
                 }
-                IconBtn("x", "Fermer", { running = false; ui.closeFs() }, size = 44.dp)
+                IconBtn("x", "Fermer", { running = false; ui.closeFs() })
             }
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 val frac = if (running) (left.toFloat() / span).coerceIn(0f, 1f) else 1f
-                Canvas(Modifier.size(270.dp)) {
-                    val sw = 20.dp.toPx(); val r = Size(size.width - sw, size.height - sw)
-                    drawArc(col.copy(alpha = .15f), 0f, 360f, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw))
-                    drawArc(Brush.sweepGradient(listOf(col, p.pink, col)), -90f, 360f * frac, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw, cap = StrokeCap.Round))
+                Canvas(Modifier.size(260.dp)) {
+                    val sw = 18.dp.toPx(); val r = Size(size.width - sw, size.height - sw)
+                    // Marche du disque, disque néon, rail plein et avancée prune
+                    drawCircle(col.step(), size.minDimension / 2, Offset(size.width / 2, size.height / 2 + 5.dp.toPx()))
+                    drawCircle(col, size.minDimension / 2)
+                    drawArc(lerp(col, PLUM, .18f), 0f, 360f, false, Offset(sw / 2 + 6.dp.toPx(), sw / 2 + 6.dp.toPx()), Size(r.width - 12.dp.toPx(), r.height - 12.dp.toPx()), style = Stroke(sw))
+                    drawArc(PLUM, -90f, 360f * frac, false, Offset(sw / 2 + 6.dp.toPx(), sw / 2 + 6.dp.toPx()), Size(r.width - 12.dp.toPx(), r.height - 12.dp.toPx()), style = Stroke(sw, cap = StrokeCap.Round))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(when (phase) { "work" -> "EFFORT"; "rest" -> "REPOS"; "done" -> "TERMINÉ"; else -> if (running) "PRÊT ?" else "SÉANCE" }, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = col, letterSpacing = 2.sp)
-                    Text(if (running) "${(left + 999) / 1000}" else if (phase == "done") "🎉" else "%d:%02d".format(total / 60, total % 60), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp)
-                    if (running && phase != "prep") Muted("Série $round / $rounds", small = true)
-                    if (phase == "done") Muted("${fmtNum(Math.round(total / 6.0) / 10.0)} min ajoutées à l’objectif", small = true)
+                    Text(when (phase) { "work" -> "EFFORT"; "rest" -> "REPOS"; "done" -> "TERMINÉ"; else -> if (running) "PRÊT ?" else "SÉANCE" }, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = PLUM, letterSpacing = 2.sp)
+                    Text(if (running) "${(left + 999) / 1000}" else if (phase == "done") "🎉" else "%d:%02d".format(total / 60, total % 60), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 60.sp, color = PLUM)
+                    if (running && phase != "prep") Text("Série $round / $rounds", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = PLUM)
+                    if (phase == "done") Text("${fmtNum(Math.round(total / 6.0) / 10.0)} min ajoutées à l’objectif", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = PLUM)
                 }
             }
             if (!running) {
@@ -107,8 +113,8 @@ fun IntervalsFs(ui: AppState, goalId: String) {
                 }
                 PButton(if (phase == "done") "Recommencer" else "Démarrer", { phase = "prep"; paused = false; running = true }, Modifier.fillMaxWidth(), icon = "play", kind = "primary")
             } else Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PButton(if (paused) "Reprendre" else "Pause", { paused = !paused }, icon = if (paused) "play" else "pause")
-                PButton("Arrêter", { running = false; phase = "prep" }, icon = "x", kind = "ghost")
+                PButton(if (paused) "Reprendre" else "Pause", { paused = !paused }, icon = if (paused) "play" else "pause", kind = "primary")
+                PButton("Arrêter", { running = false; phase = "prep" }, icon = "x")
             }
         }
     }

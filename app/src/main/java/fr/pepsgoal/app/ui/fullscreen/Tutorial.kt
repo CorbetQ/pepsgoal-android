@@ -39,6 +39,7 @@ import fr.pepsgoal.app.ui.screens.CheerButton
 import fr.pepsgoal.app.ui.screens.HeroFlame
 import fr.pepsgoal.app.ui.screens.TimeButton
 import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.step
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.User
@@ -46,6 +47,8 @@ import kotlin.math.absoluteValue
 import kotlinx.coroutines.launch
 
 /** Une page du tutoriel : chapitre, titre, explication, couleurs et contenu (illustration ou réglages). */
+private val TUTO_EMOJI = mapOf("star" to "⭐", "plus" to "➕", "check" to "✅", "snow" to "❄️", "bell" to "🔔", "palette" to "🎨", "users" to "👥", "medal" to "🏅", "flameo" to "🔥")
+
 private class Page(val chapter: String, val title: String, val text: String, val icon: String, val c1: String, val c2: String, val body: @Composable () -> Unit)
 
 /**
@@ -64,19 +67,19 @@ fun TutorialFs(ui: AppState, start: Int) {
     val c1 by animateColorAsState(p.type(pages[i].c1).c, tween(500), label = "c1")
     val c2 by animateColorAsState(p.type(pages[i].c2).c, tween(500), label = "c2")
     Box(Modifier.fillMaxSize()) {
-        PageBackdrop(c1, c2)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             // Progression et « Passer »
             Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 10.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     pages.indices.forEach { k ->
                         val f by animateFloatAsState(if (k < i) 1f else if (k == i) 1f else 0f, tween(400), label = "seg")
-                        Box(Modifier.weight(if (k == i) 2.2f else 1f).height(5.dp).clip(CircleShape).background(p.ink.copy(alpha = .12f))) {
-                            Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(if (k == i) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(c1, c2)) else androidx.compose.ui.graphics.SolidColor(p.ink.copy(alpha = .45f))))
+                        // Pastilles de page pleines : rail surface cerclé, page courante en néon, pages vues en prune
+                        Box(Modifier.weight(if (k == i) 2.2f else 1f).height(10.dp).clip(CircleShape).background(p.control).padding(2.dp).clip(CircleShape).background(p.surface)) {
+                            Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(if (k == i) vivid(c1) else p.ink))
                         }
                     }
                 }
-                if (!last) PButton("Passer", { scope.launch { pager.animateScrollToPage(pages.lastIndex) } }, kind = "ghost", small = true)
+                if (!last) PButton("Passer", { scope.launch { pager.animateScrollToPage(pages.lastIndex) } }, small = true)
             }
             HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { k ->
                 val pg2 = pages[k]
@@ -84,19 +87,21 @@ fun TutorialFs(ui: AppState, start: Int) {
                 val off = ((pager.currentPage - k) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
                 Column(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - off * .6f; val s = 1f - off * .08f; scaleX = s; scaleY = s }
                     .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        IconTile(pg2.icon, p.type(pg2.c1).c, p.type(pg2.c2).c, 48.dp, 16.dp)
-                        Eyebrow(pg2.chapter)
+                    // Médaillon à marche (emoji 56 dans un disque néon de 96), chapitre et titre sur plaques, texte en carte
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        val tc = vivid(p.type(pg2.c1).c)
+                        Box(Modifier.size(96.dp, 101.dp).chunk(tc, tc.step(), 48.dp, 5.dp, 0.dp), contentAlignment = Alignment.Center) { Emoji(TUTO_EMOJI[pg2.icon] ?: "✨", 56.dp) }
+                        MiniPlaque(pg2.chapter)
                     }
-                    Text(pg2.title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 27.sp, lineHeight = 32.sp)
-                    Text(rich(pg2.text), color = p.ink2, fontSize = 16.sp, lineHeight = 23.sp)
+                    TitlePlaque(pg2.title, size = 28)
+                    Glass(Modifier.fillMaxWidth()) { Text(rich(pg2.text), color = p.ink2, fontSize = 15.sp, fontWeight = FontWeight.Bold, lineHeight = 22.sp) }
                     pg2.body()
                     Spacer(Modifier.height(8.dp))
                 }
             }
             // Navigation
             Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (i > 0) IconBtn("chevronleft", "Page précédente", { scope.launch { pager.animateScrollToPage(i - 1) } }, size = 52.dp)
+                if (i > 0) IconBtn("chevronleft", "Page précédente", { scope.launch { pager.animateScrollToPage(i - 1) } })
                 if (last) {
                     val bonus = !u.tutoBonus
                     PButton(if (bonus) "Récupérer mes $TUTO_GELS gels et commencer" else "C’est parti", { finish(ui, u) }, Modifier.weight(1f), icon = if (bonus) "snow" else "check", kind = "primary")
@@ -162,7 +167,7 @@ private fun tutorialPages(ui: AppState, u: User): List<Page> {
             Glass {
                 SetRow("Notifications", if (granted) "Activées : tu seras prévenu au bon moment." else "Indispensables pour les rappels et les messages.") {
                     if (granted) Chip("Activées", "check", p.ok)
-                    else PButton("Autoriser", { if (Build.VERSION.SDK_INT >= 33) perm.launch(Manifest.permission.POST_NOTIFICATIONS) else fr.pepsgoal.app.sys.Notifier.openSettings(ctx) }, icon = "bell", kind = "primary", small = true)
+                    else PButton("Autoriser", { if (Build.VERSION.SDK_INT >= 33) perm.launch(Manifest.permission.POST_NOTIFICATIONS) else fr.pepsgoal.app.sys.Notifier.openSettings(ctx) }, icon = "bell", color = p.type("period").c, small = true)
                 }
                 SetRow("Rappel du matin", "Ce qui t’attend aujourd’hui") {
                     TimeButton(s.morning.time, { s.morning.time = it; save(); Reminders.reschedule(ctx) }, "Rappel du matin")
@@ -177,7 +182,7 @@ private fun tutorialPages(ui: AppState, u: User): List<Page> {
                 }
             }
         },
-        Page("Réglage 2 · Interface", "À ton image", "Choisis le **thème**, les couleurs **Material You** de ton téléphone ou une **couleur d’accent**, et l’opacité du verre givré. Les changements s’appliquent tout de suite : regarde autour de toi !", "palette", "measure", "abstinence") {
+        Page("Réglage 2 · Interface", "À ton image", "Choisis le **thème**, les couleurs **Material You** de ton téléphone ou une **couleur d’accent**, et la présence de ton fond. Les changements s’appliquent tout de suite : regarde autour de toi !", "palette", "measure", "abstinence") {
             Glass {
                 Text("Thème", fontWeight = FontWeight.ExtraBold)
                 FlowRowCompat(Modifier.padding(top = 8.dp, bottom = 12.dp), gap = 6.dp) { THEMES.forEach { (k, l) -> FChip(l, s.theme == k, { s.theme = k; save() }) } }
@@ -187,20 +192,16 @@ private fun tutorialPages(ui: AppState, u: User): List<Page> {
                 }
                 if (!ui.prefs.materialYou) {
                     Text("Couleur d’accent", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp))
-                    FlowRowCompat(Modifier.padding(top = 8.dp, bottom = 8.dp), gap = 8.dp) {
-                        ACCENTS.forEachIndexed { k, a ->
-                            val on = s.accent == k && s.accentCustom == null
-                            Box(Modifier.size(36.dp).clip(CircleShape).background(accentBrush(k)).border(if (on) 3.dp else 1.dp, if (on) p.ink else p.line, CircleShape)
-                                .springClick(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, label = a.name) { s.accent = k; s.accentCustom = null; save() })
-                        }
+                    FlowRowCompat(Modifier.padding(top = 8.dp, bottom = 8.dp), gap = 4.dp) {
+                        ACCENTS.forEachIndexed { k, a -> PSwatch(accentBrush(k), s.accent == k && s.accentCustom == null, a.name, { s.accent = k; s.accentCustom = null; save() }) }
                     }
                 }
-                Text("Verre givré", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 4.dp))
+                Text("Présence du fond", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 4.dp))
                 FlowRowCompat(Modifier.padding(top = 8.dp), gap = 6.dp) {
-                    listOf("low" to "Faible", "mid" to "Moyen", "high" to "Fort").forEach { (k, l) -> FChip(l, ui.prefs.glassOpacity == k, { ui.prefs.glassOpacity = k; ui.themeTick++ }) }
+                    listOf(0 to "Discrète", 1 to "Équilibrée", 2 to "Intense").forEach { (k, l) -> FChip(l, ui.prefs.bgLevel == k, { ui.prefs.bgLevel = k; ui.themeTick++ }) }
                 }
             }
-            Muted("Arrière-plans, icône de profil, accessibilité : tout le reste est dans Profil › Paramètres.", small = true)
+            Hint("Arrière-plans, icône de profil, accessibilité : tout le reste est dans Profil › Paramètres.")
         },
         Page("Réglage 3 · Social", "Avance avec tes amis", "Ajoute des amis depuis l’onglet **Amis**, publie tes victoires dans le **Feed** (pour tes amis ou pour tous), partage des **stories** 24 h et écris-leur : les **messages** sont chiffrés de bout en bout. Pas envie de social ? Désactive-le, tes objectifs restent intacts.", "users", "group", "duel") {
             Glass {
@@ -214,7 +215,7 @@ private fun tutorialPages(ui: AppState, u: User): List<Page> {
                     }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { CheerButton(true, 12) {}; Muted("Une flamme = un encouragement.", Modifier.weight(1f), small = true) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { CheerButton(true, 12) {}; Hint("Une flamme = un encouragement.") }
         },
         Page("Bonus", "Les petits plus", "Chaque semaine, mois et année, ton **récap** t’attend sur l’accueil. Le **minuteur** et les périodes s’affichent en direct dans la barre d’état (Live Updates), et le **widget** te laisse valider depuis l’écran d’accueil. Les **badges** récompensent ta régularité, de Bronze à Diamant.", "medal", "monthly", "challenge") {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) { (0..2).forEach { t -> fr.pepsgoal.app.ui.screens.Medal(listOf("🔥", "🏆", "⭐")[t], t, false, 76) } }

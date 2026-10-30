@@ -93,7 +93,7 @@ fun ChallengesScreen(ui: AppState) {
                         !c.joined -> PButton("Rejoindre", {
                             if (pg.socialBlocked("de rejoindre un défi")) return@PButton
                             ui.run("Défi rejoint : il est dans tes objectifs du jour.", "trophy") { ui.cloud.joinAsGoal(c); ui.bump(); reload() }
-                        }, icon = "plus", kind = "primary", small = true)
+                        }, icon = "plus", color = p.type("challenge").c, small = true)
                         else -> {
                             g?.let { gg -> PButton("Mon objectif", { ui.open(fr.pepsgoal.app.Sheet.Goal(gg.id)) }, icon = "target", small = true) }
                             PButton("Quitter", {
@@ -113,7 +113,7 @@ fun ChallengesScreen(ui: AppState) {
                     else if (d.board.isEmpty()) Muted("Personne pour l’instant : sois le premier !", small = true)
                     else d.board.forEach { r ->
                         val meRow = r.userId == u.id
-                        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (meRow) p.flame.copy(alpha = .14f) else Color.Transparent).padding(6.dp),
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(if (meRow) p.selTint(p.flame) else Color.Transparent).heightIn(min = 52.dp).padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(when (r.rank) { 1 -> "🥇"; 2 -> "🥈"; 3 -> "🥉"; else -> "${r.rank}" }, Modifier.width(28.dp), fontFamily = Unbounded, fontWeight = FontWeight.Bold)
                             val av = remember(r.userId) { try { JSON.decodeFromJsonElement(Avatar.serializer(), r.avatar) } catch (e: Exception) { null } }
