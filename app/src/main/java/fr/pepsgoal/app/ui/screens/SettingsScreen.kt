@@ -98,13 +98,25 @@ val SET_SECTION_EMOJI = mapOf("Personnalisation" to "🎨", "Au quotidien" to "�
 val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
     "weather" to ("objective" to "period"), "places" to ("measure" to "routine"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "home" to ("routine" to "objective"), "a11y" to ("duration" to "objective"), "perf" to ("timed" to "challenge"), "help" to ("monthly" to "challenge"))
 
-/** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
+/** Emoji de la tuile du héros, d'après le pictogramme de la page. */
+private val PAGE_EMOJI = mapOf("gear" to "⚙️", "trend" to "📈", "star" to "🛍️", "trophy" to "🏆", "image" to "🖼️", "book" to "📓", "cal" to "📅", "search" to "🔍",
+    "comment" to "💬", "clock" to "🕘", "flameo" to "🐣", "palette" to "🎨", "bell" to "🔔", "user" to "🔐", "lock" to "🔒", "cloud" to "☁️", "eye" to "👁️",
+    "shield" to "🛡️", "sparkle" to "✨", "heart" to "❤️", "pin" to "📍", "gauge" to "⚡", "list" to "🗂️", "users" to "👥", "sun" to "🌤️", "hand" to "♿",
+    "wand" to "🪄", "server" to "🖥️", "archive" to "📦", "mic" to "🎙️", "folder" to "🗂️", "github" to "💡", "globe" to "🌍", "medal" to "🏅", "target" to "🎯", "gift" to "🎁")
+
+/**
+ * Page poussée au-dessus des onglets, sans fond propre : la scène du fond reste dessous. Héros de page en tête de liste
+ * (retour, tuile emoji, titre en plaque ; 176 dp, [heroH] 150 pour les réglages) qui part avec le contenu, puis barre
+ * compacte opaque qui apparaît quand il est passé (mode une main : barre compacte en bas, sous le pouce).
+ */
 @Composable
 fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, right: @Composable RowScope.() -> Unit = {},
                 icon: String? = null, color: Color? = null, color2: Color? = null, bottom: (@Composable () -> Unit)? = null,
-                state: androidx.compose.foundation.lazy.LazyListState? = null, content: LazyListScope.() -> Unit) {
+                state: androidx.compose.foundation.lazy.LazyListState? = null, emoji: String? = null, heroH: androidx.compose.ui.unit.Dp = 176.dp,
+                content: LazyListScope.() -> Unit) {
     val p = LocalPal.current
-    val c1 = color ?: p.flame; val c2 = color2 ?: p.pink
+    val tile = color2 ?: color ?: p.flame
+    val em = emoji ?: icon?.let { PAGE_EMOJI[it] }
     // Retour prédictif : la page suit le geste de retour du système (elle rétrécit et glisse vers le bord), avec des
     // vibrations progressives ; geste annulé, elle reprend sa place en ressort
     var backK by remember { mutableFloatStateOf(0f) }; var backEdge by remember { mutableIntStateOf(0) }
@@ -133,50 +145,28 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
             shape = RoundedCornerShape(32.dp * k); clip = true
         }
     }) { CompositionLocalProvider(LocalHaze provides null) {
-        PageBackdrop(c1, c2)
-        // Mode une main : le bouton retour et les actions passent en bas de l'écran, sous le pouce
+        // Mode une main : la barre compacte (retour et actions) passe en bas de l'écran, sous le pouce
         val low = p.oneHand
         val list = state ?: androidx.compose.foundation.lazy.rememberLazyListState()
-        // En-tête qui se rétracte : passé le grand titre, il s'affiche en petit dans une barre givrée
-        // Le petit titre n'apparaît qu'une fois le grand presque effacé (pas de doublon à l'écran)
-        val dens = androidx.compose.ui.platform.LocalDensity.current; val fadePx = with(dens) { 44.dp.toPx() }
-        val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > fadePx * .85f } }
-        val k by androidx.compose.animation.core.animateFloatAsState(if (collapsed && !low) 1f else 0f, if (p.motion) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(220), label = "head")
-        val head = @Composable { mod: Modifier ->
-            Box(mod.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    IconBtn("chevronleft", "Retour : $back", onBack)
-                    Text(title, Modifier.weight(1f).padding(horizontal = 6.dp).graphicsLayer { alpha = k; translationY = (1f - k) * 10.dp.toPx() }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    right()
-                }
-            }
-        }
+        TrackScroll(list) { Fx.pageScroll = it }
+        val dens = androidx.compose.ui.platform.LocalDensity.current; val heroPx = with(dens) { (heroH - 56.dp).toPx() }
+        val passed by remember(heroPx) { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > heroPx } }
+        val k by androidx.compose.animation.core.animateFloatAsState(if (passed || low) 1f else 0f, if (p.motion) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(180), label = "head")
+        val bar = @Composable { mod: Modifier -> CompactBar(mod, shown = { k }) { CompactTitle(title, tile, back, onBack, em, icon); right() } }
         Column(Modifier.fillMaxSize().imePadding()) {
-            if (!low) head(Modifier.drawBehind {
-                // Barre opaque qui apparaît avec le titre compact (aucun verre ni reflet)
-                drawRect(p.bg.copy(alpha = k))
-            }.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
             // Grand écran : colonne de lecture centrée, à largeur confortable
-            LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp), list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                item("title") {
-                    // Le grand titre s'efface et rétrécit en défilant (lu dans la phase de dessin : pas de recomposition)
-                    Row(Modifier.enter().graphicsLayer {
-                        val off = if (list.firstVisibleItemIndex == 0) list.firstVisibleItemScrollOffset.toFloat() else 200f
-                        val f = (off / 44.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
-                    }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        if (icon != null) EmojiTileBox(c2, 52.dp) { Pi(icon, size = 26.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
-                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 34.sp)
-                    }
-                }
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp), list,
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp, bottom = if (low) 16.dp else 40.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item("title") { Box(Modifier.enter()) { PageHero(title, tile, back, onBack, em, icon, heroH, right) } }
                 content()
                 if (bottom == null && !low) item("nav") { Spacer(Modifier.navigationBarsPadding()) }
             }
             // Zone fixe en bas de page (saisie d'un commentaire…)
             if (bottom != null) Box(Modifier.fillMaxWidth().then(if (low) Modifier else Modifier.navigationBarsPadding())) { bottom() }
-            if (low) head(Modifier.navigationBarsPadding())
+            if (low) bar(Modifier.navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp))
         }
+        if (!low && k > .01f) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().widthIn(max = 776.dp).statusBarsPadding().padding(horizontal = 8.dp, vertical = 2.dp)) { bar(Modifier) }
     } }
 }
 
@@ -190,7 +180,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
         var q by rememberSaveable { mutableStateOf("") }
         val n = VoiceCmd.norm(q.trim())
         val cats = if (n.length < 2) SET_CATS else SET_CATS.filter { c -> listOf(c[1], c[2], SET_WORDS[c[0]] ?: "", setSummary(ui, c[0]) ?: "").any { VoiceCmd.norm(it).contains(n) } }
-        ScreenFrame(ui, "Paramètres", "Profil", { ui.back() }, icon = "gear") {
+        ScreenFrame(ui, "Paramètres", "Profil", { ui.back() }, icon = "gear", heroH = 150.dp) {
             item("search") { Field(q, { q = it }, "", placeholder = "Rechercher un réglage…", max = 40, icon = "search") }
             if (cats.isEmpty()) item("none") { Glass { Empty("Aucun réglage trouvé", "Essaie « thème », « rappel », « vibrations »…", icon = "search") } }
             else {
@@ -224,7 +214,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
         return
     }
     val (k1, k2) = SET_COLORS[c[0]] ?: ("routine" to "duration")
-    ScreenFrame(ui, c[1], "Paramètres", { ui.screens[ui.screens.lastIndex] = Screen.Settings() }, icon = c[3], color = p.type(k1).c, color2 = p.type(k2).c) {
+    ScreenFrame(ui, c[1], "Paramètres", { ui.screens[ui.screens.lastIndex] = Screen.Settings() }, icon = c[3], color = p.type(k1).c, color2 = p.type(k2).c, heroH = 150.dp) {
         when (c[0]) {
             "appearance" -> item("b") { AppearancePage(ui, u) }
             "reminders" -> item("b") { RemindersSettings(ui, u) }

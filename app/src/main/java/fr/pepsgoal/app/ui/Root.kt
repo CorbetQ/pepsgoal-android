@@ -131,16 +131,20 @@ fun PepsRoot(ui: AppState) {
         }
         Box(Modifier.fillMaxSize().then(if (p.mono) Modifier.grayscale() else Modifier)
             .pointerInput(Unit) { awaitPointerEventScope { while (true) { val e = awaitPointerEvent(PointerEventPass.Initial); e.changes.firstOrNull()?.let { ui.touch = it.position } } } }) {
-            // Page secondaire ouverte (fond opaque) : une fois la transition finie, l'arrière-plan et l'accueil dessous
-            // sont masqués et leurs horloges s'arrêtent. Sinon chaque image du fond animé forcerait à recalculer tous
-            // les flous de l'accueil, invisible, pendant qu'on fait défiler la page du dessus
-            val covered = ui.screens.isNotEmpty()
-            val settled = remember { mutableStateOf(false) }
-            LaunchedEffect(covered) { if (covered) { kotlinx.coroutines.delay(700); settled.value = true } else settled.value = false }
-            val hidden = covered && settled.value
-            val hideLayer = Modifier.graphicsLayer { alpha = if (hidden) 0f else 1f }
-            // Arrière-plan : fond uni (crème pêche / prune nuit) ; le décor et le fond animé confiné sont dessinés par la coquille
-            Box(Modifier.fillMaxSize().background(p.bg))
+            // Page poussée (sans fond : la scène reste dessous) ou plein écran de fête : les onglets s'effacent en fondu
+            // court, puis sont masqués et leurs horloges s'arrêtent
+            val covered = ui.screens.isNotEmpty() || ui.sceneFs()
+            val shellA by animateFloatAsState(if (covered) 0f else 1f, tween(if (p.motion) 0 else 200), label = "shell")
+            val hidden = shellA <= .001f
+            val hideLayer = Modifier.graphicsLayer { alpha = shellA }
+            // Arrière-plan unique, sous tout le reste (onglets, pages, derrière les feuilles), hors du calque masqué
+            AppBg(ui)
+            // Migration 8.1 (une fois) : fond partout, « Collines braise » au lieu du Blob
+            LaunchedEffect(u?.id) {
+                if (u != null && u.settings.bg == "blob") { u.settings.bg = "pop"; pg.store.commit() }
+                if (ui.prefs.migrate81(Perf.recommended == "saver") && u != null)
+                    ui.toast("Ton fond s’affiche maintenant partout", "image", "Réglages") { ui.push(Screen.Settings("appearance")) }
+            }
             // Flamme de collection choisie (si elle est toujours débloquée par la meilleure série)
             val skinKey = u?.flameSkin ?: "classic"
             // Jour de fête (Halloween, 1er avril) : la flamme change de couleurs pour la journée
@@ -154,7 +158,8 @@ fun PepsRoot(ui: AppState) {
                 val t = fr.pepsgoal.core.today(); val h = java.time.LocalTime.now().hour
                 if (u != null && ui.prefs.briefAuto && ui.prefs.briefDay != t && h in 5..11) { ui.prefs.briefDay = t; kotlinx.coroutines.delay(1200); fr.pepsgoal.app.sys.Speaker.briefing(bctx) }
             }
-            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides null, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses) {
+            CompositionLocalProvider(LocalContentColor provides p.ink, LocalHaze provides null, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses,
+                LocalSceneTint provides rememberSceneTint(ui)) {
                 Box(Modifier.fillMaxSize()) { Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {
                     when {
@@ -267,7 +272,7 @@ private fun Reachable(ui: AppState, content: @Composable () -> Unit) {
         if (reach.value > .01f) Box(Modifier.fillMaxWidth().height(shift * reach.value).clickable(onClickLabel = "Remonter l’écran") { on = false }
             .semantics { contentDescription = "Mode une main : touche pour remonter l’écran" }, contentAlignment = Alignment.Center) {
             Row(Modifier.graphicsLayer { alpha = reach.value }.statusBarsPadding(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pi("up", size = 18.dp, tint = p.ink2); Muted("Touche ici pour remonter", small = true)
+                MiniPlaque("Touche ici pour remonter", emoji = "👆")
             }
         }
     }
@@ -278,36 +283,11 @@ private fun Modifier.grayscale() = this.drawWithContent {
     drawIntoCanvas { c -> c.saveLayer(androidx.compose.ui.geometry.Rect(Offset.Zero, size), paint); drawContent(); c.restore() }
 }
 
-/** Fond visible en haut de l'accueil (réglage « Où voir ton fond »). */
-fun bgTopOn(ui: AppState): Boolean = ui.prefs.bgWhere != "off"
+/** En-tête de l'onglet ouvert, premier élément de sa liste (héros, notes) : fourni par la coquille à [ScreenList]. */
+val LocalTabHeader = compositionLocalOf<(@Composable () -> Unit)?> { null }
 
-/**
- * Fond animé choisi (fonds gratuits, scènes, ciel de la Météo, effets de saison et de météo, fond réactif). Dessiné
- * confiné en haut de l'accueil, ou en plein écran dans les aperçus.
- */
-@Composable
-fun AppBackdrop(ui: AppState) {
-    val ctx = LocalContext.current; val p = LocalPal.current; val pg = ui.pg; val u = pg.me(); val s = u?.settings
-    val wx = Wx.cached(ctx, s?.weather)
-    // Changement d'arrière-plan ou de ciel (jour → crépuscule → nuit, pluie…) : fondu enchaîné
-    val kind = if (s?.theme == "weather") "sky" else s?.bg ?: "blob"
-    val sky = if (s?.theme == "weather") Weather.sky(wx?.data) else null
-    val snow = pg.eggWord() == "Cold" || (ui.prefs.seasonal && fr.pepsgoal.app.sys.Season.now() == "noel"); val stamp = ui.prefs.bgStamp
-    // Fond à la météo réelle : pluie, neige, orage ou brouillard par-dessus le fond choisi (hors thème Météo)
-    val wxCond = if (sky == null && ui.prefs.bgWeather) wx?.data?.current?.let { c -> Weather.wmo(c.code, c.isDay).cond }?.takeIf { it in setOf("rain", "snow", "storm", "fog") } else null
-    val key = listOf(kind, sky?.phase, sky?.cond, sky?.code, snow, stamp, p.dark, s?.fx ?: "", wxCond)
-    val skies = remember { mutableMapOf<List<Any?>, Weather.Sky?>() }
-    skies[key] = sky
-    Crossfade(key, animationSpec = tween(if (p.motion) 0 else 900), label = "backdrop") { k ->
-        Backdrop(k[0] as String, skies[k], k[4] as Boolean, k[5] as Long, k[7] as String, k[8] as String?)
-    }
-    LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
-    // Fond qui réagit à l'avancement du jour (réglage Apparence › Effets et saisons)
-    if (u != null && ui.prefs.bgReactive) {
-        val prog = remember(ui.rev, u.id) { val pl = pg.todayPlan(u.id); if (pl.due.isEmpty()) 0f else pl.due.count { it.done }.toFloat() / pl.due.size }
-        ReactiveBg(prog, prog >= 1f)
-    }
-}
+/** Emoji de la tuile de chaque onglet dans la barre compacte. */
+private val TAB_EMOJI = mapOf("today" to "☀️", "goals" to "🎯", "social" to "👥", "feed" to "👥", "friends" to "👥", "profile" to "🙂", "mod" to "🛡️")
 
 @Composable
 private fun Shell(ui: AppState) {
@@ -317,31 +297,26 @@ private fun Shell(ui: AppState) {
     val navTab = if (ui.tab in SOCIAL_TABS) "social" else ui.tab
     if (nav.none { it.first == navTab }) ui.tab = "today"
     val badges = mapOf("social" to pg.db.friendships.count { it.to == u.id && it.status == "pending" } + Social.unreadMsgs(ui), "mod" to if (pg.isAdmin(u)) Mod.count(ui) else 0)
-    var topH by remember { mutableIntStateOf(0) }; var botH by remember { mutableIntStateOf(0) }
-    // Bouton « + » : se cache en glissant quand on descend dans la page, revient dès qu'on remonte. Le défilement
-    // cumulé sert aussi à la barre du haut (titre réduit, fond plein)
+    var botH by remember { mutableIntStateOf(0) }
+    // Bouton « + » : se cache en glissant quand on descend dans la page, revient dès qu'on remonte
     var fabShown by remember { mutableStateOf(true) }
     LaunchedEffect(ui.tab) { fabShown = true; Fx.scroll = 0f }
     val fabConn = remember { object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
         override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
             if (consumed.y < -6f) fabShown = false else if (consumed.y > 6f || available.y > 0f) fabShown = true
-            Fx.scroll = (Fx.scroll - consumed.y).coerceAtLeast(0f); if (available.y > 0f) Fx.scroll = 0f
             return Offset.Zero
         }
     } }
+    val sb = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(Modifier.fillMaxSize()) {
-        // Décor : deux cercles en aplat derrière l'en-tête, ou le fond animé confiné en haut de l'accueil
-        val scrolled by remember { derivedStateOf { Fx.scroll > 4f } }
-        Box(Modifier.fillMaxWidth().height(360.dp)) {
-            if (ui.tab == "today" && bgTopOn(ui) && !p.contrast) ConfinedBackdrop(frozen = scrolled) { AppBackdrop(ui) }
-            else Box(Modifier.fillMaxSize().decoCircles(p))
-        }
         // Grand écran (tablette, pliable ouvert) : la fiche d'un objectif s'ouvre à côté de la liste, et la colonne
-        // de contenu reste à une largeur confortable
+        // de contenu reste à une largeur confortable ; la scène reste visible autour
         val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 900
         val side = (ui.sheet as? Sheet.Goal)?.takeIf { wide && ui.screens.isEmpty() && ui.fs == null }
-        // Contenu des onglets : il défile sous la barre d'onglets flottante (opaque, à marche)
-        CompositionLocalProvider(LocalBars provides PaddingValues(top = with(d) { topH.toDp() }, bottom = with(d) { botH.toDp() })) {
+        // Contenu des onglets : le héros (scène visible, titre en plaque) est le premier élément de la liste ; tout
+        // défile sous la barre d'onglets opaque
+        CompositionLocalProvider(LocalBars provides PaddingValues(top = sb, bottom = with(d) { botH.toDp() }),
+            LocalTabHeader provides { TabHeader(ui, navTab) }) {
             Box(Modifier.fillMaxSize().padding(end = if (side != null) 452.dp else 0.dp).nestedScroll(fabConn), contentAlignment = Alignment.TopCenter) {
                 Box(Modifier.fillMaxHeight().then(if (wide) Modifier.widthIn(max = 640.dp) else Modifier.fillMaxWidth())) {
                 remember(ui.tab) { Stagger.reset() }
@@ -352,7 +327,7 @@ private fun Shell(ui: AppState) {
                     else (fadeIn(tween(150)) + slideInVertically(Motion.move()) { dy }) togetherWith fadeOut(tween(150))
                 }, label = "tab") { tab ->
                     // Tirer pour actualiser sur l'accueil et Social
-                    if (tab in setOf("today", "social")) PullRefresh(ui, with(d) { topH.toDp() }) {
+                    if (tab in setOf("today", "social")) PullRefresh(ui, sb) {
                         if (tab == "social") SocialScreen(ui) else TodayScreen(ui)
                     } else when (tab) {
                         "goals" -> GoalsScreen(ui)
@@ -365,7 +340,7 @@ private fun Shell(ui: AppState) {
             }
         }
         // Volet latéral de la fiche (grand écran)
-        if (side != null) Box(Modifier.align(Alignment.TopEnd).padding(top = with(d) { topH.toDp() } + 8.dp, bottom = with(d) { botH.toDp() } + 8.dp, end = 12.dp).width(440.dp).fillMaxHeight()
+        if (side != null) Box(Modifier.align(Alignment.TopEnd).padding(top = sb + 8.dp, bottom = with(d) { botH.toDp() } + 8.dp, end = 12.dp).width(440.dp).fillMaxHeight()
             .chunk(p.bg, p.edge, 28.dp, 4.dp, 2.dp).clip(RoundedCornerShape(26.dp))) {
             CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true) {
                 Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -373,17 +348,24 @@ private fun Shell(ui: AppState) {
                 }
             }
         }
-        Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topH = it.height }.drawBehind {
-            // Au défilement, la barre prend un fond plein (aucun verre)
-            val k = (Fx.scroll / (24.dp.toPx())).coerceIn(0f, 1f)
-            if (k > 0f) drawRect(p.bg.copy(alpha = k))
-        }) { TopBar(ui) }
+        // Barre compacte : apparaît (fondu + glissement de 8 dp) quand le héros est passé ; aucune animation de hauteur
+        val heroPx = with(d) { (if (navTab == "today") 150.dp else 120.dp).toPx() - 56.dp.toPx() }
+        val passed by remember(heroPx) { derivedStateOf { Fx.scroll > heroPx } }
+        val k by animateFloatAsState(if (passed && !p.oneHand) 1f else 0f, if (p.motion) snap() else tween(180), label = "compact")
+        if (k > .01f) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().then(if (wide) Modifier.widthIn(max = 640.dp) else Modifier).statusBarsPadding().padding(horizontal = 8.dp, vertical = 2.dp)) {
+            CompactBar(shown = { k }) {
+                CompactTitle(NAV_TITLES[ui.tab] ?: "PepsGoal", p.flame2, null, null, emoji = TAB_EMOJI[ui.tab])
+                TabActions(ui)
+            }
+        }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { botH = it.height }) {
             NavBar(nav, navTab, badges, { ui.nav(it) }, if (p.easy) EASY_NAV else emptyMap(), Modifier.navigationBarsPadding().padding(start = 14.dp, end = 14.dp, bottom = 18.dp))
         }
+        // Bouton + : remonte au-dessus d'un toast (toast de 56 dp + 12)
         val fabMod = Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = with(d) { botH.toDp() } + 18.dp)
-        if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabShown, { ui.open(Sheet.GoalForm()) }, fabMod)
-        else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabShown, { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }, fabMod, icon = "edit")
+        val lift = if (ui.toasts.isNotEmpty()) 68.dp else 0.dp
+        if (ui.tab in setOf("today", "goals")) Fab("Nouvel objectif", fabShown, { ui.open(Sheet.GoalForm()) }, fabMod, lift = lift)
+        else if (ui.tab == "feed" && !pg.isBanned(u)) Fab("Nouvelle publication", fabShown, { if (!pg.socialBlocked("de publier")) ui.open(Sheet.Compose) }, fabMod, icon = "edit", lift = lift)
     }
 }
 
@@ -434,46 +416,39 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
     }) { content() }
 }
 
+/** Boutons ronds de l'onglet (notifications et avatar sur l'accueil, partager et réglages sur le profil…). */
+@Composable
+fun TabActions(ui: AppState) {
+    val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return; val ctx = LocalContext.current
+    val bell = @Composable { RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 20.dp, tint = p.ink) } }
+    val search = @Composable { RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 20.dp, tint = p.ink) } }
+    when (ui.tab) {
+        "today" -> { bell(); AvatarButton(u, remember(ui.rev, u.id) { pg.level(pg.points(u.id)).idx }, { ui.nav("profile") }) }
+        "profile" -> {
+            RoundGlass("Partager mon profil", { shareProfile(ctx, ui, u, pg.level(pg.points(u.id))) }) { Pi("share", size = 20.dp, tint = p.ink) }
+            RoundGlass("Paramètres", { ui.push(Screen.Settings()) }) { Pi("gear", size = 20.dp, tint = p.ink) }
+        }
+        else -> { search(); bell() }
+    }
+}
+
 /**
- * Barre du haut, opaque et sans filet : date (Aujourd'hui) puis titre en Unbounded 30 ; à droite, les boutons ronds de
- * l'onglet (notifications et avatar sur l'accueil, partager et réglages sur le profil…). Au défilement, le titre se
- * réduit à 20 sp (échelle, sans nouvelle mise en page) et la barre prend un fond plein.
+ * Héros de l'onglet ouvert : la scène se voit en grand (150 dp sur Aujourd'hui, 96 sur le Profil, 120 ailleurs), date et
+ * statut de synchronisation en mini-plaques, titre en plaque, boutons ronds à droite ; notes de démonstration et de
+ * maintenance en cartes juste dessous.
  */
 @Composable
-private fun TopBar(ui: AppState) {
-    val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!; val ctx = LocalContext.current
-    val tab = ui.tab
-    Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 12.dp, top = 6.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Column(Modifier.weight(1f)) {
-                if (tab == "today") Text(cap(weekdayLongDate(todayDate())), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
-                Box(Modifier.graphicsLayer {
-                    val k = (Fx.scroll / 120.dp.toPx()).coerceIn(0f, 1f); val s = 1f - k * (1f - 20f / 30f)
-                    scaleX = s; scaleY = s; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
-                }.semantics { heading() }) {
-                    AnimatedContent(NAV_TITLES[tab] ?: "PepsGoal", transitionSpec = { if (p.motion) EnterTransition.None togetherWith ExitTransition.None else (fadeIn(tween(150)) + slideInVertically(Motion.move()) { it / 3 }) togetherWith fadeOut(tween(100)) }, label = "title") { t ->
-                        TabTitle(t)
-                    }
-                }
-                // Hors ligne : modifications en attente d'envoi (touchée : explication)
-                if (!ui.pg.store.online) fr.pepsgoal.app.ui.sheets.OfflineChip(ui)
-                fr.pepsgoal.app.ui.sheets.SyncedChip(ui)
-            }
-            val bell = @Composable { RoundGlass("Notifications", { ui.open(Sheet.Notifs); Social.readNotifs(ui) }, badge = pg.unread()) { Pi("bell", size = 20.dp, tint = p.ink) } }
-            val search = @Composable { RoundGlass("Rechercher", { ui.push(Screen.Search()) }) { Pi("search", size = 20.dp, tint = p.ink) } }
-            when (tab) {
-                "today" -> { bell(); AvatarButton(u, remember(ui.rev, u.id) { pg.level(pg.points(u.id)).idx }, { ui.nav("profile") }) }
-                "profile" -> {
-                    RoundGlass("Partager mon profil", { shareProfile(ctx, ui, u, pg.level(pg.points(u.id))) }) { Pi("share", size = 20.dp, tint = p.ink) }
-                    RoundGlass("Paramètres", { ui.push(Screen.Settings()) }) { Pi("gear", size = 20.dp, tint = p.ink) }
-                }
-                else -> { search(); bell() }
-            }
-        }
+fun TabHeader(ui: AppState, tab: String, extra: @Composable ColumnScope.() -> Unit = {}) {
+    val pg = ui.pg; val u = pg.me() ?: return
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        TabHero(NAV_TITLES[if (tab == "social") "feed" else tab] ?: "PepsGoal", if (tab == "today") cap(weekdayLongDate(todayDate())) else null,
+            when (tab) { "today" -> 150.dp; "profile" -> 96.dp; else -> 120.dp },
+            chips = { fr.pepsgoal.app.ui.sheets.OfflineChip(ui); fr.pepsgoal.app.ui.sheets.SyncedChip(ui) }) { TabActions(ui) }
         if (pg.db.sandbox) Note("**Mode démonstration.** Données d’exemple : rien n’est enregistré. Déconnecte-toi pour revenir à ton profil.", "star")
         val now = pg.maintNow(); val next = pg.maintNext()
         if (now != null) Note("**Maintenance en cours**${now.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[now.mode]}${if (now.message.isNotEmpty()) ". ${now.message}" else ""}${if (pg.isAdmin(u)) " (en tant qu’admin, tu n’es pas bloqué)" else ""}", "gauge")
         else if (next != null && next.start - nowMs() < 7 * DAY_MS) Note("Maintenance prévue le ${fmtDT(next.start)}${next.until?.let { " jusqu'au ${fmtDT(it)}" } ?: ""} · ${MAINT_MODE[next.mode]}.", "clock")
+        extra()
     }
 }
 
@@ -484,7 +459,7 @@ private fun toastEmoji(icon: String, action: String?): String = when {
     icon in setOf("check", "star", "trophy", "medal", "sparkle") -> "🎉"
     icon in setOf("x", "ban", "lock") -> "⚠️"
     icon == "cloudoff" -> "📴"; icon == "cloud" -> "☁️"; icon == "clock" -> "⏰"; icon == "bell" -> "🔔"; icon == "trash" -> "🗑️"
-    icon == "archive" -> "📦"; icon == "gift" -> "🎁"; icon == "heart" -> "💛"; icon == "users" || icon == "userplus" -> "👋"
+    icon == "image" -> "🏞️"; icon == "archive" -> "📦"; icon == "gift" -> "🎁"; icon == "heart" -> "💛"; icon == "users" || icon == "userplus" -> "👋"
     else -> "💬"
 }
 
@@ -510,7 +485,7 @@ private fun Toasts(ui: AppState) {
                 appear.animateTo(0f, tween(150))
             }
             val drag = androidx.compose.foundation.gestures.rememberDraggableState { d -> scope.launch { dx.snapTo(dx.value + d) } }
-            val plum = Color(0xFF2A1420)
+            val plum = fr.pepsgoal.app.ui.theme.PLUM
             Row(Modifier.onSizeChanged { wpx = it.width.coerceAtLeast(1) }.graphicsLayer {
                 val a = appear.value
                 alpha = (a.coerceIn(0f, 1f) * (1f - kotlin.math.abs(dx.value) / (wpx * 1.1f))).coerceIn(0f, 1f)
@@ -521,13 +496,13 @@ private fun Toasts(ui: AppState) {
                     val dir = if (dx.value + v / 10f >= 0f) 1f else -1f
                     dx.animateTo(dir * wpx * 1.3f, tween(150)); ui.toasts.remove(t)
                 } else dx.animateTo(0f, Motion.pop())
-            })).fillMaxWidth().chunk(plum, Color(0xFF120810), 20.dp, 4.dp, 0.dp)
+            })).fillMaxWidth().chunk(plum, fr.pepsgoal.app.ui.theme.PLUM_DEEP, 20.dp, 4.dp, 0.dp)
                 .semantics { liveRegion = LiveRegionMode.Polite }
                 .then(if (t.action == null) Modifier.clickable(onClickLabel = "Fermer") { ui.toasts.remove(t) } else Modifier)
                 .heightIn(min = 56.dp).padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Emoji(toastEmoji(t.icon, t.action), 26.dp)
-                Text(t.text, Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = if (p.easy) 16.sp else 15.sp, color = Color(0xFFFFF4EC), lineHeight = 19.sp)
+                Text(t.text, Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = if (p.easy) 16.sp else 15.sp, color = fr.pepsgoal.app.ui.theme.CREAM, lineHeight = 19.sp)
                 if (t.action != null) Box(Modifier.heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
                     Box(Modifier.height(36.dp).clip(CircleShape).background(p.gold).clickable(onClickLabel = t.action, role = Role.Button) { ui.toasts.remove(t); t.onAction?.invoke() }
                         .padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {

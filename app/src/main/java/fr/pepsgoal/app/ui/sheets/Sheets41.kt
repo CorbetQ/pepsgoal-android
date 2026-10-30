@@ -196,31 +196,21 @@ private fun ProofImage(pr: Proof, modifier: Modifier) {
 /** Pastille « hors ligne » de l'en-tête, avec le nombre de modifications en attente d'envoi. */
 @Composable
 fun OfflineChip(ui: AppState) {
-    val p = LocalPal.current; val pg = ui.pg
+    val pg = ui.pg
     if (pg.store.online) return
     val n = remember(ui.rev) { if (pg.store.acct) ui.cloud.pendingCount() else 0 }
-    Row(Modifier.clip(CircleShape).clickable(onClickLabel = "Voir les modifications en attente") { ui.open(Sheet.Pending) }
-        .padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Pi("cloudoff", size = 14.dp, tint = p.ink2)
-        Muted(if (n > 0) "Hors ligne · $n en attente" else "Hors ligne", small = true)
-    }
+    // Hors ligne : petite puce à marche (posée sur la scène) qui ouvre les modifications en attente
+    Puce(if (n > 0) "Hors ligne · $n en attente" else "Hors ligne", { ui.open(Sheet.Pending) }, emoji = "📴")
 }
 
-/** « Synchronisé » : apparaît quelques secondes sous le titre quand les modifications faites hors ligne sont parties. */
+/** « Synchronisé » : mini-plaque qui apparaît quelques secondes dans le héros quand les modifications faites hors ligne sont parties. */
 @Composable
 fun SyncedChip(ui: AppState) {
     val p = LocalPal.current
     var show by remember { mutableStateOf(false) }
     val at = ui.syncedAt
     LaunchedEffect(at) { if (at > 0 && System.currentTimeMillis() - at < 5000) { show = true; delay(3600); show = false } }
-    androidx.compose.animation.AnimatedVisibility(show && ui.pg.store.online, enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(), exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()) {
-        val pop = remember { androidx.compose.animation.core.Animatable(0f) }
-        LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .4f, stiffness = 500f)) }
-        Row(Modifier.clip(CircleShape).clickable { ui.open(Sheet.Pending) }.padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.size(16.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -90f }.clip(CircleShape).background(p.ok), contentAlignment = Alignment.Center) { Pi("check", size = 11.dp, tint = if (p.dark) fr.pepsgoal.app.ui.theme.PLUM else Color.White) }
-            Text(if (ui.syncedN > 1) "Synchronisé · ${ui.syncedN} envoyées" else "Synchronisé", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ok)
-        }
-    }
+    if (show && ui.pg.store.online) MiniPlaque(if (ui.syncedN > 1) "Synchronisé · ${ui.syncedN} envoyées" else "Synchronisé", Modifier.popIn(), emoji = "✅", color = p.ok)
 }
 
 /** Modifications faites hors ligne, en attente d'envoi, et bouton pour les envoyer tout de suite. */

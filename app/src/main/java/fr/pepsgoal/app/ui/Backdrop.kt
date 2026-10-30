@@ -61,20 +61,6 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: 
     }
 }
 
-/**
- * Fond animé confiné (option Apparence › Fond animé) : dessiné seulement dans les 360 dp du haut de l'accueil, à 70 %
- * (clair) ou 55 % (sombre) d'opacité, et fondu vers le fond à partir de la moitié. [frozen] : horloges arrêtées (page
- * défilée, économie d'énergie, animations réduites). Les cartes, opaques, passent par-dessus.
- */
-@Composable
-fun ConfinedBackdrop(frozen: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val p = LocalPal.current
-    Box(modifier.fillMaxSize().graphicsLayer { alpha = if (p.dark) .55f else .7f; compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithContent { drawContent(); drawRect(Brush.verticalGradient(0f to Color.Black, .5f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn) }) {
-        CompositionLocalProvider(LocalBgPaused provides (frozen || LocalBgPaused.current)) { content() }
-    }
-}
-
 /** Pluie qui tombe en biais, neige, orage (pluie et éclairs) ou brouillard qui dérive, selon la météo du moment. */
 @Composable
 private fun WeatherFx(cond: String) {
@@ -105,8 +91,8 @@ private fun WeatherFx(cond: String) {
 }
 
 /**
- * Vrai quand le fond est entièrement caché (sous un écran opaque poussé par-dessus) : ses horloges s'arrêtent.
- * Sinon chaque image du fond invaliderait la source du verre givré et forcerait le recalcul de tous les flous.
+ * Vrai quand l'horloge du fond doit être figée : défilement (et 500 ms après), feuille ou dialogue ouverts, économie
+ * d'énergie, fond animé coupé, calque masqué. Figé = dernière image (aucun redessin).
  */
 val LocalBgPaused = compositionLocalOf { false }
 
@@ -403,22 +389,6 @@ private fun DrawScope.cloud(x: Float, y: Float, w: Float, h: Float, c: Color) {
         val px = x + w * (.18f + .64f * i / 7f); val rr = h * (.6f + .25f * sin(i * 1.7f)) * (1 - abs(i / 7f - .5f) * .6f); val py = y + h * .58f - rr * .3f
         drawCircle(Brush.radialGradient(listOf(c, c.copy(alpha = c.alpha * .7f), Color.Transparent), Offset(px, py - rr * .2f), rr), rr, Offset(px, py))
     }
-}
-
-/**
- * Fond qui réagit à la journée : une lueur chaude monte du bas de l'écran au fil des validations ([progress] de 0 à 1),
- * et des confettis tombent doucement au fond les journées parfaites.
- */
-@Composable
-fun ReactiveBg(progress: Float, perfect: Boolean) {
-    val p = LocalPal.current
-    if (p.transp || p.contrast) return
-    val k by androidx.compose.animation.core.animateFloatAsState(progress.coerceIn(0f, 1f), androidx.compose.animation.core.tween(if (p.motion) 0 else 1200), label = "reactive")
-    if (k > .01f) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-        val c = androidx.compose.ui.geometry.Offset(size.width * .5f, size.height * 1.05f); val r = size.height * (.35f + .45f * k)
-        drawRect(androidx.compose.ui.graphics.Brush.radialGradient(0f to p.flame.copy(alpha = .26f * k), .5f to p.pink.copy(alpha = .1f * k), 1f to Color.Transparent, center = c, radius = r))
-    }
-    if (perfect && Perf.flags.fx && !p.motion) ThemeFx("confetti")
 }
 
 /* ------------------------------------------------------------------ 8.1 : Collines braise, marée de braise */

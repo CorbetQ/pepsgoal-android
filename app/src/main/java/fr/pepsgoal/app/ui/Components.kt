@@ -774,8 +774,10 @@ fun SkeletonCard(lines: Int = 2, round: Boolean = false) {
 @Composable
 fun Note(text: String, icon: String = "bell", modifier: Modifier = Modifier) {
     val p = LocalPal.current
-    // Note d'information : plate (non pressable), creux neutre
-    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.surface2).padding(horizontal = 14.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    // Note d'information : plate (non pressable), creux neutre ; posée sur la scène, elle devient une carte opaque
+    val scene = !LocalInCard.current && !LocalInSheet.current
+    Row(modifier.fillMaxWidth().then(if (scene) Modifier.chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp) else Modifier.clip(RoundedCornerShape(22.dp)).background(p.surface2))
+        .padding(horizontal = 14.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
         Pi(icon, size = 18.dp, tint = p.flameInk)
         Text(rich(text), color = p.ink2, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }

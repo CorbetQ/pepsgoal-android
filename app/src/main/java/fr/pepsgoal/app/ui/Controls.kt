@@ -198,13 +198,6 @@ fun Fab(desc: String, shown: Boolean, onClick: () -> Unit, modifier: Modifier = 
     }
 }
 
-/** Titre de l'onglet : Unbounded 30 ExtraBold ; la taille s'adapte à la place laissée par les boutons. */
-@Composable
-fun TabTitle(text: String) {
-    val p = LocalPal.current
-    FitText(text, size = 30, min = 16, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
-}
-
 /** Bouton rond à marche (barre du haut) avec contenu libre et pastille de compteur. */
 @Composable
 fun RoundGlass(desc: String, onClick: () -> Unit, badge: Int = 0, content: @Composable BoxScope.() -> Unit) {
