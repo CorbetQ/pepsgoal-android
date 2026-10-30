@@ -205,6 +205,7 @@ fun PepsRoot(ui: AppState) {
                         is Screen.Pet -> PetScreen(ui)
                         is Screen.Quest -> QuestScreen(ui)
                         is Screen.Season -> SeasonScreen(ui)
+                        is Screen.Month -> MonthScreen(ui, sc.key)
                         null -> {}
                     }
                 }

@@ -67,7 +67,8 @@ fun syncIfThen(g: Goal, old: Goal?) {
     if (was == "after" && g.after == old.ifGoal && g.ifKind != "after") g.after = null
     when (g.ifKind) {
         "time" -> { g.remindAt = g.ifTime; g.smartRemind = false }
-        "after" -> g.after = g.ifGoal
+        // Au déclenchement : le rappel part dès que l'objectif précédent est validé
+        "after" -> { g.after = g.ifGoal; g.afterDelay = 0 }
         else -> {}
     }
 }

@@ -20,6 +20,7 @@ import fr.pepsgoal.core.model.Notif
 import fr.pepsgoal.core.model.Goal
 import fr.pepsgoal.core.nowMs
 import fr.pepsgoal.core.today
+import fr.pepsgoal.core.ifThenReminder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -139,6 +140,8 @@ sealed class Screen {
     object Quest : Screen()
     /** Saison à thème : passe de récompenses et quêtes de la semaine. */
     object Season : Screen()
+    /** Tableau de bord « Mon mois » ([key] : « AAAA-MM », par défaut le mois en cours). */
+    class Month(val key: String? = null) : Screen()
 }
 
 /** Message éphémère en bas de l'écran, avec une action facultative (« Annuler »). */
@@ -265,7 +268,7 @@ class AppState(val app: PepsApp) : Hooks {
     }
 
     override fun chained(prev: Goal, next: Goal) {
-        if (app.foreground) toast("Ensuite : ${next.icon} ${next.title}", "repeat", "Valider") { fr.pepsgoal.app.ui.doValidate(this, next.id) }
+        if (app.foreground) toast(pg.ifThenReminder(next, "after", "Ensuite : ${next.icon} ${next.title}"), "repeat", "Valider") { fr.pepsgoal.app.ui.doValidate(this, next.id) }
         fr.pepsgoal.app.sys.Chain.schedule(app, prev.id, next.id)
     }
 

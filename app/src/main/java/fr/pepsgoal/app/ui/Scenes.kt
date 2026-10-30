@@ -108,6 +108,7 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
         "bamboo" -> bamboo(t); "nighttrain" -> nighttrain(t); "rooftops" -> rooftops(t, td); "canyon" -> canyon(t)
         "savanna" -> savanna(t); "lanterns" -> lanterns(t); "icefield" -> icefield(t)
         "angers" -> angers(t, td); "angevine" -> angevine(t); "nantes" -> nantes(t, td)
+        "xmastree" -> xmastree(t); "valentine" -> valentine(t); "loiresummer" -> loiresummer(t)
         else -> {
             val sky = SHOP_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")
             drawRect(Brush.verticalGradient(sky.map { c(it) }))
@@ -120,9 +121,11 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
 
 /** Durée d'un cycle d'animation par scène (ms) : les scènes à mouvement visible (poissons, pluie) tournent plus vite. */
 private val SCENE_DUR = mapOf("tram" to 40000, "deepsea" to 60000, "coderain" to 20000, "fireworks" to 24000, "rainwindow" to 50000, "autumnwood" to 30000, "sakura" to 30000,
-    "tunnel" to 20000, "lighthouse" to 30000, "nighttrain" to 40000, "lanterns" to 60000, "jellyfish" to 50000, "savanna" to 60000, "angers" to 60000, "angevine" to 40000, "nantes" to 60000)
+    "tunnel" to 20000, "lighthouse" to 30000, "nighttrain" to 40000, "lanterns" to 60000, "jellyfish" to 50000, "savanna" to 60000, "angers" to 60000, "angevine" to 40000, "nantes" to 60000,
+    "xmastree" to 30000, "valentine" to 40000, "loiresummer" to 60000)
 /** Images par seconde : les scènes très détaillées et presque immobiles se contentent de moins (batterie). */
-private val SCENE_FPS = mapOf("tram" to 8, "mountains" to 6, "mistforest" to 8, "dunes" to 6, "planet" to 6, "citynight" to 8, "tunnel" to 15, "rooftops" to 6, "canyon" to 6, "vineyard" to 8, "angers" to 12, "angevine" to 8, "nantes" to 12)
+private val SCENE_FPS = mapOf("tram" to 8, "mountains" to 6, "mistforest" to 8, "dunes" to 6, "planet" to 6, "citynight" to 8, "tunnel" to 15, "rooftops" to 6, "canyon" to 6, "vineyard" to 8, "angers" to 12, "angevine" to 8, "nantes" to 12,
+    "xmastree" to 10, "valentine" to 10, "loiresummer" to 8)
 
 /*
  * Arrière-plans illustrés : peints sur Canvas en couches (perspective atmosphérique, lumière directionnelle, brume,
@@ -3315,4 +3318,150 @@ private fun DrawScope.nantes(t: Float, d: Tod? = null) {
     if (d == null) return
     if (d.dusk > .01f) drawRect(vg(0f, H, 0f to c("#5A2E8A", .14f * d.dusk), .5f to c("#FF7A3A", .12f * d.dusk), 1f to c("#FFB070", .05f * d.dusk)))
     if (d.dawn > .01f) drawRect(vg(0f, H, 0f to c("#7F8FE0", .1f * d.dawn), .5f to c("#FFB0C0", .12f * d.dawn), 1f to Color.Transparent))
+}
+
+/* ------------------------------------------------------------------ Scènes de saison animées (8.4) : en aplats */
+
+/** Ciel en bandes d'aplats (haut → bas), sans dégradé. */
+private fun DrawScope.bands(vararg cols: String, y1: Float = size.height) {
+    val n = cols.size; val h = y1 / n
+    cols.forEachIndexed { i, col -> rect(0f, i * h - 1f, size.width, h + 2f, c(col)) }
+}
+
+/** Étoile à cinq branches pleine. */
+private fun star5(x: Float, y: Float, r: Float): Path {
+    val p = Path()
+    for (i in 0 until 10) { val a = -TAU / 4 + i * TAU / 10; val rr = if (i % 2 == 0) r else r * .45f
+        val px = x + cos(a) * rr; val py = y + sin(a) * rr; if (i == 0) p.moveTo(px, py) else p.lineTo(px, py) }
+    p.close(); return p
+}
+
+/* ------------------------------------------------------------------ Noël : sapin, guirlandes et neige */
+private fun DrawScope.xmastree(t: Float) {
+    val W = size.width; val H = size.height; val S = min(W, H)
+    bands("#16213F", "#1B2A4A", "#22355C", "#2B416E", "#354D7E", y1 = H * .7f)
+    // Lune en croissant (deux disques pleins)
+    disc(W * .2f, H * .14f, S * .07f, c("#F4F1DE")); disc(W * .2f + S * .03f, H * .14f - S * .015f, S * .062f, c("#1B2A4A"))
+    // Étoiles qui scintillent (une sur trois s'éteint tour à tour)
+    val st = Mul(31)
+    for (i in 0 until 40) { val x = st() * W; val y = st() * H * .5f; val on = ((t * 12f + i).toInt() % 3) != 0 || i % 4 != 0
+        if (on) disc(x, y, S * (.002f + st() * .003f), c("#FFFFFF", .85f)) }
+    // Collines enneigées en couches
+    val nz = Nz(12)
+    ridgeFill(ridgePts(H * .66f, H * .06f, 50) { u -> .5f + .5f * nz.at(u * 3f, 3) }, c("#AFC2E2"))
+    ridgeFill(ridgePts(H * .74f, H * .04f, 50) { u -> .5f + .5f * nz.at(u * 4f + 2f, 3) }, c("#D3DEF0"))
+    rect(0f, H * .8f, W, H * .2f, c("#EEF3FB"))
+    // Sapin : quatre étages en deux tons, neige sur les branches
+    val tx = W * .58f; val base = H * .86f; val th = H * .5f; val tw = min(W * .62f, th * .75f)
+    rect(tx - tw * .06f, base - th * .1f, tw * .12f, th * .1f, c("#6B3E26"))
+    val tiers = 4
+    for (k in 0 until tiers) {
+        val y0 = base - th * .08f - k * th * .2f; val w0 = tw * (1f - k * .2f) / 2f; val top = y0 - th * .34f
+        fill(poly(tx - w0, y0, tx, top, tx + w0, y0), c("#1E6B3A"))
+        fill(poly(tx, top, tx + w0, y0, tx, y0), c("#17572F"))
+        // Neige posée sur le bord de l'étage
+        for (j in -2..2) drawOval(c("#FFFFFF"), Offset(tx + j * w0 * .38f - w0 * .12f, y0 - th * .015f), Size(w0 * .24f, th * .03f))
+    }
+    // Guirlandes : arcs d'ampoules qui clignotent en alternance
+    val bulbs = listOf(c("#FF4D4D"), c("#FFD166"), c("#4DB8FF"), c("#FF8AD8"))
+    for (g in 0 until 3) {
+        val y = base - th * (.2f + g * .2f); val w0 = tw * (.9f - g * .22f) / 2f
+        val p = Path(); p.moveTo(tx - w0, y - th * .05f); p.quadraticBezierTo(tx, y + th * .04f, tx + w0, y - th * .12f)
+        drawPath(p, c("#F4E3B0"), style = Stroke(max(1f, S * .004f)))
+        for (b in 0..6) { val u = b / 6f; val bx = tx - w0 + 2 * w0 * u; val by = (y - th * .05f) * (1 - u) * (1 - u) + 2 * (1 - u) * u * (y + th * .04f) + u * u * (y - th * .12f)
+            val lit = ((t * 24f).toInt() + b + g) % 2 == 0
+            disc(bx, by + S * .008f, S * .011f, if (lit) bulbs[(b + g) % 4] else mix(bulbs[(b + g) % 4], c("#1E6B3A"), .55f)) }
+    }
+    // Étoile du sommet (légère pulsation)
+    val sr = S * (.045f + .006f * sin(t * TAU * 6))
+    fill(star5(tx, base - th * .08f - (tiers - 1) * th * .2f - th * .36f, sr), c("#FFD23F"))
+    // Cadeaux au pied
+    for ((i, col) in listOf("#E8412C", "#3DB2FF", "#FFB000").withIndex()) {
+        val gx = tx + (i - 1) * tw * .22f - tw * .07f; val gw = tw * .14f; val gh = gw * (.7f + i * .1f)
+        rect(gx, base - gh, gw, gh, c(col)); rect(gx + gw * .42f, base - gh, gw * .16f, gh, c("#FFFFFF")); rect(gx, base - gh * .62f, gw, gh * .14f, c("#FFFFFF"))
+    }
+    // Neige qui tombe
+    val r = Mul(77)
+    for (i in 0 until 70) {
+        val sp = .6f + r() * .8f; val u = (r() + t * sp * 3f) % 1f; val x = (r() * W + sin(u * TAU * 2 + i) * S * .03f + W) % W; val y = u * H
+        disc(x, y, S * (.004f + r() * .006f), c("#FFFFFF", .9f))
+    }
+}
+
+/* ------------------------------------------------------------------ Saint-Valentin : cœurs qui montent */
+private fun DrawScope.valentine(t: Float) {
+    val W = size.width; val H = size.height; val S = min(W, H)
+    bands("#FFE3EE", "#FFD6E6", "#FFC8DD", "#FFB8D2", "#FAA5C6", "#F393BB")
+    disc(W * .74f, H * .2f, S * .13f, c("#FFF2F6"))
+    // Nuages pleins (ombre décalée en dessous)
+    for ((i, xy) in listOf(.2f to .3f, .62f to .42f, .32f to .55f).withIndex()) {
+        val x = W * xy.first + sin(t * TAU + i) * S * .02f; val y = H * xy.second; val rx = W * .2f; val ry = rx * .38f
+        fill(lobed(x + rx * .06f, y + ry * .2f, rx, ry, 300 + i, 6, .2f, .4f), c("#F7C5DA"))
+        fill(lobed(x, y, rx, ry, 300 + i, 6, .2f, .4f), c("#FFFFFF"))
+    }
+    // Collines roses
+    val nz = Nz(5)
+    ridgeFill(ridgePts(H * .8f, H * .06f, 40) { u -> .5f + .5f * nz.at(u * 3f, 3) }, c("#F07AA6"))
+    ridgeFill(ridgePts(H * .88f, H * .05f, 40) { u -> .5f + .5f * nz.at(u * 4f + 3f, 3) }, c("#E0558F"))
+    // Cœurs qui montent en se balançant
+    val r = Mul(19); val pal = listOf(c("#FF4F8B"), c("#FF7AA8"), c("#E0559A"), c("#FFFFFF"), c("#C2185B"))
+    for (i in 0 until 22) {
+        val sp = .5f + r() * .6f; val u = (r() + t * sp * 2f) % 1f; val x = W * (.06f + r() * .88f) + sin(u * TAU * 1.5f + i) * S * .05f
+        val y = H * (1.08f - u * 1.2f); val s = S * (.02f + r() * .045f)
+        rotate(sin(u * TAU + i) * 14f, Offset(x, y)) {
+            fill(heart(x, y, s), pal[i % pal.size])
+            // Reflet plein (petit ovale clair)
+            if (i % 5 != 3) drawOval(c("#FFFFFF", .7f), topLeft = Offset(x - s * .6f, y - s * .5f), size = Size(s * .3f, s * .2f))
+        }
+    }
+    // Petites étincelles
+    val b = Mul(4)
+    for (i in 0 until 12) { val x = b() * W; val y = b() * H * .7f; val on = ((t * 16f).toInt() + i) % 4 != 0; if (on) fill(star5(x, y, S * (.006f + b() * .008f)), c("#FFFFFF")) }
+}
+
+/* ------------------------------------------------------------------ Été sur la Loire : soleil, vagues et coteaux */
+private fun DrawScope.loiresummer(t: Float) {
+    val W = size.width; val H = size.height; val S = min(W, H)
+    bands("#6FBDF5", "#84C8F7", "#9AD3F9", "#B1DDFA", "#C9E8FB", "#E1F2FC", y1 = H * .6f)
+    // Soleil plein et rayons qui tournent lentement
+    val sx = W * .76f; val sy = H * .15f; val sr = S * .08f
+    rotate(t * 360f / 4f, Offset(sx, sy)) {
+        for (i in 0 until 12) { val a = i * TAU / 12; val a0 = a - .1f; val a1 = a + .1f
+            fill(poly(sx + cos(a0) * sr * 1.25f, sy + sin(a0) * sr * 1.25f, sx + cos(a) * sr * 1.85f, sy + sin(a) * sr * 1.85f, sx + cos(a1) * sr * 1.25f, sy + sin(a1) * sr * 1.25f), c("#FFC53D")) }
+    }
+    disc(sx, sy, sr, c("#FFD23F")); disc(sx - sr * .25f, sy - sr * .25f, sr * .3f, c("#FFE68A"))
+    // Coteaux et château de tuffeau
+    val nz = Nz(8)
+    val far = ridgePts(H * .5f, H * .07f, 50) { u -> .5f + .5f * nz.at(u * 2.5f, 3) }
+    ridgeFill(far, c("#A9D18E"))
+    val cx = W * .3f; val cy = H * .47f; val cw = W * .3f
+    rect(cx - cw / 2, cy - cw * .18f, cw, cw * .22f, c("#F2E6C9"))
+    for ((k, dx) in listOf(-.5f, -.1f, .32f, .5f).withIndex()) { val tw = cw * if (k == 1) .14f else .1f; val tx = cx + dx * cw - tw / 2; val ttop = cy - cw * (if (k == 1) .36f else .28f)
+        rect(tx, ttop, tw, cy - ttop, c("#EADBB8")); fill(poly(tx - tw * .15f, ttop, tx + tw / 2, ttop - tw * 1.3f, tx + tw * 1.15f, ttop), c("#4A5A7A")) }
+    for (i in 0 until 5) rect(cx - cw * .4f + i * cw * .18f, cy - cw * .1f, cw * .04f, cw * .06f, c("#5A6A8A"))
+    ridgeFill(ridgePts(H * .58f, H * .04f, 50) { u -> .5f + .5f * nz.at(u * 4f + 1f, 3) }, c("#7FB765"))
+    // La Loire : eau en bandes, bancs de sable, reflets qui coulent
+    val ry0 = H * .6f; val ry1 = H * .8f
+    rect(0f, ry0, W, ry1 - ry0, c("#4FA3D9")); rect(0f, ry0, W, (ry1 - ry0) * .3f, c("#62B2E2"))
+    drawOval(c("#F2D9A0"), Offset(W * .05f, H * .68f), Size(W * .32f, H * .035f)); drawOval(c("#F2D9A0"), Offset(W * .62f, H * .73f), Size(W * .26f, H * .03f))
+    val wv = Mul(23)
+    for (i in 0 until 26) { val y = ry0 + (ry1 - ry0) * (.1f + wv() * .85f); val len = S * (.03f + wv() * .05f); val x = ((wv() + t * (.6f + wv() * .4f)) % 1f) * (W + len * 2) - len
+        line(x, y, x + len, y, max(1f, S * .005f), c("#FFFFFF", .8f)) }
+    // Toue (bateau plat traditionnel) qui glisse
+    val bx = ((t * .9f + .2f) % 1f) * (W * 1.3f) - W * .15f; val by = H * .7f; val bl = S * .2f
+    fill(poly(bx - bl * .5f, by, bx + bl * .45f, by, bx + bl * .58f, by - bl * .1f, bx - bl * .62f, by - bl * .08f), c("#5A3A22"))
+    rect(bx - bl * .1f, by - bl * .24f, bl * .3f, bl * .15f, c("#8A5A36")); fill(poly(bx - bl * .14f, by - bl * .24f, bx + bl * .05f, by - bl * .34f, bx + bl * .24f, by - bl * .24f), c("#3A2A1A"))
+    line(bx - bl * .35f, by - bl * .08f, bx - bl * .35f, by - bl * .55f, max(1f, S * .005f), c("#3A2A1A"))
+    // Rive au premier plan : herbe et roseaux qui ondulent
+    val g = Nz(3)
+    ridgeFill(ridgePts(H * .84f, H * .03f, 40) { u -> .5f + .5f * g.at(u * 5f, 3) }, c("#6DB35A"))
+    rect(0f, H * .9f, W, H * .1f, c("#5A9E4B"))
+    val rd = Mul(41)
+    for (i in 0 until 30) { val x = rd() * W; val y = H * (.84f + rd() * .06f); val h = H * (.04f + rd() * .05f); val sw = sin(t * TAU * 3 + i) * S * .01f
+        line(x, y, x + sw, y - h, max(1f, S * .004f), c("#3F7F38")) }
+    // Mouettes
+    val m = Mul(6)
+    for (i in 0 until 3) { val x = ((m() + t * .5f) % 1f) * W; val y = H * (.25f + m() * .12f); val s = S * .018f; val f = sin(t * TAU * 12 + i) * .3f
+        val p = Path(); p.moveTo(x - s, y - s * (.2f + f)); p.quadraticBezierTo(x - s * .4f, y - s * .6f, x, y); p.quadraticBezierTo(x + s * .4f, y - s * .6f, x + s, y - s * (.2f + f))
+        drawPath(p, c("#3A4A5A"), style = Stroke(max(1f, S / 380f), cap = StrokeCap.Round)) }
 }

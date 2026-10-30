@@ -111,6 +111,6 @@ fun forecastText(list: List<RiskDay>): String {
     if (risky.isEmpty()) return listOfNotNull("Semaine à venir au calme : aucun jour à risque repéré sur les 7 prochains jours", restLine, "Garde ton rythme !").joinToString(" · ")
     return (listOf("Jours à risque sur les 7 prochains jours") + risky.map { r ->
         val why = (r.reasons.firstOrNull() ?: "historique encore court").replaceFirstChar { c -> c.lowercase() }
-        "**${weekdayLongDate(parseYmd(r.date))}** : risque ${if (r.level == "high") "élevé" else "moyen"} ($why). ${r.idea ?: "Une petite validation suffit"}."
+        "Le **${weekdayLongDate(parseYmd(r.date))}** : risque ${if (r.level == "high") "élevé" else "moyen"} ($why). ${r.idea ?: "Une petite validation suffit"}."
     } + listOfNotNull(restLine)).joinToString(" · ")
 }

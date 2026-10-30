@@ -179,6 +179,8 @@ class DevicePrefs(context: Context) {
     var geoPlaces get() = p.getString("geoPlaces", "") ?: ""; set(v) = p.edit().putString("geoPlaces", v).apply()
     /** Couleurs de saison (Halloween, Noël, printemps…) sur l'arrière-plan. */
     var seasonal get() = p.getBoolean("seasonal", true); set(v) = p.edit().putBoolean("seasonal", v).apply()
+    /** Scène de saison animée (Noël, Saint-Valentin, été) affichée d'office à sa période, à la place du fond choisi. */
+    var bgSeasonAuto get() = p.getBoolean("bgSeasonAuto", true); set(v) = p.edit().putBoolean("bgSeasonAuto", v).apply()
     /** Disposition de l'accueil : compact, normal ou aéré. */
     /** Accueil « simple » (en-tête unifié, tuiles et sections repliables) ou « classic » (toutes les cartes à la suite). */
     var homeStyle get() = p.getString("homeStyle", "simple") ?: "simple"; set(v) = p.edit().putString("homeStyle", v).apply()

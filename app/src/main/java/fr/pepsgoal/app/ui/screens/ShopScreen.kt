@@ -156,13 +156,16 @@ fun ShopScreen(ui: AppState) {
             }
         }
         // Arrière-plans illustrés : aperçu animé, deux par ligne ; saison en cours d'abord
-        if (tab == "bgs") SHOP_BGS.sortedBy { b -> val ss = b.season; when { ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.chunked(2).forEachIndexed { row, pair ->
+        if (tab == "bgs") SHOP_BGS.sortedBy { b -> val ss = b.season; when { b.freeNow() -> -1; ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.chunked(2).forEachIndexed { row, pair ->
             item("bg$row") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     pair.forEach { b ->
-                        val owned = pg.owns("bg:${b.key}", b.price, u); val on = u.settings.bg == "s:${b.key}"
+                        val owned = pg.ownsBg(b, u); val on = u.settings.bg == "s:${b.key}"
                         // Carte de fond : aperçu (rayon 18), nom ; actif = bord lime et pilule « ✓ Actif »
-                        Glass(Modifier.weight(1f), pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else null, onClick = { purchase("bg:${b.key}", b.name, b.price, b.season) { pg.applyBg(b); ui.themeTick++; ui.toast("Fond « ${b.name} » appliqué.", "image") } }) {
+                        Glass(Modifier.weight(1f), pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else null, onClick = {
+                            val apply = { pg.applyBg(b); ui.themeTick++; ui.toast("Fond « ${b.name} » appliqué.", "image") }
+                            // Scène de saison : offerte pendant sa période
+                            if (b.freeNow()) apply() else purchase("bg:${b.key}", b.name, b.price, b.season) { apply() } }) {
                             Box(Modifier.fillMaxWidth().padding(6.dp).aspectRatio(.66f).clip(RoundedCornerShape(18.dp)).background(Brush.verticalGradient(b.sky.map(::hex)))) {
                                 SceneBg(b.key, Modifier.fillMaxSize(), still = true)
                                 if (on) Row(Modifier.align(Alignment.TopStart).padding(8.dp).background(vivid(p.type("routine").c), CircleShape).padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -175,7 +178,8 @@ fun ShopScreen(ui: AppState) {
                                 Muted(b.desc, small = true, maxLines = 2)
                                 if (on) Chip("Sur tout l’écran", "image", p.type("routine").c, modifier = Modifier.padding(top = 6.dp))
                                 b.season?.let { SeasonTag(it, owned) }
-                                PriceTag(owned, on, b.price, wallet, pg.buyable("bg:${b.key}", b.price, b.season))
+                                b.freeIn?.let { FreeTag(it) }
+                                PriceTag(owned, on, if (b.freeNow()) 0 else b.price, wallet, pg.buyable("bg:${b.key}", b.price, b.season))
                             }
                         }
                     }
@@ -246,6 +250,13 @@ private fun PriceTag(owned: Boolean, on: Boolean, price: Int, wallet: Int, buyab
 }
 
 private val FX_LABELS = mapOf("snow" to "neige", "petals" to "pétales", "leaves" to "feuilles", "hearts" to "cœurs", "embers" to "braises", "bubbles" to "bulles", "confetti" to "confettis", "stars" to "étoiles")
+
+/** Scène de saison : « Gratuit jusqu'au 31 déc. » pendant sa période, « Gratuit à Noël 🎄 » le reste de l'année. */
+@Composable
+private fun FreeTag(season: String) {
+    val p = LocalPal.current; val w = seasonWindow(season)
+    Chip(if (w != null) "Gratuit jusqu’au ${fmtDateShort(ymd(w.second))}" else "Gratuit · ${SEASON_LABELS[season] ?: season}", "gift", if (w != null) p.type("routine").c else null, modifier = Modifier.padding(top = 6.dp))
+}
 
 /** Étiquette d'édition limitée : « Halloween 🎃 · jusqu'au 5 nov. » ou « revient le 1er déc. ». */
 @Composable
