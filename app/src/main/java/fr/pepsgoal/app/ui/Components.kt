@@ -759,15 +759,17 @@ fun SetRow(title: String, sub: String? = null, modifier: Modifier = Modifier, ri
  * éteint, creux neutre au contour ≥ 3:1. La pastille saute d'un côté à l'autre avec le ressort `pop`.
  */
 @Composable
-fun PSwitch(on: Boolean, onChange: ((Boolean) -> Unit)?, enabled: Boolean = true) {
+fun PSwitch(on0: Boolean, onChange: ((Boolean) -> Unit)?, enabled: Boolean = true) {
     val p = LocalPal.current
+    // État local : bascule tout de suite, même si la valeur de l'appelant n'est pas observable ; recalé quand elle change
+    var on by remember(on0) { mutableStateOf(on0) }
     val k by animateFloatAsState(if (on) 1f else 0f, if (p.motion) snap() else Motion.pop(), label = "switch")
     val inter = remember { MutableInteractionSource() }
     val lime = vivid(p.type("routine").c)
     val track = if (on) lime else p.surface2
     val edge = if (p.contrast) p.ink else if (on) lime.step() else p.control
     // Interrupteur isolé : cible de 60 × 48 ; sans [onChange], dessin seul (la ligne qui le contient porte l'interrupteur)
-    if (onChange != null) Box(Modifier.size(60.dp, 48.dp).toggleableCompat(on, enabled, inter) { v -> if (v) Feedback.armed() else Feedback.disarmed(); onChange(v) },
+    if (onChange != null) Box(Modifier.size(60.dp, 48.dp).toggleableCompat(on, enabled, inter) { v -> if (v) Feedback.armed() else Feedback.disarmed(); on = v; onChange(v) },
         contentAlignment = Alignment.Center) { PSwitchBody(on, enabled, k, track, edge) }
     else PSwitchBody(on, enabled, k, track, edge)
 }

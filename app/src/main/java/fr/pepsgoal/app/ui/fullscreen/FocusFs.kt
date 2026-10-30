@@ -51,7 +51,8 @@ fun FocusFs(ui: AppState, preGoal: String?) {
             val frac = if (running) (left.toFloat() / (if (total > 0) total else (minutes * 60_000L)).toFloat()).coerceIn(0f, 1f) else 1f
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 // Anneau sur disque plein : rail surface2 cerclé de control, avancée de la flamme
-                Canvas(Modifier.size(240.dp)) {
+                // Toujours un cercle : carré de 240 dp au plus, réduit à la hauteur disponible (jamais une ellipse)
+                Canvas(Modifier.sizeIn(maxWidth = 240.dp, maxHeight = 240.dp).aspectRatio(1f, matchHeightConstraintsFirst = true)) {
                     val sw = 18.dp.toPx(); val r = Size(size.width - sw, size.height - sw)
                     drawCircle(p.surface, size.minDimension / 2)
                     drawCircle(p.control, size.minDimension / 2, style = Stroke(2.dp.toPx()))

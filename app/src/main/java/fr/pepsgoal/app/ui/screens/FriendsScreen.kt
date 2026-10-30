@@ -257,6 +257,26 @@ private fun MessagesCard(ui: AppState, u: User, always: Boolean = false) {
             if (total > 0) Chip("$total non lus", color = p.type("deadline").c, ink = p.type("deadline").ink)
             if (canGroup) PButton("Nouveau groupe", { ui.open(Sheet.GroupNew) }, icon = "group", kind = "ghost", small = true)
         }
+        // Coach IA : toujours en tête des conversations (100 % sur le téléphone)
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        fr.pepsgoal.app.ai.CoachChat.rev
+        val coachLast = remember(fr.pepsgoal.app.ai.CoachChat.rev) { fr.pepsgoal.app.ai.CoachChat.all(ctx).lastOrNull() }
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).clickable { ui.push(Screen.CoachChat) }.padding(vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CoachAvatar(44.dp, thinking = fr.pepsgoal.app.ai.CoachChat.busy)
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(fr.pepsgoal.app.ai.Personas.coachName(ctx), fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Chip("Coach IA", color = p.type("program").c)
+                }
+                val sub = when {
+                    fr.pepsgoal.app.ai.CoachChat.busy -> "écrit…"
+                    coachLast != null -> "${if (coachLast.role == "user") "Toi : " else ""}${cut(coachLast.text.replace("**", "").replace('\n', ' '))} · ${ago(coachLast.at)}"
+                    else -> "Pose-lui une question sur tes objectifs"
+                }
+                Text(sub, fontSize = 13.sp, color = p.ink2, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
         if (rows.isEmpty()) Muted("Écris à un ami depuis la liste ci-dessous, ou crée un groupe de discussion.", small = true)
         rows.forEach { r ->
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).clickable { ui.push(if (r.dm != null) Screen.Chat(with = r.dm.id) else Screen.Chat(group = r.grp!!.id)) }.padding(vertical = 7.dp),

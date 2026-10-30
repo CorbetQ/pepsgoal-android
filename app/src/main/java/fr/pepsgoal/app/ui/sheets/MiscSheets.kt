@@ -111,18 +111,34 @@ fun LegalSheet(ui: AppState, doc: String) {
 fun NotesSheet(ui: AppState) {
     val p = LocalPal.current; val ctx = LocalContext.current
     val notes = remember { Json.parseToJsonElement(asset(ctx, "docs/notes.json")).jsonArray }
+    // Une carte par date : les versions publiées le même jour sont regroupées (la plus récente en premier)
+    val days = remember(notes) {
+        val out = mutableListOf<Pair<String, MutableList<Pair<String, List<String>>>>>()
+        notes.forEach { n ->
+            val a = n.jsonArray; val d = a[1].jsonPrimitive.content
+            val v = a[0].jsonPrimitive.content to a[2].jsonArray.map { it.jsonPrimitive.content }
+            if (out.lastOrNull()?.first == d) out.last().second.add(v) else out.add(d to mutableListOf(v))
+        }
+        out
+    }
     var open by remember { mutableStateOf(setOf(0)) }
     SheetHead(ui, "Notes de version")
-    notes.forEachIndexed { i, n ->
-        val a = n.jsonArray; val v = a[0].jsonPrimitive.content; val on = i in open
+    days.forEachIndexed { i, (date, vers) ->
+        val on = i in open
         val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
         val press = rememberPress(inter)
-        Column(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(22.dp)).springClick(inter, label = v) { open = if (on) open - i else open + i }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(22.dp)).springClick(inter, label = date) { open = if (on) open - i else open + i }
+            .padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold); if (v == APP_VERSION) Chip("Actuelle", color = p.flame)
-                Spacer(Modifier.weight(1f)); Muted(a[1].jsonPrimitive.content, small = true); Pi(if (on) "chevronup" else "chevron", size = 18.dp, tint = p.ink3)
+                Text(date, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold)
+                if (vers.any { it.first == APP_VERSION }) Chip("Actuelle", color = p.flame)
+                Muted(if (vers.size > 1) "${vers.last().first} → ${vers.first().first}" else vers.first().first, small = true)
+                Pi(if (on) "chevronup" else "down", size = 18.dp, tint = p.ink3)
             }
-            if (on) a[2].jsonArray.forEach { Text("• " + it.jsonPrimitive.content, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = p.ink2, lineHeight = 21.sp) }
+            if (on) vers.forEach { (v, lines) ->
+                if (vers.size > 1) Text("Version $v", Modifier.padding(top = 6.dp), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = p.ink)
+                lines.forEach { Text("• $it", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = p.ink2, lineHeight = 21.sp) }
+            }
         }
     }
     Muted("Le détail technique de chaque version est publié sur GitHub.", small = true)

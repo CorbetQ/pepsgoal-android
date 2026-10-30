@@ -29,6 +29,36 @@ object Fallback {
                 val names = done0.mapNotNull { pg.goalById(it)?.title }.joinToString(", ") { "« $it »" }
                 Reply("Bravo${who?.let { " $it" } ?: ""} ! Je te propose de valider $names tout de suite. $cheer", acts = done0.map { "validate:$it" })
             }
+            // « Tout est fait, et maintenant ? » : bonus du jour plutôt qu'une réponse générique
+            has(t, "et maintenant|tout est fait|quoi d'autre|j'ai fini|plus rien") && left.isEmpty() -> {
+                val lv = pg.level(pg.points(u.id))
+                val weak = pg.myGoals(u.id).filter { !pg.isClosedGoal(it) }.mapNotNull { g -> pg.goalStats(g).rate30?.let { g to it } }.minByOrNull { it.second }
+                Reply(listOfNotNull(
+                    if (plan.due.isNotEmpty()) "Journée bouclée : $done/${plan.due.size}, série à ${st.n} jour${if (st.n > 1) "s" else ""}. Bravo${who?.let { " $it" } ?: ""} !" else "Rien n’était prévu aujourd’hui.",
+                    lv.next?.let { "Il te manque ${it - lv.pts} flammes pour « ${lv.nextName} »." },
+                    weak?.takeIf { it.second < .7 }?.let { (g, r) -> "Si tu as encore un peu d’énergie : **${g.title}** n’est réussi qu’à ${Math.round(r * 100)} % ce mois-ci, une petite avance ferait du bien." },
+                    "Sinon, prépare demain : choisis ton objectif prioritaire et l’heure où tu le feras. $cheer"
+                ).joinToString(" "))
+            }
+            // Niveau et flammes
+            has(t, "niveau|combien de flammes|mes flammes|points|level") -> {
+                val lv = pg.level(pg.points(u.id))
+                Reply("Tu as **${lv.pts} flammes** : niveau ${lv.idx}, « ${lv.name} »." + (lv.next?.let { " Encore ${it - lv.pts} pour passer à « ${lv.nextName} »." } ?: " C’est le niveau maximum !") +
+                    " Chaque validation rapporte des flammes, et une journée parfaite en rapporte davantage. $cheer")
+            }
+            // Conseil : sur l'objectif le moins réussi du mois
+            has(t, "conseil|astuce|aide-moi|comment faire|améliorer|progresser|tips") -> {
+                val weak = pg.myGoals(u.id).filter { !pg.isClosedGoal(it) }.mapNotNull { g -> pg.goalStats(g).let { s -> s.rate30?.let { Triple(g, it, s) } } }.minByOrNull { it.second }
+                if (weak == null) Reply("Mon meilleur conseil : commence petit et accroche ton objectif à une habitude existante (après le café, en rentrant du travail…). La régularité compte plus que l’intensité. $cheer")
+                else {
+                    val (g, r, s) = weak
+                    val wd = s.bestWd?.let { listOf("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche").getOrNull(it) }
+                    Reply("Ton objectif à renforcer : **${g.title}** (${Math.round(r * 100)} % sur 30 jours). " +
+                        (s.hour?.let { "Tu le réussis surtout vers $it h : programme un rappel à cette heure-là. " } ?: "Fixe-lui une heure précise avec un rappel. ") +
+                        (wd?.let { "Le $wd est ton meilleur jour : inspire-toi de ce qui marche ce jour-là. " } ?: "") +
+                        "Et les jours chargés, vise la version minimale : ça garde la série. $cheer")
+                }
+            }
             has(t, "créer|crée|ajoute|nouvel objectif|nouvelle habitude|je veux|j'aimerais|je voudrais|commencer à|me mettre à") && !has(t, "propose") -> {
                 val d = Coach.rules(text)
                 Reply("Voici un objectif prêt à créer à partir de ta phrase. Tu pourras tout ajuster avant de l’enregistrer.", goal = "?" + text.trim().take(200))
@@ -68,8 +98,25 @@ object Fallback {
             has(t, "merci|cool|top|super|génial|parfait") -> Reply("Avec plaisir${who?.let { " $it" } ?: ""} ! $cheer")
             has(t, "salut|bonjour|hello|coucou|bonsoir|hey") -> Reply(p.hello.replace("{name}", who ?: "toi") + " " +
                 (if (left.isEmpty()) "Tout est fait pour aujourd’hui." else "Il te reste ${left.size} objectif${if (left.size > 1) "s" else ""} aujourd’hui."))
+            mentioned(pg, u.id, t) != null -> {
+                val g = mentioned(pg, u.id, t)!!; val s = pg.goalStats(g); val due = plan.due.firstOrNull { it.g.id == g.id }
+                Reply("**${g.icon} ${g.title}** : série de ${pg.goalStreak(g)} jour${if (pg.goalStreak(g) > 1) "s" else ""}, record ${s.longest}, ${s.total} validation${if (s.total > 1) "s" else ""} au total." +
+                    (s.rate30?.let { " Réussite sur 30 jours : ${Math.round(it * 100)} %." } ?: "") +
+                    (s.hour?.let { " Tu le fais surtout vers $it h." } ?: "") +
+                    when { due == null -> " Il n’est pas prévu aujourd’hui."; due.done -> " Déjà validé aujourd’hui 👏"; else -> " Il est encore à faire aujourd’hui." } + " $cheer",
+                    acts = if (due != null && !due.done && has(t, "fait|fini|valid")) listOf("validate:${g.id}") else emptyList())
+            }
             else -> Reply((if (LocalAi.installed(ctx)) "Je n’ai pas réussi à formuler une réponse complète cette fois. " else "Je fonctionne en mode simple (sans le modèle d’IA). ") +
-                "Je peux te dire par quoi commencer, faire le point sur ta semaine, t’aider à sauver ta série ou te proposer un objectif. $cheer")
+                "Je peux te dire par quoi commencer, faire le point sur ta semaine ou sur un objectif (cite son nom), te donner un conseil, ton niveau, t’aider à sauver ta série ou te proposer un objectif. $cheer")
         }
+    }
+
+    /** Objectif cité dans la phrase (un mot de 4 lettres ou plus de son titre). */
+    private fun mentioned(pg: fr.pepsgoal.core.Pg, uid: String, t: String): fr.pepsgoal.core.model.Goal? {
+        val words = t.split(Regex("[^\\p{L}0-9]+")).filter { it.length >= 4 }.toSet()
+        if (words.isEmpty()) return null
+        return pg.myGoals(uid).filter { !pg.isClosedGoal(it) }.maxByOrNull { g ->
+            g.title.lowercase().split(Regex("[^\\p{L}0-9]+")).count { w -> w.length >= 4 && words.any { it.take(5) == w.take(5) } }
+        }?.takeIf { g -> g.title.lowercase().split(Regex("[^\\p{L}0-9]+")).any { w -> w.length >= 4 && words.any { it.take(5) == w.take(5) } } }
     }
 }
