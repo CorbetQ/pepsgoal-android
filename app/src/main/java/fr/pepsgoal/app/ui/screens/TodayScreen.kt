@@ -59,12 +59,24 @@ fun ScreenList(gap: androidx.compose.ui.unit.Dp = 10.dp, content: androidx.compo
 }
 
 /**
- * Publie le défilement d'une liste (px depuis le haut, plafonné passé le premier élément) pour la barre compacte et la
+ * Publie le défilement d’une liste (px depuis le haut, continu) pour la barre compacte et la
  * parallaxe du fond, et signale un défilement en cours (horloge de la scène figée pendant et 500 ms après).
  */
 @Composable
 fun TrackScroll(state: androidx.compose.foundation.lazy.LazyListState, publish: (Float) -> Unit) {
-    LaunchedEffect(state) { snapshotFlow { if (state.firstVisibleItemIndex == 0) state.firstVisibleItemScrollOffset.toFloat() else 100_000f }.collect { publish(it) } }
+    // Défilement continu (px depuis le haut) : hauteurs des éléments déjà passés + décalage du premier visible. Avant,
+    // la valeur sautait d'un coup à « très loin » dès que le premier élément sortait : le fond se téléportait.
+    val sizes = remember(state) { HashMap<Int, Int>() }
+    LaunchedEffect(state) {
+        snapshotFlow {
+            val info = state.layoutInfo
+            info.visibleItemsInfo.forEach { sizes[it.index] = it.size + info.mainAxisItemSpacing }
+            val i = state.firstVisibleItemIndex
+            var y = state.firstVisibleItemScrollOffset.toFloat()
+            for (k in 0 until i) y += (sizes[k] ?: 0).toFloat()
+            y
+        }.collect { publish(it) }
+    }
     LaunchedEffect(state) {
         snapshotFlow { state.isScrollInProgress }.collectLatest { if (it) Fx.scrolling = true else { kotlinx.coroutines.delay(500); Fx.scrolling = false } }
     }
