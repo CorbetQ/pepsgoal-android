@@ -108,12 +108,12 @@ private fun style(ctx: Context): WStyle {
     return WStyle(dark, mode == "you" && Build.VERSION.SDK_INT >= 31)
 }
 
-private val WStyle.ink @Composable get() = if (you) GlanceTheme.colors.onSurface else ColorProvider(if (dark) Color(0xFFF4F5FF) else Color(0xFF0D0E2B))
-private val WStyle.ink2 @Composable get() = if (you) GlanceTheme.colors.onSurfaceVariant else ColorProvider(if (dark) Color(0xFFC9CCF2) else Color(0xFF34375F))
-private val WStyle.track @Composable get() = if (you) GlanceTheme.colors.surfaceVariant else ColorProvider(if (dark) Color(0x26FFFFFF) else Color(0x170D0E2B))
+private val WStyle.ink @Composable get() = if (you) GlanceTheme.colors.onSurface else ColorProvider(if (dark) Color(0xFFFFF4EC) else Color(0xFF2A1420))
+private val WStyle.ink2 @Composable get() = if (you) GlanceTheme.colors.onSurfaceVariant else ColorProvider(if (dark) Color(0xFFD9C4CF) else Color(0xFF6B4F5C))
+private val WStyle.track @Composable get() = if (you) GlanceTheme.colors.surfaceVariant else ColorProvider(if (dark) Color(0xFF2F2337) else Color(0xFFFFEDE1))
 
 @Composable
-private fun GlanceModifier.wBg(s: WStyle): GlanceModifier = cornerRadius(28.dp).then(
+private fun GlanceModifier.wBg(s: WStyle): GlanceModifier = cornerRadius(24.dp).then(
     if (s.you) GlanceModifier.background(GlanceTheme.colors.widgetBackground) else GlanceModifier.background(ImageProvider(if (s.dark) R.drawable.widget_bg_dark else R.drawable.widget_bg_light)))
 
 @Composable
@@ -128,7 +128,7 @@ private fun typeColor(t: String) = hex((TYPE_LIGHT[t] ?: TYPE_LIGHT.getValue("ro
 
 private fun open(ctx: Context, configure: Intent.() -> Unit): Action = actionStartActivity(Intent(ctx, MainActivity::class.java).apply(configure))
 
-/** Barre de progression arrondie : piste discrète, remplissage couleur flamme (ou couleur principale Material You). */
+/** Barre de progression arrondie : rail surface2 plein, remplissage braise (ou couleur principale Material You). */
 @Composable
 private fun WBar(s: WStyle, pct: Float, height: Dp = 8.dp) {
     LinearProgressIndicator(pct.coerceIn(0f, 1f), GlanceModifier.fillMaxWidth().height(height).cornerRadius(height / 2),
@@ -156,7 +156,7 @@ class TodayWidget : GlanceAppWidget() {
                         style = TextStyle(color = s.ink2, fontSize = 12.sp, fontWeight = FontWeight.Medium), maxLines = 1)
                 }
                 Box(GlanceModifier.size(40.dp).wAccent(s, 20.dp).clickable(open(ctx) { action = MainActivity.ACTION_NEW_GOAL }), contentAlignment = Alignment.Center) {
-                    Text("+", style = TextStyle(color = if (s.you) GlanceTheme.colors.onPrimary else ColorProvider(Color.White), fontWeight = FontWeight.Bold, fontSize = 22.sp))
+                    Text("+", style = TextStyle(color = if (s.you) GlanceTheme.colors.onPrimary else ColorProvider(Color(0xFF2A1420)), fontWeight = FontWeight.Bold, fontSize = 22.sp))
                 }
             }
             if (plan.due.isNotEmpty()) { Spacer(GlanceModifier.height(8.dp)); WBar(s, done.toFloat() / plan.due.size, 6.dp) }
@@ -177,7 +177,7 @@ class TodayWidget : GlanceAppWidget() {
                             Box(GlanceModifier.size(30.dp).cornerRadius(15.dp)
                                 .then(if (x.done) GlanceModifier.background(ColorProvider(tc)) else GlanceModifier.background(ImageProvider(if (s.dark) R.drawable.widget_check_dark else R.drawable.widget_check_light)))
                                 .clickable(actionRunCallback<ValidateAction>(actionParametersOf(GoalKey to x.g.id))), contentAlignment = Alignment.Center) {
-                                if (x.done) Text("✓", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontWeight = FontWeight.Bold, fontSize = 15.sp))
+                                if (x.done) Text("✓", style = TextStyle(color = ColorProvider(Color(0xFF2A1420)), fontWeight = FontWeight.Bold, fontSize = 15.sp))
                             }
                         }
                     }
@@ -214,7 +214,7 @@ class StreakWidget : GlanceAppWidget() {
                         val d = today.minusDays(k.toLong()); val key = ymd(d)
                         Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                             Image(ImageProvider(when { key in active -> R.drawable.ic_flame; key in frozen -> R.drawable.ic_snow; else -> R.drawable.ic_flame_dim }), WD[wdIdx(d)], GlanceModifier.size(16.dp))
-                            Text(WD[wdIdx(d)], style = TextStyle(color = if (k == 0) s.ink else s.ink2, fontSize = 10.sp, fontWeight = if (k == 0) FontWeight.Bold else FontWeight.Medium))
+                            Text(WD[wdIdx(d)], style = TextStyle(color = if (k == 0) s.ink else s.ink2, fontSize = 11.sp, fontWeight = if (k == 0) FontWeight.Bold else FontWeight.Medium))
                         }
                     }
                 }
@@ -284,7 +284,7 @@ class QuickWidget : GlanceAppWidget() {
             items.forEachIndexed { k, (ic, label, act) ->
                 Column(GlanceModifier.defaultWeight().clickable(act), horizontalAlignment = Alignment.CenterHorizontally, verticalAlignment = Alignment.CenterVertically) {
                     Box(GlanceModifier.size(btn).then(if (k == 0) GlanceModifier.wAccent(s, btn / 2) else GlanceModifier.wCard(s).cornerRadius(btn / 2)), contentAlignment = Alignment.Center) {
-                        Text(ic, style = TextStyle(color = if (k == 0) (if (s.you) GlanceTheme.colors.onPrimary else ColorProvider(Color.White)) else s.ink, fontSize = if (k == 0) 22.sp else 18.sp, fontWeight = FontWeight.Bold))
+                        Text(ic, style = TextStyle(color = if (k == 0) (if (s.you) GlanceTheme.colors.onPrimary else ColorProvider(Color(0xFF2A1420))) else s.ink, fontSize = if (k == 0) 22.sp else 18.sp, fontWeight = FontWeight.Bold))
                     }
                     if (size.height >= 70.dp) Text(label, GlanceModifier.padding(top = 3.dp), style = TextStyle(color = s.ink, fontSize = 11.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                 }
@@ -310,7 +310,7 @@ class CapAddAction : ActionCallback {
 private fun ringBitmap(pct: Float, dark: Boolean, color: Int): android.graphics.Bitmap {
     val n = 240; val b = android.graphics.Bitmap.createBitmap(n, n, android.graphics.Bitmap.Config.ARGB_8888); val c = android.graphics.Canvas(b)
     val sw = 26f; val r = android.graphics.RectF(sw / 2, sw / 2, n - sw / 2, n - sw / 2)
-    val track = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.STROKE; strokeWidth = sw; this.color = if (dark) 0x26FFFFFF else 0x170D0E2B }
+    val track = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.STROKE; strokeWidth = sw; this.color = if (dark) 0xFF2F2337.toInt() else 0xFFFFEDE1.toInt() }
     val fill = android.graphics.Paint(track).apply { this.color = color; strokeCap = android.graphics.Paint.Cap.ROUND }
     c.drawArc(r, 0f, 360f, false, track)
     if (pct > 0f) c.drawArc(r, -90f, 360f * pct.coerceIn(0f, 1f), false, fill)
@@ -344,18 +344,18 @@ class CapWidget : GlanceAppWidget() {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (ring > 90.dp) Text(g.shownIcon(), style = TextStyle(fontSize = 18.sp))
                     Text(fmtNum(Math.round(v * 10) / 10.0), style = TextStyle(color = s.ink, fontSize = if (ring > 110.dp) 22.sp else 15.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-                    if (ring > 76.dp) Text("/ ${fmtNum(g.target)} ${g.unit}".trim(), style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
+                    if (ring > 76.dp) Text("/ ${fmtNum(g.target)} ${g.unit}".trim(), style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
                 }
             }
             // Petit widget : le bouton « + » passe sous l'anneau, sans titre ; sinon titre (une ligne) et bouton côte à côte
             if (small) Spacer(GlanceModifier.height(4.dp))
             if (small) Box(GlanceModifier.size(28.dp).wAccent(s, 14.dp).clickable(actionRunCallback<CapAddAction>(actionParametersOf(GoalKey to g.id))), contentAlignment = Alignment.Center) {
-                Text("+", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontSize = 16.sp, fontWeight = FontWeight.Bold))
+                Text("+", style = TextStyle(color = ColorProvider(Color(0xFF2A1420)), fontSize = 16.sp, fontWeight = FontWeight.Bold))
             }
             if (!small) Row(GlanceModifier.fillMaxWidth().height(36.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (done) "Cap atteint ✓" else g.shownTitle(), GlanceModifier.defaultWeight().padding(end = 6.dp), style = TextStyle(color = s.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                 Box(GlanceModifier.size(32.dp).wAccent(s, 16.dp).clickable(actionRunCallback<CapAddAction>(actionParametersOf(GoalKey to g.id))), contentAlignment = Alignment.Center) {
-                    Text("+", style = TextStyle(color = ColorProvider(Color(0xFF10102A)), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                    Text("+", style = TextStyle(color = ColorProvider(Color(0xFF2A1420)), fontSize = 18.sp, fontWeight = FontWeight.Bold))
                 }
             }
         }
@@ -370,9 +370,9 @@ class WeekWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWid
 private fun weekBitmap(rates: List<Double?>, todayIdx: Int, dark: Boolean): android.graphics.Bitmap {
     val w = 700; val h = 150; val b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888); val c = android.graphics.Canvas(b)
     val cw = w / 7f; val r = 44f
-    val track = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) 0x22FFFFFF else 0x140D0E2B }
-    val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.STROKE; strokeWidth = 7f; color = if (dark) 0xCCFFFFFF.toInt() else 0xCC0D0E2B.toInt() }
-    val txt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textSize = 30f; textAlign = android.graphics.Paint.Align.CENTER; isFakeBoldText = true; color = if (dark) 0xDDFFFFFF.toInt() else 0xDD0D0E2B.toInt() }
+    val track = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) 0xFF2F2337.toInt() else 0xFFFFEDE1.toInt() }
+    val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.STROKE; strokeWidth = 7f; color = 0xFFFF4A12.toInt() }
+    val txt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textSize = 30f; textAlign = android.graphics.Paint.Align.CENTER; isFakeBoldText = true; color = if (dark) 0xFFFFF4EC.toInt() else 0xFF2A1420.toInt() }
     for (i in 0..6) {
         val cx = cw * i + cw / 2; val cy = 62f; val v = rates[i]
         c.drawCircle(cx, cy, r, track)
@@ -436,7 +436,7 @@ class FlameWidget : GlanceAppWidget() {
             val st = u?.let { pg.globalStreak(it.id) }
             Image(ImageProvider(if (st?.lit == true) R.drawable.ic_flame else R.drawable.ic_flame_dim), "Flamme", GlanceModifier.size(if (tiny) 20.dp else 28.dp))
             Text("${st?.n ?: 0}", style = TextStyle(color = s.ink, fontWeight = FontWeight.Bold, fontSize = if (tiny) 15.sp else 20.sp), maxLines = 1)
-            if (next != null && !tiny) Text("✓ ${next.g.shownIcon()}", style = TextStyle(color = s.ink2, fontSize = 10.sp), maxLines = 1)
+            if (next != null && !tiny) Text("✓ ${next.g.shownIcon()}", style = TextStyle(color = s.ink2, fontSize = 11.sp), maxLines = 1)
         }
     }
 }

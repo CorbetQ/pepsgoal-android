@@ -196,6 +196,8 @@ object Notifier {
             val row = android.widget.RemoteViews(app.packageName, R.layout.notif_row)
             row.setTextViewText(R.id.title, "${x.g.shownIcon()} ${x.g.shownTitle()}")
             row.setTextViewText(R.id.check, if (x.done) "✓" else "○")
+            // Pastille néon du type à gauche
+            row.setInt(R.id.dot, "setColorFilter", android.graphics.Color.parseColor((fr.pepsgoal.app.ui.theme.TYPE_LIGHT[x.g.type] ?: fr.pepsgoal.app.ui.theme.TYPE_LIGHT.getValue("routine")).first))
             val oneTap = x.g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit") && x.g.steps.isEmpty()
             val pi = if (oneTap) action(app, id * 10 + i, ActionReceiver.VALIDATE) { putExtra("goal", x.g.id); putExtra("nid", id); putExtra("keep", true); putExtra("morning", true) }
                 else open(app, id * 10 + i) { putExtra(MainActivity.EXTRA_GOAL, x.g.id) }
@@ -266,7 +268,7 @@ object Notifier {
         val col = (ACCENTS.getOrNull(u?.avatar?.color ?: 0) ?: ACCENTS[0]).c[1]
         c.drawCircle(s / 2f, s / 2f, s / 2f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor(col) })
         val ini = (u?.name ?: "?").trim().split(Regex("\\s+")).mapNotNull { it.firstOrNull()?.toString() }.take(2).joinToString("").uppercase()
-        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF10102A.toInt(); textSize = 40f; textAlign = Paint.Align.CENTER; isFakeBoldText = true }
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF2A1420.toInt(); textSize = 40f; textAlign = Paint.Align.CENTER; isFakeBoldText = true }
         c.drawText(ini, s / 2f, s / 2f - (p.descent() + p.ascent()) / 2, p)
         return bmp
     }
