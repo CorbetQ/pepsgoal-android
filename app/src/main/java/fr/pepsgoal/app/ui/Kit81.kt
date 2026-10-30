@@ -115,13 +115,13 @@ fun Pal.barEdge(tint: Color?): Color = if (contrast || tint == null) edge else l
 /* ================================================================== plaques */
 
 /**
- * Taille d'un titre en Unbounded : suit la taille du texte d'Android jusqu'à 130 %, puis plafonne (à 200 %, un mot
+ * Taille d'un titre en Unbounded : suit la taille du texte d'Android jusqu'à 115 % (onglets : 130 %), puis plafonne (à 200 %, un mot
  * long comme « Accessibilité » se couperait au milieu ; les textes courants, eux, grandissent sans limite).
  */
 @Composable
-fun titleSp(size: Int): androidx.compose.ui.unit.TextUnit {
+fun titleSp(size: Int, cap: Float = 1.15f): androidx.compose.ui.unit.TextUnit {
     val k = androidx.compose.ui.platform.LocalDensity.current.fontScale
-    return (size * minOf(1f, 1.3f / k)).sp
+    return (size * minOf(1f, cap / k)).sp
 }
 
 /** Plaque : capsule opaque `surface` + bord 2 dp, sans marche (elle ne se presse pas). Porte tout texte posé sur le fond. */
@@ -909,7 +909,7 @@ fun PTabs(options: List<Pair<String, String?>>, sel: Int, onSelect: (Int) -> Uni
                 if (e != null && !big) Emoji(e, 18.dp)
                 // Compteur en pastille posée sur le libellé : il ne lui prend jamais de place (pas de mot coupé)
                 Box {
-                    Text(l, Modifier.padding(end = if (b > 0) 10.dp else 0.dp), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (on) PLUM else p.ink2, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 16.sp)
+                    Text(l, Modifier.padding(end = if (b > 0) 10.dp else 0.dp), fontSize = titleSp(14, 1.3f), fontWeight = FontWeight.ExtraBold, color = if (on) PLUM else p.ink2, maxLines = 2, textAlign = TextAlign.Center, lineHeight = titleSp(16, 1.3f))
                     if (b > 0) Badge(b, Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-10).dp))
                 }
             }
