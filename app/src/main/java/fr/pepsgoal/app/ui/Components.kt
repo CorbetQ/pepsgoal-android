@@ -397,7 +397,12 @@ fun PButton(
     ) {
         leading?.invoke()
         if (icon != null) Pi(icon, size = if (small) 18.dp else 20.dp, tint = fg)
-        if (text.isNotEmpty()) Text(text, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = if (small) 15.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        // Avec une icône : si le libellé coupe un mot en deux, seule l'icône reste (libellé lu par TalkBack)
+        val cut = rememberWordCut(text)
+        val iconic = icon != null || leading != null
+        if (text.isNotEmpty() && iconic && cut.hide) Spacer(Modifier.semantics { contentDescription = tr(text) })
+        else if (text.isNotEmpty()) Text(text, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = if (small) 15.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+            onTextLayout = { if (iconic && it.cutsWord()) cut.hide = true })
     }
 }
 
@@ -787,8 +792,13 @@ fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, mod
     @Composable
     fun Label(i: Int, l: String, on: Boolean) {
         // Très grand texte : l'icône s'efface pour laisser la place au libellé
-        if (LocalDensity.current.fontScale < 1.5f) icons?.getOrNull(i)?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
-        Text(l, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, fontSize = 15.sp, color = if (on) p.ink else p.ink2, maxLines = 2, lineHeight = 18.sp, textAlign = TextAlign.Center)
+        val ic = if (LocalDensity.current.fontScale < 1.5f) icons?.getOrNull(i) else null
+        ic?.let { Pi(it, size = 16.dp, tint = if (on) p.ink else p.ink2) }
+        // Mot coupé en deux : l'icône reste seule (libellé lu par TalkBack)
+        val cut = rememberWordCut(l)
+        if (ic != null && cut.hide) { Spacer(Modifier.semantics { contentDescription = tr(l) }); return }
+        Text(l, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, fontSize = 15.sp, color = if (on) p.ink else p.ink2, maxLines = 2, lineHeight = 18.sp, textAlign = TextAlign.Center,
+            onTextLayout = { if (ic != null && it.cutsWord()) cut.hide = true })
     }
     // Très grand texte (200 %) et plus de trois options : liste de choix, rien n'est coupé
     if (options.size > 3 && LocalDensity.current.fontScale >= 1.5f) { Box(modifier) { PRadioGroup(options, value, onChange) }; return }
@@ -824,6 +834,26 @@ fun <T> Seg(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, mod
 @Composable
 fun FlowRowCompat(modifier: Modifier = Modifier, gap: Dp = 4.dp, content: @Composable () -> Unit) {
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap), itemVerticalAlignment = Alignment.CenterVertically) { content() }
+}
+
+/**
+ * Libellé accompagné d'une icône : s'il coupe un mot en deux (ou déborde), il s'efface et l'icône reste seule ; le
+ * libellé reste lu par TalkBack. La décision est gardée tant que le texte ne change pas (pas d'aller-retour).
+ */
+class WordCut { var hide by mutableStateOf(false) }
+
+@Composable
+fun rememberWordCut(text: String): WordCut = remember(text, I18n.rev) { WordCut() }
+
+/** Vrai si une ligne se termine au milieu d'un mot, ou si le texte est tronqué. */
+fun androidx.compose.ui.text.TextLayoutResult.cutsWord(): Boolean {
+    if (hasVisualOverflow) return true
+    val t = layoutInput.text.text
+    for (i in 0 until lineCount - 1) {
+        val e = getLineEnd(i)
+        if (e in 1 until t.length && !t[e - 1].isWhitespace() && !t[e].isWhitespace() && t[e - 1] != '-' && t[e - 1] != '\u00AD' && t[e - 1] != '/') return true
+    }
+    return false
 }
 
 /** Texte sur une ligne qui rétrécit pour tenir dans sa place (petites tuiles, grands réglages de police). */
