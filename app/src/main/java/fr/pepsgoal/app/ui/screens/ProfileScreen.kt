@@ -70,7 +70,9 @@ fun ProfileScreen(ui: AppState) {
         item("space") { MySpace(ui, u, done) }
         item("tabs") {
             val tabs = listOf("overview", "badges", "collection")
-            PTabs(listOf("Aperçu" to "☀️", "Badges" to "🏅", "Collection" to "🎨"), tabs.indexOf(ui.profileTab).coerceAtLeast(0), { ui.profileTab = tabs[it] })
+            // Onglets à pictogrammes, comme la barre de navigation : le libellé n'apparaît que sur l'onglet ouvert
+            NavBar(listOf(Triple("overview", "Aperçu", "gauge"), Triple("badges", "Badges", "medal"), Triple("collection", "Collection", "palette")),
+                ui.profileTab.takeIf { it in tabs } ?: "overview", emptyMap(), { ui.profileTab = it })
         }
         when (ui.profileTab) {
             "badges" -> {

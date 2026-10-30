@@ -21,13 +21,16 @@ fun SocialScreen(ui: AppState) {
     val cur = when { ui.tab == "feed" -> 0; ui.friendsTab == "msgs" -> 2; else -> 1 }
     val header: @Composable () -> Unit = {
         TabHeader(ui, "social") {
-            PTabs(listOf("Feed" to "📰", "Amis" to "👥", "Messages" to "💬"), cur, { i ->
-                when (i) {
-                    0 -> ui.nav("feed")
-                    2 -> { ui.friendsTab = "msgs"; ui.nav("friends") }
+            // Onglets à pictogrammes, comme la barre de navigation : le libellé n'apparaît que sur l'onglet ouvert
+            val keys = listOf("feed", "friends", "msgs")
+            NavBar(listOf(Triple("feed", "Feed", "feed"), Triple("friends", "Amis", "users"), Triple("msgs", "Messages", "comment")), keys[cur],
+                mapOf("friends" to req, "msgs" to unread), { k ->
+                when (k) {
+                    "feed" -> ui.nav("feed")
+                    "msgs" -> { ui.friendsTab = "msgs"; ui.nav("friends") }
                     else -> { if (ui.friendsTab == "msgs") ui.friendsTab = "friends"; ui.nav("friends") }
                 }
-            }, badges = listOf(0, req, unread))
+            })
         }
     }
     CompositionLocalProvider(LocalTabHeader provides header) {

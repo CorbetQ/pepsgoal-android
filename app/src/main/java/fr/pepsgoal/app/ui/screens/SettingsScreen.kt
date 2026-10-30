@@ -165,6 +165,7 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
             if (bottom != null) Box(Modifier.fillMaxWidth().then(if (low) Modifier else Modifier.navigationBarsPadding())) { bottom() }
             if (low) bar(Modifier.navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp))
         }
+        if (!low && k > .01f) StatusScrim { k }
         if (!low && k > .01f) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().widthIn(max = 776.dp).statusBarsPadding().padding(horizontal = 8.dp, vertical = 2.dp)) { bar(Modifier) }
     } }
 }
