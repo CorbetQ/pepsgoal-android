@@ -218,7 +218,7 @@ fun MonthFocusCard(ui: AppState) {
 class MomentTile(val key: String, val emoji: String, val title: String, val sub: String)
 
 /** Cartes ponctuelles de l'accueil, regroupées en tuiles « À la une » (affichées seulement quand elles servent). */
-val MOMENT_KEYS = setOf("bday", "countdown", "advent", "briefing", "record", "challenge", "cheers", "weekimg", "memories", "quote", "quest", "evening", "wxweek")
+val MOMENT_KEYS = setOf("bday", "countdown", "advent", "briefing", "record", "challenge", "cheers", "weekimg", "memories", "quote", "quest", "season", "forecast", "evening", "wxweek")
 
 @Composable
 fun rememberMoments(ui: AppState, keys: List<String>): List<MomentTile> {
@@ -241,6 +241,10 @@ fun rememberMoments(ui: AppState, keys: List<String>): List<MomentTile> {
             "memories" -> pg.memories().firstOrNull()?.let { m -> out += MomentTile(k, "📸", m.label, pl(m.count, "validation", "validations")) }
             "quote" -> pg.quoteToday().let { (q, _) -> out += MomentTile(k, "💬", "Citation du jour", q) }
             "quest" -> pg.questState()?.takeIf { !it.finished }?.let { q -> out += MomentTile(k, q.quest.emoji, q.quest.title, if (q.canUnlock) "Nouveau chapitre à lire" else "Chapitre ${minOf(q.done + 1, 7)} sur 7") }
+            "forecast" -> pg.streakForecast(pg.me()?.settings?.weather?.let { Wx.cached(ctx, it)?.data }).filter { it.level == "high" || it.level == "medium" }.minByOrNull { it.date }?.let { r ->
+                out += MomentTile(k, "🔮", "Semaine à venir", "${cap(weekdayLongDate(parseYmd(r.date)).substringBefore(' '))} : ${if (r.level == "high") "risque élevé" else "risque moyen"}") }
+            "season" -> themeSeasonAt().let { s -> val n = pg.tiersToClaim(s).size
+                out += MomentTile(k, s.theme.emoji, s.theme.name, if (n > 0) pl(n, "palier à récupérer", "paliers à récupérer") else "${pg.seasonFlames(s)} flammes de saison") }
             "evening" -> if (nowHM() >= "20:30" && ui.prefs.raw.getString("eveningQuick", "") != today()) out += MomentTile(k, "🌙", "Bilan express", "Ta journée en trois touches")
             "wxweek" -> pg.me()?.settings?.weather?.let { Wx.cached(ctx, it)?.data }?.let { f -> val good = goodOutdoorDays(f).filter { it.day >= today() }
                 if (pg.myGoals().any { g -> !g.archived && (g.outdoor || g.planB.isNotBlank()) }) out += MomentTile(k, "🌤️", "Météo de la semaine", good.firstOrNull()?.let { "Meilleur jour : ${weekdayLongDate(parseYmd(it.day)).substringBefore(' ')}" } ?: "Semaine humide") }
@@ -283,7 +287,7 @@ fun HomeCardSheet(ui: AppState, key: String) {
         "catchup" -> CatchUpCard(ui); "wrapped" -> WrappedCard(ui); "bday" -> BirthdayCard(ui); "countdown" -> CountdownCard(ui)
         "advent" -> AdventCard(ui); "briefing" -> BriefingCard(ui); "record" -> RecordCard(ui); "challenge" -> ChallengeCard(ui)
         "cheers" -> FriendCheersCard(ui); "weekimg" -> WeekImageCard(ui); "memories" -> MemoriesCard(ui); "quote" -> QuoteCard(ui)
-        "quest" -> QuestCard(ui); "evening" -> EveningQuickCard(ui, plan); "wxweek" -> WeekWeatherCard(ui)
+        "quest" -> QuestCard(ui); "season" -> ThemeSeasonCard(ui); "forecast" -> WeekAheadCard(ui); "evening" -> EveningQuickCard(ui, plan); "wxweek" -> WeekWeatherCard(ui)
     }
 }
 

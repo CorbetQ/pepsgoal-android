@@ -228,6 +228,9 @@ class DevicePrefs(context: Context) {
     var flameFx get() = p.getString("flameFx", "none") ?: "none"; set(v) = p.edit().putString("flameFx", v).apply()
     /** Compagnon : nom et accessoires portés. */
     var petName get() = p.getString("petName", "Braisou") ?: "Braisou"; set(v) = p.edit().putString("petName", v).apply()
+    /** Tenue portée (« » : aucune) et cadre d'avatar choisi (clé de la saison qui l'a offert). */
+    var petOutfit get() = p.getString("petOutfit", "") ?: ""; set(v) = p.edit().putString("petOutfit", v).apply()
+    var avatarFrame get() = p.getString("avatarFrame", "") ?: ""; set(v) = p.edit().putString("avatarFrame", v).apply()
     var petAcc: Set<String> get() = p.getStringSet("petAcc", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("petAcc", v).apply()
     /** Briefing du matin lu à voix haute à la première ouverture de la journée (avant midi). */
     var briefAuto get() = p.getBoolean("briefAuto", false); set(v) = p.edit().putBoolean("briefAuto", v).apply()

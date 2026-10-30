@@ -370,6 +370,7 @@ class LogicTest {
         val st = pg.questState()!!; assertEquals(0, st.done); assertTrue(st.canUnlock)
         assertEquals(1, pg.unlockChapter()); assertEquals(null, pg.unlockChapter())
         assertEquals("egg", pg.pet().stage.key); assertEquals("happy", pg.pet().mood)
+        assertEquals("tired", pg.pet(journal = 2).mood)
         assertEquals(1, fr.pepsgoal.core.cloud.LeagueSeason.move(listOf(0.0, .2), 0)); assertEquals(-1, fr.pepsgoal.core.cloud.LeagueSeason.move(listOf(1.0, .9), 2))
         assertEquals(2, fr.pepsgoal.core.cloud.LeagueSeason.division(listOf("season:2026-09:1:1:0.10")))
         assertEquals(80, shopPriceOf("acc:beret"))

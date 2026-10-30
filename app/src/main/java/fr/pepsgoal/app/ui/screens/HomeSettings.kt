@@ -48,6 +48,8 @@ val HOME_CARDS = linkedMapOf(
     "wxweek" to Triple("Météo de la semaine", "Les meilleurs jours pour tes objectifs d’extérieur", "cloud"),
     "quote" to Triple("Citation du jour", "Une phrase pour se motiver, chaque jour différente", "sparkle"),
     "quest" to Triple("Quête", "Une histoire en 7 chapitres, un par journée active", "book"),
+    "forecast" to Triple("Semaine à venir", "Les jours où ta série risque de flancher, avec un plan B prévu à l’avance", "cal"),
+    "season" to Triple("Saison", "Le passe de la saison en cours et les quêtes de la semaine", "star"),
     "evening" to Triple("Bilan express du soir", "À partir de 20 h 30 : humeur, une phrase, reporter ou passer", "moon"),
     "tools" to Triple("Raccourcis", "Focus, Stats, Journal, Coach", "bolt"),
     "tip" to Triple("Conseil du coach", "Avec l’assistant IA activé", "sparkle"),

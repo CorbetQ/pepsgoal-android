@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
+import fr.pepsgoal.app.peps
 import fr.pepsgoal.app.sys.Scheduled
 import fr.pepsgoal.app.sys.Transcriber
 import fr.pepsgoal.app.ui.*
@@ -60,11 +61,23 @@ val STICKERS = listOf(
     StickerDef("night", "Bonne nuit", "🌙", "Bonne nuit", "float", "⭐"),
 )
 
+/** Stickers des saisons : débloqués par le passe (« sticker:<id> »), lisibles par tout le monde. */
+val SEASON_STICKERS = listOf(
+    StickerDef("flocon", "Brrr", "❄️", "Brrr !", "shake", "❄️"), StickerDef("chocolat", "Au chaud", "☕", "Au chaud", "sway", "☁️"),
+    StickerDef("aurore", "Magique", "🌌", "Magique", "float", "✨"), StickerDef("renne", "En route", "🦌", "En route", "bounce", "⭐"),
+    StickerDef("sakura", "Zen", "🌸", "Zen", "sway", "🌸"), StickerDef("the", "Pause thé", "🍵", "Pause thé", "float", "☁️"),
+    StickerDef("fusee", "Décollage", "🚀", "Décollage !", "pulse", "⭐"), StickerDef("ovni", "Hors norme", "🛸", "Hors norme", "float", "✨"),
+    StickerDef("coco", "Cool", "🥥", "Cool", "sway", "🌴"), StickerDef("vague", "Surfe", "🌊", "Surfe !", "wave", "💧"),
+    StickerDef("toue", "Cap", "⛵", "Cap !", "sway", "💧"), StickerDef("glace", "Trop bon", "🍦", "Trop bon", "bounce", "✨"),
+    StickerDef("raisin", "Santé", "🍇", "Santé !", "bounce", "confetti"), StickerDef("tuffeau", "Solide", "🏰", "Solide", "pulse", "⭐"),
+    StickerDef("feuille", "Tranquille", "🍂", "Tranquille", "sway", "🍂"), StickerDef("chataigne", "Bien au chaud", "🌰", "Au chaud", "flicker", "embers"),
+)
+
 /** Sticker animé (ou figé dans le sélecteur et avec « réduire les animations »). */
 @Composable
 fun StickerView(id: String, fallback: String, sz: Dp, still: Boolean = false) {
     val p = LocalPal.current
-    val def = STICKERS.firstOrNull { it.id == id } ?: run { Emoji(fallback.ifEmpty { "🔥" }, sz * .7f); return }
+    val def = (STICKERS.firstOrNull { it.id == id } ?: SEASON_STICKERS.firstOrNull { it.id == id }) ?: run { Emoji(fallback.ifEmpty { "🔥" }, sz * .7f); return }
     val anim = !still && !p.motion
     val t by if (anim) rememberInfiniteTransition(label = "stk").animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "stkT") else remember { mutableFloatStateOf(.25f) }
     val s = sin(t * 2 * PI.toFloat())
@@ -108,8 +121,11 @@ fun StickerView(id: String, fallback: String, sz: Dp, still: Boolean = false) {
 /** Sélecteur de stickers (panneau de la zone de saisie). */
 @Composable
 fun StickerPicker(onPick: (StickerDef) -> Unit) {
+    // Stickers de base, puis ceux des saisons débloqués par le passe
+    val pg = androidx.compose.ui.platform.LocalContext.current.peps.pg
+    val list = STICKERS + SEASON_STICKERS.filter { pg.ownsItem("sticker:${it.id}") }
     FlowRowCompat(gap = 6.dp) {
-        STICKERS.forEach { d ->
+        list.forEach { d ->
             val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val press = rememberPress(inter)
             Box(Modifier.chunk(LocalPal.current.surface, LocalPal.current.edge, 17.dp, 3.dp, 2.dp, press).clip(RoundedCornerShape(15.dp)).springClick(inter, label = "Sticker ${d.label}") { onPick(d) }.padding(2.dp)) { StickerView(d.id, d.emoji, 70.dp, still = true) }
@@ -164,7 +180,7 @@ fun ShotNotice(ui: AppState, m: Message) {
 /** Texte d'un message pour la recherche : texte, légende, sondage, objectif partagé, sticker, transcription. */
 fun searchText(ui: AppState, m: Message): String {
     val b = Social.body(ui, m) ?: return ""
-    return listOfNotNull(b.strN("t"), b.strN("q"), b.obj("g")?.str("title"), STICKERS.firstOrNull { it.id == b.str("s") }?.label, Transcriber.texts[m.id]).joinToString(" ")
+    return listOfNotNull(b.strN("t"), b.strN("q"), b.obj("g")?.str("title"), (STICKERS + SEASON_STICKERS).firstOrNull { it.id == b.str("s") }?.label, Transcriber.texts[m.id]).joinToString(" ")
 }
 
 @Composable

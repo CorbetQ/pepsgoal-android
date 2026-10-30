@@ -144,7 +144,7 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
         }
         // Médaillon et couronne, au-dessus de la carte
         Box(Modifier.align(Alignment.TopCenter)) {
-            AvatarMedallion(96.dp, lv.idx, k, { ui.open(Sheet.Avatar) }, desc = "Changer mon icône de profil", crownColors = if (lv.tier > 6) tierColors(lv.tier) else null) { AvatarFace(u, 88.dp) }
+            AvatarMedallion(96.dp, lv.idx, k, { ui.open(Sheet.Avatar) }, desc = "Changer mon icône de profil", crownColors = if (lv.tier > 6) tierColors(lv.tier) else null) { AvatarFace(u, 88.dp, Modifier.avatarFrame(ui.prefs.avatarFrame)) }
         }
     }
 }
@@ -159,6 +159,10 @@ private fun MySpace(ui: AppState, u: User, caps: Int) {
         SetItem("Badges", null, "medal", p.type("monthly").c, onClick = { ui.profileTab = "badges" })
         SetItem("Statistiques", if (caps > 0) pl(caps, "objectif atteint", "objectifs atteints") else null, "trend", p.type("objective").c, onClick = { ui.push(Screen.Stats) })
         SetItem("Ligue", null, "trophy", p.type("challenge").c, onClick = { ui.push(Screen.League) })
+        val season = remember(ui.rev) { themeSeasonAt() }
+        SetItem("Saison", "${season.theme.emoji} ${season.theme.name}", "star", p.type("monthly").c, onClick = { ui.push(Screen.Season) }) {
+            val n = remember(ui.rev) { pg.tiersToClaim(season).size }; if (n > 0) Count(n)
+        }
         if (pg.socialOn(u)) SetItem("Amis", null, "users", p.type("period").c, onClick = { ui.nav("friends") })
         if (pg.isAdmin(u)) SetItem("Modération", null, "shield", p.type("duel").c, onClick = { ui.nav("mod") })
         SetItem("Réglages", null, "gear", p.type("program").c, onClick = { ui.push(Screen.Settings()) })

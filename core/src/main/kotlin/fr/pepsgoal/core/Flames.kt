@@ -22,6 +22,7 @@ fun shopPriceOf(key: String): Int? = when {
     key.startsWith("bg:") -> SHOP_BGS.firstOrNull { "bg:${it.key}" == key }?.price
     key.startsWith("mode:") -> SHOP_MODES.firstOrNull { "mode:${it.key}" == key }?.price
     key.startsWith("acc:") -> petPrice(key)
+    key.startsWith("outfit:") -> petOutfit(key.removePrefix("outfit:"))?.price?.takeIf { it > 0 }
     else -> shopExtraPrices[key]
 }
 

@@ -137,6 +137,8 @@ sealed class Screen {
     object Pet : Screen()
     /** Quête en cours : chapitres de l'histoire. */
     object Quest : Screen()
+    /** Saison à thème : passe de récompenses et quêtes de la semaine. */
+    object Season : Screen()
 }
 
 /** Message éphémère en bas de l'écran, avec une action facultative (« Annuler »). */
