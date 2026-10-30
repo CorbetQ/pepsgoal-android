@@ -10,6 +10,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
