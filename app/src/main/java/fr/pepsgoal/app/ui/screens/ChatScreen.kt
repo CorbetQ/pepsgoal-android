@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.ui.graphics.drawOutline
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory

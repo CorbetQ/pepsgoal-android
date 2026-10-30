@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.ui.sheets
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
