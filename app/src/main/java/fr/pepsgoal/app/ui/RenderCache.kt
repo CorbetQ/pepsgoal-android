@@ -64,12 +64,13 @@ internal fun StillCanvas(id: String, modifier: Modifier, placeholder: DrawScope.
 }
 
 /**
- * Fond animé rendu hors du fil principal, à [scale] de la résolution (le fond est voilé et flouté derrière le verre :
- * la perte de netteté ne se voit pas). Trois images tournent : l'une s'affiche pendant qu'une autre se dessine.
- * Horloge arrêtée (fond figé, caché ou application en arrière-plan) : plus aucun travail.
+ * Fond animé rendu hors du fil principal, à [scale] de la résolution (0,5 pour la scène plein écran : elle est voilée
+ * sous les cartes, la perte de netteté ne se voit pas). Trois images tournent : l'une s'affiche pendant qu'une autre se
+ * dessine. Horloge arrêtée (fond figé, caché, feuille ouverte, défilement, application en arrière-plan) : plus aucun
+ * travail, la dernière image reste affichée.
  */
 @Composable
-internal fun OffscreenCanvas(id: String, phase: State<Float>, modifier: Modifier, scale: Float = .6f, placeholder: DrawScope.() -> Unit, paint: DrawScope.(Float) -> Unit) {
+internal fun OffscreenCanvas(id: String, phase: State<Float>, modifier: Modifier, scale: Float = 1f, placeholder: DrawScope.() -> Unit, paint: DrawScope.(Float) -> Unit) {
     val dens = LocalDensity.current.density
     var px by remember { mutableStateOf(IntSize.Zero) }
     val shown = remember { mutableStateOf<ImageBitmap?>(null) }

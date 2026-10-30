@@ -19,6 +19,7 @@ import fr.pepsgoal.app.ui.sheets.SheetHead
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
+import androidx.compose.ui.graphics.Color
 
 /** Les dix paliers de niveau : seuils, palier en cours, temps estimé pour les suivants et récompenses. */
 @Composable
@@ -30,7 +31,7 @@ fun LevelsSheet(ui: AppState) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Flame(44.dp, colors = tierColors(lv.tier))
         Column(Modifier.weight(1f)) {
-            Text("Niveau ${lv.idx} · ${lv.name}", fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text("Niveau ${lv.idx} · ${lv.name}", fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Muted("${fmtNum(lv.pts)} flammes gagnées" + (lv.next?.let { " · ${fmtNum(it - lv.pts)} avant « ${lv.nextName} »" } ?: ""), small = true)
         }
     }
@@ -38,19 +39,21 @@ fun LevelsSheet(ui: AppState) {
         LEVEL_TIERS.forEachIndexed { i, name ->
             val t = i + 1; val first = i * LEVELS_PER_TIER + 1; val at = levelThreshold(first)
             val reached = t <= lv.tier; val cur = t == lv.tier; val cols = tierColors(t)
-            Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(if (cur) Brush.linearGradient(cols.map { it.copy(alpha = .2f) }) else Brush.linearGradient(listOf(p.ink.copy(alpha = .04f), p.ink.copy(alpha = .04f))))
-                .then(if (cur) Modifier.border(1.5.dp, cols.last().copy(alpha = .7f), smoothShape(18.dp)) else Modifier).padding(horizontal = 12.dp, vertical = 10.dp),
+            // Palier en cours = carte de la flamme (encre prune) ; atteints = lignes à marche ; à venir = cadenas
+            Row(Modifier.fillMaxWidth().then(if (cur) Modifier.chunk(p.flameBrush(), p.flameStep, 22.dp, 4.dp, 0.dp) else Modifier.chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Flame(30.dp, dim = !reached, colors = cols)
                 Column(Modifier.weight(1f)) {
-                    Text(name, fontWeight = FontWeight.ExtraBold, color = if (reached) p.ink else p.ink2)
-                    Muted("Niveaux $first à ${first + LEVELS_PER_TIER - 1} · dès ${fmtNum(at)} flammes", small = true)
-                    if (cur) Bar(lv.tierPct * 100, Modifier.padding(top = 5.dp), cols.last(), 5.dp)
+                    Text(name, fontWeight = FontWeight.ExtraBold, color = if (cur) fr.pepsgoal.app.ui.theme.PLUM else if (reached) p.ink else p.ink2)
+                    Text("Niveaux $first à ${first + LEVELS_PER_TIER - 1} · dès ${fmtNum(at)} flammes", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (cur) fr.pepsgoal.app.ui.theme.PLUM else p.ink2)
+                    if (cur) Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(10.dp).background(Color.White.copy(alpha = .42f), androidx.compose.foundation.shape.CircleShape)) {
+                        Box(Modifier.fillMaxHeight().fillMaxWidth(lv.tierPct.toFloat().coerceIn(0f, 1f)).background(fr.pepsgoal.app.ui.theme.PLUM, androidx.compose.foundation.shape.CircleShape))
+                    }
                 }
                 when {
-                    cur -> Chip("En cours", "flameo", cols.last())
+                    cur -> Chip("En cours", "flameo", Color.White)
                     reached -> Chip("Atteint", "check", p.ok)
-                    else -> Text(levelEta(at - lv.pts), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3)
+                    else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { Pi("lock", size = 14.dp, tint = p.ink3); Text(levelEta(at - lv.pts), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3) }
                 }
             }
         }

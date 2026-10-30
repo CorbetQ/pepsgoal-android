@@ -88,7 +88,6 @@ class DevicePrefs(context: Context) {
     /** Couleurs Material You (palette du fond d'écran) sur toute l'interface. */
     var materialYou get() = p.getBoolean("materialYou", false); set(v) = p.edit().putBoolean("materialYou", v).apply()
     /** Opacité des panneaux en verre givré : « low », « mid » ou « high ». */
-    var glassOpacity get() = p.getString("glassOpacity", "mid") ?: "mid"; set(v) = p.edit().putString("glassOpacity", v).apply()
     /** Activités en cours (Live Updates) : minuteur, période en cours, fin de journée. */
     var liveUpdates get() = p.getBoolean("liveUpdates", true); set(v) = p.edit().putBoolean("liveUpdates", v).apply()
     /** Activité en cours masquée par l'utilisateur pour la journée (« type|date »). */
@@ -180,19 +179,48 @@ class DevicePrefs(context: Context) {
     var geoPlaces get() = p.getString("geoPlaces", "") ?: ""; set(v) = p.edit().putString("geoPlaces", v).apply()
     /** Couleurs de saison (Halloween, Noël, printemps…) sur l'arrière-plan. */
     var seasonal get() = p.getBoolean("seasonal", true); set(v) = p.edit().putBoolean("seasonal", v).apply()
-    /** Fonds illustrés éclairés selon l'heure réelle (aube, jour, crépuscule, nuit). */
     /** Disposition de l'accueil : compact, normal ou aéré. */
     /** Accueil « simple » (en-tête unifié, tuiles et sections repliables) ou « classic » (toutes les cartes à la suite). */
     var homeStyle get() = p.getString("homeStyle", "simple") ?: "simple"; set(v) = p.edit().putString("homeStyle", v).apply()
     var homeLayout get() = p.getString("homeLayout", "comfy") ?: "comfy"; set(v) = p.edit().putString("homeLayout", v).apply()
-    /** Fond qui réagit : lueur selon l'avancement du jour, confettis les journées parfaites. */
-    /** Fond animé en haut de l'accueil : « on », « off », ou vide (choix par défaut, déduit du fond choisi). */
-    var bgTop get() = p.getString("bgTop", "") ?: ""; set(v) = p.edit().putString("bgTop", v).apply()
+    /** Où voir le fond : « all » (partout, défaut), « home » (haut de l'accueil seulement) ou « off » (nulle part). */
+    var bgWhere get() = p.getString("bgWhere", "all") ?: "all"; set(v) = p.edit().putString("bgWhere", v).apply()
+    /** Présence du fond (voile) : 0 discrète, 1 équilibrée (défaut), 2 intense. */
+    var bgLevel get() = p.getInt("bgLevel", 1); set(v) = p.edit().putInt("bgLevel", v).apply()
+    /** Fond animé (figé en économie d'énergie). */
+    var bgAnim get() = p.getBoolean("bgAnim", true); set(v) = p.edit().putBoolean("bgAnim", v).apply()
+    /** Lumière de la scène : « real » (suit l'heure réelle), « day » (toujours le jour) ou « theme » (nuit en thème sombre, défaut). */
+    var bgLight get() = p.getString("bgLight", "theme") ?: "theme"; set(v) = p.edit().putString("bgLight", v).apply()
+    /** Voile de l'image personnelle (0 à 0,8) ; -1 : automatique (voile de la présence choisie). */
+    var bgDim get() = p.getFloat("bgDim", -1f); set(v) = p.edit().putFloat("bgDim", v).apply()
+
+    /**
+     * Migration 8.1, faite une seule fois : fond « partout » (le mode automatique disparaît), le flou de l'image perso
+     * devient un voile, la lumière de la scène suit l'heure si c'était le cas. [lowEnd] : appareil d'entrée de gamme
+     * (fond figé). Renvoie vrai s'il faut annoncer le changement (installation 8.0 dont le fond passe partout).
+     */
+    fun migrate81(lowEnd: Boolean): Boolean {
+        if (p.getBoolean("ui81", false)) return false
+        val existing = p.all.keys.any { it != "ui81" }
+        val top = p.getString("bgTop", "") ?: ""
+        val e = p.edit()
+        e.putString("bgWhere", if (top == "off") "off" else "all")
+        if (p.getInt("bgBlur", 0) > 0 && p.getFloat("bgDim", -1f) < 0f) e.putFloat("bgDim", .5f)
+        e.remove("bgBlur"); e.remove("bgTop")
+        if (!p.contains("bgLight")) e.putString("bgLight", if (p.contains("bgClock") && p.getBoolean("bgClock", true)) "real" else "theme")
+        e.remove("bgClock")
+        if (!p.contains("bgAnim")) e.putBoolean("bgAnim", !lowEnd)
+        // Fond à la météo : non par défaut désormais, mais conservé (oui) pour les installations 8.0 qui ne l'avaient pas touché
+        if (existing && !p.contains("bgWeather")) e.putBoolean("bgWeather", true)
+        e.putBoolean("ui81", true).apply()
+        return existing && top != "off" && top != "on"
+    }
     /** Moment fort déjà fêté par des confettis aujourd'hui (journée parfaite). */
     var perfectFx get() = p.getString("perfectFx", "") ?: ""; set(v) = p.edit().putString("perfectFx", v).apply()
+    /** Fond qui réagit : la marée de braise monte avec l'avancement du jour. */
     var bgReactive get() = p.getBoolean("bgReactive", true); set(v) = p.edit().putBoolean("bgReactive", v).apply()
     /** Pluie, neige, orage ou brouillard par-dessus le fond quand il fait ce temps-là dehors (ville de la météo). */
-    var bgWeather get() = p.getBoolean("bgWeather", true); set(v) = p.edit().putBoolean("bgWeather", v).apply()
+    var bgWeather get() = p.getBoolean("bgWeather", false); set(v) = p.edit().putBoolean("bgWeather", v).apply()
     /** Thème « Système » : clair entre le lever et le coucher du soleil, sombre ensuite (au lieu du réglage du téléphone). */
     var sunTheme get() = p.getBoolean("sunTheme", false); set(v) = p.edit().putBoolean("sunTheme", v).apply()
     /** Flamme personnalisée : forme et effet animé. */
@@ -206,7 +234,6 @@ class DevicePrefs(context: Context) {
     var briefDay get() = p.getString("briefDay", "") ?: ""; set(v) = p.edit().putString("briefDay", v).apply()
     /** Bravos déjà envoyés ou écartés (« id:palier »), pour ne pas reproposer le même palier. */
     var cheeredMilestones: Set<String> get() = p.getStringSet("cheeredMs", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("cheeredMs", v).apply()
-    var bgClock get() = p.getBoolean("bgClock", true); set(v) = p.edit().putBoolean("bgClock", v).apply()
     /** Sauvegarde automatique : dossier choisi (URI d'arborescence), dernière réussite, dernière erreur. */
     var backupUri get() = p.getString("backupUri", "") ?: ""; set(v) = p.edit().putString("backupUri", v).apply()
     var backupLast get() = p.getLong("backupLast", 0L); set(v) = p.edit().putLong("backupLast", v).apply()

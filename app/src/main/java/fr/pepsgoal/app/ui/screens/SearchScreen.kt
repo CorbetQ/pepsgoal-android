@@ -68,8 +68,8 @@ fun SearchScreen(ui: AppState, initial: String) {
     ScreenFrame(ui, "Recherche", "Retour", { ui.back() }, icon = "search", color = p.type("objective").c, color2 = p.type("project").c) {
         item("field") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(q, { q = it }, "", Modifier.weight(1f).focusRequester(focus), placeholder = "Objectif, ami, message, réglage…", max = 80, icon = "search")
-                IconBtn("mic", "Dicter la recherche", dictate, size = 50.dp)
+                PSearchField(q, { q = it }, "Objectif, ami, message, réglage…", Modifier.weight(1f), max = 80, focusRequester = focus)
+                IconBtn("mic", "Dicter la recherche", dictate)
             }
         }
         if (n.length < 2) {
@@ -89,7 +89,7 @@ fun SearchScreen(ui: AppState, initial: String) {
         val egg = fr.pepsgoal.core.Eggs.search(q)
         if (egg != null) item("egg") {
             LaunchedEffect(q.trim().lowercase()) { kotlinx.coroutines.delay(450); ui.egg(egg.egg, egg.text, egg.fx, say = false) }
-            Glass(border = p.flame.copy(alpha = .5f)) {
+            Glass(border = p.focusEdge) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     IconTile("sparkle", p.flame2, p.pink, 44.dp, 14.dp)
                     Text(egg.text, Modifier.weight(1f), fontWeight = FontWeight.Bold)
@@ -164,13 +164,14 @@ fun SearchScreen(ui: AppState, initial: String) {
 private fun Result(title: String, sub: String, lead: @Composable () -> Unit, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bounce(inter, .97f).clip(smoothShape(16.dp)).springClick(inter, onClick = onClick).padding(8.dp),
+    val press = rememberPress(inter)
+    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(22.dp)).springClick(inter, label = title, onClick = onClick).padding(10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         lead()
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(sub, fontSize = 13.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        Text("›", color = p.ink3, fontSize = 22.sp)
+        Pi("chevronright", size = 18.dp, tint = p.ink3)
     }
 }

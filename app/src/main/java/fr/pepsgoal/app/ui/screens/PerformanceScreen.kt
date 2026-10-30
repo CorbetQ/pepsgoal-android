@@ -2,7 +2,7 @@ package fr.pepsgoal.app.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +27,9 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
+import fr.pepsgoal.app.ui.theme.BRAISE
+import fr.pepsgoal.app.ui.theme.CREAM
+import fr.pepsgoal.app.ui.theme.PLUM
 import kotlinx.coroutines.isActive
 import kotlin.math.PI
 import kotlin.math.cos
@@ -34,9 +37,9 @@ import kotlin.math.sin
 
 private val MODE_DESC = mapOf(
     "auto" to "PepsGoal choisit d’après l’analyse de ton téléphone",
-    "quality" to "Tous les effets, fonds animés et verre givré",
+    "quality" to "Tous les effets et les fonds animés",
     "balanced" to "Effets allégés, fonds animés plus lents",
-    "saver" to "Fonds figés, sans flou ni effets : le plus fluide et le plus économe",
+    "saver" to "Fonds figés, sans effets : le plus fluide et le plus économe",
 )
 
 /** Paramètres › Performance : mode d'ensemble, options une à une et analyse du téléphone. */
@@ -60,23 +63,15 @@ fun PerformancePage(ui: AppState) {
                 Perf.saveAnalysis(ctx, fps, jank, hz); testing = false; ui.themeTick++
                 ui.toast("Analyse terminée : mode ${Perf.MODES.first { it.first == Perf.recommended }.second} recommandé.", "gauge")
             }
-            else PButton(if (Perf.score < 0) "Analyser mon téléphone" else "Relancer l’analyse", { testing = true }, Modifier.padding(top = 12.dp), icon = "gauge", kind = "primary", small = true)
+            else PButton(if (Perf.score < 0) "Analyser mon téléphone" else "Relancer l’analyse", { testing = true }, Modifier.padding(top = 12.dp), icon = "gauge", kind = "primary")
         }
         // Mode
         Glass {
             CardHead("Mode")
-            Perf.MODES.forEach { (k, l) ->
-                val on = Perf.mode == k
-                Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(if (on) p.flame.copy(alpha = .14f) else Color.Transparent)
-                    .clickable { Perf.setMode(ctx, k); ui.themeTick++ }.padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(20.dp).clip(CircleShape).background(if (on) p.flame else p.ink.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
-                        if (on) Box(Modifier.size(8.dp).clip(CircleShape).background(p.bg))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(if (k == "auto") "Auto · ${Perf.MODES.first { it.first == Perf.recommended }.second}" else l, fontWeight = FontWeight.ExtraBold)
-                        Muted(MODE_DESC[k] ?: "", small = true)
-                    }
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Perf.MODES.forEach { (k, l) ->
+                    PRadioRow(if (k == "auto") "Auto · ${Perf.MODES.first { it.first == Perf.recommended }.second}" else l, MODE_DESC[k] ?: "", Perf.mode == k,
+                        { Perf.setMode(ctx, k); ui.themeTick++ })
                 }
             }
         }
@@ -97,11 +92,12 @@ fun PerformancePage(ui: AppState) {
 @Composable
 private fun ScoreRing(score: Int) {
     val p = LocalPal.current
-    val col = when { score < 0 -> p.ink3; score >= 70 -> p.ok; score >= 45 -> Color(0xFFFFB000); else -> p.danger }
+    val col = when { score < 0 -> p.ink3; score >= 70 -> p.ok; score >= 45 -> p.type("challenge").c; else -> p.danger }
     Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            val w = 7.dp.toPx()
-            drawArc(p.ink.copy(alpha = .1f), -90f, 360f, false, style = Stroke(w), topLeft = Offset(w / 2, w / 2), size = Size(size.width - w, size.height - w))
+            val w = 8.dp.toPx()
+            drawCircle(p.control, size.minDimension / 2 - w / 2, style = Stroke(w + 4.dp.toPx()))
+            drawArc(p.surface2, -90f, 360f, false, style = Stroke(w), topLeft = Offset(w / 2, w / 2), size = Size(size.width - w, size.height - w))
             if (score > 0) drawArc(col, -90f, 360f * score / 100f, false, style = Stroke(w, cap = androidx.compose.ui.graphics.StrokeCap.Round), topLeft = Offset(w / 2, w / 2), size = Size(size.width - w, size.height - w))
         }
         Text(if (score < 0) "?" else "$score", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
@@ -134,25 +130,23 @@ private fun Bench(done: (fps: Double, jankPct: Double, refreshHz: Float) -> Unit
         done(fps, jank, hz)
     }
     Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Canvas(Modifier.fillMaxWidth().height(140.dp).clip(smoothShape(18.dp))) {
+        Canvas(Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(22.dp))) {
             val fr = frame.toFloat()
-            drawRect(Brush.linearGradient(listOf(p.flame, p.pink, Color(0xFF7B5CFF)), Offset(0f, 0f), Offset(size.width * (.5f + .5f * sin(fr / 30f)), size.height)))
+            drawRect(Brush.linearGradient(BRAISE, Offset(0f, 0f), Offset(size.width * (.5f + .5f * sin(fr / 30f)), size.height)))
             for (i in 0 until 260) {
                 val a = i * 0.618f * 2 * PI.toFloat() + fr / 40f
                 val r = (i % 40) / 40f * size.minDimension * .6f
                 val c = Offset(size.width / 2 + cos(a) * r * 1.4f, size.height / 2 + sin(a) * r * .6f)
-                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .5f), Color.Transparent), c, 18f + i % 7 * 3f), 18f + i % 7 * 3f, c)
+                drawCircle(if (i % 3 == 0) CREAM else BRAISE[i % 3], 10f + i % 7 * 3f, c)
             }
             val path = Path(); path.moveTo(0f, size.height)
             var x = 0f
             while (x <= size.width) { path.lineTo(x, size.height * .7f + sin(x / 40f + fr / 8f) * 18f); x += 6f }
             path.lineTo(size.width, size.height); path.close()
-            drawPath(path, Color.White.copy(alpha = .35f))
+            drawPath(path, PLUM)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.weight(1f).height(6.dp).clip(CircleShape).background(p.ink.copy(alpha = .1f))) {
-                Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(p.flame))
-            }
+            Bar(progress * 100.0, Modifier.weight(1f), height = 12.dp)
             Muted("Test en cours…", small = true)
         }
     }

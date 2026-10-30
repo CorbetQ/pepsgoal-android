@@ -36,19 +36,11 @@ fun ChatBgPicker(ui: AppState, current: String?, choices: List<Pair<ShopBg, List
     Text("Fond de la conversation", fontWeight = FontWeight.ExtraBold)
     Muted(if (choices.isEmpty()) "Débloque des fonds illustrés dans la boutique : ceux de chaque membre sont proposés ici." else "Visible par tous les membres. Les fonds débloqués par chacun d’entre vous sont proposés.", Modifier.padding(bottom = 8.dp), small = true)
     if (!canWrite) return
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        @Composable fun Tile(label: String, sub: String?, on: Boolean, onClick: () -> Unit, content: @Composable BoxScope.() -> Unit) {
-            Column(Modifier.width(72.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(width = 64.dp, height = 104.dp).clip(smoothShape(14.dp)).border(if (on) 3.dp else 1.dp, if (on) p.flameInk else p.line, smoothShape(14.dp))
-                    .clickable(onClickLabel = label, onClick = onClick).semantics { contentDescription = label; selected = on }, content = content)
-                Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 3.dp))
-                if (sub != null) Text(sub, fontSize = 9.sp, color = p.ink3, maxLines = 1, textAlign = TextAlign.Center)
-            }
-        }
-        Tile("Couleurs", null, current == null, { if (current != null) onPick(null) }) { Box(Modifier.fillMaxSize().background(p.ink.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Pi("palette", size = 22.dp, tint = p.ink2) } }
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        BgTile("Couleurs", null, current == null, { if (current != null) onPick(null) }) { Box(Modifier.fillMaxSize().background(p.surface2), contentAlignment = Alignment.Center) { Pi("palette", size = 22.dp, tint = p.ink2) } }
         choices.forEach { (b, who) ->
             val by = if (me in who) null else "par ${who.mapNotNull { pg.userById(it)?.name }.map { first(it) }.firstOrNull() ?: "un membre"}"
-            Tile(b.name, by, current == b.key, { if (current != b.key) onPick(b.key) }) { SceneBg(b.key, Modifier.fillMaxSize(), still = true) }
+            BgTile(b.name, by, current == b.key, { if (current != b.key) onPick(b.key) }) { SceneBg(b.key, Modifier.fillMaxSize(), still = true) }
         }
     }
 }

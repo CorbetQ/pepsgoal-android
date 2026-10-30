@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
@@ -31,6 +32,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -66,7 +68,7 @@ fun GoalIcon(g: Goal, size: Dp = 52.dp, masked: Boolean = false) {
  */
 @Composable
 fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disabled: Boolean = false, icon: String = "check", running: Boolean = false,
-                progress: Float? = null, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+                progress: Float? = null, onLongClick: (() -> Unit)? = null, stepLabel: String? = null, stepTick: Int = 0, inputLabel: String? = null, onClick: () -> Unit) {
     val p = LocalPal.current
     val pop = remember { Animatable(1f) }
     val draw = remember { Animatable(if (done) 1f else 0f) }
@@ -83,10 +85,17 @@ fun CheckButton(done: Boolean, just: Boolean, label: String, color: Color, disab
     val prog = !done && !timer && progress != null
     val inter = remember { MutableInteractionSource() }
     val press = rememberPress(inter, !lock)
+    // Case de progrès (« appui = + 1 pas ») : le pas monte au-dessus de la case et s'efface ; TalkBack propose les deux gestes
     Box(
-        Modifier.size(48.dp).clip(CircleShape).springClick(inter, label = label, onLongClick = onLongClick, onClick = onClick).semantics { contentDescription = label },
+        Modifier.size(48.dp).testTag(if (stepLabel != null) "cap_check" else "check").clip(CircleShape).springClick(inter, label = stepLabel?.let { tr("Ajouter $it") } ?: label, onLongClick = onLongClick, onClick = onClick)
+            .semantics {
+                contentDescription = label
+                if (stepLabel != null && onLongClick != null) customActions = listOf(androidx.compose.ui.semantics.CustomAccessibilityAction(tr(inputLabel ?: "Saisir une quantité")) { onLongClick(); true })
+            },
         contentAlignment = Alignment.Center
     ) {
+        if (stepLabel != null) Text("+$stepLabel", Modifier.align(Alignment.TopCenter).offset(y = (-14).dp).floatUp(stepTick).wrapContentWidth(unbounded = true),
+            fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = LocalPal.current.ink, maxLines = 1)
         when {
             lock -> Box(Modifier.size(44.dp).drawBehind {
                 drawCircle(p.control, size.minDimension / 2 - 1.25.dp.toPx(), style = Stroke(2.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.5.dp.toPx()))))
@@ -131,13 +140,15 @@ fun MiniBtn(text: String, color: Color, onClick: () -> Unit) = PButton(text, onC
  * active fait un petit saut. Au repos : icône seule (libellé lu par TalkBack) ; Lecture facile : tous les libellés.
  */
 @Composable
-fun NavBar(items: List<Triple<String, String, String>>, tab: String, badges: Map<String, Int>, onNav: (String) -> Unit, labels: Map<String, String> = emptyMap(), modifier: Modifier = Modifier) {
+fun NavBar(items: List<Triple<String, String, String>>, tab: String, badges: Map<String, Int>, onNav: (String) -> Unit, labels: Map<String, String> = emptyMap(), modifier: Modifier = Modifier,
+           edge: Color? = null) {
     val p = LocalPal.current
+    val barEdge = edge ?: p.barEdge(LocalSceneTint.current)
     val idx = items.indexOfFirst { it.first == tab }.coerceAtLeast(0)
     val n = items.size.coerceAtLeast(1)
     val wide = if (p.easy) 1f else 1.7f
     val pos by animateFloatAsState(idx.toFloat(), if (p.motion) snap() else Motion.move(), label = "navPill")
-    Row(modifier.fillMaxWidth().chunk(p.surface, if (p.contrast) p.ink else p.edge, 30.dp, 4.dp, 2.dp).height(60.dp).padding(horizontal = 4.dp).drawBehind {
+    Row(modifier.fillMaxWidth().chunk(p.surface, if (p.contrast) p.ink else barEdge, 30.dp, 4.dp, 2.dp).height(60.dp).padding(horizontal = 4.dp).drawBehind {
         // Pilule de l'onglet actif, dessinée à la position animée : aucune nouvelle mise en page pendant le glissement
         val unit = size.width / (n - 1 + wide); val l = pos * unit; val w = unit * wide
         val v = 6.dp.toPx(); val h = size.height - 2 * v
@@ -174,42 +185,17 @@ private fun NavDot(modifier: Modifier) = Box(modifier.offset(4.dp, (-2).dp).size
  * quand on descend dans la page (ressort `move`) et revient avec un rebond (`pop`).
  */
 @Composable
-fun Fab(desc: String, shown: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: String = "plus") {
+fun Fab(desc: String, shown: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: String = "plus", lift: Dp = 0.dp) {
     val p = LocalPal.current
     val k by animateFloatAsState(if (shown) 1f else 0f, if (p.motion) snap() else if (shown) Motion.pop() else Motion.move(), label = "fab")
+    val up by animateDpAsState(lift, if (p.motion) snap() else Motion.move(), label = "fabLift")
     if (k <= .02f) return
     val inter = remember { MutableInteractionSource() }
     val press = rememberPress(inter)
-    Box(modifier.graphicsLayer { alpha = k.coerceIn(0f, 1f); translationY = (1f - k) * 96.dp.toPx(); val s = .6f + .4f * k; scaleX = s; scaleY = s }
+    Box(modifier.graphicsLayer { alpha = k.coerceIn(0f, 1f); translationY = (1f - k) * 96.dp.toPx() - up.toPx(); val s = .6f + .4f * k; scaleX = s; scaleY = s }
         .size(64.dp, 69.dp).chunk(p.flameBrush(), p.flameStep, 32.dp, 5.dp, 0.dp, press)
         .clip(CircleShape).springClick(inter, label = desc, onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) {
         Pi(icon, size = 30.dp, tint = if (p.contrast) p.bg else p.onAccent)
-    }
-}
-
-/** Titre de l'onglet : Unbounded 30 ExtraBold ; la taille s'adapte à la place laissée par les boutons. */
-@Composable
-fun TabTitle(text: String) {
-    val p = LocalPal.current
-    FitText(text, size = 30, min = 16, color = p.ink, weight = FontWeight.ExtraBold, family = Unbounded)
-}
-
-/** Pastille de la série (ancienne barre du haut) : flamme, nombre de jours, jokers. Bouton à marche. */
-@Composable
-fun StreakPill(n: Int, freezes: Int, desc: String, onClick: () -> Unit, bump: Float = 1f) {
-    val p = LocalPal.current
-    val inter = remember { MutableInteractionSource() }
-    val press = rememberPress(inter)
-    Row(Modifier.height(47.dp).chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp, press)
-        .clip(CircleShape).springClick(inter, label = "Ouvrir le profil", onClick = onClick).semantics(mergeDescendants = true) { contentDescription = desc }.padding(start = 10.dp, end = 13.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        Row(Modifier.graphicsLayer { scaleX = bump; scaleY = bump }, verticalAlignment = Alignment.CenterVertically) {
-            Flame(22.dp, dim = n == 0)
-            Text("$n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-        }
-        if (freezes > 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Emoji("🧊", 16.dp); Text("$freezes", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
-        }
     }
 }
 
@@ -236,14 +222,17 @@ fun RoundGlass(desc: String, onClick: () -> Unit, badge: Int = 0, content: @Comp
 fun AvatarButton(u: User, level: Int?, onClick: () -> Unit, size: Dp = 40.dp) {
     val p = LocalPal.current
     val inter = remember { MutableInteractionSource() }
-    // Pas de découpe : le badge du niveau dépasse du cercle
-    Box(Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).bounce(inter, .92f)
+    val press = rememberPress(inter)
+    // Pas de découpe : le badge du niveau dépasse du cercle ; l'avatar s'enfonce sur sa marche
+    Box(Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
         .springClick(inter, label = "Ouvrir le profil", onClick = onClick).semantics(mergeDescendants = true) { contentDescription = "Profil${level?.let { ", niveau $it" } ?: ""}"; role = Role.Button },
         contentAlignment = Alignment.Center) {
-        Box(Modifier.size(size + 8.dp)) {
-            AvatarFace(u, size, Modifier.align(Alignment.Center))
-            if (level != null) Box(Modifier.align(Alignment.BottomEnd).offset(4.dp, 2.dp).background(PLUM, CircleShape).padding(horizontal = 6.dp, vertical = 1.dp)) {
-                Text("$level", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, color = p.gold, lineHeight = 13.sp)
+        Box(Modifier.size(size + 8.dp, size + 11.dp)) {
+            Box(Modifier.align(Alignment.TopCenter).size(size + 8.dp, size + 11.dp).chunk(p.flameBrush(), p.flameStep, (size + 8.dp) / 2, 3.dp, 0.dp, press)) {
+                AvatarFace(u, size, Modifier.align(Alignment.Center))
+            }
+            if (level != null) Box(Modifier.align(Alignment.BottomEnd).offset(4.dp, 0.dp).background(PLUM, CircleShape).padding(horizontal = 6.dp, vertical = 1.dp)) {
+                Text("$level", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = p.gold, lineHeight = 14.sp)
             }
         }
     }
@@ -254,7 +243,7 @@ fun AvatarButton(u: User, level: Int?, onClick: () -> Unit, size: Dp = 40.dp) {
 fun AvatarFace(u: User?, size: Dp, modifier: Modifier = Modifier) {
     val p = LocalPal.current
     val kind = u?.avatar?.kind ?: ""
-    Box(modifier.size(size + 8.dp).background(p.flameBrush(), CircleShape).padding(3.dp).background(p.bg, CircleShape).padding(2.dp).clip(CircleShape)
+    Box(modifier.size(size + 8.dp).background(p.flameBrush(), CircleShape).padding(3.dp).background(p.surface, CircleShape).padding(2.dp).clip(CircleShape)
         .then(if (kind in setOf("photo", "emoji", "picto")) Modifier else Modifier.background(p.gold)), contentAlignment = Alignment.Center) {
         if (kind in setOf("photo", "emoji", "picto")) Av(u, size - 2.dp)
         else {

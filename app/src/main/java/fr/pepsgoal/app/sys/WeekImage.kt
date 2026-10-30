@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -37,10 +36,10 @@ object WeekImage {
         val body = ResourcesCompat.getFont(ctx, R.font.manrope_extrabold) ?: Typeface.DEFAULT_BOLD
         val bodyR = ResourcesCompat.getFont(ctx, R.font.manrope_semibold) ?: Typeface.DEFAULT
         fun paint(tf: Typeface, size: Float, col: Int, center: Boolean = false, spacing: Float = 0f) = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = tf; textSize = size; color = col; letterSpacing = spacing; if (center) textAlign = Paint.Align.CENTER }
-        // Fond : bleu dimanche soir vers corail, halos doux
+        // Fond : bleu dimanche soir vers corail, disques pleins
         cv.drawRect(0f, 0f, W, H, Paint().apply { shader = LinearGradient(0f, 0f, W * .2f, H, intArrayOf(Color.rgb(16, 34, 74), Color.rgb(58, 66, 150), Color.rgb(255, 128, 92)), floatArrayOf(0f, .5f, 1f), Shader.TileMode.CLAMP) })
         for ((x, y, r, c) in listOf(Quad(W * .9f, H * .1f, 520f, Color.argb(80, 120, 220, 255)), Quad(W * .05f, H * .6f, 600f, Color.argb(70, 180, 120, 255)), Quad(W * .55f, H * .98f, 720f, Color.argb(110, 255, 214, 140))))
-            cv.drawCircle(x, y, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = RadialGradient(x, y, r, c, Color.TRANSPARENT, Shader.TileMode.CLAMP) })
+            cv.drawCircle(x, y, r * .62f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = androidx.core.graphics.ColorUtils.compositeColors(c, Color.rgb(42, 20, 48)) })
         val white = Color.WHITE; val soft = Color.argb(205, 255, 255, 255)
         cv.drawText(tr("MA SEMAINE PEPSGOAL"), W / 2, 170f, paint(body, 34f, soft, true, .18f))
         cv.drawText(tr("Du ${fmtDate(st.r.s)} au ${fmtDate(st.r.e)}"), W / 2, 230f, paint(bodyR, 34f, soft, true))

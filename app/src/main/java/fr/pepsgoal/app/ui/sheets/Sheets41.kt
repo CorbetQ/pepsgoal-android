@@ -33,6 +33,7 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
+import fr.pepsgoal.app.ui.theme.step
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
 import kotlinx.coroutines.delay
@@ -55,11 +56,11 @@ fun LikersSheet(ui: AppState, postId: String) {
     val list = post.likes.filter { filter == null || (post.reactions[it] ?: "fire") == filter }.mapNotNull { pg.userById(it) }
     if (list.isEmpty()) Muted("Personne pour l’instant.", small = true)
     list.forEach { u ->
-        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable { ui.open(Sheet.User(u.id)) }.padding(vertical = 6.dp),
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).clickable { ui.open(Sheet.User(u.id)) }.heightIn(min = 60.dp).padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Av(u, 40.dp)
             Column(Modifier.weight(1f)) { Text(if (u.id == pg.meId()) "Toi" else u.name, fontWeight = FontWeight.ExtraBold); Muted("@${u.username}", small = true) }
-            Text(reactionEmoji(post.reactions[u.id]), fontSize = 22.sp)
+            Emoji(reactionEmoji(post.reactions[u.id]), 24.dp)
         }
     }
 }
@@ -79,16 +80,16 @@ fun HourHeatCard(ui: AppState) {
         Muted("Ton créneau fort : le ${WD_LONG[peak.first].lowercase()} vers ${peak.second} h (${pl(peak.third, "validation", "validations")} en 90 jours).", small = true)
         Spacer(Modifier.height(10.dp))
         Row {
-            Column(Modifier.padding(end = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) { WD.forEach { Box(Modifier.height(14.dp), contentAlignment = Alignment.Center) { Text(it, fontSize = 10.sp, color = p.ink3) } } }
+            Column(Modifier.padding(end = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) { WD.forEach { Box(Modifier.height(14.dp), contentAlignment = Alignment.Center) { Text(it, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = p.ink3) } } }
             Canvas(Modifier.weight(1f).height((7 * 16).dp)) {
                 val cw = size.width / 24f; val ch = size.height / 7f
                 for (d in 0..6) for (h in 0..23) {
-                    val n = grid[d][h]; val a = if (n == 0) .07f else .2f + .8f * n / max
-                    drawRoundRect((if (n == 0) p.ink else p.flame).copy(alpha = a), Offset(h * cw + 1f, d * ch + 1f), Size(cw - 2f, ch - 2f), CornerRadius(4f, 4f))
+                    val n = grid[d][h]; val lvl = if (n == 0) 0 else (1 + 3 * n / max).coerceIn(1, 4)
+                    drawRoundRect(p.heat(lvl), Offset(h * cw + 1f, d * ch + 1f), Size(cw - 2f, ch - 2f), CornerRadius(3.dp.toPx(), 3.dp.toPx()))
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(start = 18.dp, top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) { listOf("0 h", "6 h", "12 h", "18 h", "23 h").forEach { Text(it, fontSize = 10.sp, color = p.ink3) } }
+        Row(Modifier.fillMaxWidth().padding(start = 18.dp, top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) { listOf("0 h", "6 h", "12 h", "18 h", "23 h").forEach { Text(it, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = p.ink3) } }
     }
 }
 
@@ -103,7 +104,7 @@ fun TrialRow(ui: AppState, g: Goal, divider: Boolean = true) {
     OptionRow("trophy", p.flame, p.pink, "Défi", st?.let { "Jour ${minOf(it.idx + 1, it.total)}/${it.total} · ${it.done} validés" } ?: "Relève un défi de 7, 21, 30 ou 100 jours", open, { open = !open }, divider) {
         if (st == null) {
             Muted("Un calendrier à cocher et une célébration à la fin si tu tiens au moins 80 % des jours.", small = true)
-            FlowRowCompat(gap = 6.dp) { TRIAL_LENGTHS.forEach { n -> FChip("$n jours", false, { pg.startTrial(g, n); ui.toast("Défi de $n jours lancé : c’est parti !", "trophy") }) } }
+            FlowRowCompat(gap = 6.dp) { TRIAL_LENGTHS.forEach { n -> PButton("$n jours", { pg.startTrial(g, n); ui.toast("Défi de $n jours lancé : c’est parti !", "trophy") }, small = true, color = p.type("challenge").c) } }
         } else {
             TrialCalendar(st, p.type(g.type).c)
             PButton("Arrêter le défi", { pg.startTrial(g, 0); open = false }, small = true, kind = "ghost")
@@ -117,9 +118,10 @@ fun TrialCalendar(st: TrialState, color: androidx.compose.ui.graphics.Color) {
     FlowRowCompat(gap = 4.dp) {
         st.days.forEachIndexed { i, (d, ok) ->
             val past = i < st.idx; val now = i == st.idx
-            Box(Modifier.size(26.dp).clip(RoundedCornerShape(8.dp)).background(when { ok -> color; past -> p.danger.copy(alpha = .18f); else -> p.ink.copy(alpha = .06f) })
-                .then(if (now) Modifier.background(androidx.compose.ui.graphics.Color.Transparent) else Modifier), contentAlignment = Alignment.Center) {
-                Text(if (ok) "✓" else "${i + 1}", fontSize = 10.sp, fontWeight = if (now) FontWeight.ExtraBold else FontWeight.Medium, color = if (ok) p.bg else if (now) p.ink else p.ink3)
+            val c = vivid(color)
+            Box(Modifier.size(30.dp, 33.dp).chunk(when { ok -> c; past -> p.selTint(p.danger); else -> p.surface }, when { now -> p.focusEdge; ok -> c.step(); else -> p.edge }, 6.dp, 3.dp, if (ok) 0.dp else if (now) 3.dp else 2.dp),
+                contentAlignment = Alignment.Center) {
+                Text(if (ok) "✓" else "${i + 1}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = if (ok) fr.pepsgoal.app.ui.theme.PLUM else if (now) p.ink else p.ink3)
             }
         }
     }
@@ -137,10 +139,10 @@ fun FriendsRankCard(ui: AppState, g: Goal) {
     SectionTitle("Entre amis · même objectif")
     ranks.take(8).forEachIndexed { i, r ->
         val me = r.user.id == pg.meId()
-        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (me) p.flame.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent)
-            .clickable { if (!me) ui.open(Sheet.User(r.user.id)) }.padding(horizontal = 8.dp, vertical = 6.dp),
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(if (me) p.selTint(p.flame) else androidx.compose.ui.graphics.Color.Transparent)
+            .clickable(enabled = !me) { ui.open(Sheet.User(r.user.id)) }.heightIn(min = 56.dp).padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(listOf("🥇", "🥈", "🥉").getOrNull(i) ?: "${i + 1}", fontSize = 16.sp, modifier = Modifier.width(26.dp))
+            Box(Modifier.width(28.dp), contentAlignment = Alignment.Center) { listOf("🥇", "🥈", "🥉").getOrNull(i)?.let { Emoji(it, 22.dp) } ?: Text("${i + 1}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = p.ink2) }
             Av(r.user, 32.dp)
             Column(Modifier.weight(1f)) { Text(if (me) "Toi" else r.user.name, fontWeight = FontWeight.ExtraBold, maxLines = 1); Muted("${r.rate30} % sur 30 jours", small = true) }
             Row(verticalAlignment = Alignment.CenterVertically) { Flame(16.dp); Text(" ${r.streak}", fontWeight = FontWeight.ExtraBold) }
@@ -162,20 +164,20 @@ fun ProofStory(proofs: List<Proof>) {
         PButton("Diaporama · ${photos.size}", { mode = "slides" }, icon = "play", small = true)
     }
     if (mode != null) Dialog({ mode = null }, DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black).clickable { mode = null }) {
+        val p = LocalPal.current
+        Box(Modifier.fillMaxSize().background(p.mediaBg)) {
             if (mode == "compare") Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)) {
                 listOf(photos.first() to "Avant", photos.last() to "Après").forEach { (pr, l) ->
-                    ProofImage(pr, Modifier.weight(1f).fillMaxWidth().clip(smoothShape(18.dp)))
-                    Text("$l · ${fmtDate(pr.date)}", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.ExtraBold, fontFamily = Unbounded)
+                    ProofImage(pr, Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(18.dp)))
+                    MiniPlaque("$l · ${fmtDate(pr.date)}")
                 }
             } else {
                 var i by remember { mutableIntStateOf(0) }
                 LaunchedEffect(Unit) { while (true) { delay(1400); i = (i + 1) % photos.size } }
                 ProofImage(photos[i], Modifier.fillMaxSize())
-                Text("${fmtDate(photos[i].date)} · ${i + 1}/${photos.size}", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(24.dp)
-                    .clip(CircleShape).background(androidx.compose.ui.graphics.Color.Black.copy(alpha = .5f)).padding(horizontal = 14.dp, vertical = 6.dp),
-                    color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold)
+                MiniPlaque("${fmtDate(photos[i].date)} · ${i + 1}/${photos.size}", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(24.dp))
             }
+            MediaBtn("x", "Fermer", { mode = null }, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp))
         }
     }
 }
@@ -196,31 +198,21 @@ private fun ProofImage(pr: Proof, modifier: Modifier) {
 /** Pastille « hors ligne » de l'en-tête, avec le nombre de modifications en attente d'envoi. */
 @Composable
 fun OfflineChip(ui: AppState) {
-    val p = LocalPal.current; val pg = ui.pg
+    val pg = ui.pg
     if (pg.store.online) return
     val n = remember(ui.rev) { if (pg.store.acct) ui.cloud.pendingCount() else 0 }
-    Row(Modifier.clip(CircleShape).clickable(onClickLabel = "Voir les modifications en attente") { ui.open(Sheet.Pending) }
-        .padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Pi("cloudoff", size = 14.dp, tint = p.ink2)
-        Muted(if (n > 0) "Hors ligne · $n en attente" else "Hors ligne", small = true)
-    }
+    // Hors ligne : petite puce à marche (posée sur la scène) qui ouvre les modifications en attente
+    Puce(if (n > 0) "Hors ligne · $n en attente" else "Hors ligne", { ui.open(Sheet.Pending) }, emoji = "📴")
 }
 
-/** « Synchronisé » : apparaît quelques secondes sous le titre quand les modifications faites hors ligne sont parties. */
+/** « Synchronisé » : mini-plaque qui apparaît quelques secondes dans le héros quand les modifications faites hors ligne sont parties. */
 @Composable
 fun SyncedChip(ui: AppState) {
     val p = LocalPal.current
     var show by remember { mutableStateOf(false) }
     val at = ui.syncedAt
     LaunchedEffect(at) { if (at > 0 && System.currentTimeMillis() - at < 5000) { show = true; delay(3600); show = false } }
-    androidx.compose.animation.AnimatedVisibility(show && ui.pg.store.online, enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(), exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()) {
-        val pop = remember { androidx.compose.animation.core.Animatable(0f) }
-        LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .4f, stiffness = 500f)) }
-        Row(Modifier.clip(CircleShape).clickable { ui.open(Sheet.Pending) }.padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.size(16.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = (1f - pop.value) * -90f }.clip(CircleShape).background(p.ok), contentAlignment = Alignment.Center) { Pi("check", size = 11.dp, tint = if (p.dark) fr.pepsgoal.app.ui.theme.PLUM else Color.White) }
-            Text(if (ui.syncedN > 1) "Synchronisé · ${ui.syncedN} envoyées" else "Synchronisé", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ok)
-        }
-    }
+    if (show && ui.pg.store.online) MiniPlaque(if (ui.syncedN > 1) "Synchronisé · ${ui.syncedN} envoyées" else "Synchronisé", Modifier.popIn(), emoji = "✅", color = p.ok)
 }
 
 /** Modifications faites hors ligne, en attente d'envoi, et bouton pour les envoyer tout de suite. */
@@ -264,7 +256,7 @@ fun PendingSheet(ui: AppState) {
             items.take(60).forEach { it0 ->
                 val (col, ic) = when (it0.action) { "new" -> p.ok to "plus"; "delete" -> p.danger to "trash"; else -> p.flame to "edit" }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(col.copy(alpha = .16f)), contentAlignment = Alignment.Center) { Pi(if (kind == "checkin" && it0.action == "new") "check" else if (kind == "settings") "gear" else ic, size = 16.dp, tint = fr.pepsgoal.app.ui.theme.readable(col, p.glass, 3f)) }
+                    Box(Modifier.size(36.dp).background(vivid(col), RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) { Pi(if (kind == "checkin" && it0.action == "new") "check" else if (kind == "settings") "gear" else ic, size = 18.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
                     Column(Modifier.weight(1f)) {
                         Text(it0.label, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         Muted(it0.sub, small = true, maxLines = 1)

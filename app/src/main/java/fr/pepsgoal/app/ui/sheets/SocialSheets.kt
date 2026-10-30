@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.ui.sheets
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -83,8 +85,9 @@ fun UserSheet(ui: AppState, id: String) {
     }
     val lv = pg.level(pg.points(x.id)); val st = pg.globalStreak(x.id)
     var renaming by remember(id) { mutableStateOf(false) }
-    Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-        LevelRing(lv.tier, 64.dp) { Av(x, 64.dp) }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Médaillon de l'ami avec sa couronne de flammes (taille selon son niveau)
+        AvatarMedallion(64.dp, lv.idx, (lv.tier - 1) / 9f, null, crownColors = if (lv.tier > 6) tierColors(lv.tier) else null) { AvatarFace(x, 56.dp) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(x.name, Modifier.weight(1f, fill = false), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis); if (x.demo) Chip("démo")
@@ -101,7 +104,8 @@ fun UserSheet(ui: AppState, id: String) {
     if (!self) FlowRowCompat(gap = 8.dp) {
         when {
             f == null -> PButton("Ajouter", { if (!pg.socialBlocked("d'ajouter des amis")) ui.run("Demande envoyée à ${first(x.name)}.", "userplus") { ui.cloud.sendFriendRequest(x.id) } }, icon = "userplus", kind = "primary", small = true)
-            f.status == "accepted" -> { Chip("Amis", "check", p.type("routine").c); PButton("Message", { ui.push(Screen.Chat(with = x.id)) }, icon = "comment", small = true)
+            // (un seul bouton principal : Ajouter, Message ou Accepter selon l'état)
+            f.status == "accepted" -> { Chip("Amis", "check", p.type("routine").c); PButton("Message", { ui.push(Screen.Chat(with = x.id)) }, icon = "comment", kind = "primary", small = true)
                 // Défi en un geste : duel prérempli contre cet ami
                 PButton("Défier", { ui.open(Sheet.GoalForm(preType = "duel", preTitle = "Duel avec ${first(x.name)}", preIcon = "⚔️", preFields = mapOf("opponent" to x.id))) }, icon = "duel", small = true)
                 PButton("Offrir", { ui.open(Sheet.Gift(x.id)) }, icon = "gift", small = true) }
@@ -115,11 +119,7 @@ fun UserSheet(ui: AppState, id: String) {
         }, icon = "ban", kind = "ghost", small = true)
         if (pg.isAdmin(u)) PButton("Modérer", { ui.open(Sheet.ModUser(x.id)) }, icon = "shield", kind = "danger", small = true)
     }
-    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("${st.n}" to "Série", "${lv.pts}" to "Flammes", "${pg.friendsOf(x.id).size}" to "Amis").forEach { (v, l) ->
-            Glass(Modifier.weight(1f).fillMaxHeight(), pad = 10.dp, radius = 16.dp) { Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp); Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold) }
-        }
-    }
+    StatGrid(listOf("${st.n}" to "Série", "${lv.pts}" to "Flammes", "${pg.friendsOf(x.id).size}" to "Amis"), columns = 3, emojis = listOf("🔥", "✨", "👥"))
     // Fiche privée (note, anniversaire) : pour les amis seulement
     if (!self && f?.status == "accepted") fr.pepsgoal.app.ui.screens.FriendPrivateCard(ui, x)
     SectionTitle("Objectifs visibles")
@@ -134,7 +134,7 @@ fun UserSheet(ui: AppState, id: String) {
     val posts = pg.db.posts.filter { it.userId == x.id && pg.canSeePost(it, u.id) }.sortedByDescending { it.at }.take(3)
     if (posts.isNotEmpty()) {
         SectionTitle("Dernières publications")
-        posts.forEach { post -> Glass(pad = 12.dp, radius = 16.dp) { Muted("${ago(post.at)} · ${VIS[post.visibility]?.first ?: ""}${if (post.photo != null) " · 📷 photo" else ""}", small = true); if (post.text.isNotEmpty()) Text(post.text) } }
+        posts.forEach { post -> Glass(pad = 12.dp, radius = 22.dp) { Muted("${ago(post.at)} · ${VIS[post.visibility]?.first ?: ""}${if (post.photo != null) " · 📷 photo" else ""}", small = true); if (post.text.isNotEmpty()) Text(post.text) } }
     }
 }
 
@@ -143,15 +143,15 @@ fun UserSheet(ui: AppState, id: String) {
 fun NicknameEditor(ui: AppState, x: fr.pepsgoal.core.model.User, done: () -> Unit) {
     val pg = ui.pg; val has = pg.nickname(x.id) != null
     var v by remember(x.id) { mutableStateOf(pg.nickname(x.id) ?: "") }
-    Glass(pad = 12.dp, radius = 16.dp) {
-        Field(v, { v = it }, "Surnom", placeholder = pg.realName(x), max = 40, icon = "edit")
+    Glass(pad = 12.dp, radius = 22.dp) {
+        Field(v, { v = it }, "Surnom", placeholder = pg.realName(x), max = 40, icon = "edit", counter = true)
         Muted("Toi seul le vois : ${first(pg.realName(x))} garde son nom pour les autres.", small = true)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PButton("Enregistrer", {
                 val n = v.trim(); pg.setNickname(x.id, n); ui.bump(); done(); Feedback.tick()
                 ui.toast(if (n.isEmpty()) "Surnom retiré : ${pg.realName(x)} retrouve son nom." else "${pg.realName(x)} s’appelle maintenant « $n » pour toi.", "check")
-            }, icon = "check", kind = "primary", small = true)
+            }, icon = "check", small = true)
             if (has) PButton("Retirer le surnom", { pg.setNickname(x.id, ""); ui.bump(); done(); ui.toast("Surnom retiré : ${pg.realName(x)} retrouve son nom.", "x") }, kind = "ghost", small = true)
             else PButton("Annuler", done, kind = "ghost", small = true)
         }
@@ -169,7 +169,7 @@ fun NotifsSheet(ui: AppState) {
     SheetHead(ui, "Notifications")
     if (list.isEmpty()) Empty("Tout est calme", "Tes rappels et l'activité de tes amis apparaîtront ici.", icon = "bell")
     list.forEach { n ->
-        Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(if (n.read) Color.Transparent else p.flame.copy(alpha = .1f)).clickable {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(if (n.read) Color.Transparent else p.selTint(p.pink)).clickable {
             when {
                 n.goalId != null && pg.goalById(n.goalId) != null -> ui.sheet = Sheet.Goal(n.goalId!!)
                 n.view == "profile" -> ui.nav("profile")
@@ -178,9 +178,10 @@ fun NotifsSheet(ui: AppState) {
                 n.type == "friend" -> if (pg.socialOn()) ui.nav("friends")
                 n.type == "story" -> if (pg.socialOn()) ui.nav("feed")
             }
-        }.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(p.glass), contentAlignment = Alignment.Center) { if (n.type == "like") Flame(19.dp) else Pi(ic[n.type] ?: "bell", size = 18.dp) }
-            Column(Modifier.weight(1f)) { Text(n.text, fontSize = 14.sp, fontWeight = if (n.read) FontWeight.Medium else FontWeight.Bold); Muted(ago(n.at), small = true) }
+        }.heightIn(min = 56.dp).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(p.surface).border(2.dp, p.edge, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { if (n.type == "like") Flame(20.dp) else Pi(ic[n.type] ?: "bell", size = 18.dp) }
+            Column(Modifier.weight(1f)) { Text(n.text, fontSize = 14.sp, fontWeight = if (n.read) FontWeight.SemiBold else FontWeight.ExtraBold); Muted(ago(n.at), small = true) }
+            if (!n.read) Box(Modifier.size(10.dp).background(vivid(p.pink), CircleShape))
         }
     }
 }
@@ -212,9 +213,11 @@ fun ShareHubSheet(ui: AppState, m: Sheet.ShareHub) {
     if (g != null) GoalAttach(ui, g) else Quote(text)
     val canStory = social && (g != null || m.period != null)
     @Composable fun Opt(ic: String, l: String, d: String, ok: Boolean, mod: Modifier, onClick: () -> Unit) {
-        Column(mod.clip(smoothShape(18.dp)).background(p.glass).border(1.dp, p.line, smoothShape(18.dp)).clickable(enabled = ok, onClick = onClick).padding(14.dp).then(if (ok) Modifier else Modifier.background(Color.Transparent)),
+        val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+        val press = rememberPress(inter, ok)
+        Column(mod.graphicsLayer { alpha = if (ok) 1f else .45f }.chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(20.dp)).springClick(inter, enabled = ok, label = l, onClick = onClick).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (ok) p.accent else Brush.linearGradient(listOf(p.line, p.line))), contentAlignment = Alignment.Center) { Pi(ic, tint = p.onAccent) }
+            EmojiTileBox(if (ok) p.flame else p.surface2, 40.dp) { Pi(ic, size = 20.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
             Text(l, fontWeight = FontWeight.ExtraBold, color = if (ok) p.ink else p.ink3); Text(d, fontSize = 12.sp, color = p.ink2, lineHeight = 15.sp)
         }
     }
@@ -239,12 +242,12 @@ fun ShareHubSheet(ui: AppState, m: Sheet.ShareHub) {
 @Composable
 private fun Quote(text: String) {
     val p = LocalPal.current
-    Text(text, Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(p.glass).border(1.dp, p.line, smoothShape(14.dp)).padding(14.dp), fontWeight = FontWeight.Bold)
+    Text(text, Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.surface2).padding(14.dp), fontWeight = FontWeight.Bold)
 }
 
 @Composable
 private fun ShareTarget(av: @Composable () -> Unit, name: String, sub: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable(onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).clickable(onClickLabel = name, onClick = onClick).heightIn(min = 56.dp).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         av(); Column(Modifier.weight(1f)) { Text(name, fontWeight = FontWeight.ExtraBold); Muted(sub, small = true) }; Pi("send")
     }
 }
@@ -255,8 +258,8 @@ fun ShareFeedSheet(ui: AppState, goalId: String?, text0: String) {
     var text by remember { mutableStateOf(text0) }; var vis by remember { mutableStateOf("friends") }; var busy by remember { mutableStateOf(false) }
     SheetHead(ui, "Partager dans le feed")
     if (g != null) GoalAttach(ui, g)
-    Field(text, { text = it }, "Ton message", singleLine = false, minLines = 3, max = 500)
-    Seg(listOf("friends" to "Amis", "public" to "Public"), vis, { vis = it }, icons = listOf("users", "globe"))
+    PTextArea(text, { text = it }, "Ton message", minLines = 3, max = 500)
+    PSelectMenu("Visibilité", listOf("friends" to "Amis", "public" to "Public"), vis, { vis = it }, emojis = listOf("👥", "🌍"))
     SheetFoot {
         PButton("Annuler", { ui.close() }, kind = "ghost")
         PButton("Publier", { publish(ui, text.trim(), null, null, vis, g?.id) { busy = it } }, kind = "primary", enabled = !busy)
@@ -300,22 +303,23 @@ fun ComposeSheet(ui: AppState) {
         ui.scope.launch { val r = withContext(Dispatchers.IO) { Media.decode(ctx, uri, 1600)?.let { Media.jpegUnder(it, 900_000) to it } }; if (r == null) ui.toast("Impossible de lire cette image. Essaie un fichier JPG ou PNG.", "image") else photo = r }
     }
     SheetHead(ui, "Nouvelle publication")
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Av(u, 42.dp); Field(text, { text = it }, "Ta publication", Modifier.weight(1f), placeholder = "Partage une victoire, un doute, un cap franchi…", singleLine = false, minLines = 3, max = 500) }
-    photo?.let { (_, b) -> Box { Image(b.asImageBitmap(), "Aperçu de la photo", Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(smoothShape(16.dp)), contentScale = ContentScale.Crop); IconBtn("x", "Retirer la photo", { photo = null }, Modifier.align(Alignment.TopEnd).padding(6.dp)) } }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Av(u, 42.dp); PTextArea(text, { text = it }, "Ta publication", Modifier.weight(1f), placeholder = "Partage une victoire, un doute, un cap franchi…", minLines = 3, max = 500) }
+    // Pièce jointe : vignette rayon 18
+    photo?.let { (_, b) -> Box { Image(b.asImageBitmap(), "Aperçu de la photo", Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(18.dp)), contentScale = ContentScale.Crop); IconBtn("x", "Retirer la photo", { photo = null }, Modifier.align(Alignment.TopEnd).padding(6.dp)) } }
     FlowRowCompat(gap = 6.dp) {
-        PButton("Photo", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image", small = true)
-        PButton("Emojis", { panel = if (panel == "emoji") null else "emoji" }, icon = "smile", small = true, kind = if (panel == "emoji") "primary" else "normal")
-        PButton("Sondage", { panel = if (panel == "poll") null else "poll" }, icon = "poll", small = true, kind = if (panel == "poll") "primary" else "normal")
+        FChip("🖼️ Photo", photo != null, { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+        FChip("😊 Emojis", panel == "emoji", { panel = if (panel == "emoji") null else "emoji" })
+        FChip("📊 Sondage", panel == "poll", { panel = if (panel == "poll") null else "poll" })
     }
     if (panel == "emoji") EmojiPicker(height = 180) { e -> if (text.length + e.length <= 500) text += e }
     if (panel == "poll") {
         Muted("La question du sondage est le texte de ta publication.", small = true)
         opts.forEachIndexed { i, o -> Field(o, { opts[i] = it }, "Choix ${i + 1}", max = 80) }
         if (opts.size < 6) PButton("Ajouter un choix", { opts.add("") }, icon = "plus", kind = "ghost", small = true)
-        SetRow("Plusieurs réponses possibles") { PSwitch(multi, { multi = it }) }
+        PCheckRow("Plusieurs réponses possibles", null, multi, { multi = it })
         Seg(listOf(24 to "1 jour", 72 to "3 jours", 168 to "1 semaine"), hours, { hours = it })
     }
-    Seg(listOf("friends" to "Amis", "public" to "Public"), vis, { vis = it }, icons = listOf("users", "globe"))
+    PSelectMenu("Visibilité", listOf("friends" to "Amis", "public" to "Public"), vis, { vis = it }, emojis = listOf("👥", "🌍"))
     val goals = pg.myGoals(u.id).filter { it.userId == u.id && !it.archived }
     if (goals.isNotEmpty()) {
         SectionTitle("Lier un objectif (optionnel)")
@@ -361,13 +365,13 @@ fun StoryNewSheet(ui: AppState, s0: Sheet.StoryNew) {
             else GoalChips(goals, goalId, { it?.let { id -> goalId = id } }, bleed = 20.dp)
     }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Box(Modifier.width(220.dp).aspectRatio(9f / 16f).clip(smoothShape(22.dp))) {
-            if (kind == "photo") photo?.let { Image(it.second.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) } ?: Box(Modifier.fillMaxSize().background(LocalPal.current.glass), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Pi("image"); Muted("Choisis une photo à partager", small = true) } }
+        Box(Modifier.width(220.dp).aspectRatio(9f / 16f).clip(RoundedCornerShape(24.dp))) {
+            if (kind == "photo") photo?.let { Image(it.second.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) } ?: Box(Modifier.fillMaxSize().background(LocalPal.current.surface2), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Pi("image"); Muted("Choisis une photo à partager", small = true) } }
             else if (data != null) StoryCard(kind, data, compact = true)
         }
     }
     Field(text, { text = it }, "Description (optionnelle)", placeholder = "Une phrase pour accompagner ta story", max = 140)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pi("users", size = 16.dp); Muted("Visible uniquement par tes amis, pendant 24 heures.", small = true) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Emoji("👥", 16.dp); Muted("Visible uniquement par tes amis, pendant 24 heures.", small = true) }
     SheetFoot {
         PButton("Annuler", { ui.close() }, kind = "ghost")
         PButton("Publier la story", {
@@ -387,30 +391,30 @@ fun StoryCard(kind: String, d: JsonObject, compact: Boolean) {
     val p = LocalPal.current
     val k = if (compact) .62f else 1f
     if (kind == "recap") {
-        Column(Modifier.fillMaxSize().background(Brush.linearGradient(SBG[0].map(::hex))).padding((24 * k).dp), verticalArrangement = Arrangement.spacedBy((10 * k).dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("RÉCAP PEPSGOAL", fontSize = (12 * k).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = Color(0xFF10102A))
-            Text(d.str("title"), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (28 * k).sp, color = Color(0xFF10102A), textAlign = TextAlign.Center)
+        Column(Modifier.fillMaxSize().background(p.flameBrush()).padding((24 * k).dp), verticalArrangement = Arrangement.spacedBy((10 * k).dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("RÉCAP PEPSGOAL", fontSize = (12 * k).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = fr.pepsgoal.app.ui.theme.PLUM)
+            Text(d.str("title"), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (28 * k).sp, color = fr.pepsgoal.app.ui.theme.PLUM, textAlign = TextAlign.Center)
             Emoji(d.str("e"), (64 * k).dp)
-            Text("Profil : ${d.str("persona")}", fontWeight = FontWeight.ExtraBold, color = Color(0xFF10102A), fontSize = (15 * k).sp)
+            Text("Profil : ${d.str("persona")}", fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM, fontSize = (15 * k).sp)
             listOf(listOf("n" to "validations", "pts" to "flammes"), listOf("best" to "meilleure série", "reg" to "régularité")).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy((8 * k).dp)) {
-                    row.forEach { (key, l) -> Column(Modifier.weight(1f).clip(RoundedCornerShape((14 * k).dp)).background(Color.White.copy(alpha = .55f)).padding((8 * k).dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${d.int(key)}${if (key == "reg") "%" else ""}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (20 * k).sp, color = Color(0xFF10102A)); Text(l, fontSize = (11 * k).sp, color = Color(0xFF10102A)) } }
+                    row.forEach { (key, l) -> Column(Modifier.weight(1f).clip(RoundedCornerShape((17 * k).dp)).background(Color.White.copy(alpha = .42f)).padding((8 * k).dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("${d.int(key)}${if (key == "reg") "%" else ""}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (20 * k).sp, color = fr.pepsgoal.app.ui.theme.PLUM); Text(l, fontSize = (12 * k).sp, fontWeight = FontWeight.Bold, color = fr.pepsgoal.app.ui.theme.PLUM) } }
                 }
             }
         }
         return
     }
     val type = d.str("type").takeIf { it in TYPES } ?: "routine"; val c = p.type(type).c
-    Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(c, Color.White, .45f), c))).padding((24 * k).dp),
+    Column(Modifier.fillMaxSize().background(vivid(c)).padding((24 * k).dp),
         verticalArrangement = Arrangement.spacedBy((8 * k).dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(d.str("label").uppercase(), fontSize = (12 * k).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = Color(0xFF10102A))
+        Text(d.str("label").uppercase(), fontSize = (12 * k).sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp, color = fr.pepsgoal.app.ui.theme.PLUM)
         Emoji(d.str("icon"), (60 * k).dp)
-        Text(d.str("title"), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = (20 * k).sp, color = Color(0xFF10102A), textAlign = TextAlign.Center)
-        Text(d.str("v"), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (64 * k).sp, color = Color(0xFF10102A))
-        Text(d.str("l"), fontWeight = FontWeight.ExtraBold, color = Color(0xFF10102A), fontSize = (15 * k).sp)
-        (d["pct"] as? JsonPrimitive)?.doubleOrNull?.let { pct -> Box(Modifier.fillMaxWidth(.8f).height((10 * k).dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .5f))) { Box(Modifier.fillMaxHeight().fillMaxWidth(pct.toFloat().coerceIn(0f, 1f)).background(Color(0xFF10102A))) } }
-        Text(d.str("meta"), fontSize = (12 * k).sp, color = Color(0xFF10102A), textAlign = TextAlign.Center)
+        Text(d.str("title"), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = (20 * k).sp, color = fr.pepsgoal.app.ui.theme.PLUM, textAlign = TextAlign.Center)
+        Text(d.str("v"), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (64 * k).sp, color = fr.pepsgoal.app.ui.theme.PLUM)
+        Text(d.str("l"), fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM, fontSize = (15 * k).sp)
+        (d["pct"] as? JsonPrimitive)?.doubleOrNull?.let { pct -> Box(Modifier.fillMaxWidth(.8f).height((10 * k).dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .42f))) { Box(Modifier.fillMaxHeight().fillMaxWidth(pct.toFloat().coerceIn(0f, 1f)).background(fr.pepsgoal.app.ui.theme.PLUM)) } }
+        Text(d.str("meta"), fontSize = (12 * k).sp, color = fr.pepsgoal.app.ui.theme.PLUM, textAlign = TextAlign.Center)
     }
 }
 
@@ -420,9 +424,9 @@ fun ReportSheet(ui: AppState, postId: String) {
     var reason by remember { mutableStateOf("spam") }
     SheetHead(ui, "Signaler la publication")
     SectionTitle("Motif")
-    FlowRowCompat(gap = 6.dp) { REASON_LBL.forEach { (k, l) -> FChip(l, reason == k, { reason = k }) } }
+    PRadioGroup(REASON_LBL.toList(), reason, { reason = it }, emojis = listOf("📢", "🤬", "😠", "❓"), color = LocalPal.current.type("duel").c)
     Muted("La modération examinera la publication. La personne ne saura pas qui l'a signalée.", small = true)
-    SheetFoot { PButton("Annuler", { ui.close() }, kind = "ghost"); PButton("Signaler", { ui.close(); ui.run("Merci : la modération va examiner cette publication.", "flag") { ui.cloud.report(postId, reason) } }, kind = "danger") }
+    SheetFoot { PButton("Annuler", { ui.close() }, kind = "ghost"); PButton("Signaler", { ui.close(); ui.run("Merci : la modération va examiner cette publication.", "flag") { ui.cloud.report(postId, reason) } }, kind = "type", color = LocalPal.current.type("duel").c, icon = "flag") }
 }
 
 @Composable
@@ -430,7 +434,7 @@ fun AppealSheet(ui: AppState) {
     var text by remember { mutableStateOf("") }
     SheetHead(ui, "Demander un débannissement")
     Muted("Explique en quelques mots pourquoi ton accès devrait être rétabli. La modération te répondra par notification.")
-    Field(text, { text = it }, "Ton message", singleLine = false, minLines = 4, max = 500)
+    PTextArea(text, { text = it }, "Ton message", minLines = 4, max = 500)
     SheetFoot {
         PButton("Annuler", { ui.close() }, kind = "ghost")
         PButton("Envoyer la demande", { if (text.isBlank()) { ui.toast("Écris ton message.", "x"); return@PButton }; ui.close(); ui.run("Demande envoyée à la modération.", "send") { ui.cloud.appeal(text.trim()) } }, kind = "primary")
@@ -448,12 +452,12 @@ fun ModUserSheet(ui: AppState, id: String) {
     SheetHead(ui, "Modération du compte")
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Av(x, 56.dp)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(x.name, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp); Muted("@${x.username} · inscrit ${ago(x.createdAt)}", small = true); FlowRowCompat(gap = 4.dp) { StatusChips(ui, x) } }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(x.name, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp); Muted("@${x.username} · inscrit ${ago(x.createdAt)}", small = true); FlowRowCompat(gap = 4.dp) { StatusChips(ui, x) } }
     }
     if (pg.isAdmin(x)) { Muted("Les comptes administrateurs ne peuvent pas être modérés ici."); return }
     Field(reason, { reason = it }, "Motif (envoyé à la personne)", placeholder = "Ex. propos insultants dans les commentaires", max = 160)
     @Composable fun Block(title: String, danger: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-        Column(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).border(1.dp, if (danger) p.danger.copy(alpha = .5f) else p.line, smoothShape(16.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(title, fontWeight = FontWeight.ExtraBold); content() }
+        Column(Modifier.fillMaxWidth().chunk(p.surface, if (danger) p.danger else p.edge, 22.dp, 4.dp, 2.dp).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(title, fontWeight = FontWeight.ExtraBold); content() }
     }
     val body = { buildJsonObject { put("reason", reason.trim()) } }
     Block("Avertissement") {
@@ -464,7 +468,7 @@ fun ModUserSheet(ui: AppState, id: String) {
         if (pg.isBanned(x)) { Muted("Banni ${pg.banText(x)}${x.ban?.reason?.takeIf { it.isNotEmpty() }?.let { " · $it" } ?: ""}.", small = true); PButton("Lever le ban", { ui.run("Ban levé.") { ui.cloud.modUser(x.id, "unban") } }, small = true) }
         else {
             Muted("Bloque les publications, commentaires, encouragements, demandes d'amis et messages. Ses objectifs restent accessibles.", small = true)
-            FlowRowCompat(gap = 6.dp) { listOf("1" to "24 heures", "7" to "7 jours", "30" to "30 jours", "perm" to "Définitif").forEach { (k, l) -> FChip(l, dur == k, { dur = k }) } }
+            PRadioGroup(listOf("1" to "24 heures", "7" to "7 jours", "30" to "30 jours", "perm" to "Définitif"), dur, { dur = it }, color = p.type("duel").c)
             PButton("Bannir", { ui.run("${x.name} est banni.", "ban") { ui.cloud.modUser(x.id, "ban", buildJsonObject { put("days", if (dur == "perm") JsonNull else JsonPrimitive(dur.toInt())); put("reason", reason.trim()) }) } }, icon = "ban", kind = "danger", small = true)
         }
     }
@@ -472,7 +476,7 @@ fun ModUserSheet(ui: AppState, id: String) {
         SetRow("Ne peut plus commenter les publications.") { PSwitch(x.noComments, { on -> ui.run(if (on) "Commentaires restreints." else "Commentaires autorisés.", "comment") { ui.cloud.modUser(x.id, "comments", buildJsonObject { put("restricted", on) }) } }) }
     }
     Block("Message de PepsGoal Officiel") {
-        Field(msg, { msg = it }, "Écrire à ${first(x.name)} au nom de PepsGoal Officiel…", singleLine = false, minLines = 3, max = 600)
+        PTextArea(msg, { msg = it }, "Écrire à ${first(x.name)} au nom de PepsGoal Officiel…", minLines = 3, max = 600)
         PButton("Envoyer", { if (msg.isBlank()) { ui.toast("Écris le message à envoyer.", "send"); return@PButton }; val t = msg.trim(); ui.run("Message envoyé à ${x.name} au nom de PepsGoal Officiel.", "send") { ui.cloud.modUser(x.id, "message", buildJsonObject { put("text", t) }); msg = "" } }, icon = "send", small = true)
     }
     Block("Zone dangereuse", danger = true) {
@@ -549,16 +553,17 @@ fun GroupInfoSheet(ui: AppState, gid: String) {
 @Composable
 fun DeleteAccountSheet(ui: AppState) {
     var pw by remember { mutableStateOf("") }; var err by remember { mutableStateOf<String?>(null) }; var busy by remember { mutableStateOf(false) }
+    var ask by remember { mutableStateOf(false) }
     SheetHead(ui, "Supprimer ton compte ?")
     Muted("Ton profil, tes objectifs, tes publications, tes stories et tes messages seront supprimés définitivement du serveur PepsGoal et de cet appareil.")
-    Field(pw, { pw = it }, "Confirme avec ton mot de passe", password = true)
-    Err(err)
+    Field(pw, { pw = it }, "Confirme avec ton mot de passe", password = true, error = err)
     SheetFoot {
         PButton("Annuler", { ui.close() }, kind = "ghost")
-        PButton("Supprimer définitivement", {
-            if (pw.isEmpty()) { err = "Indique ton mot de passe."; return@PButton }
-            busy = true
-            ui.scope.launch { try { ui.cloud.deleteAccount(pw) } catch (e: ApiError) { err = if (e.status == 401 || e.status == 403) "Mot de passe incorrect." else e.message } catch (e: Exception) { err = e.message } finally { busy = false } }
-        }, icon = "trash", kind = "danger", enabled = !busy)
+        PButton("Supprimer définitivement", { if (pw.isEmpty()) err = "Indique ton mot de passe." else { err = null; ask = true } }, icon = "trash", kind = "type", color = LocalPal.current.type("duel").c, enabled = !busy)
     }
+    // Dernière confirmation : dialogue destructif
+    if (ask) PDialog({ ask = false }, "⚠️", "Tout supprimer ?", "Cette action est définitive : rien ne pourra être récupéré.", "Supprimer définitivement", {
+        ask = false; busy = true
+        ui.scope.launch { try { ui.cloud.deleteAccount(pw) } catch (e: ApiError) { err = if (e.status == 401 || e.status == 403) "Mot de passe incorrect." else e.message } catch (e: Exception) { err = e.message } finally { busy = false } }
+    }, danger = true)
 }

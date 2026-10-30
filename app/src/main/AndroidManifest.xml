@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -64,6 +65,8 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
         android:localeConfig="@xml/locales_config">
+        <!-- Mesures de performance (Macrobenchmark, profil de référence) depuis l'outil adb -->
+        <profileable android:shell="true" tools:targetApi="29" />
 
         <activity
             android:name=".MainActivity"

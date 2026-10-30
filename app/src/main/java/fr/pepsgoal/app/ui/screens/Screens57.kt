@@ -55,7 +55,7 @@ fun FriendCheersCard(ui: AppState) {
     val list = remember(ui.rev, hidden) { pg.friendMilestones().filter { "${it.u.id}:${it.n}" !in hidden } }
     if (list.isEmpty()) return
     fun mark(m: FriendMilestone) { hidden = hidden + "${m.u.id}:${m.n}"; ui.prefs.cheeredMilestones = hidden.toList().takeLast(200).toSet() }
-    Glass(border = p.flame.copy(alpha = .4f)) {
+    Glass(border = p.focusEdge) {
         CardHead("Séries de tes amis", emoji = "👏") { Count(list.size) }
         list.take(4).forEach { m ->
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -64,7 +64,7 @@ fun FriendCheersCard(ui: AppState) {
                     Text("${first(m.u.name)} atteint ${pl(m.n, "jour", "jours")} !", fontWeight = FontWeight.ExtraBold, maxLines = 1)
                     Muted(if (m.n >= 100) "Un palier rare : fais-lui signe 🔥" else "Un petit mot fait toujours plaisir.", small = true, maxLines = 1)
                 }
-                PButton("Bravo", { mark(m); Feedback.tick(); ui.chatDraft = milestoneCheer(m.n); ui.push(Screen.Chat(with = m.u.id)) }, icon = "heart", small = true, kind = "primary")
+                PButton("Bravo", { mark(m); Feedback.tick(); ui.chatDraft = milestoneCheer(m.n); ui.push(Screen.Chat(with = m.u.id)) }, icon = "heart", small = true, kind = "type", color = p.pink)
                 IconBtn("x", "Masquer", { mark(m) }, plain = true, size = 32.dp)
             }
         }
@@ -79,7 +79,9 @@ fun StatusRow(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg
     if (!pg.socialOn() || !pg.store.acct) return
     val st = remember(ui.rev) { pg.statusOf(pg.meId()) }
-    Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(p.glassStrong).clickable(onClickLabel = "Statut du jour") { ui.open(Sheet.Status) }.padding(horizontal = 14.dp, vertical = 10.dp),
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Row(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(20.dp)).springClick(inter, label = "Statut du jour") { ui.open(Sheet.Status) }.heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Emoji(st?.e ?: "💬", 26.dp)
         Column(Modifier.weight(1f)) {
@@ -92,12 +94,13 @@ fun StatusRow(ui: AppState) {
 
 @Composable
 fun StatusSheet(ui: AppState) {
-    val pg = ui.pg; val cur = remember { pg.statusOf(pg.meId()) }
+    val pg = ui.pg; val p = LocalPal.current; val cur = remember { pg.statusOf(pg.meId()) }
     var e by remember { mutableStateOf(cur?.e ?: "😊") }
     var l by remember { mutableStateOf(cur?.l ?: "En forme") }
     SheetHead(ui, "Statut du jour")
     Muted("Un emoji et quelques mots, affichés sur ton avatar chez tes amis pendant 24 h. Il ne s’affiche pas dans les stories.", small = true)
-    FlowRowCompat(gap = 8.dp) { STATUS_PRESETS.forEach { (pe, pl0) -> FChip("$pe ${tr(pl0)}", e == pe && l == tr(pl0), { e = pe; l = tr(pl0) }) } }
+    // Grille d'emojis à marche ; choisi = bord braise
+    FlowRowCompat(gap = 8.dp) { STATUS_PRESETS.forEach { (pe, pl0) -> FChip("$pe ${tr(pl0)}", e == pe && l == tr(pl0), { e = pe; l = tr(pl0) }, color = p.type("monthly").c) } }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Emoji(e, 34.dp)
         Field(l, { l = it }, "Quelques mots", Modifier.weight(1f), placeholder = "En forme", max = 40)
@@ -126,7 +129,7 @@ fun BriefingCard(ui: AppState) {
         Text(text, color = p.ink2, maxLines = 5)
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PButton(if (playing) "Arrêter" else "Écouter", { if (playing) { Speaker.stop(); playing = false } else { Speaker.say(ctx, text); playing = true } }, icon = if (playing) "pause" else "music", small = true, kind = "primary")
+            PButton(if (playing) "Arrêter" else "Écouter", { if (playing) { Speaker.stop(); playing = false } else { Speaker.say(ctx, text); playing = true } }, icon = if (playing) "pause" else "music", small = true, kind = "type", color = p.type("period").c)
             Spacer(Modifier.weight(1f))
             Muted("Chaque matin", small = true)
             PSwitch(auto, { auto = it; ui.prefs.briefAuto = it })
@@ -156,17 +159,16 @@ fun WeekImageCard(ui: AppState) {
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PButton("Aperçu", { preview = true }, icon = "eye", small = true)
-            PButton("Partager l’image", { WeekImage.share(ctx, ui.pg) }, icon = "share", small = true, kind = "primary")
+            PButton("Partager l’image", { WeekImage.share(ctx, ui.pg) }, icon = "share", small = true, kind = "type", color = p.type("objective").c)
         }
     }
-    if (preview) androidx.compose.ui.window.Dialog({ preview = false }) {
+    // Aperçu : visionneuse (fond noir du média)
+    if (preview) androidx.compose.ui.window.Dialog({ preview = false }, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         val bmp = remember(st.r.s, st.n) { WeekImage.render(ctx, st).asImageBitmap() }
-        Column(Modifier.clip(smoothShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(bmp, "Ta semaine en image", Modifier.fillMaxWidth().aspectRatio(1080f / 1920f).clip(smoothShape(16.dp)), contentScale = ContentScale.Fit)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PButton("Fermer", { preview = false }, Modifier.weight(1f))
-                PButton("Partager", { WeekImage.share(ctx, ui.pg) }, Modifier.weight(1f), icon = "share", kind = "primary")
-            }
+        Box(Modifier.fillMaxSize().background(p.mediaBg)) {
+            Image(bmp, "Ta semaine en image", Modifier.fillMaxSize().padding(vertical = 64.dp), contentScale = ContentScale.Fit)
+            MediaBtn("x", "Fermer", { preview = false }, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp))
+            PButton("Partager", { WeekImage.share(ctx, ui.pg) }, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp).fillMaxWidth(), icon = "share", kind = "primary")
         }
     }
 }
@@ -188,22 +190,22 @@ fun MomentsCard(ui: AppState) {
             m.wd.forEachIndexed { i, v ->
                 Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
                     val f = (v ?: 0.0).toFloat().coerceIn(.04f, 1f)
-                    Box(Modifier.fillMaxWidth().fillMaxHeight(f * .78f).clip(RoundedCornerShape(8.dp)).background(if (i == m.bestWd) p.flame else p.ink.copy(alpha = if (v == null) .08f else .22f)))
-                    Text(WD[i], fontSize = 11.sp, fontWeight = FontWeight.Bold, color = p.ink3, modifier = Modifier.padding(top = 4.dp))
+                    Box(Modifier.fillMaxWidth().fillMaxHeight(f * .78f).clip(RoundedCornerShape(6.dp)).background(if (i == m.bestWd) vivid(p.flame) else if (v == null) p.surface2 else p.heat(2)))
+                    Text(WD[i], fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3, modifier = Modifier.padding(top = 4.dp))
                 }
             }
         }
         // Validations par heure
         m.slot?.let { (_, name, share) -> Text("Tes validations tombent surtout $name (${Math.round(share * 100)} %).", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp)) }
-        val mx = maxOf(1, m.hours.maxOrNull() ?: 1); val flame = p.flame; val track = p.ink.copy(alpha = .1f)
+        val mx = maxOf(1, m.hours.maxOrNull() ?: 1); val pal = p; val track = p.surface2
         Canvas(Modifier.fillMaxWidth().height(56.dp).padding(top = 8.dp)) {
             val bw = size.width / 24f
             for (h in 0 until 24) {
                 val f = m.hours[h].toFloat() / mx; val bh = maxOf(2.dp.toPx(), size.height * f)
-                drawRoundRect(if (m.hours[h] == 0) track else flame.copy(alpha = .35f + .65f * f), Offset(h * bw + bw * .15f, size.height - bh), Size(bw * .7f, bh), CornerRadius(3.dp.toPx()))
+                drawRoundRect(if (m.hours[h] == 0) track else pal.heat(1 + (f * 3.99f).toInt()), Offset(h * bw + bw * .15f, size.height - bh), Size(bw * .7f, bh), CornerRadius(3.dp.toPx()))
             }
         }
-        Row(Modifier.fillMaxWidth()) { listOf("0 h", "6 h", "12 h", "18 h", "24 h").forEachIndexed { i, l -> Text(l, Modifier.weight(1f), fontSize = 10.sp, color = p.ink3) } }
+        Row(Modifier.fillMaxWidth()) { listOf("0 h", "6 h", "12 h", "18 h", "24 h").forEachIndexed { i, l -> Text(l, Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3) } }
         if (m.goals.isNotEmpty()) {
             Spacer(Modifier.height(8.dp)); Eyebrow("Tes heures habituelles")
             m.goals.forEach { (g, h) ->
@@ -225,18 +227,22 @@ fun BeforeAfterDialog(first: Proof, last: Proof, onClose: () -> Unit) {
     val a = rememberDecoded(first.id, first.photo) { Proofs.photoFile(ctx, first)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
     val b = rememberDecoded(last.id, last.photo) { Proofs.photoFile(ctx, last)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
     var cut by remember { mutableFloatStateOf(.5f) }
-    androidx.compose.ui.window.Dialog(onClose) {
-        Column(Modifier.clip(smoothShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(.8f).clip(smoothShape(16.dp)).background(Color.Black)
+    // Visionneuse (fond noir du média) : curseur Braise Pop pour comparer, dates en mini-plaques, bouton rond sombre
+    androidx.compose.ui.window.Dialog(onClose, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(Modifier.fillMaxSize().background(p.mediaBg).systemBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) { Spacer(Modifier.weight(1f)); MediaBtn("x", "Fermer", onClose) }
+            BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(18.dp))
                 .pointerInput(Unit) { detectDragGestures { ch, _ -> cut = (ch.position.x / size.width).coerceIn(0f, 1f) } }) {
                 if (b != null) Image(b, "Après", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 if (a != null) Image(a, "Avant", Modifier.fillMaxSize().drawWithContent { clipRect(right = size.width * cut) { this@drawWithContent.drawContent() } }, contentScale = ContentScale.Crop)
                 Box(Modifier.offset(x = maxWidth * cut - 1.5.dp).width(3.dp).fillMaxHeight().background(Color.White))
-                Text(fmtDateShort(first.date), Modifier.align(Alignment.TopStart).padding(8.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = .5f)).padding(horizontal = 8.dp, vertical = 3.dp), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
-                Text(fmtDateShort(last.date), Modifier.align(Alignment.TopEnd).padding(8.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = .5f)).padding(horizontal = 8.dp, vertical = 3.dp), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                MiniPlaque(fmtDateShort(first.date), Modifier.align(Alignment.TopStart).padding(8.dp))
+                MiniPlaque(fmtDateShort(last.date), Modifier.align(Alignment.TopEnd).padding(8.dp))
             }
-            Muted("${pl(daysBetween(parseYmd(first.date), parseYmd(last.date)).toInt(), "jour", "jours")} d’écart · fais glisser pour comparer", small = true, center = true)
-            PButton("Fermer", onClose, Modifier.fillMaxWidth())
+            Box(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 24.dp, 4.dp, 2.dp).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                PSlider(cut, { cut = it }, label = "Avant / après")
+            }
+            MiniPlaque("${pl(daysBetween(parseYmd(first.date), parseYmd(last.date)).toInt(), "jour", "jours")} d’écart · fais glisser pour comparer", Modifier.align(Alignment.CenterHorizontally))
         }
     }
 }
@@ -247,21 +253,22 @@ fun TimelapseDialog(list: List<Proof>, onClose: () -> Unit) {
     val ctx = LocalContext.current; val p = LocalPal.current
     var i by remember { mutableIntStateOf(0) }; var playing by remember { mutableStateOf(true) }; var fast by remember { mutableStateOf(false) }
     LaunchedEffect(playing, fast, i) { if (playing) { delay(if (fast) 280L else 700L); i = if (i + 1 >= list.size) 0 else i + 1 } }
-    androidx.compose.ui.window.Dialog(onClose) {
-        Column(Modifier.clip(smoothShape(24.dp)).background(p.glassStrong.copy(alpha = 1f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.fillMaxWidth().aspectRatio(.8f).clip(smoothShape(16.dp)).background(Color.Black)) {
+    // Visionneuse (fond noir du média) : date en mini-plaque, commandes sur barre à marche
+    androidx.compose.ui.window.Dialog(onClose, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(Modifier.fillMaxSize().background(p.mediaBg).systemBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) { Spacer(Modifier.weight(1f)); MediaBtn("x", "Fermer", onClose) }
+            Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(18.dp))) {
                 Crossfade(list[i], animationSpec = tween(if (fast) 120 else 260), label = "lapse") { pr ->
                     val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f -> val o = BitmapFactory.Options().apply { inSampleSize = 2 }; BitmapFactory.decodeFile(f.path, o)?.asImageBitmap() } }
                     if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
-                Text(cap(fmtDate(list[i].date)), Modifier.align(Alignment.BottomStart).padding(10.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = .55f)).padding(horizontal = 10.dp, vertical = 4.dp), color = Color.White, fontWeight = FontWeight.ExtraBold)
-                Text("${i + 1}/${list.size}", Modifier.align(Alignment.TopEnd).padding(10.dp), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                MiniPlaque(cap(fmtDate(list[i].date)), Modifier.align(Alignment.BottomStart).padding(10.dp))
+                MiniPlaque("${i + 1}/${list.size}", Modifier.align(Alignment.TopEnd).padding(10.dp))
             }
             Bar((i + 1) * 100.0 / list.size)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PButton(if (playing) "Pause" else "Lecture", { playing = !playing }, Modifier.weight(1f), icon = if (playing) "pause" else "play")
-                PButton(if (fast) "×1" else "×3", { fast = !fast }, small = true)
-                PButton("Fermer", onClose, small = true, kind = "ghost")
+            Row(Modifier.navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PButton(if (playing) "Pause" else "Lecture", { playing = !playing }, Modifier.weight(1f), icon = if (playing) "pause" else "play", kind = "primary")
+                PButton(if (fast) "×1" else "×3", { fast = !fast })
             }
         }
     }

@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Ligne de la notification du matin : pastille néon du type, titre en gras, case à valider (braise) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="40dp" android:orientation="horizontal" android:gravity="center_vertical">
+    <ImageView android:id="@+id/dot" android:layout_width="6dp" android:layout_height="22dp" android:layout_marginEnd="10dp"
+        android:src="@drawable/notif_dot" android:importantForAccessibility="no" />
     <TextView android:id="@+id/title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-        android:singleLine="true" android:ellipsize="end" android:textSize="14sp" android:textAppearance="@android:style/TextAppearance.Material.Notification" />
+        android:singleLine="true" android:ellipsize="end" android:textSize="14sp" android:textStyle="bold" android:textAppearance="@android:style/TextAppearance.Material.Notification.Title" />
     <TextView android:id="@+id/check" android:layout_width="40dp" android:layout_height="40dp" android:gravity="center"
         android:textSize="20sp" android:textStyle="bold" android:textColor="#FF4A12" android:contentDescription="Valider" />
 </LinearLayout>

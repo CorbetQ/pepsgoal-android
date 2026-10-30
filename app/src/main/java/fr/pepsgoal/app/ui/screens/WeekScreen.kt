@@ -22,6 +22,7 @@ import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.step
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
@@ -45,13 +46,14 @@ fun WeekScreen(ui: AppState) {
     ScreenFrame(ui, "Ma semaine", "Retour", { ui.back() }, icon = "cal", color = p.type("period").c, color2 = p.type("routine").c) {
         item("nav") {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconBtn("chevronleft", "Semaine précédente", { off-- }, size = 40.dp)
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                IconBtn("chevronleft", "Semaine précédente", { off-- }, size = 48.dp)
+                // Titre de la semaine sur une plaque (jamais de texte posé sur la scène)
+                Column(Modifier.weight(1f).padding(horizontal = 8.dp).background(p.surface, RoundedCornerShape(24.dp)).border(2.dp, p.edge, RoundedCornerShape(24.dp)).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (off == 0) "Cette semaine" else if (off == -1) "Semaine dernière" else if (off == 1) "Semaine prochaine" else "Semaine du ${fmtDateShort(ymd(ws))}", fontWeight = FontWeight.ExtraBold)
                     Muted("${fmtDateShort(ymd(ws))} – ${fmtDateShort(ymd(ws.plusDays(6)))}", small = true)
                 }
                 // Flèche « suivant » : la flèche « précédent » retournée
-                Box(Modifier.rotate(180f)) { IconBtn("chevronleft", "Semaine suivante", { off++ }, size = 40.dp) }
+                Box(Modifier.rotate(180f)) { IconBtn("chevronleft", "Semaine suivante", { off++ }, size = 48.dp) }
             }
         }
         // Routines « X fois par semaine » : un compteur pour toute la semaine
@@ -75,11 +77,11 @@ private fun DayCard(ui: AppState, d: LocalDate, goals: List<Goal>, wins: Set<Str
     val list = goals.filter { g -> ymd(g.createdAt) <= k && !(g.type == "routine" && g.mode == "count") && (pg.scheduled(g, d) || (g.type == "deadline" && g.due == k && g.completedAt == null)) }
     val isToday = k == t; val past = k < t
     val rest = k in pg.restSet()
-    Glass(pad = 14.dp, border = if (isToday) p.flame else null) {
+    Glass(pad = 14.dp, border = if (isToday) p.focusEdge else null) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.size(44.dp).clip(smoothShape(14.dp)).background(if (isToday) p.flame else p.ink.copy(alpha = .06f)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(48.dp).then(if (isToday) Modifier.chunk(p.flameBrush(), p.flameStep, 17.dp, 3.dp, 0.dp) else Modifier.background(p.surface2, RoundedCornerShape(17.dp))), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(WD_SHORT[wdIdx(d)], fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = if (isToday) p.onAccent else p.ink2)
+                    Text(WD_SHORT[wdIdx(d)], fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (isToday) p.onAccent else p.ink2)
                     Text("${d.dayOfMonth}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = if (isToday) p.onAccent else p.ink)
                 }
             }
@@ -94,10 +96,10 @@ private fun DayCard(ui: AppState, d: LocalDate, goals: List<Goal>, wins: Set<Str
             val done = "${g.id}|$k" in wins
             val skipped = k in pg.goalRest(g)
             val (ic, col) = when { done -> "✓" to p.ok; skipped -> "–" to p.ink3; past -> "✕" to p.danger; else -> "○" to p.ink3 }
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { ui.open(Sheet.Goal(g.id)) }.padding(vertical = 5.dp, horizontal = 4.dp),
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).clickable { ui.open(Sheet.Goal(g.id)) }.heightIn(min = 44.dp).padding(vertical = 5.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.size(24.dp).clip(CircleShape).background(col.copy(alpha = .15f)).border(1.5.dp, col.copy(alpha = .7f), CircleShape), contentAlignment = Alignment.Center) {
-                    Text(ic, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = col)
+                Box(Modifier.size(24.dp).background(if (done) vivid(col) else p.surface, CircleShape).border(2.dp, if (done) col.step() else if (past && !skipped) col else p.control, CircleShape), contentAlignment = Alignment.Center) {
+                    Text(ic, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = if (done) fr.pepsgoal.app.ui.theme.PLUM else col)
                 }
                 Emoji(g.icon, 20.dp)
                 Text(g.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (done || skipped) p.ink2 else p.ink, fontSize = 14.sp)

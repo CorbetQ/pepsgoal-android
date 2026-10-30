@@ -45,24 +45,27 @@ private val GROUP_EMOJI = mapOf(
 )
 
 /**
- * En-tête d'une catégorie : tuile d'icône néon, titre en Unbounded, état actuel en une phrase, pastilles et contenu
- * libre. Plat (aucune carte) : c'est l'en-tête illustré de la page.
+ * État d'une catégorie (sous le héros de la page) : tuile d'icône néon, titre en Unbounded, état actuel en une phrase,
+ * pastilles et contenu libre, dans une carte à marche.
  */
 @Suppress("UNUSED_PARAMETER")
 @Composable
 fun SetHero(icon: String, c1: Color, c2: Color, title: String, sub: String, leading: (@Composable () -> Unit)? = null,
             chips: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit = {}) {
     val p = LocalPal.current
-    Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    // État de la catégorie : carte à marche (jamais de texte posé sur la scène)
+    Glass {
+      Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             if (leading != null) leading() else EmojiTileBox(c2, 56.dp) { Pi(icon, size = 28.dp, tint = PLUM) }
             Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 22.sp)
+                Text(title, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = titleSp(18), lineHeight = titleSp(22))
                 Text(sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2)
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips() }
+        FlowRowCompat(gap = 6.dp) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips() } }
         content()
+      }
     }
 }
 
@@ -72,7 +75,7 @@ fun SetGroup(title: String? = null, note: String? = null, emoji: String? = null,
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (title != null) SectionTitle(title, emoji ?: GROUP_EMOJI[title])
         Glass(pad = 0.dp, radius = 24.dp) { Divided(content = content) }
-        if (note != null) Muted(note, Modifier.padding(horizontal = 8.dp), small = true)
+        if (note != null) Hint(note, Modifier.padding(horizontal = 4.dp))
     }
 }
 
@@ -137,3 +140,37 @@ fun SetToggle(title: String, sub: String? = null, icon: String? = null, tint: Co
 @Composable
 fun SetBlock(content: @Composable ColumnScope.() -> Unit) =
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
+
+/** Ligne de curseur : titre et valeur courante à droite, PSlider dessous, libellés d'extrémité. */
+@Composable
+fun SetSlider(title: String, valueText: String, value: Float, onChange: (Float) -> Unit, sub: String? = null, steps: Int = 0, start: String? = null, end: String? = null,
+              color: Color? = null, bubble: ((Float) -> String)? = null, onDone: () -> Unit = {}, enabled: Boolean = true) {
+    val p = LocalPal.current
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = if (enabled) p.ink else p.ink3)
+            Text(valueText, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = p.ink)
+        }
+        if (sub != null) Text(sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2, lineHeight = 17.sp)
+        PSlider(value, onChange, color = color, steps = steps, bubble = bubble, label = title, onDone = onDone, enabled = enabled)
+        if (start != null && end != null) SliderEnds(start, end)
+    }
+}
+
+/** Ligne de liste déroulante (PSelect + PMenu). */
+@Composable
+fun <T> SetSelect(title: String, options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, sub: String? = null, emojis: List<String?>? = null, subs: List<String?>? = null) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        PSelectMenu(title, options, value, onChange, emojis = emojis, subs = subs)
+        if (sub != null) Text(sub, Modifier.padding(start = 4.dp), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = LocalPal.current.ink2, lineHeight = 17.sp)
+    }
+}
+
+/** Groupe de choix unique en lignes radio (titre facultatif au-dessus). */
+@Composable
+fun <T> SetRadioGroup(options: List<Pair<T, String>>, value: T, onChange: (T) -> Unit, title: String? = null, subs: List<String?>? = null, emojis: List<String?>? = null, color: Color? = null) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp)) {
+        if (title != null) Text(title, Modifier.padding(start = 10.dp, top = 4.dp, bottom = 2.dp), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = LocalPal.current.ink2)
+        PRadioGroup(options, value, onChange, subs, emojis, color)
+    }
+}

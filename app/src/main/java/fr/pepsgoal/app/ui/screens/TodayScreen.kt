@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.animation.core.*
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -41,14 +43,31 @@ import kotlinx.coroutines.launch
 import fr.pepsgoal.core.*
 
 @Composable
-fun ScreenList(gap: androidx.compose.ui.unit.Dp = 14.dp, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
-    val bars = LocalBars.current
+fun ScreenList(gap: androidx.compose.ui.unit.Dp = 10.dp, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+    val bars = LocalBars.current; val header = LocalTabHeader.current
     // Toucher l'onglet déjà ouvert : la page remonte en douceur tout en haut
     val state = androidx.compose.foundation.lazy.rememberLazyListState()
     val tap = TabReTap.n
     LaunchedEffect(tap) { if (tap > 0 && (state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 0)) state.animateScrollToItem(0) }
-    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 10.dp, bottom = bars.calculateBottomPadding() + 80.dp),
-        verticalArrangement = Arrangement.spacedBy(gap), content = content)
+    TrackScroll(state) { Fx.scroll = it }
+    LazyColumn(Modifier.fillMaxSize().testTag("list"), state = state, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bars.calculateTopPadding() + 4.dp, bottom = bars.calculateBottomPadding() + 80.dp),
+        verticalArrangement = Arrangement.spacedBy(gap)) {
+        // Héros de l'onglet : premier élément, il part avec le contenu (la barre compacte prend le relais)
+        if (header != null) item("tabhero") { header() }
+        content()
+    }
+}
+
+/**
+ * Publie le défilement d'une liste (px depuis le haut, plafonné passé le premier élément) pour la barre compacte et la
+ * parallaxe du fond, et signale un défilement en cours (horloge de la scène figée pendant et 500 ms après).
+ */
+@Composable
+fun TrackScroll(state: androidx.compose.foundation.lazy.LazyListState, publish: (Float) -> Unit) {
+    LaunchedEffect(state) { snapshotFlow { if (state.firstVisibleItemIndex == 0) state.firstVisibleItemScrollOffset.toFloat() else 100_000f }.collect { publish(it) } }
+    LaunchedEffect(state) {
+        snapshotFlow { state.isScrollInProgress }.collectLatest { if (it) Fx.scrolling = true else { kotlinx.coroutines.delay(500); Fx.scrolling = false } }
+    }
 }
 
 @Composable
@@ -87,7 +106,7 @@ fun TodayScreen(ui: AppState) {
         } else simpleHome(ui, cards, plan, st, lv, collapsed, due, toggle)
         item("custom") {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                PButton("Personnaliser l’accueil", { ui.push(Screen.Settings("home")) }, icon = "edit", kind = "ghost", small = true)
+                Puce("Personnaliser l’accueil", { ui.push(Screen.Settings("home")) }, emoji = "✏️")
             }
         }
     }
@@ -111,7 +130,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
                         Text(lv.name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                         Bar(lv.pct * 100)
                         Muted(if (lv.next != null) "${lv.next!! - lv.pts} flammes avant « ${lv.nextName} »" else "Niveau maximum atteint", small = true)
-                        if (total > 0 && done == total) PButton("Journée parfaite", { ui.fs = Fs.Celebrate(pg.perfectCelebration()) }, icon = "star", small = true, kind = "primary")
+                        if (total > 0 && done == total) PButton("Journée parfaite", { ui.fs = Fs.Celebrate(pg.perfectCelebration()) }, icon = "star", small = true, kind = "type", color = LocalPal.current.type("monthly").c)
                         PButton(if (pg.vacationOf()?.let { today() >= it.first } == true) "🏖️ En vacances" else if (pg.isRest()) "😴 Jour de repos" else "Repos et vacances", { ui.open(Sheet.Rest) }, icon = if (pg.isRest()) null else "moon", small = true, kind = "ghost")
                         PButton(if (pg.isHardDay()) "💛 Journée difficile" else "Journée difficile", { ui.open(Sheet.Hard) }, icon = if (pg.isHardDay()) null else "heart", small = true, kind = "ghost")
                         // Bilan du soir, proposé à partir de 18 h
@@ -153,8 +172,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
                                 Text("${o?.name ?: ""} · ${g.icon} ${g.title}", fontWeight = FontWeight.Bold)
                                 Muted("${fmtDate(c.date)} · ${when (c.kind) { "done" -> "validé"; "measure" -> "mesure enregistrée"; else -> "+${fmtNum(c.value)} ${g.unit}" }}", small = true)
                             }
-                            PButton("Confirmer", { ui.cloud.confirmCheck(c.id, true) }, kind = "primary", small = true)
-                            PButton("Refuser", { ui.cloud.confirmCheck(c.id, false) }, small = true)
+                            PButton("Confirmer", { ui.cloud.confirmCheck(c.id, true) }, small = true)
+                            PButton("Refuser", { ui.cloud.confirmCheck(c.id, false) }, kind = "ghost", small = true)
                         }
                     }
                 }
@@ -190,7 +209,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.simpleHome(ui: AppSta
         val tiles = rememberMoments(ui, moments)
         if (tiles.isNotEmpty() || "countdown" in moments) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             HomeSectionHead("À la une", "star", "moments" in collapsed) { toggle("moments") }
-            androidx.compose.animation.AnimatedVisibility("moments" !in collapsed) { MomentsRow(ui, tiles, "countdown" in moments) }
+            // Apparition en fondu et glissement (graphicsLayer), sans animation de taille
+            if ("moments" !in collapsed) Box(Modifier.popIn(androidx.compose.ui.graphics.TransformOrigin(.5f, 0f))) { MomentsRow(ui, tiles, "countdown" in moments) }
         }
     }
     val sections = listOf(
@@ -218,7 +238,9 @@ fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
     LaunchedEffect(n) { if (p.motion) count.snapTo(n.toFloat()) else count.animateTo(n.toFloat(), tween(minOf(1500, 600 + n * 6), easing = FastOutSlowInEasing)) }
     val wiggle = remember { Animatable(0f) }; val jump = remember { Animatable(0f) }
     val taps = remember { mutableListOf<Long>() }; val scope = rememberCoroutineScope()
-    val tickle = if (onTickle == null) Modifier else Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClickLabel = "Flamme") {
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter, onTickle != null)
+    val tickle = if (onTickle == null) Modifier else Modifier.clickable(interactionSource = inter, indication = null, onClickLabel = "Flamme") {
         val now = android.os.SystemClock.uptimeMillis(); taps.removeAll { now - it > 2500 }; taps.add(now)
         fr.pepsgoal.app.ui.Feedback.ramp((taps.size / 7f).coerceAtMost(1f))
         scope.launch { wiggle.snapTo(if (taps.size % 2 == 0) 1f else -1f); wiggle.animateTo(0f, spring(dampingRatio = .25f, stiffness = 900f)) }
@@ -230,10 +252,16 @@ fun HeroFlame(n: Int, lit: Boolean, onTickle: (() -> Unit)? = null) {
             val j = kotlin.math.sin(jump.value * kotlin.math.PI.toFloat())
             scaleX = 1f + .25f * j; scaleY = 1f + .25f * j; translationY = -j * 40.dp.toPx(); rotationZ = wiggle.value * 12f + jump.value * 360f
             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
-        }) { Flame(84.dp, dim = !lit) }
+        }) {
+            // Médaillon blanc à marche qui s'enfonce sous le doigt
+            Box(Modifier.size(92.dp, 97.dp).chunk(Color.White, p.flameStep, 46.dp, 5.dp, 0.dp, press), contentAlignment = Alignment.Center) { Flame(64.dp, dim = !lit) }
         }
-        Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
-        Text(if (n > 1) "jours de série" else "jour de série", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        }
+        // Chiffre et légende sur une plaque : jamais de texte posé directement sur la scène
+        Plaque(Modifier.padding(top = 8.dp)) {
+            Text("${count.value.toInt()}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, color = p.ink)
+            Text(if (n > 1) "jours de série" else "jour de série", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        }
     }
 }
 
@@ -267,7 +295,7 @@ private fun Board(ui: AppState) {
     Glass {
         CardHead("Classement des flammes", emoji = "🏆") { PButton("Amis", { ui.nav("friends") }, kind = "ghost", small = true) }
         if (board.size > 1) board.forEachIndexed { i, (x, n) ->
-            Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).background(if (x.id == u.id) androidx.compose.ui.graphics.lerp(p.surface, p.flame, .18f) else Color.Transparent).clickable { if (x.id != u.id) ui.open(Sheet.User(x.id)) }.padding(8.dp),
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if (x.id == u.id) p.selTint(p.flame) else Color.Transparent).clickable { if (x.id != u.id) ui.open(Sheet.User(x.id)) }.padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (i < 3) Emoji(listOf("🥇", "🥈", "🥉")[i], 22.dp) else Text("${i + 1}", fontFamily = Unbounded, fontWeight = FontWeight.Bold, color = p.ink3, modifier = Modifier.width(22.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 Av(x, 30.dp)
@@ -293,13 +321,13 @@ fun RecapCard(ui: AppState) {
                 val c0 = vivid(g.last())
                 Column(Modifier.weight(1f).fillMaxHeight().chunk(c0, c0.step(), 22.dp, 4.dp, 0.dp, press).clip(RoundedCornerShape(22.dp))
                     .springClick(inter, role = androidx.compose.ui.semantics.Role.Button) { val (sl, st) = Recaps.slides(pg, pg.meId(), k); ui.fs = Fs.Recap(k, sl, st) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    if (r.past) Text("J+1", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = .7f)).padding(horizontal = 6.dp, vertical = 1.dp))
+                    if (r.past) Text("J+1", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = .42f)).padding(horizontal = 6.dp, vertical = 1.dp))
                     Pi("star", tint = PLUM)
                     FitText(name, size = 14, min = 9, color = PLUM, weight = FontWeight.ExtraBold)
                     val n = Recaps.countIn(pg, pg.meId(), k)
                     Text("$n", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = PLUM)
-                    FitText(if (n > 1) "validations" else "validation", size = 12, min = 8, color = PLUM.copy(alpha = .8f))
-                    if (r.past) Text("bilan complet, aujourd’hui", fontSize = 11.sp, color = PLUM.copy(alpha = .75f))
+                    FitText(if (n > 1) "validations" else "validation", size = 12, min = 8, color = PLUM)
+                    if (r.past) Text("bilan complet, aujourd’hui", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PLUM)
                 }
             }
         }
@@ -324,7 +352,7 @@ fun WeatherCard(ui: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Emoji(info.emoji, 54.dp)
             Column(Modifier.weight(1f)) {
-                Text(Weather.temp(cur.temp), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp)
+                Text(Weather.temp(cur.temp), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
                 Muted("${info.label} · ressenti ${Weather.temp(cur.feels)}", small = true)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -419,9 +447,9 @@ fun androidx.compose.foundation.lazy.LazyListScope.dueItems(ui: AppState, d: Due
     }
     if (d.later > 0) item("due:later") {
         Row(Modifier.fillMaxWidth().animateItem(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Emoji("⏰", 20.dp)
-            Muted(pl(d.later, "objectif reporté à demain", "objectifs reportés à demain"), Modifier.weight(1f), small = true)
-            PButton("Remettre", { ui.prefs.snoozed = ""; ui.bump() }, kind = "ghost", small = true)
+            MiniPlaque(pl(d.later, "objectif reporté à demain", "objectifs reportés à demain"), Modifier.weight(1f, fill = false), emoji = "⏰")
+            Spacer(Modifier.weight(1f))
+            Puce("Remettre", { ui.prefs.snoozed = ""; ui.bump() })
         }
     }
     if (d.doneList.isNotEmpty()) {
@@ -522,7 +550,7 @@ private fun ContextCards(ui: AppState) {
                     GoalIcon(g, 32.dp)
                     Column(Modifier.weight(1f)) { Text(g.title, fontWeight = FontWeight.Bold, maxLines = 1); if (g.planB.isNotBlank()) Muted("☔ Plan B : ${g.planB}", small = true) }
                     // Plan B : l'alternative compte comme une validation normale
-                    if (g.planB.isNotBlank()) PButton("Plan B fait", { doValidate(ui, g.id); ui.toast("Plan B validé pour « ${g.title} ». Bien joué !", "check") }, small = true, kind = "primary")
+                    if (g.planB.isNotBlank()) PButton("Plan B fait", { doValidate(ui, g.id); ui.toast("Plan B validé pour « ${g.title} ». Bien joué !", "check") }, small = true, kind = "type", color = p.type(g.type).c)
                     PButton("Demain", { pg.skipToday(g)?.let { ui.toast(it, "x") } ?: ui.toast("« ${g.title} » décalé : ta série est préservée.", "cloud") }, small = true)
                     PButton("Je le fais", { ui.prefs.raw.edit().putString("wxKeep:${g.id}", today()).apply(); ui.bump() }, small = true, kind = "ghost")
                 }
@@ -544,10 +572,10 @@ private fun ContextCards(ui: AppState) {
                 sug.forEach { s ->
                     var applied by remember(s.goal.id) { mutableStateOf(false) }
                     Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(if (s.lighten) "🪶" else "🚀", fontSize = 20.sp)
+                        Emoji(if (s.lighten) "🪶" else "🚀", 22.dp)
                         Text(s.text, Modifier.weight(1f), fontSize = 14.sp)
                         if (applied) Text("✓", color = p.ok, fontWeight = FontWeight.ExtraBold)
-                        else PButton("Oui", { s.apply(); applied = true; ui.toast("Objectif ajusté.", "check") }, small = true, kind = "primary")
+                        else PButton("Oui", { s.apply(); applied = true; ui.toast("Objectif ajusté.", "check") }, small = true, kind = "type", color = p.type(s.goal.type).c)
                     }
                 }
             }
@@ -562,18 +590,20 @@ private fun ContextCards(ui: AppState) {
 /** Carte d'accueil de fin d'année : ouvre la rétrospective « PepsGoal Wrapped ». */
 @Composable
 fun WrappedCard(ui: AppState) {
-    val pg = ui.pg; val r = remember { Recaps.wrappedRange() }; val year = parseYmd(r.s).year
-    Column(Modifier.fillMaxWidth().chunk(Brush.linearGradient(listOf(hex("#241552"), hex("#5A1F6A"), hex("#8A2A50"))), hex("#120810"), 24.dp, 4.dp, 0.dp).clip(RoundedCornerShape(24.dp))
-        .clickable(onClickLabel = "Ouvrir ma rétrospective") { val (sl, st) = Recaps.wrapped(pg, pg.meId()); ui.fs = Fs.Recap("year", sl, st) }.padding(20.dp),
+    val p = LocalPal.current; val pg = ui.pg; val r = remember { Recaps.wrappedRange() }; val year = parseYmd(r.s).year
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Column(Modifier.fillMaxWidth().chunk(p.flameBrush(), p.flameStep, 24.dp, 4.dp, 0.dp, press).clip(RoundedCornerShape(24.dp))
+        .springClick(inter, label = "Ouvrir ma rétrospective") { val (sl, st) = Recaps.wrapped(pg, pg.meId()); ui.fs = Fs.Recap("year", sl, st) }.padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.graphicsLayer { rotationZ = 8f }) { Emoji("🎁", 56.dp) }
             Column(Modifier.weight(1f)) {
-                Text("PEPSGOAL WRAPPED", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .8f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
-                Text("Ton année $year est prête", color = androidx.compose.ui.graphics.Color.White, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                Text("PEPSGOAL WRAPPED", color = PLUM, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
+                Text("Ton année $year est prête", color = PLUM, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             }
         }
-        Text("Ton meilleur mois, ton podium, ton profil de l’année… à revivre en story et à partager.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .9f), fontSize = 14.sp)
+        Text("Ton meilleur mois, ton podium, ton profil de l’année… à revivre en story et à partager.", color = PLUM, fontSize = 14.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -582,7 +612,8 @@ fun WrappedCard(ui: AppState) {
 fun DayCount(done: Int, total: Int) {
     val p = LocalPal.current
     val all = total > 0 && done == total
-    Row(Modifier.clip(CircleShape).background(if (all) vivid(p.type("routine").c) else p.surface2).padding(horizontal = 10.dp, vertical = 4.dp),
+    // Mini-plaque (posée sur la scène) ; tout validé : aplat lime
+    Row(Modifier.clip(CircleShape).background(if (all) vivid(p.type("routine").c) else p.surface).border(2.dp, if (all) vivid(p.type("routine").c).step() else p.edge, CircleShape).padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (all) Pi("check", size = 14.dp, tint = PLUM)
         Text("$done/$total", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (all) PLUM else p.ink2)

@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Bouton principal : dégradé flamme de PepsGoal -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-    <gradient android:angle="315" android:startColor="#FFFFB000" android:centerColor="#FFFF4A12" android:endColor="#FFFF3D8B" />
-</shape>
+<!-- Bouton principal : dégradé de la flamme et sa marche #C2185B (le « + » est prune) -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:top="3dp">
+        <shape android:shape="oval"><solid android:color="#FFC2185B" /></shape>
+    </item>
+    <item android:bottom="3dp">
+        <shape android:shape="oval"><gradient android:angle="315" android:startColor="#FFFFB000" android:centerColor="#FFFF4A12" android:endColor="#FFFF3D96" /></shape>
+    </item>
+</layer-list>

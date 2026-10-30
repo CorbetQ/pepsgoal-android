@@ -25,7 +25,7 @@ fun PlanBRow(ui: AppState, g: Goal) {
         FlowRowCompat(gap = 6.dp) { PLAN_B_IDEAS.forEach { idea -> FChip(idea, v == tr(idea), { v = tr(idea) }) } }
         Field(v, { v = it }, "Ton plan B", placeholder = "Vélo d’appartement", max = 60, icon = "cloud")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PButton("Enregistrer", { g.planB = v.trim(); pg.store.commit(); open = false; ui.bump(); ui.toast(if (g.planB.isEmpty()) "Plan B retiré." else "Plan B enregistré : « ${g.planB} ».", "cloud") }, icon = "check", small = true, kind = "primary")
+            PButton("Enregistrer", { g.planB = v.trim(); pg.store.commit(); open = false; ui.bump(); ui.toast(if (g.planB.isEmpty()) "Plan B retiré." else "Plan B enregistré : « ${g.planB} ».", "cloud") }, icon = "check", small = true, color = p.type("measure").c)
             if (g.planB.isNotEmpty()) PButton("Retirer", { v = ""; g.planB = ""; pg.store.commit(); ui.bump() }, small = true, kind = "ghost")
         }
         if (pg.me()?.settings?.weather == null) Muted("Choisis ta ville dans Paramètres › Météo pour que PepsGoal sache quand il pleut.", small = true)

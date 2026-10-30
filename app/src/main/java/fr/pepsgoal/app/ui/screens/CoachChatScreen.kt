@@ -33,20 +33,18 @@ import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
+import fr.pepsgoal.app.ui.theme.step
 
-/** Avatar du coach : emoji de sa personnalité dans un disque dégradé, anneau qui tourne pendant qu'il réfléchit. */
+/** Avatar du coach : médaillon néon « program » à marche, emoji de sa personnalité ; il saute doucement quand il réfléchit. */
 @Composable
 fun CoachAvatar(size: Dp, thinking: Boolean = false, emoji: String? = null) {
     val p = LocalPal.current; val ctx = LocalContext.current
     val e = emoji ?: Personas.current(ctx).emoji
-    val spin = if (thinking && !p.motion) rememberInfiniteTransition(label = "coach").animateFloat(0f, 360f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "spin").value else 0f
-    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
-        if (thinking) Canvas(Modifier.fillMaxSize().graphicsLayer { rotationZ = spin }) {
-            drawCircle(Brush.sweepGradient(listOf(p.flame2, p.pink, p.type("program").c, p.flame2)), radius = this.size.minDimension / 2 - 1.5.dp.toPx(), style = Stroke(3.dp.toPx()))
-        }
-        Box(Modifier.size(size - 8.dp).clip(CircleShape).background(Brush.linearGradient(listOf(p.type("program").c.copy(alpha = .35f), p.type("measure").c.copy(alpha = .3f)))), contentAlignment = Alignment.Center) {
-            Emoji(e, size * .5f)
-        }
+    val c = vivid(p.type("program").c)
+    val ph = slowPhaseState(900, 15, running = thinking)
+    Box(Modifier.size(size).graphicsLayer { if (thinking && !p.motion) translationY = -kotlin.math.abs(kotlin.math.sin(ph.value * Math.PI.toFloat())) * 3.dp.toPx() }
+        .chunk(c, c.step(), size / 2, 3.dp, 0.dp), contentAlignment = Alignment.Center) {
+        Emoji(e, size * .5f)
     }
 }
 
@@ -66,19 +64,20 @@ fun CoachChatScreen(ui: AppState) {
     LaunchedEffect(msgs.size, busy, partial?.length?.div(80)) { val n = state.layoutInfo.totalItemsCount; if (n > 0) state.animateScrollToItem(n - 1) }
     val send = { q: String -> if (q.isNotBlank() && !busy) { CoachChat.send(ctx, q); input = "" } }
     val sugg = remember(CoachChat.rev, ui.rev) { CoachChat.suggestions(ctx) }
+    TrackScroll(state) { Fx.pageScroll = it }
+    // Pas de fond propre : la scène de l'application reste dessous
     Box(Modifier.fillMaxSize()) {
-        PageBackdrop(p.type("program").c, p.type("measure").c)
         Column(Modifier.fillMaxSize().imePadding()) {
-            // En-tête : avatar, prénom et état du coach
-            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconBtn("chevronleft", "Retour", { ui.back() }, size = 44.dp)
-                CoachAvatar(46.dp, thinking = busy)
+            // En-tête : barre compacte (retour, médaillon du coach, prénom et état, actions)
+            CompactBar(Modifier.statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp)) {
+                RoundGlass("Retour", { ui.back() }) { Pi("chevronleft", size = 20.dp, tint = p.ink) }
+                CoachAvatar(36.dp, thinking = busy)
                 Column(Modifier.weight(1f)) {
-                    Text(name, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                    Muted(when { busy && partial == null -> "réfléchit…"; busy -> "écrit…"; ready -> "${persona.label} · 100 % sur ton téléphone"; else -> "${persona.label} · mode simple" }, small = true)
+                    Text(name, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1)
+                    Text(when { busy && partial == null -> "réfléchit…"; busy -> "écrit…"; ready -> "${persona.label} · 100 % sur ton téléphone"; else -> "${persona.label} · mode simple" }, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ink2, maxLines = 1)
                 }
-                IconBtn("gear", "Réglages du coach", { ui.push(Screen.Settings("ai")) }, plain = true, size = 40.dp)
-                if (msgs.isNotEmpty()) IconBtn("trash", "Effacer la conversation", { ui.confirm("Effacer la conversation ?", "Les messages échangés avec $name seront supprimés de ce téléphone. Sa mémoire est gardée.", "Effacer") { CoachChat.clear(ctx) } }, plain = true, size = 40.dp)
+                RoundGlass("Réglages du coach", { ui.push(Screen.Settings("ai")) }) { Pi("gear", size = 20.dp, tint = p.ink) }
+                if (msgs.isNotEmpty()) RoundGlass("Effacer la conversation", { ui.confirm("Effacer la conversation ?", "Les messages échangés avec $name seront supprimés de ce téléphone. Sa mémoire est gardée.", "Effacer") { CoachChat.clear(ctx) } }) { Pi("trash", size = 20.dp, tint = p.danger) }
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), state, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (!ready) item("off") {
@@ -86,7 +85,7 @@ fun CoachChatScreen(ui: AppState) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Pi("sparkle", size = 20.dp, tint = p.flameInk)
                             Column(Modifier.weight(1f)) { Text("Mode simple", fontWeight = FontWeight.ExtraBold); Muted(if (LocalAi.installed(ctx)) "Le coach IA est en pause : réactive-le pour des réponses complètes." else "Installe le coach IA pour des réponses complètes et personnalisées.", small = true) }
-                            Text("›", color = p.ink3, fontSize = 22.sp)
+                            Pi("chevronright", size = 20.dp, tint = p.ink3)
                         }
                     }
                 }
@@ -98,10 +97,10 @@ fun CoachChatScreen(ui: AppState) {
             if (!busy && msgs.isNotEmpty() && sugg.isNotEmpty()) Box(Modifier.padding(horizontal = 12.dp)) {
                 ChipScroller(bleed = 12.dp) { sugg.forEach { q -> FChip(q, false, { send(q) }) } }
             }
-            Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp).clip(smoothShape(26.dp)).background(p.glassStrong).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(input, { input = it }, "", Modifier.weight(1f), placeholder = "Écris à $name…", max = 600, singleLine = false, icon = "sparkle")
-                if (busy) IconBtn("pause", "Arrêter la réponse", { CoachChat.stop() }, size = 46.dp, tint = p.danger)
-                else IconBtn("send", "Envoyer", { send(input) }, size = 46.dp, tint = p.flameInk)
+            Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PTextField(input, { input = it }, "", Modifier.weight(1f), "Écris à $name…", max = 600, singleLine = false, minLines = 1, maxLines = 5, capsule = true, clear = false, emoji = "✨")
+                if (busy) RoundGlass("Arrêter la réponse", { CoachChat.stop() }) { Pi("pause", size = 20.dp, tint = p.danger) }
+                else SendBtn("Envoyer", input.isNotBlank()) { send(input) }
             }
         }
     }
@@ -127,7 +126,7 @@ private fun Welcome(ui: AppState, hello: String, send: (String) -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { (q, ic, c) ->
                     Glass(Modifier.weight(1f), pad = 12.dp, onClick = { send(q) }) {
-                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(c.copy(alpha = .18f)), contentAlignment = Alignment.Center) { Pi(ic, size = 18.dp, tint = c) }
+                        IconTile(ic, c, c, 34.dp, 11.dp)
                         Text(q, Modifier.padding(top = 8.dp), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, lineHeight = 18.sp)
                     }
                 }
@@ -140,14 +139,11 @@ private fun Welcome(ui: AppState, hello: String, send: (String) -> Unit) {
 @Composable
 private fun Writing(partial: String?) {
     val p = LocalPal.current
-    val inf = rememberInfiniteTransition(label = "dots")
-    val ph by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "ph")
     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         CoachAvatar(30.dp, thinking = true)
-        Column(Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(20.dp, 20.dp, 20.dp, 6.dp)).background(p.glassStrong).padding(12.dp)) {
-            if (partial.isNullOrBlank()) Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                for (i in 0..2) { val a = ((kotlin.math.sin((ph - i * .18f) * 2 * Math.PI) + 1) / 2).toFloat(); Box(Modifier.size(8.dp).graphicsLayer { translationY = -a * 4.dp.toPx() }.alpha(.35f + .65f * a).clip(CircleShape).background(p.ink2)) }
-            } else Text(rich(partial + if (ph < .5f) " ▍" else "  "), fontSize = 15.sp)
+        Column(Modifier.widthIn(max = 300.dp).chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp).padding(12.dp)) {
+            if (partial.isNullOrBlank()) PSpinner(8.dp, label = "Le coach écrit…")
+            else Text(rich("$partial ▍"), fontSize = 15.sp)
         }
     }
 }
@@ -160,30 +156,34 @@ private fun Bubble(ui: AppState, m: ChatMsg, last: Boolean) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start, verticalAlignment = Alignment.Bottom) {
         if (!mine) { CoachAvatar(30.dp); Spacer(Modifier.width(8.dp)) }
         Column(Modifier.widthIn(max = 300.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Column(Modifier.clip(shape).background(if (mine) Brush.linearGradient(listOf(p.flame2.copy(alpha = .4f), p.pink.copy(alpha = .34f))) else Brush.linearGradient(listOf(p.glassStrong, p.glassStrong))).padding(12.dp)) {
-                Text(if (mine) AnnotatedString(m.text) else rich(m.text), fontSize = 15.sp)
-                if (m.simple) Muted("Mode simple", Modifier.padding(top = 4.dp), small = true)
+            // À moi : aplat de la flamme et encre prune ; coach : bulle reçue (surface à marche) avec pastille ✨
+            Box {
+                Column(Modifier.then(if (mine) Modifier.chunk(p.flameBrush(), p.flameStep, 22.dp, 3.dp, 0.dp) else Modifier.chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp)).clip(shape).padding(12.dp)) {
+                    Text(if (mine) AnnotatedString(m.text) else rich(m.text), fontSize = 15.sp, color = if (mine) fr.pepsgoal.app.ui.theme.PLUM else p.ink)
+                    if (m.simple) Muted("Mode simple", Modifier.padding(top = 4.dp), small = true)
+                }
+                if (!mine) Box(Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(22.dp).background(vivid(p.type("program").c), CircleShape), contentAlignment = Alignment.Center) { Emoji("✨", 14.dp) }
             }
             if (!mine) {
             // Objectif proposé, prêt à créer
             m.goal?.let { line ->
                 val d = if (line.startsWith("?")) Coach.rules(line.drop(1)) else Coach.parseLine(line, m.text)
-                if (d != null) Row(Modifier.clip(smoothShape(16.dp)).background(p.type(d.type).c.copy(alpha = .18f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (d != null) Row(Modifier.chunk(p.selTint(p.type(d.type).c), p.type(d.type).c, 22.dp, 3.dp, 2.dp).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Emoji(d.icon, 28.dp)
                     Column(Modifier.weight(1f, fill = false)) { Text(d.title, fontWeight = FontWeight.ExtraBold); TypeChip(d.type) }
-                    PButton("Créer", { ui.open(Sheet.GoalForm(preType = d.type, preTitle = d.title, preIcon = d.icon, preFields = d.fields)) }, icon = "plus", kind = "primary", small = true)
+                    PButton("Créer", { ui.open(Sheet.GoalForm(preType = d.type, preTitle = d.title, preIcon = d.icon, preFields = d.fields)) }, icon = "plus", kind = "type", color = p.type(d.type).c, small = true)
                 }
             }
             // Objectifs que tu dis avoir faits : validation en un geste
             m.acts.mapNotNull { a -> a.removePrefix("validate:").takeIf { a.startsWith("validate:") }?.let { pg.goalById(it) } }.forEach { g ->
                 val done = remember(ui.rev) { pg.todayPlan().due.any { it.g.id == g.id && it.done } }
                 if (done) Chip("${g.icon} ${g.title} · validé", "check", p.ok)
-                else PButton("Valider ${g.icon} ${g.title}", { doValidate(ui, g.id) }, icon = "check", kind = "primary", small = true)
+                else PButton("Valider ${g.icon} ${g.title}", { doValidate(ui, g.id) }, icon = "check", kind = "type", color = p.type(g.type).c, small = true)
             }
             // Ce que le coach a retenu
             m.fact?.let { f ->
-                Row(Modifier.clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .06f)).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("🧠", fontSize = 14.sp); Muted("Retenu : $f", Modifier.weight(1f, fill = false), small = true, maxLines = 2)
+                Row(Modifier.clip(RoundedCornerShape(17.dp)).background(p.surface).border(2.dp, p.edge, RoundedCornerShape(17.dp)).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Emoji("🧠", 16.dp); Muted("Retenu : $f", Modifier.weight(1f, fill = false), small = true, maxLines = 2)
                     IconBtn("x", "Oublier", { AiMemory.all(ctx).lastOrNull { it.kind == "fact" && it.text.equals(f, true) }?.let { AiMemory.remove(ctx, it.at) }; ui.toast("Oublié.", "trash") }, plain = true, size = 30.dp)
                 }
             }

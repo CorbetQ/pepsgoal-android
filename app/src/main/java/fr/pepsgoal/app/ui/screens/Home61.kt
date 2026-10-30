@@ -1,6 +1,5 @@
 package fr.pepsgoal.app.ui.screens
 
-import android.app.DatePickerDialog
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,6 +28,7 @@ import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
+import fr.pepsgoal.app.ui.theme.step
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.sheets.SheetHead
 import fr.pepsgoal.app.ui.theme.LocalPal
@@ -80,11 +80,11 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
     val fill: Brush = when {
         p.contrast -> SolidColor(p.surface)
         off -> SolidColor(p.surface)
-        frozen && !st.lit -> Brush.linearGradient(listOf(p.ice, Color(0xFF7C8CFF)))
-        p.materialYou -> Brush.linearGradient(listOf(Color(0xFFFFB000), Color(0xFFFF4A12), Color(0xFFFF3D96)))
+        frozen && !st.lit -> Brush.linearGradient(listOf(p.ice, p.type("program").c))
+        p.materialYou -> Brush.linearGradient(fr.pepsgoal.app.ui.theme.BRAISE)
         else -> p.flameBrush()
     }
-    val stepC = when { p.contrast -> p.ink; off -> p.edge; frozen && !st.lit -> Color(0xFF4A5AC8); p.materialYou -> Color(0xFFC2185B); else -> p.flameStep }
+    val stepC = when { p.contrast -> p.ink; off -> p.edge; frozen && !st.lit -> p.type("program").c.step(); p.materialYou -> fr.pepsgoal.app.ui.theme.BRAISE_STEP; else -> p.flameStep }
     val ink = if (off || p.contrast) p.ink else if (p.materialYou || (frozen && !st.lit)) PLUM else p.onAccent
     val desc = "Série de ${pl(st.n, "jour", "jours")}, ${pl(u.freezes, "joker", "jokers")}, record $best, $done ${if (done > 1) "objectifs" else "objectif"} sur $total ${if (done > 1) "faits" else "fait"}. $msg"
     val inter = remember { MutableInteractionSource() }
@@ -95,11 +95,6 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
     val heroSize = minOf(60f, 72f / fontScale.coerceAtLeast(.5f)).sp
     Box(Modifier.fillMaxWidth().chunk(fill, stepC, 28.dp, 6.dp, if (off || p.contrast) 2.dp else 0.dp, press).clip(RoundedCornerShape(28.dp))
         .springClick(inter, label = "Ouvrir ma série") { ui.open(Sheet.Streak) }.semantics(mergeDescendants = true) { contentDescription = desc }) {
-        // Décor en aplat : deux cercles blancs translucides, sans flou
-        if (!off && !p.contrast) Box(Modifier.matchParentSize().drawBehind {
-            drawCircle(Color.White.copy(alpha = .16f), size.height * .55f, Offset(size.width * .98f, size.height * .1f))
-            drawCircle(Color.White.copy(alpha = .12f), size.height * .18f, Offset(size.width * .7f, size.height * .95f))
-        })
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             val number = @Composable {
                 Row(verticalAlignment = Alignment.Bottom) {
@@ -155,8 +150,11 @@ fun StreakMedal(ui: AppState, st: Streak) {
     val ph = slowPhaseState(1400, 15, running = dancing && st.lit && Perf.flags.fx)
     val wiggle = remember { Animatable(0f) }; val jump = remember { Animatable(0f) }
     val taps = remember { mutableListOf<Long>() }; val scope = rememberCoroutineScope()
-    Box(Modifier.popOnChange(st.n).graphicsLayer { rotationZ = -6f }.size(88.dp, 93.dp).chunk(Color.White, p.flameStep.copy(alpha = .55f), 44.dp, 5.dp, 0.dp)
-        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClickLabel = "Flamme") {
+    // Médaillon à marche qui s'enfonce sous le doigt (comme les boutons)
+    val inter = remember { MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Box(Modifier.popOnChange(st.n).graphicsLayer { rotationZ = -6f }.size(88.dp, 93.dp).chunk(Color.White, p.flameStep, 44.dp, 5.dp, 0.dp, press)
+        .clickable(interactionSource = inter, indication = null, onClickLabel = "Flamme") {
             awake++
             val now = System.currentTimeMillis(); taps.removeAll { now - it > 2500 }; taps.add(now)
             Feedback.ramp((taps.size / 7f).coerceAtMost(1f))
@@ -268,10 +266,11 @@ fun MomentsRow(ui: AppState, tiles: List<MomentTile>, showAdd: Boolean = true) {
                 Text(t.sub, fontSize = 12.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
             }
         }
-        if (showAdd) Column(Modifier.width(120.dp).height(132.dp).chunk(p.surface2, p.edge, 24.dp, 4.dp, 2.dp).clip(RoundedCornerShape(22.dp)).clickable(onClickLabel = "Nouveau compte à rebours") { ui.open(Sheet.HomeCard("countdown")) }.padding(12.dp),
+        if (showAdd) { val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }; val press = rememberPress(inter)
+        Column(Modifier.width(120.dp).height(132.dp).chunk(p.surface2, p.edge, 24.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(22.dp)).springClick(inter, label = "Nouveau compte à rebours") { ui.open(Sheet.HomeCard("countdown")) }.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
             IconTile("plus", p.flame, p.flame, 38.dp); Text("Compte à rebours", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        }
+        } }
     }
 }
 
@@ -291,19 +290,10 @@ fun HomeCardSheet(ui: AppState, key: String) {
 /** Emoji des sections de l'accueil. */
 private val HOME_SEC_EMOJI = mapOf("À la une" to "⭐", "Ta journée" to "☀️", "Progression" to "📈", "Dehors" to "🌤️", "Entre amis" to "👥", "Coach" to "✨")
 
-/** Titre de section repliable de l'accueil : emoji, titre en Unbounded 18, flèche dans une pastille. */
+/** Titre de section repliable de l'accueil : plaque (emoji + titre), puce « Replier / Déplier » à marche. */
 @Composable
 fun HomeSectionHead(title: String, icon: String, collapsed: Boolean, onToggle: () -> Unit) {
-    val p = LocalPal.current
-    val rot by animateFloatAsState(if (collapsed) -90f else 0f, androidx.compose.animation.core.spring(dampingRatio = .5f, stiffness = 500f), label = "secRot")
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp).clip(smoothShape(16.dp)).clickable(onClickLabel = if (collapsed) "Déplier $title" else "Replier $title", onClick = onToggle).padding(horizontal = 4.dp, vertical = 4.dp).semantics { heading() },
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        HOME_SEC_EMOJI[title]?.let { Emoji(it, 26.dp) }
-        Text(title, Modifier.weight(1f), fontSize = 18.sp, fontFamily = Unbounded, fontWeight = FontWeight.Bold, color = p.ink)
-        Box(Modifier.size(32.dp).clip(CircleShape).background(p.surface2), contentAlignment = Alignment.Center) {
-            Pi("down", size = 16.dp, tint = p.ink2, modifier = Modifier.graphicsLayer { rotationZ = rot })
-        }
-    }
+    SectionPlaque(title, HOME_SEC_EMOJI[title], action = if (collapsed) "Déplier" else "Replier", onAction = onToggle)
 }
 
 /* ------------------------------------------------------------------ Comptes à rebours */
@@ -328,9 +318,9 @@ fun CountdownCard(ui: AppState) {
         if (list.isEmpty()) Muted("Un marathon, des vacances, un examen ? Compte les jours sur ton accueil.", small = true)
         Spacer(Modifier.height(8.dp)); Eyebrow("Nouveau")
         Field(title, { title = it }, "Événement", placeholder = "Marathon de Nantes", max = 40)
-        FlowRowCompat(gap = 4.dp) { CD_EMOJIS.forEach { e -> Box(Modifier.size(36.dp).clip(CircleShape).background(if (e == emoji) p.flame.copy(alpha = .25f) else Color.Transparent).clickable { emoji = e }, contentAlignment = Alignment.Center) { Emoji(e, 22.dp) } } }
+        FlowRowCompat(gap = 4.dp) { CD_EMOJIS.forEach { e -> Box(Modifier.size(48.dp).clip(CircleShape).background(if (e == emoji) p.selTint(p.flame) else Color.Transparent).border(2.dp, if (e == emoji) p.focusEdge else Color.Transparent, CircleShape).clickable { emoji = e }, contentAlignment = Alignment.Center) { Emoji(e, 24.dp) } } }
+        fr.pepsgoal.app.ui.sheets.DateField("Date", date, { date = it }, min = today())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            PButton("📅 ${fmtDate(date)}", { val d0 = parseYmd(date); DatePickerDialog(ctx, { _, yy, mm, dd -> date = ymd(java.time.LocalDate.of(yy, mm + 1, dd)) }, d0.year, d0.monthValue - 1, d0.dayOfMonth).show() }, small = true)
             PButton("Ajouter", { if (title.isNotBlank() && date >= today()) { pg.addCountdown(title, emoji, date); title = ""; ui.bump(); Feedback.tick() } }, icon = "plus", small = true, kind = "primary", enabled = title.isNotBlank())
         }
     }

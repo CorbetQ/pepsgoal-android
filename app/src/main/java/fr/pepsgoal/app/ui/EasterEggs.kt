@@ -100,19 +100,19 @@ fun EggsCard(ui: AppState, u: User) {
         CardHead("Surprises cachées", emoji = "🎁") { Count("${found.size} / ${Eggs.ALL.size}") }
         Muted(if (found.isEmpty()) "PepsGoal cache quelques surprises. Chacune rapporte ${Eggs.BONUS} flammes la première fois." else "Chaque surprise rapporte ${Eggs.BONUS} flammes la première fois. Sauras-tu toutes les trouver ?", small = true)
         Spacer(Modifier.height(10.dp))
-        Bar(found.size * 100.0 / Eggs.ALL.size, height = 6.dp)
+        Bar(found.size * 100.0 / Eggs.ALL.size, height = 10.dp)
         Spacer(Modifier.height(6.dp))
         Eggs.ALL.forEach { e ->
             val ok = e.key in found
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (ok) p.flame.copy(alpha = .18f) else p.ink.copy(alpha = .06f)), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(40.dp).background(if (ok) p.selTint(p.flame) else p.surface2, RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) {
                     if (ok) Emoji(e.emoji, 22.dp) else Text("?", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = p.ink3)
                 }
                 Column(Modifier.weight(1f)) {
                     Text(if (ok) e.name else "Surprise cachée", fontWeight = FontWeight.ExtraBold, color = if (ok) p.ink else p.ink2)
                     Text(if (ok) "Trouvée · +${Eggs.BONUS} flammes" else "Indice : ${e.hint}", fontSize = 13.sp, color = p.ink2)
                 }
-                if (ok) Box(Modifier.size(22.dp).clip(CircleShape).background(p.flame), contentAlignment = Alignment.Center) { Pi("check", size = 14.dp, tint = p.onAccent) }
+                if (ok) Box(Modifier.size(22.dp).clip(CircleShape).background(p.flame), contentAlignment = Alignment.Center) { Pi("check", size = 14.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
             }
         }
     }

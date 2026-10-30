@@ -1,7 +1,7 @@
 package fr.pepsgoal.core
 
 /** Valeurs fixes de l'application (identiques à la version web : apps/web-legacy/pepsgoal.html). */
-const val APP_VERSION = "8.0.0"
+const val APP_VERSION = "8.1.0"
 const val FREEZE_EVERY = 10
 const val TUTO_GELS = 5
 const val MONTH_BONUS = 60
@@ -91,7 +91,7 @@ val VIS = linkedMapOf("private" to ("Privé" to "lock"), "friends" to ("Amis" to
 val REASON_LBL = mapOf("spam" to "Spam", "hate" to "Propos haineux", "harass" to "Harcèlement", "other" to "Autre")
 val MAINT_MODE = mapOf("social" to "Plateforme sociale en lecture seule", "full" to "Application complète indisponible")
 val OFFICIAL_TAGS = mapOf("news" to ("Nouveauté" to "star"), "mod" to ("Modération" to "shield"), "info" to ("Info" to "bell"))
-val BGS = listOf("blob" to "Blob", "aurora" to "Aurore", "waves" to "Vagues", "stars" to "Constellation", "mesh" to "Dégradé", "grid" to "Grille", "plain" to "Uni", "custom" to "Mon image")
+val BGS = listOf("pop" to "Collines braise", "aurora" to "Aurore", "waves" to "Vagues", "stars" to "Constellation", "mesh" to "Dégradé", "grid" to "Grille", "plain" to "Uni", "custom" to "Mon image")
 val THEMES = listOf("system" to "Auto", "light" to "Clair", "dark" to "Sombre", "oled" to "OLED", "weather" to "Météo")
 val BLURS = listOf("xlow" to "Très faible", "low" to "Faible", "mid" to "Moyen", "high" to "Fort")
 

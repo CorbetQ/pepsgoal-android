@@ -1,7 +1,5 @@
 package fr.pepsgoal.app.ui.screens
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,6 +32,7 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 
+private val MOD_EMOJI = mapOf("accounts" to "👥", "reports" to "🚩", "appeals" to "⚖️", "maint" to "🛠️", "news" to "📣", "server" to "🖥️")
 val MOD_TABS = listOf(Triple("accounts", "Comptes", "users"), Triple("reports", "Signalements", "flag"), Triple("appeals", "Contestations", "ban"),
     Triple("maint", "Maintenances", "gauge"), Triple("news", "Annonces", "send"), Triple("server", "Serveur", "server"))
 
@@ -44,7 +43,10 @@ fun ModerationScreen(ui: AppState) {
     val counts = mapOf("reports" to "${Mod.pending(ui).size + Mod.openReports(ui).size}".takeIf { it != "0" }, "appeals" to "${Mod.openAppeals(ui).size}".takeIf { it != "0" },
         "maint" to if (pg.maintNow() != null) "●" else if (pg.maintNext() != null) "◷" else null)
     ScreenList {
-        item("tabs") { ChipsRow { MOD_TABS.forEach { (k, l, i) -> FChip(l + (counts[k]?.let { " $it" } ?: ""), ui.modTab == k, { ui.modTab = k }, leading = { Pi(i, size = 15.dp) }) } } }
+        item("tabs") {
+            val ix = MOD_TABS.indexOfFirst { it.first == ui.modTab }.coerceAtLeast(0)
+            PTabs(MOD_TABS.map { (k, l, _) -> (l + (counts[k]?.let { " $it" } ?: "")) to MOD_EMOJI[k] }, ix, { ui.modTab = MOD_TABS[it].first })
+        }
         when (ui.modTab) {
             "reports" -> item("b") { ModReports(ui) }
             "appeals" -> item("b") { ModAppeals(ui) }
@@ -102,7 +104,7 @@ private fun ModAccounts(ui: AppState) {
                 .sortedWith(compareByDescending<User> { (if (pg.isBanned(it)) 1 else 0) + (if (it.warned != null) 1 else 0) }.thenBy { it.name.lowercase() })
             if (list.isEmpty()) Muted("Aucun compte ne correspond.", Modifier.padding(top = 8.dp), small = true)
             list.take(80).forEach { x ->
-                Row(Modifier.fillMaxWidth().clip(smoothShape(14.dp)).clickable { ui.open(Sheet.ModUser(x.id)) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).clickable { ui.open(Sheet.ModUser(x.id)) }.heightIn(min = 60.dp).padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Av(x, 40.dp)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(pg.realName(x), fontWeight = FontWeight.ExtraBold)
@@ -134,7 +136,7 @@ private fun ModPostCard(ui: AppState, post: Post, actions: @Composable () -> Uni
         a?.let { FlowRowCompat(gap = 4.dp) { StatusChips(ui, it) } }
         if (post.text.isNotEmpty()) Text(post.text)
         post.poll?.let { Muted("Sondage : " + it.options.joinToString(" · ") { o -> o.t }, small = true) }
-        post.photo?.let { AsyncImage(it, "Photo de la publication", Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(smoothShape(14.dp)).clickable { photo = true }, contentScale = ContentScale.Crop) }
+        post.photo?.let { AsyncImage(it, "Photo de la publication", Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(18.dp)).clickable { photo = true }, contentScale = ContentScale.Crop) }
         FlowRowCompat(gap = 6.dp) { actions() }
     }
     if (photo) post.photo?.let { PhotoViewer(it) { photo = false } }
@@ -159,7 +161,7 @@ private fun ModReports(ui: AppState) {
             CardHead("Publications à valider") { Count(pp.size) }
             if (pp.isEmpty()) Muted("Aucune publication en attente. Les publications des comptes sous avertissement arrivent ici avant d'être visibles.", small = true)
             pp.forEach { post -> ModPostCard(ui, post) {
-                PButton("Valider", { ui.run("Publication validée.") { ui.cloud.modPost(post.id, "approve") } }, icon = "check", kind = "primary", small = true)
+                PButton("Valider", { ui.run("Publication validée.") { ui.cloud.modPost(post.id, "approve") } }, icon = "check", color = p.type("routine").c, small = true)
                 PButton("Refuser", { ui.run("Publication refusée.", "x") { ui.cloud.modPost(post.id, "reject") } }, icon = "x", kind = "danger", small = true)
             } }
         }
@@ -192,7 +194,7 @@ private fun ModAppeals(ui: AppState) {
                     Text("« ${a.text} »")
                     Field(ans, { ans = it }, "Réponse à la personne (optionnelle)", max = 200)
                     FlowRowCompat(gap = 6.dp) {
-                        PButton("Lever le ban", { ui.run("Ban levé.") { ui.cloud.modAppeal(a.id, true, ans.trim()) } }, kind = "primary", small = true)
+                        PButton("Lever le ban", { ui.run("Ban levé.") { ui.cloud.modAppeal(a.id, true, ans.trim()) } }, color = p.type("routine").c, small = true)
                         PButton("Refuser", { ui.run("Demande refusée.", "x") { ui.cloud.modAppeal(a.id, false, ans.trim()) } }, small = true)
                         PButton("Voir le compte", { ui.open(Sheet.ModUser(x.id)) }, kind = "ghost", small = true)
                     }
@@ -218,12 +220,17 @@ private fun ModAppeals(ui: AppState) {
     }
 }
 
-/** Choix d'une date et d'une heure avec les sélecteurs d'Android. */
-fun pickDateTime(ctx: Context, initial: Long, onPick: (Long) -> Unit) {
-    val t = localDateTime(initial)
-    DatePickerDialog(ctx, { _, y, m, d ->
-        TimePickerDialog(ctx, { _, h, mi -> onPick(java.time.LocalDateTime.of(y, m + 1, d, h, mi).atZone(Clock.zone()).toInstant().toEpochMilli()) }, t.hour, t.minute, true).show()
-    }, t.year, t.monthValue - 1, t.dayOfMonth).show()
+/** Bouton « Changer » : date puis heure avec les sélecteurs Braise Pop (feuilles), en heure locale. */
+@Composable
+private fun DateTimeButton(value: Long, onPick: (Long) -> Unit) {
+    var step by remember { mutableIntStateOf(0) }; var day by remember { mutableStateOf("") }
+    val t = localDateTime(value)
+    PButton("Changer", { step = 1 }, icon = "clock", small = true)
+    if (step == 1) PDatePicker(t.toLocalDate().toString(), { day = it; step = 2 }, { if (step == 1) step = 0 }, title = "Choisir le jour")
+    if (step == 2) PTimePicker("%02d:%02d".format(t.hour, t.minute), { hm ->
+        val (h, mi) = hm.split(":").map { it.toInt() }
+        onPick(java.time.LocalDateTime.of(java.time.LocalDate.parse(day), java.time.LocalTime.of(h, mi)).atZone(Clock.zone()).toInstant().toEpochMilli()); step = 0
+    }, { step = 0 })
 }
 
 @Composable
@@ -248,9 +255,9 @@ private fun ModMaint(ui: AppState) {
                 CardHead("Nouvelle maintenance")
                 Seg(listOf("social" to "Social en lecture seule", "full" to "Application complète"), mode, { mode = it })
                 Muted("« Social en lecture seule » bloque publications, commentaires, encouragements, demandes d'amis et messages. « Application complète » affiche un écran de maintenance à tous les comptes sauf l'admin.", Modifier.padding(vertical = 8.dp), small = true)
-                SetRow("Début", fmtDT(start)) { PButton("Changer", { pickDateTime(ctx, start) { start = it } }, icon = "clock", small = true) }
+                SetRow("Début", fmtDT(start)) { DateTimeButton(start) { start = it } }
                 SetRow("Fin (optionnelle)", until?.let { fmtDT(it) } ?: "Sans fin programmée") {
-                    PButton("Changer", { pickDateTime(ctx, until ?: (start + 2 * 3_600_000)) { until = it } }, icon = "clock", small = true)
+                    DateTimeButton(until ?: (start + 2 * 3_600_000)) { until = it }
                     if (until != null) PButton("Aucune", { until = null }, kind = "ghost", small = true)
                 }
                 Field(msg, { msg = it }, "Message affiché aux utilisateurs", placeholder = "Ex. Mise à jour des serveurs, merci de votre patience.", max = 200)
@@ -289,7 +296,7 @@ private fun ModNews(ui: AppState) {
             if (pickTo) {
                 Field(q, { q = it }, "", placeholder = "Rechercher : nom ou @utilisateur", max = 40, icon = "search")
                 pg.db.users.filter { it.role == null && (q.isBlank() || pg.realName(it).lowercase().contains(q.lowercase()) || it.username.contains(q.lowercase())) }.sortedBy { it.name.lowercase() }.take(12).forEach { x ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { to = x.id; pickTo = false }.padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 28.dp); Text("${pg.realName(x)} (@${x.username})") }
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).clickable { to = x.id; pickTo = false }.heightIn(min = 48.dp).padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Av(x, 28.dp); Text("${pg.realName(x)} (@${x.username})") }
                 }
             }
             Spacer(Modifier.height(6.dp))
@@ -411,6 +418,6 @@ private fun Meter(label: String, r: Float) {
 fun SparkBars(vals: List<Double>, h: androidx.compose.ui.unit.Dp) {
     val p = LocalPal.current; val mx = maxOf(1.0, vals.maxOrNull() ?: 1.0)
     Row(Modifier.fillMaxWidth().height(h), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom) {
-        vals.forEach { v -> Box(Modifier.weight(1f).fillMaxHeight((v / mx).toFloat().coerceAtLeast(.04f)).clip(RoundedCornerShape(3.dp)).background(p.flame)) }
+        vals.forEach { v -> Box(Modifier.weight(1f).fillMaxHeight((v / mx).toFloat().coerceAtLeast(.04f)).clip(RoundedCornerShape(6.dp)).background(p.flame)) }
     }
 }

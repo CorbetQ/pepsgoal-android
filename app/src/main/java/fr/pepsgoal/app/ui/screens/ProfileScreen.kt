@@ -38,6 +38,9 @@ import fr.pepsgoal.app.Fs
 import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
+import fr.pepsgoal.app.ui.theme.step
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
@@ -66,7 +69,8 @@ fun ProfileScreen(ui: AppState) {
         item("status") { StatusRow(ui) }
         item("space") { MySpace(ui, u, done) }
         item("tabs") {
-            Seg(listOf("overview" to "Aperçu", "badges" to "Badges", "collection" to "Collection"), ui.profileTab, { ui.profileTab = it }, Modifier.fillMaxWidth(), icons = listOf("sun", "medal", "palette"))
+            val tabs = listOf("overview", "badges", "collection")
+            PTabs(listOf("Aperçu" to "☀️", "Badges" to "🏅", "Collection" to "🎨"), tabs.indexOf(ui.profileTab).coerceAtLeast(0), { ui.profileTab = tabs[it] })
         }
         when (ui.profileTab) {
             "badges" -> {
@@ -93,52 +97,52 @@ fun ProfileScreen(ui: AppState) {
 }
 
 /**
- * Carte identité : avatar de 70 dp dans l'anneau de la flamme avec son badge de niveau, nom en Unbounded 24, pseudo,
- * puis la ligne du niveau (flamme, nom du niveau, points) et sa barre de 14 dp ; les dix paliers en dessous.
+ * Carte identité : médaillon d'avatar (96 dp) qui s'enfonce, entouré de la couronne de flammes (taille selon la
+ * progression des paliers) et qui déborde au-dessus de la carte ; nom en Unbounded 24, pseudo, ligne du niveau et barre
+ * de 14 dp, phrase de progression, les dix paliers.
  */
 @Composable
 private fun ProfileHero(ui: AppState, u: User, lv: Level) {
     val p = LocalPal.current; val pg = ui.pg
-    Glass {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.clip(CircleShape).clickable(onClickLabel = "Changer mon icône de profil") { ui.open(Sheet.Avatar) }) {
-                AvatarFace(u, 70.dp)
-                Box(Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp).background(fr.pepsgoal.app.ui.theme.PLUM, CircleShape).padding(horizontal = 7.dp, vertical = 2.dp)) {
-                    Text("${lv.idx}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = p.gold)
-                }
-            }
-            Column(Modifier.weight(1f)) {
+    val k = (((lv.tier - 1) + lv.tierPct) / (LEVEL_TIERS.size - 1).coerceAtLeast(1)).toFloat().coerceIn(0f, 1f)
+    Box(Modifier.fillMaxWidth()) {
+        Glass(Modifier.padding(top = 92.dp)) {
+            Column(Modifier.fillMaxWidth().padding(top = 80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(u.name, Modifier.weight(1f, fill = false), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, lineHeight = 28.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(u.name, Modifier.weight(1f, fill = false), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, lineHeight = 28.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     if (pg.isOfficial(u)) Verified()
                 }
-                Text(if (pg.isGuest(u)) "Sans compte · données sur cet appareil" else "@" + u.username + if (pg.isAdmin(u)) " · Administrateur" else "", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = p.ink2)
+                Text(if (pg.isGuest(u)) "Sans compte · données sur cet appareil" else "@" + u.username + if (pg.isAdmin(u)) " · Administrateur" else "", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = p.ink2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                if (u.bio.isNotEmpty()) Text(u.bio, Modifier.padding(top = 8.dp), fontSize = 15.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+            // Niveau : flamme, nom, points et barre de la flamme (touché : le détail des paliers)
+            Column(Modifier.fillMaxWidth().padding(top = 14.dp).clip(RoundedCornerShape(17.dp)).clickable(onClickLabel = "Voir les paliers de niveau") { ui.open(Sheet.Levels) }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Flame(26.dp, colors = tierColors(lv.tier))
+                    Text(lv.name, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
+                    Text(lv.next?.let { "${fmtNum(lv.pts)} / ${fmtNum(it)}" } ?: "${fmtNum(lv.pts)} flammes", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+                }
+                Bar(lv.pct * 100, height = 14.dp)
+                Muted(lv.next?.let { "La couronne grandit à chaque niveau : encore ${fmtNum(it - lv.pts)} flammes pour « ${lv.nextName} » (${levelEta(it - lv.pts)})." } ?: "Niveau maximum atteint", small = true)
+                // Les dix paliers : flammes allumées aux couleurs de chaque palier atteint
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                    for (t in 1..LEVEL_TIERS.size) Flame(if (t == lv.tier) 26.dp else 18.dp, dim = t > lv.tier, colors = tierColors(t))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Muted(lv.nextTierName?.let { "Palier ${lv.tierName} · ${Math.round(lv.tierPct * 100)} % vers ${it}" } ?: "Dernier palier atteint : ${lv.tierName}", Modifier.weight(1f), small = true, maxLines = 1)
+                    Text("Paliers", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
+                    Pi("chevronright", size = 16.dp, tint = p.flameInk)
+                }
+            }
+            Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (pg.isGuest(u)) PButton("Créer un compte", { ui.push(Screen.Settings("account")) }, icon = "user", kind = "primary", small = true)
+                else PButton("Modifier le profil", { ui.push(Screen.Settings("account")) }, icon = "edit", small = true)
+                PButton("Apparence", { ui.push(Screen.Settings("appearance")) }, icon = "palette", small = true, kind = "ghost")
             }
         }
-        if (u.bio.isNotEmpty()) Text(u.bio, Modifier.padding(top = 10.dp), fontSize = 15.sp)
-        // Niveau : flamme, nom, points et barre de la flamme (touché : le détail des paliers)
-        Column(Modifier.fillMaxWidth().padding(top = 14.dp).clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = "Voir les paliers de niveau") { ui.open(Sheet.Levels) }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Flame(26.dp, colors = tierColors(lv.tier))
-                Text(lv.name, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
-                Text(lv.next?.let { "${fmtNum(lv.pts)} / ${fmtNum(it)}" } ?: "${fmtNum(lv.pts)} flammes", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
-            }
-            Bar(lv.pct * 100, height = 14.dp)
-            Muted(lv.next?.let { "Encore ${fmtNum(it - lv.pts)} flammes pour « ${lv.nextName} » (${levelEta(it - lv.pts)})" } ?: "Niveau maximum atteint", small = true)
-            // Les dix paliers : flammes allumées aux couleurs de chaque palier atteint
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                for (t in 1..LEVEL_TIERS.size) Flame(if (t == lv.tier) 26.dp else 18.dp, dim = t > lv.tier, colors = tierColors(t))
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Muted(lv.nextTierName?.let { "Palier ${lv.tierName} · ${Math.round(lv.tierPct * 100)} % vers ${it}" } ?: "Dernier palier atteint : ${lv.tierName}", Modifier.weight(1f), small = true, maxLines = 1)
-                Text("Paliers", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
-                Pi("chevronright", size = 15.dp, tint = p.flameInk)
-            }
-        }
-        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (pg.isGuest(u)) PButton("Créer un compte", { ui.push(Screen.Settings("account")) }, icon = "user", kind = "primary", small = true)
-            else PButton("Modifier le profil", { ui.push(Screen.Settings("account")) }, icon = "edit", small = true)
-            PButton("Apparence", { ui.push(Screen.Settings("appearance")) }, icon = "palette", small = true, kind = "ghost")
+        // Médaillon et couronne, au-dessus de la carte
+        Box(Modifier.align(Alignment.TopCenter)) {
+            AvatarMedallion(96.dp, lv.idx, k, { ui.open(Sheet.Avatar) }, desc = "Changer mon icône de profil", crownColors = if (lv.tier > 6) tierColors(lv.tier) else null) { AvatarFace(u, 88.dp) }
         }
     }
 }
@@ -175,7 +179,7 @@ private fun LookCard(ui: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconTile("palette", p.flame, p.pink, 40.dp, 13.dp)
             Column(Modifier.weight(1f)) { Text("Thème, fond et icône", fontWeight = FontWeight.ExtraBold); Muted("Ce que tu as acheté dans la boutique s’applique ici", small = true) }
-            Pi("chevronleft", Modifier.graphicsLayer { rotationZ = 180f }, size = 18.dp, tint = p.ink3)
+            Pi("chevronright", size = 18.dp, tint = p.ink3)
         }
     }
 }
@@ -188,16 +192,16 @@ private fun NearBadgesCard(ui: AppState, u: User) {
     val near = st.filter { it.next != null }.sortedByDescending { it.pct }.take(3)
     if (near.isEmpty()) return
     Glass {
-        CardHead("Presque là", emoji = "🏅") { Chip("+${BADGE_REWARDS.first()} à ${BADGE_REWARDS.last()} 🔥", color = p.flame.copy(alpha = .16f), ink = p.ink) }
+        CardHead("Presque là", emoji = "🏅") { Chip("+${BADGE_REWARDS.first()} à ${BADGE_REWARDS.last()} 🔥", color = p.flame) }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             near.forEach { b ->
                 val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) },
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) },
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Medal(b.f.e, b.tier + 1, true, 46, b.f.k)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row { Text(b.f.n, Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, maxLines = 1); Muted("${Math.round(b.pct * 100)} %", small = true) }
-                        Bar(b.pct * 100, height = 6.dp)
+                        Bar(b.pct * 100, height = 8.dp)
                         Muted("${fmtNum(b.v)} / ${fmtNum(b.next!!)} · ${b.f.d(b.next!!)}", small = true, maxLines = 1)
                     }
                 }
@@ -220,11 +224,12 @@ private fun BadgeGridCard(ui: AppState, u: User) {
                         val b = row.getOrNull(k)
                         if (b == null) { Spacer(Modifier.weight(1f)); continue }
                         val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                        Column(Modifier.weight(1f).bounce(inter, .95f).clip(smoothShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(vertical = 6.dp),
+                        val press = rememberPress(inter)
+                        Column(Modifier.weight(1f).chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp, press).clip(RoundedCornerShape(20.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             BadgeMedal(b, 62)
                             Text(b.f.n, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { b.f.t.indices.forEach { i -> Box(Modifier.size(6.dp).clip(CircleShape).background(if (i <= b.tier) hex(BADGE_TIERS[i].second) else p.line)) } }
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { b.f.t.indices.forEach { i -> Box(Modifier.size(6.dp).clip(CircleShape).background(if (i <= b.tier) hex(BADGE_TIERS[i].second) else p.control)) } }
                         }
                     }
                 }
@@ -256,11 +261,12 @@ private fun StoryRow(ui: AppState, u: User, all: List<Story>, from: Int, row: Li
             if (s == null) { Spacer(Modifier.weight(1f)); continue }
             val live = nowMs() - s.at < STORY_TTL
             val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            Column(Modifier.weight(1f).bounce(inter, .94f).clip(smoothShape(14.dp))
+            val press = rememberPress(inter)
+            Column(Modifier.weight(1f).chunk(p.surface, p.edge, 18.dp, 3.dp, 2.dp, press).clip(RoundedCornerShape(16.dp))
                 .springClick(inter) { ui.fs = Fs.Stories(listOf(Pg.StoryGroup(u, all, false, all.firstOrNull()?.at ?: 0L)), 0, from + k, archive = true) },
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Box { StoryThumb(s, Modifier.fillMaxWidth().aspectRatio(.62f)); if (live) Chip("En ligne", color = p.flame, ink = p.ink, modifier = Modifier.padding(6.dp)) }
-                Muted((if (live) ago(s.at) else fmtDate(ymd(s.at))) + (s.likeCount?.takeIf { it > 0 }?.let { " · $it 🔥" } ?: ""), small = true, maxLines = 1)
+                Box { StoryThumb(s, Modifier.fillMaxWidth().aspectRatio(.62f)); if (live) Chip("En ligne", color = p.flame, modifier = Modifier.padding(6.dp)) }
+                Muted((if (live) ago(s.at) else fmtDate(ymd(s.at))) + (s.likeCount?.takeIf { it > 0 }?.let { " · $it 🔥" } ?: ""), Modifier.padding(horizontal = 6.dp, vertical = 4.dp), small = true, maxLines = 1)
             }
         }
     }
@@ -275,11 +281,11 @@ fun StoryHistoryScreen(ui: AppState) {
     val fmt = remember { java.time.format.DateTimeFormatter.ofPattern("LLLL yyyy", java.util.Locale.FRENCH) }
     val months = list.withIndex().groupBy { java.time.Instant.ofEpochMilli(it.value.at).atZone(java.time.ZoneId.systemDefault()).format(fmt).replaceFirstChar { c -> c.titlecase() } }
     val likes = list.sumOf { it.likeCount ?: 0 }
-    fr.pepsgoal.app.ui.screens.ScreenFrame(ui, "Mes stories", "Profil", { ui.back() }, icon = "clock", color = LocalPal.current.pink, color2 = LocalPal.current.flame2) {
+    fr.pepsgoal.app.ui.screens.ScreenFrame(ui, "Mes stories", "Profil", { ui.back() }, icon = "clock", color = LocalPal.current.pink, color2 = LocalPal.current.flame2, emoji = "📸") {
         item("sum") {
             StatGrid(listOf("${list.size}" to "stories", "$likes" to "flammes reçues", "${months.size}" to "mois"), columns = 3)
         }
-        if (list.isEmpty()) item("empty") { Glass { Muted("Après leurs 24 heures en ligne, tes stories restent ici : toi seul peux les revoir.") } }
+        if (list.isEmpty()) item("empty") { Empty("", "Après leurs 24 heures en ligne, tes stories restent ici : toi seul peux les revoir.") }
         for ((m, items) in months) item("m-$m") {
             Glass(pad = 14.dp) {
                 CardHead(m) { Count(items.size) }
@@ -294,14 +300,14 @@ fun StoryHistoryScreen(ui: AppState) {
 /** Miniature d'une story : photo, récap ou carte de progression colorée par type. */
 @Composable
 fun StoryThumb(s: Story, modifier: Modifier) {
-    val p = LocalPal.current; val shape = smoothShape(14.dp)
+    val p = LocalPal.current; val shape = RoundedCornerShape(18.dp)
     val recap = s.kind == "recap"; val type = s.data.str("type").takeIf { it in TYPES } ?: "routine"
-    val bg = if (recap) Brush.linearGradient(SBG[0].map(::hex)) else Brush.linearGradient(listOf(p.type(type).c, p.type(type).c.copy(alpha = .55f)))
+    val bg = if (recap) p.flameBrush() else androidx.compose.ui.graphics.SolidColor(vivid(p.type(type).c))
     Box(modifier.clip(shape).background(bg), contentAlignment = Alignment.Center) {
         if (s.kind == "photo") AsyncImage(s.photo, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(6.dp)) {
             Emoji(if (recap) s.data.str("e") else s.data.str("icon"), 30.dp)
-            Text(s.data.str("title"), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(s.data.str("title"), color = fr.pepsgoal.app.ui.theme.PLUM, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -316,50 +322,28 @@ private fun metal(tier: Int, locked: Boolean): List<Color> {
 }
 
 /**
- * Médaille en métal : anneau biseauté (dégradé circulaire), disque bombé, reflet qui balaie la médaille de temps en
- * temps, et l'emoji gravé dans le métal (monochrome, teinte du métal, liseré clair décalé comme une gravure).
+ * Médaille en aplats : anneau plein du métal du palier posé sur sa marche, disque plus clair, emoji gravé (teinte du
+ * métal). Aucun dégradé, reflet ni ombre ; verrouillée : acier, à 55 %.
  */
 @Composable
 fun Medal(e: String, tier: Int, locked: Boolean, size: Int, seed: String = e) {
-    val p = LocalPal.current
     val (light, base, dark, deep) = metal(tier, locked)
-    // Reflet qui passe de temps en temps, à 20 images par seconde (les grilles de médailles en comptent beaucoup)
-    val delay = 1200 + (seed.hashCode() and 0x7FF)
-    val ph = if (locked) 0f else slowPhase(1500 + delay, 20)
-    val tt = ph * (1500 + delay)
-    val shine = if (tt < 1500) -.6f + 2.2f * FastOutSlowInEasing.transform(tt / 1500f) else 1.6f
     // Gravure : luminosité de l'emoji convertie en nuances du métal (du très foncé à la base)
     val engrave = remember(tier, locked) {
-        fun row(lo: Float, hi: Float, i: Int) = floatArrayOf(.299f * (hi - lo), .587f * (hi - lo), .114f * (hi - lo), 0f, lo * 255f)
-        val lo = deep; val hi = base
-        ColorFilter.colorMatrix(ColorMatrix(row(lo.red, hi.red, 0) + row(lo.green, hi.green, 1) + row(lo.blue, hi.blue, 2) + floatArrayOf(0f, 0f, 0f, 1f, 0f)))
+        fun row(lo: Float, hi: Float) = floatArrayOf(.299f * (hi - lo), .587f * (hi - lo), .114f * (hi - lo), 0f, lo * 255f)
+        ColorFilter.colorMatrix(ColorMatrix(row(deep.red, base.red) + row(deep.green, base.green) + row(deep.blue, base.blue) + floatArrayOf(0f, 0f, 0f, 1f, 0f)))
     }
-    val edge = remember(tier, locked) { ColorFilter.tint(light, BlendMode.SrcIn) }
-    Box(Modifier.size(size.dp).shadow((if (p.transp) 0.dp else (size / 9).dp).ifShadows(), CircleShape, ambientColor = dark, spotColor = dark).alpha(if (locked) .7f else 1f), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(size.dp).alpha(if (locked) .55f else 1f), contentAlignment = Alignment.Center) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            val r = this.size.minDimension / 2; val c = this.center
-            // Anneau : reflets métalliques tout autour
-            drawCircle(Brush.sweepGradient(listOf(light, base, dark, base, light, base, dark, base, light), c), r)
-            drawCircle(dark.copy(alpha = .55f), r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(r * .03f))
-            // Gorge entre l'anneau et le disque, puis disque bombé éclairé en haut à gauche
-            val ri = r * .78f
-            drawCircle(Brush.linearGradient(listOf(deep, light), Offset(c.x - ri, c.y - ri), Offset(c.x + ri, c.y + ri)), ri + r * .05f, c)
-            drawCircle(Brush.radialGradient(listOf(light, base, dark), Offset(c.x - ri * .35f, c.y - ri * .45f), ri * 1.55f), ri, c)
-            // Reflet qui balaie la médaille
-            if (!locked && !p.motion && shine in -.4f..1.4f) {
-                val x = shine * this.size.width
-                clipPath(Path().apply { addOval(androidx.compose.ui.geometry.Rect(c, r)) }) {
-                    drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = .65f), Color.Transparent), Offset(x - r * .45f, 0f), Offset(x + r * .45f, r * .9f)))
-                }
-            }
-            // Brillance fixe en haut du disque
-            drawOval(Brush.verticalGradient(listOf(Color.White.copy(alpha = .4f), Color.Transparent), c.y - ri, c.y - ri * .1f), Offset(c.x - ri * .7f, c.y - ri * .9f), Size(ri * 1.4f, ri * .8f))
+            val st = (size / 18f).coerceAtLeast(2f).dp.toPx()
+            val r = (this.size.minDimension - st) / 2; val c = Offset(this.center.x, r)
+            // Marche pleine, anneau, disque
+            drawCircle(dark, r, c + Offset(0f, st))
+            drawCircle(base, r, c)
+            drawCircle(light, r * .76f, c)
+            drawCircle(base, r * .76f, c, style = androidx.compose.ui.graphics.drawscope.Stroke(r * .06f))
         }
-        val es = (size * .44f).dp; val off = (size / 70f).coerceAtLeast(1f).dp
-        Box(contentAlignment = Alignment.Center) {
-            Emoji(e, es, Modifier.offset(off, off).alpha(.7f), colorFilter = edge)
-            Emoji(e, es, colorFilter = engrave)
-        }
+        Emoji(e, (size * .44f).dp, Modifier.offset(y = (-(size / 36f)).dp), colorFilter = engrave)
     }
 }
 
@@ -372,7 +356,7 @@ fun BadgesCard(ui: AppState, u: User) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             st.forEach { b ->
                 val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                Row(Modifier.fillMaxWidth().bounce(inter, .97f).clip(smoothShape(16.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(4.dp),
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).springClick(inter, label = "Voir le badge ${b.f.n}") { ui.push(Screen.Badge(b.f.k)) }.padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     BadgeMedal(b, 52)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -380,7 +364,7 @@ fun BadgesCard(ui: AppState, u: User) {
                             Text(b.f.n, fontWeight = FontWeight.ExtraBold)
                             Muted((if (b.tier >= 0) BADGE_TIERS[b.tier].first else "À débloquer") + if (b.f.t.size > 1) " · ${b.tier + 1}/${b.f.t.size}" else "", small = true)
                             Spacer(Modifier.weight(1f))
-                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { b.f.t.indices.forEach { i -> Box(Modifier.size(7.dp).clip(CircleShape).background(if (i <= b.tier) hex(BADGE_TIERS[i].second) else p.line)) } }
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { b.f.t.indices.forEach { i -> Box(Modifier.size(8.dp).clip(CircleShape).background(if (i <= b.tier) hex(BADGE_TIERS[i].second) else p.control)) } }
                         }
                         if (b.next != null) { Bar(b.pct * 100, height = 6.dp); Muted("${fmtNum(b.v)} / ${fmtNum(b.next!!)} · ${b.f.d(b.next!!)}", small = true) }
                         else Muted("Palier maximal atteint : ${b.f.d(b.f.t.last())}", small = true)
@@ -401,7 +385,7 @@ fun BadgeScreen(ui: AppState, key: String) {
     val (light, base) = metal(maxOf(0, b.tier), b.tier < 0)
     val pop = remember { Animatable(.6f) }
     LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = .45f, stiffness = 260f)) }
-    ScreenFrame(ui, b.f.n, "Profil", { ui.back() }, color = base, color2 = light) {
+    ScreenFrame(ui, b.f.n, "Profil", { ui.back() }, color = base, color2 = base, emoji = b.f.e) {
         item("hero") {
             Glass {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -457,16 +441,17 @@ private fun FlameSkinsCard(ui: AppState, u: fr.pepsgoal.core.model.User) {
         Row(Modifier.fillMaxWidth().bleed(18.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FLAME_SKINS.forEach { sk ->
                 val open = best >= sk.min; val on = u.flameSkin == sk.key || (sk.key == "classic" && FLAME_SKINS.none { it.key == u.flameSkin })
-                Column(Modifier.width(84.dp).clip(smoothShape(18.dp)).background(if (on) p.flame.copy(alpha = .16f) else p.ink.copy(alpha = .04f))
-                    .border(if (on) 2.dp else 1.dp, if (on) p.flame else p.line, smoothShape(18.dp))
-                    .clickable(enabled = open) { u.flameSkin = sk.key; pg.store.commit(); ui.toast("Flamme « ${sk.name} » choisie.", "flame") }
+                val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val press = rememberPress(inter, open)
+                Column(Modifier.width(88.dp).chunk(if (on) p.selTint(p.type("routine").c) else p.surface, if (on) vivid(p.type("routine").c).step() else p.edge, 22.dp, 4.dp, if (on) 3.dp else 2.dp, press).clip(RoundedCornerShape(20.dp))
+                    .springClick(inter, enabled = open, label = sk.name) { u.flameSkin = sk.key; pg.store.commit(); ui.toast("Flamme « ${sk.name} » choisie.", "flame") }.semantics { selected = on }
                     .padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Box(contentAlignment = Alignment.Center) {
                         Flame(40.dp, dim = !open, colors = sk.colors?.map(::hex) ?: listOf(p.pink, p.flame, p.flame2))
                         if (!open) Pi("lock", size = 16.dp, tint = p.ink2)
                     }
                     Text(sk.name, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
-                    Text(if (open) (if (on) "Choisie" else "Débloquée") else "${sk.min} j", fontSize = 11.sp, color = p.ink2)
+                    Text(if (open) (if (on) "Choisie" else "Débloquée") else "${sk.min} j", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink2)
                 }
             }
         }
@@ -474,7 +459,7 @@ private fun FlameSkinsCard(ui: AppState, u: fr.pepsgoal.core.model.User) {
         var shape by remember { mutableStateOf(ui.prefs.flameShape) }; var fx by remember { mutableStateOf(ui.prefs.flameFx) }
         Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(84.dp).clip(smoothShape(22.dp)).background(p.flame.copy(alpha = .1f)), contentAlignment = Alignment.Center) { Flame(64.dp, style = FlameStyle(shape, fx)) }
+            Box(Modifier.size(84.dp).clip(RoundedCornerShape(22.dp)).background(p.surface2), contentAlignment = Alignment.Center) { Flame(64.dp, style = FlameStyle(shape, fx)) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Eyebrow("Forme")
                 FlowRowCompat(gap = 4.dp) { FLAME_SHAPES.forEach { (k, l) -> FChip(l, shape == k, { shape = k; ui.prefs.flameShape = k; ui.themeTick++ }) } }

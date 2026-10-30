@@ -41,8 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.Image
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.SolidColor
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Fs
@@ -53,6 +51,13 @@ import fr.pepsgoal.app.ui.sheets.StoryCard
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
+import fr.pepsgoal.app.ui.theme.PLUM
+import fr.pepsgoal.app.ui.theme.PLUM_DEEP
+import fr.pepsgoal.app.ui.theme.CREAM
+import fr.pepsgoal.app.ui.theme.RAIL_NIGHT
+import fr.pepsgoal.app.ui.theme.step
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.graphics.lerp
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.cloud.deleteStory
 import fr.pepsgoal.core.cloud.likeStory
@@ -64,15 +69,15 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-private val INK = Color(0xFF10102A)
+private val INK = PLUM
 
 @Composable
 fun FullscreenHost(ui: AppState) {
     val f = ui.fs ?: return
     BackHandler { ui.closeFs() }
     val p = LocalPal.current
-    // Fond opaque (aucun flou de l'écran derrière)
-    val back = Modifier.background(p.bg)
+    // Fête, focus, fractionné et tutoriel : la scène de l'arrière-plan (voile nul) est le décor ; récap et stories ont leur fond
+    val back = if (ui.sceneFs()) Modifier else Modifier.background(if (f is Fs.Stories) p.mediaBg else p.bg)
     Box(Modifier.fillMaxSize().then(back).pointerInput(Unit) { detectTapGestures { } }) {
         when (f) {
             is Fs.Celebrate -> when (val c = f.c) {
@@ -100,20 +105,21 @@ fun Confetti(modifier: Modifier = Modifier) {
     val bits = remember { List(fr.pepsgoal.app.ui.particles(40)) { Bit(Random.nextFloat(), Random.nextFloat() * 1.4f, .25f + Random.nextFloat() * .35f, Random.nextFloat() * 2 - 1, Random.nextFloat() * 6.28f, Random.nextInt(6), 6 + Random.nextFloat() * 6) } }
     var t by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) { val t0 = withFrameNanos { it }; while (isActive && t < 6f) { withFrameNanos { t = (it - t0) / 1e9f } } }
-    Canvas(modifier.fillMaxSize()) {
+    // Confettis pleins ; la pluie entière s'efface à la fin (opacité du calque, pas des couleurs)
+    Canvas(modifier.fillMaxSize().graphicsLayer { alpha = 1f - (t - 4.5f).coerceIn(0f, 1.5f) / 1.5f }) {
         for (b in bits) {
             val k = t - b.delay; if (k < 0) continue
             val y = -20f + k * b.speed * size.height; if (y > size.height + 20) continue
             val x = b.x * size.width + sin(k * 3 + b.rot) * 30 * b.drift
-            val a = (1f - (t - 4.5f).coerceIn(0f, 1.5f) / 1.5f)
-            rotate(b.rot * 57f + k * 280 * b.drift, Offset(x, y)) { drawRect(cols[b.c].copy(alpha = a), Offset(x - b.w / 2, y - b.w), Size(b.w * density / 2.2f, b.w * density / 1.1f)) }
+            rotate(b.rot * 57f + k * 280 * b.drift, Offset(x, y)) { drawRect(cols[b.c], Offset(x - b.w / 2, y - b.w), Size(b.w * density / 2.2f, b.w * density / 1.1f)) }
         }
     }
 }
 
 @Composable
-private fun FsFrame(ui: AppState, bg: Brush, confetti: Boolean, content: @Composable ColumnScope.() -> Unit) {
-    Box(Modifier.fillMaxSize().background(bg)) {
+private fun FsFrame(ui: AppState, confetti: Boolean, content: @Composable ColumnScope.() -> Unit) {
+    // Transparent : la scène de l'arrière-plan, sans voile, sert de décor (les textes sont sur plaques ou en carte)
+    Box(Modifier.fillMaxSize()) {
         if (confetti) Confetti()
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically), content = content)
         Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp)) { IconBtn("x", "Fermer", { ui.closeFs() }) }
@@ -134,22 +140,26 @@ private fun Pop(i: Int, content: @Composable () -> Unit) {
 @Composable
 private fun PerfectFs(ui: AppState, c: Celebration.Perfect) {
     val p = LocalPal.current
-    FsFrame(ui, Brush.verticalGradient(listOf(p.bg.copy(alpha = .4f), p.flame.copy(alpha = .3f), p.pink.copy(alpha = .3f))), true) {
-        Pop(0) { Eyebrow(c.eyebrow) }
-        Pop(1) { val inf = rememberInfiniteTransition(label = "pf"); val s by inf.animateFloat(1f, if (p.motion) 1f else 1.08f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "s"); Box(Modifier.scale(s)) { Flame(120.dp) } }
-        Pop(2) { Text(c.title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp, textAlign = TextAlign.Center) }
-        Pop(3) { Text(c.text, textAlign = TextAlign.Center, color = p.ink2) }
-        if (c.icons.isNotEmpty()) Pop(4) { Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { c.icons.take(8).forEach { Emoji(it, 34.dp) } } }
-        if (c.stats.isNotEmpty()) Pop(5) {
-            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                c.stats.forEach { (v, l, pre) -> Column(Modifier.fillMaxHeight().clip(smoothShape(18.dp)).background(p.glassStrong).padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    CountUp(v, pre); Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold) } }
+    FsFrame(ui, true) {
+        Pop(0) { MiniPlaque(c.eyebrow, emoji = "🎉") }
+        Pop(1) { val inf = rememberInfiniteTransition(label = "pf"); val s by inf.animateFloat(1f, if (p.motion) 1f else 1.08f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "s"); Box(Modifier.scale(s)) { Flame(160.dp) } }
+        Pop(2) {
+            Glass(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(c.title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 36.sp, textAlign = TextAlign.Center)
+                    Text(c.text, textAlign = TextAlign.Center, color = p.ink2, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    if (c.icons.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { c.icons.take(8).forEach { Emoji(it, 34.dp) } }
+                    if (c.stats.isNotEmpty()) Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        c.stats.forEach { (v, l, pre) -> Column(Modifier.fillMaxHeight().background(p.surface2, RoundedCornerShape(17.dp)).padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            CountUp(v, pre, color = p.ink); Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold) } }
+                    }
+                }
             }
         }
-        Pop(6) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PButton(if (ui.pg.socialOn()) "Partager ${c.shareLabel}" else "Copier", { ui.closeFs(); ui.open(Sheet.ShareHub(text = c.share)) }, icon = "share", kind = "primary")
-                PButton("Fermer", { ui.closeFs() })
+        Pop(3) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                PButton("Continuer", { ui.closeFs() }, Modifier.fillMaxWidth(), kind = "primary")
+                PButton(if (ui.pg.socialOn()) "Partager ${c.shareLabel}" else "Copier", { ui.closeFs(); ui.open(Sheet.ShareHub(text = c.share)) }, Modifier.fillMaxWidth(), icon = "share")
             }
         }
     }
@@ -168,42 +178,50 @@ private fun CountUp(v: Int, prefix: String = "", suffix: String = "", size: Int 
 private fun BadgeFs(ui: AppState, c: Celebration.Badge) {
     val p = LocalPal.current; val (label, color) = BADGE_TIERS[c.tier]; val tc = hex(color); val f = c.family
     val next = f.t.getOrNull(c.tier + 1)
-    FsFrame(ui, Brush.radialGradient(listOf(tc.copy(alpha = .45f), p.bg.copy(alpha = .4f))), true) {
+    FsFrame(ui, true) {
         val inf = rememberInfiniteTransition(label = "bd")
         val rot by inf.animateFloat(0f, 360f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 14000, easing = LinearEasing)), label = "r")
         val pop = remember { Animatable(if (p.motion) 1f else .2f) }
         LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = .45f, stiffness = 180f)) }
         Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize().rotate(rot)) { for (i in 0 until 16) { val a = i * PI.toFloat() / 8; drawLine(tc.copy(alpha = .35f), center, center + Offset(cos(a), sin(a)) * (size.minDimension / 2), 10f) } }
+            Canvas(Modifier.fillMaxSize().rotate(rot)) { for (i in 0 until 16) { val a = i * PI.toFloat() / 8; if (i % 2 == 0) drawLine(vivid(tc), center, center + Offset(cos(a), sin(a)) * (size.minDimension / 2), 14f, androidx.compose.ui.graphics.StrokeCap.Round) } }
             Box(Modifier.scale(pop.value)) { BadgeMedal(BadgeState(f, 0, c.tier, null, 1.0), 140) }
-            Text(label, Modifier.align(Alignment.BottomCenter).clip(RoundedCornerShape(10.dp)).background(tc).padding(horizontal = 14.dp, vertical = 4.dp), color = INK, fontWeight = FontWeight.ExtraBold)
+            Text(label, Modifier.align(Alignment.BottomCenter).chunk(vivid(tc), tc.step(), 17.dp, 3.dp, 0.dp).padding(horizontal = 14.dp, vertical = 4.dp), color = PLUM, fontWeight = FontWeight.ExtraBold)
         }
-        Pop(1) { Eyebrow("Badge débloqué · palier ${c.tier + 1} sur ${f.t.size}") }
-        Pop(2) { Text("${f.n} $label", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, textAlign = TextAlign.Center) }
-        Pop(3) { Text(f.d(f.t[c.tier]), textAlign = TextAlign.Center) }
-        // Flammes offertes avec le badge : à dépenser dans la boutique
-        if (c.flames > 0) Pop(4) {
-            Row(Modifier.clip(CircleShape).background(Brush.horizontalGradient(listOf(p.flame.copy(alpha = .28f), p.pink.copy(alpha = .22f))))
-                .border(1.dp, p.flame.copy(alpha = .5f), CircleShape).padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Flame(22.dp)
-                CountUp(c.flames, "+", "", 20)
-                Text("à dépenser dans la boutique", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = p.ink2)
+        Pop(1) { MiniPlaque("Badge débloqué · palier ${c.tier + 1} sur ${f.t.size}", emoji = "🏅") }
+        Pop(2) {
+            Glass(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("${f.n} $label", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, lineHeight = 34.sp, textAlign = TextAlign.Center)
+                    Text(f.d(f.t[c.tier]), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    // Flammes offertes avec le badge : à dépenser dans la boutique
+                    if (c.flames > 0) Row(Modifier.chunk(p.selTint(p.flame), p.edge, 24.dp, 3.dp, 2.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Flame(22.dp)
+                        CountUp(c.flames, "+", "", 20, p.ink)
+                        Text("à dépenser dans la boutique", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = p.ink2)
+                    }
+                    Muted("${if (next != null) "Prochain palier : ${f.d(next)}." else "Tu as atteint le plus haut palier de ce badge !"}${if (c.more > 0) " · ${pl(c.more, "autre badge à découvrir", "autres badges à découvrir")}" else ""}", small = true, center = true)
+                }
             }
         }
-        Pop(5) { Muted("${if (next != null) "Prochain palier : ${f.d(next)}." else "Tu as atteint le plus haut palier de ce badge !"}${if (c.more > 0) " · ${pl(c.more, "autre badge à découvrir", "autres badges à découvrir")}" else ""}", small = true, center = true) }
-        Pop(6) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PButton(if (ui.pg.socialOn()) "Partager" else "Copier", { ui.closeFs(); ui.open(Sheet.ShareHub(text = "Nouveau badge sur PepsGoal : ${f.e} ${f.n} $label — ${f.d(f.t[c.tier])} !")) }, icon = "share", kind = "primary")
-                PButton("Voir mes badges", { ui.fsQueue.clear(); ui.closeFs(); ui.nav("profile") })
+        Pop(3) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                PButton("Continuer", { ui.closeFs() }, Modifier.fillMaxWidth(), kind = "primary")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PButton(if (ui.pg.socialOn()) "Partager" else "Copier", { ui.closeFs(); ui.open(Sheet.ShareHub(text = "Nouveau badge sur PepsGoal : ${f.e} ${f.n} $label — ${f.d(f.t[c.tier])} !")) }, Modifier.weight(1f), icon = "share")
+                    PButton("Mes badges", { ui.fsQueue.clear(); ui.closeFs(); ui.nav("profile") }, Modifier.weight(1f))
+                }
             }
         }
     }
 }
 
 /* ------------------------------------------------------------------ récaps */
-/** Couleur du texte d'une diapositive : encre sombre sur fond clair, blanc sur fond sombre. */
+/** Couleur du texte d'une diapositive : toujours prune sur l'aplat néon. */
 private val LocalRecapInk = staticCompositionLocalOf { INK }
+/** Aplat de la diapositive courante (tuiles, pistes et creux en sont dérivés, opaques). */
+private val LocalRecapFill = staticCompositionLocalOf { Color.White }
 private fun lum(c: Color) = .2126f * c.red + .7152f * c.green + .0722f * c.blue
 
 @Composable
@@ -217,15 +235,16 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     var word by remember(f) { mutableStateOf<String?>(null) }
     LaunchedEffect(f) { word = fr.pepsgoal.app.ai.CoachExtras.recapWord(ctx, f.st) }
+    // Aplat néon pleine page : la plus claire des couleurs de la diapositive, relevée en néon ; texte prune
     val cols = s.bg.map(::hex)
-    val ink = if (cols.map(::lum).average() < .5) Color.White else INK
-    Box(Modifier.fillMaxSize().background(Brush.linearGradient(cols)).pointerInput(f) { detectTapGestures { o -> step(if (o.x < size.width * .3f) -1 else 1) } }) {
-        // Profondeur : voile sombre en bas, puis formes décoratives propres à la diapositive
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, .55f to Color.Transparent, 1f to Color.Black.copy(alpha = .22f))))
-        RecapDecor(cols, i)
+    val fillC = vivid(cols.maxBy(::lum))
+    val ink = INK
+    val fillA by animateColorAsState(fillC, tween(if (p.motion) 0 else 380), label = "recap")
+    Box(Modifier.fillMaxSize().background(fillA).pointerInput(f) { detectTapGestures { o -> step(if (o.x < size.width * .3f) -1 else 1) } }) {
+        RecapDecor(listOf(fillA) + cols, i)
         s.fx?.let { Floaters(it, i) }
         if (last) Confetti()
-        CompositionLocalProvider(LocalRecapInk provides ink) {
+        CompositionLocalProvider(LocalRecapInk provides ink, LocalRecapFill provides fillA) {
             AnimatedContent(i, Modifier.fillMaxSize(), transitionSpec = { if (p.motion) fadeIn(tween(0)) togetherWith fadeOut(tween(0)) else (slideInHorizontally(tween(380, easing = FastOutSlowInEasing)) { w -> w / 3 * dir } + fadeIn(tween(300))) togetherWith (fadeOut(tween(160)) + slideOutHorizontally(tween(220)) { w -> -w / 6 * dir }) }, label = "slide") { k ->
                 val sl = f.slides[k]
                 // Diapositive centrée, qui défile si son contenu (ex. « Le mot du coach ») dépasse l'écran
@@ -240,46 +259,47 @@ private fun RecapFs(ui: AppState, f: Fs.Recap) {
             }
         }
         // Progression et bouton Fermer par-dessus la diapositive : sinon le contenu (plein écran) intercepte le toucher
-        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 62.dp, top = 22.dp).height(3.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 66.dp, top = 24.dp).height(5.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             f.slides.indices.forEach { k ->
                 val fill = remember(i, k) { Animatable(if (k < i || p.motion) 1f else 0f) }
                 LaunchedEffect(i, k) { if (k == i && !p.motion) fill.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
                 // Segment : piste et remplissage dessinés ensemble (largeur et épaisseur identiques pour tous)
                 Canvas(Modifier.weight(1f).fillMaxHeight()) {
                     val r = androidx.compose.ui.geometry.CornerRadius(size.height / 2, size.height / 2)
-                    drawRoundRect(ink.copy(alpha = .22f), cornerRadius = r)
+                    drawRoundRect(lerp(fillA, ink, .22f), cornerRadius = r)
                     val fr = when { k < i -> 1f; k == i -> fill.value; else -> 0f }
-                    if (fr > 0f) drawRoundRect(ink.copy(alpha = .92f), size = androidx.compose.ui.geometry.Size(size.width * fr, size.height), cornerRadius = r)
+                    if (fr > 0f) drawRoundRect(ink, size = androidx.compose.ui.geometry.Size(size.width * fr, size.height), cornerRadius = r)
                 }
             }
         }
-        // Fermer : discret, en verre
-        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 4.dp, end = 10.dp).size(40.dp).clip(CircleShape)
-            .background(ink.copy(alpha = .12f)).clickable { ui.closeFs() }, contentAlignment = Alignment.Center) { Pi("x", size = 18.dp, tint = ink) }
-        if (!last) Text("Touche l'écran pour avancer", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(14.dp), color = ink.copy(alpha = .55f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        // Fermer : bouton rond à marche
+        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 2.dp, end = 8.dp)) { IconBtn("x", "Fermer", { ui.closeFs() }) }
+        if (!last) Text("Touche l'écran pour avancer", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(14.dp).background(Color.White.copy(alpha = .42f), CircleShape).padding(horizontal = 12.dp, vertical = 4.dp),
+            color = ink, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
-/** Formes décoratives de la diapositive : deux halos qui dérivent lentement et des rayons qui tournent. */
+/** Formes décoratives de la diapositive, en aplats opaques : deux disques qui dérivent lentement et des rayons qui tournent. */
 @Composable
 private fun RecapDecor(cols: List<Color>, key: Int) {
     val p = LocalPal.current
     val inf = rememberInfiniteTransition(label = "decor$key")
     val t by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 9000, easing = LinearEasing), RepeatMode.Reverse), label = "t")
     val rot by inf.animateFloat(0f, 360f, infiniteRepeatable(tween(if (p.motion) 1_000_000 else 60000, easing = LinearEasing)), label = "rot")
-    val b = cols.last()
+    val base = cols.first(); val b = lerp(base, vivid(cols.last()), .5f)
+    val light = lerp(base, Color.White, .28f); val ray = lerp(base, Color.White, .12f)
     // Variante selon la diapositive : position des halos et présence des rayons
     val v = key % 3
     Canvas(Modifier.fillMaxSize()) {
         val w = size.width; val h = size.height
         val c1 = Offset(w * (if (v == 1) .85f else .15f) + w * .08f * t, h * (.18f + .06f * t))
         val c2 = Offset(w * (if (v == 2) .2f else .8f) - w * .06f * t, h * (.78f - .05f * t))
-        drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .34f), Color.Transparent), c1, w * .62f), w * .62f, c1)
-        drawCircle(Brush.radialGradient(listOf(b.copy(alpha = .55f), Color.Transparent), c2, w * .7f), w * .7f, c2)
+        drawCircle(light, w * .42f, c1)
+        drawCircle(b, w * .5f, c2)
         if (v != 1) rotate(rot, Offset(w / 2, h * .42f)) {
             for (r in 0 until 12) {
                 val ang = r * PI.toFloat() / 6
-                drawLine(Color.White.copy(alpha = .07f), Offset(w / 2, h * .42f), Offset(w / 2, h * .42f) + Offset(cos(ang), sin(ang)) * (h * .8f), w * .09f)
+                if (r % 2 == 0) drawLine(ray, Offset(w / 2, h * .42f), Offset(w / 2, h * .42f) + Offset(cos(ang), sin(ang)) * (h * .8f), w * .09f)
             }
         }
     }
@@ -322,21 +342,19 @@ private fun HeroCount(v: Int, prefix: String, suffix: String, ink: Color) {
 /** « Le mot du coach » : carte en verre sobre, petite pastille sparkle. */
 @Composable
 private fun CoachWord(w: String) {
-    val ink = LocalRecapInk.current; val dark = ink == INK
-    Column(Modifier.fillMaxWidth().clip(smoothShape(24.dp)).background(Color.White.copy(alpha = if (dark) .42f else .14f))
-        .border(1.dp, Color.White.copy(alpha = if (dark) .7f else .28f), smoothShape(24.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val ink = LocalRecapInk.current; val fill = LocalRecapFill.current
+    Column(Modifier.fillMaxWidth().recapGlass(ink).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.size(26.dp).clip(CircleShape).background(ink.copy(alpha = .12f)), contentAlignment = Alignment.Center) { Pi("sparkle", size = 14.dp, tint = ink) }
+            Box(Modifier.size(28.dp).background(vivid(fill), CircleShape), contentAlignment = Alignment.Center) { Pi("sparkle", size = 16.dp, tint = ink) }
             Text("Le mot du coach", color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
         }
         Text(w, color = ink, fontSize = 15.sp, lineHeight = 21.sp)
     }
 }
 
-/** Tuile en verre des récaps (fond blanc translucide, coins 24 dp). */
-private fun Modifier.recapGlass(ink: Color) = this.clip(smoothShape(24.dp))
-    .background(Color.White.copy(alpha = if (ink == INK) .45f else .14f))
-    .border(1.dp, Color.White.copy(alpha = if (ink == INK) .7f else .25f), smoothShape(24.dp))
+/** Tuile des récaps : carte blanche à marche (teinte de l'aplat assombrie), coins 24 dp. */
+@Composable
+private fun Modifier.recapGlass(@Suppress("UNUSED_PARAMETER") ink: Color): Modifier { val fill = LocalRecapFill.current; return this.chunk(Color.White, fill.step(), 24.dp, 4.dp, 0.dp) }
 
 @Composable
 private fun Floaters(e: String, key: Int) {
@@ -357,27 +375,26 @@ private fun Floaters(e: String, key: Int) {
 private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit) {
     val ink = LocalRecapInk.current
     when (part) {
-        is Part.Eyebrow -> Text(part.text.uppercase(), Modifier.clip(RoundedCornerShape(50)).background(ink.copy(alpha = .1f)).padding(horizontal = 12.dp, vertical = 5.dp),
-            color = ink.copy(alpha = .85f), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
-        is Part.Title -> Text(part.text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (part.big) 36.sp else 28.sp, color = ink, textAlign = TextAlign.Center, lineHeight = if (part.big) 42.sp else 33.sp)
-        is Part.Text -> Text(rich(part.text), color = ink.copy(alpha = .92f), fontSize = 17.sp, textAlign = TextAlign.Center, lineHeight = 24.sp)
+        is Part.Eyebrow -> Text(part.text.uppercase(), Modifier.background(Color.White.copy(alpha = .42f), CircleShape).padding(horizontal = 12.dp, vertical = 5.dp),
+            color = ink, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
+        is Part.Title -> Text(part.text, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = if (part.big) 30.sp else 28.sp, color = ink, textAlign = TextAlign.Center, lineHeight = if (part.big) 36.sp else 33.sp)
+        is Part.Text -> Text(rich(part.text), color = ink, fontWeight = FontWeight.Bold, fontSize = 17.sp, textAlign = TextAlign.Center, lineHeight = 24.sp)
         is Part.Joke -> Text(rich(part.text), Modifier.recapGlass(ink).padding(horizontal = 16.dp, vertical = 12.dp), color = ink, fontSize = 15.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
-        // Chiffre héros : très grand, avec un léger halo
+        // Chiffre héros : très grand, sans halo
         is Part.Big -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(170.dp).background(Brush.radialGradient(listOf(Color.White.copy(alpha = if (ink == INK) .5f else .18f), Color.Transparent)), CircleShape))
             if (part.raw != null) HeroText(part.raw!!, ink)
             else HeroCount(part.value, part.prefix, part.suffix, ink)
         }
         is Part.Emoji -> { val motion = LocalPal.current.motion; val inf = rememberInfiniteTransition(label = "em"); val k by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "k")
             Box(Modifier.size(132.dp).recapGlass(ink).graphicsLayer { if (!motion) { if (part.anim == "spin") rotationZ = k * 16 - 8 else translationY = -k * 10 } }, contentAlignment = Alignment.Center) { Emoji(part.e, 84.dp) } }
         is Part.Flame -> Flame((110 * part.scale.coerceIn(.5f, 1.6f)).dp)
-        is Part.Dots -> FlowRowCompat(Modifier.recapGlass(ink).padding(14.dp), gap = 5.dp) { part.days.forEach { on -> Box(Modifier.size(13.dp).clip(CircleShape).background(if (on) ink else ink.copy(alpha = .18f))) } }
+        is Part.Dots -> FlowRowCompat(Modifier.recapGlass(ink).padding(14.dp), gap = 5.dp) { part.days.forEach { on -> Box(Modifier.size(14.dp).background(if (on) ink else LocalRecapFill.current, CircleShape)) } }
         is Part.Week -> {
             val mx = maxOf(1, part.counts.maxOrNull() ?: 1)
             Row(Modifier.recapGlass(ink).padding(horizontal = 16.dp, vertical = 14.dp).height(150.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
                 part.counts.forEachIndexed { d, v -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (d == part.fav) Text("$v", color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
-                    Box(Modifier.width(24.dp).height((96 * v / mx).coerceAtLeast(5).dp).clip(RoundedCornerShape(8.dp)).background(if (d == part.fav) ink else ink.copy(alpha = .28f)))
+                    Box(Modifier.width(24.dp).height((96 * v / mx).coerceAtLeast(5).dp).background(if (d == part.fav) ink else vivid(LocalRecapFill.current), RoundedCornerShape(6.dp)))
                     Text(WD[d], color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp) } }
             }
         }
@@ -387,21 +404,21 @@ private fun PartView(ui: AppState, f: Fs.Recap, part: Part, restart: () -> Unit)
             Row(Modifier.fillMaxWidth().recapGlass(ink).padding(horizontal = 12.dp, vertical = 14.dp).height(160.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                 part.counts.forEachIndexed { m, v -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (m == part.best) Text("$v", color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
-                    Box(Modifier.width(16.dp).height((104 * v / mx).coerceAtLeast(4).dp).clip(RoundedCornerShape(6.dp)).background(if (m == part.best) ink else ink.copy(alpha = .28f)))
+                    Box(Modifier.width(16.dp).height((104 * v / mx).coerceAtLeast(4).dp).background(if (m == part.best) ink else vivid(LocalRecapFill.current), RoundedCornerShape(6.dp)))
                     Text(Recaps.MONTHS_SHORT[m], color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp) } }
             }
         }
         is Part.Facts -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.forEach { Text(rich(it), Modifier.fillMaxWidth().recapGlass(ink).padding(14.dp), color = ink, fontSize = 15.sp, lineHeight = 21.sp) } }
         is Part.Awards -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.forEach { (e, n, d) ->
             Row(Modifier.fillMaxWidth().recapGlass(ink).padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Box(Modifier.size(48.dp).clip(smoothShape(16.dp)).background(ink.copy(alpha = .1f)), contentAlignment = Alignment.Center) { Emoji(e, 30.dp) }
-                Column { Text(n, color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text(d, color = ink.copy(alpha = .75f), fontSize = 13.sp) } } } }
+                Box(Modifier.size(48.dp).background(vivid(LocalRecapFill.current), RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) { Emoji(e, 30.dp) }
+                Column { Text(n, color = ink, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text(d, color = ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp) } } } }
         // Tuiles de chiffres : grille 2 × 2 en verre, valeur en grand
         is Part.Cells -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { part.items.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             row.forEach { (v, l) ->
                 Column(Modifier.weight(1f).fillMaxHeight().recapGlass(ink).padding(horizontal = 14.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, color = ink, maxLines = 1)
-                    Text(l, color = ink.copy(alpha = .8f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(l, color = ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
             if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -443,63 +460,56 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
     val prog = remember(s.id) { Animatable(0f) }
     LaunchedEffect(s.id, seen, paused) { if (!seen && !paused) { prog.animateTo(1f, tween(((1 - prog.value) * STORY_MS).toInt(), easing = LinearEasing)); stepFn(1) } }
     val live = nowMs() - s.at < STORY_TTL; val left = maxOf(1, Math.ceil((s.at + STORY_TTL - nowMs()) / 3_600_000.0).toInt())
-    Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(s.id) {
+    Box(Modifier.fillMaxSize().background(p.mediaBg).pointerInput(s.id) {
         detectTapGestures(onPress = { paused = true; tryAwaitRelease(); paused = false }, onTap = { o -> stepFn(if (o.x < size.width * .3f) -1 else 1) })
     }) {
-        // Ambilight : la photo, très floutée et agrandie, éclaire tout l'écran derrière la story
+        // Fond média uni : la photo est posée entière, sans halo ni voile
         val painter = coil3.compose.rememberAsyncImagePainter(if (s.kind == "photo") s.photo else null)
         val pst by painter.state.collectAsState()
         val ok = pst is coil3.compose.AsyncImagePainter.State.Success
         val glow by animateFloatAsState(if (ok || s.kind != "photo") 1f else 0f, tween(500), label = "glow")
-        if (s.kind == "photo" && ok) Image(painter, null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.35f; scaleY = 1.35f; alpha = .85f * glow }
-            .graphicsLayer { alpha = .35f * glow }, contentScale = ContentScale.Crop)
-        else if (s.kind != "photo") Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(p.flame.copy(alpha = .45f), p.pink.copy(alpha = .2f), Color.Transparent))))
-        // Voile sombre pour garder l'en-tête et les boutons lisibles
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .55f), .25f to Color.Black.copy(alpha = .15f), .75f to Color.Black.copy(alpha = .15f), 1f to Color.Black.copy(alpha = .6f))))
         Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(top = 70.dp, bottom = 84.dp).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-            val shape = smoothShape(28.dp)
+            val shape = RoundedCornerShape(28.dp)
             when (s.kind) {
                 "photo" -> {
                     // Photo entière, aux proportions d'origine, aux coins arrondis et en relief
                     val sz = (pst as? coil3.compose.AsyncImagePainter.State.Success)?.painter?.intrinsicSize
                     val ratio = sz?.let { if (it.width > 0 && it.height > 0) it.width / it.height else null } ?: (9f / 16f)
-                    Box(Modifier.aspectRatio(ratio).graphicsLayer { scaleX = .94f + .06f * glow; scaleY = .94f + .06f * glow; alpha = glow }
-                        .shadow(30.dp.ifShadows(), shape, ambientColor = Color.Black, spotColor = Color.Black).clip(shape).border(1.dp, Color.White.copy(alpha = .18f), shape)) {
+                    Box(Modifier.aspectRatio(ratio).graphicsLayer { scaleX = .94f + .06f * glow; scaleY = .94f + .06f * glow; alpha = glow }.clip(shape)) {
                         Image(painter, s.text.ifEmpty { "Photo partagée en story" }, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(smoothShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
+                        if (s.text.isNotEmpty()) StoryCaption(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp))
                     }
                 }
-                else -> Box(Modifier.fillMaxSize().shadow(30.dp.ifShadows(), shape).clip(shape), contentAlignment = Alignment.Center) {
+                else -> Box(Modifier.fillMaxSize().clip(shape), contentAlignment = Alignment.Center) {
                     s.data?.let { StoryCard(s.kind, it, compact = false) }
-                    if (s.text.isNotEmpty()) Text(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp).clip(smoothShape(14.dp)).background(Color.Black.copy(alpha = .55f)).padding(10.dp), color = Color.White, textAlign = TextAlign.Center)
+                    if (s.text.isNotEmpty()) StoryCaption(s.text, Modifier.align(Alignment.BottomCenter).padding(16.dp))
                 }
             }
         }
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Barres de progression : rail sombre plein, avancée blanche pleine
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                list.forEachIndexed { k, _ -> Box(Modifier.weight(1f).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = .3f))) {
+                list.forEachIndexed { k, _ -> Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(RAIL_NIGHT)) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(if (k < si) 1f else if (k == si) (if (seen) 1f else prog.value) else 0f).background(Color.White)) } }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // En-tête sur plaque sombre
+            Row(Modifier.chunk(PLUM, PLUM_DEEP, 24.dp, 3.dp, 0.dp).padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Av(g.u, 36.dp)
-                Column(Modifier.weight(1f)) {
-                    Text(if (own) "Ta story" else g.u.name, color = Color.White, fontWeight = FontWeight.ExtraBold)
-                    Text(if (live) "${ago(s.at)} · encore $left h" else "${fmtDate(ymd(s.at))} · archive", color = Color.White.copy(alpha = .75f), fontSize = 12.sp)
+                Column(Modifier.weight(1f, fill = false)) {
+                    Text(if (own) "Ta story" else g.u.name, color = CREAM, fontWeight = FontWeight.ExtraBold)
+                    Text(if (live) "${ago(s.at)} · encore $left h" else "${fmtDate(ymd(s.at))} · archive", color = CREAM, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
-                IconBtn("x", "Fermer les stories", { ui.closeFs() }, tint = Color.White, plain = true)
             }
         }
+        MediaBtn("x", "Fermer les stories", { ui.closeFs() }, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 22.dp, end = 8.dp))
         Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (!own && live) {
                 val liked = s.liked
-                Row(Modifier.clip(RoundedCornerShape(50)).background(if (liked) Brush.linearGradient(listOf(p.flame2, p.pink)) else SolidColor(Color.White.copy(alpha = .2f))).border(1.dp, Color.White.copy(alpha = .3f), RoundedCornerShape(50)).clickable {
-                    if (!pg.socialBlocked("d'encourager")) ui.run { ui.cloud.likeStory(s, !liked) }
-                }.padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Flame(20.dp, dim = !liked); Text(if (liked) "Encouragé" else "Encourager", color = Color.White, fontWeight = FontWeight.ExtraBold)
-                }
+                PButton(if (liked) "Encouragé" else "Encourager", { if (!pg.socialBlocked("d'encourager")) ui.run { ui.cloud.likeStory(s, !liked) } }, kind = if (liked) "primary" else "normal",
+                    leading = { Flame(20.dp, dim = !liked) })
             }
             if (own) {
-                Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .18f)).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Flame(16.dp); Text(" ${s.likeCount ?: s.likers.size}", color = Color.White, fontWeight = FontWeight.ExtraBold) }
+                Row(Modifier.chunk(PLUM, PLUM_DEEP, 22.dp, 3.dp, 0.dp).padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) { Flame(16.dp); Text(" ${s.likeCount ?: s.likers.size}", color = CREAM, fontWeight = FontWeight.ExtraBold) }
                 PButton("Vu par ${s.views ?: s.seenBy.size}", { seen = !seen }, icon = "users", small = true)
                 PButton("Supprimer", {
                     ui.run("Story supprimée.", "trash") { ui.cloud.deleteStory(s.id) }
@@ -508,7 +518,7 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
             }
         }
         if (own && seen) {
-            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp).clip(smoothShape(22.dp)).background(p.glassStrong).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp).chunk(p.surface, p.edge, 28.dp, 4.dp, 2.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Vu par ${pl(s.seenBy.size, "ami", "amis")}", fontWeight = FontWeight.ExtraBold)
                 if (s.seenBy.isEmpty()) Muted("Personne pour l’instant.", small = true)
                 s.seenBy.mapNotNull { pg.userById(it) }.forEach { x -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Av(x, 30.dp); Text(x.name, Modifier.weight(1f)); if (x.id in s.likers) Flame(16.dp) } }
@@ -517,3 +527,8 @@ private fun StoriesFs(ui: AppState, f: Fs.Stories) {
         }
     }
 }
+
+/** Légende d'une story, sur plaque sombre pleine (aucun voile translucide). */
+@Composable
+private fun StoryCaption(text: String, modifier: Modifier) =
+    Text(text, modifier.chunk(PLUM, PLUM_DEEP, 17.dp, 3.dp, 0.dp).padding(horizontal = 12.dp, vertical = 10.dp), color = CREAM, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)

@@ -3,6 +3,8 @@ plugins {
     kotlin("android")
     kotlin("plugin.compose")
     kotlin("plugin.serialization")
+    // Profil de référence (Baseline Profile) généré par le module :baselineprofile
+    id("androidx.baselineprofile")
 }
 
 android {
@@ -13,10 +15,11 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 800
-        versionName = "8.0.0"
+        versionCode = 810
+        versionName = "8.1.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
+        buildConfigField("boolean", "BENCH", "false")
         buildConfigField("String", "API_URL", "\"${project.findProperty("pepsgoal.api") ?: "https://api.pepsgoal.fr"}\"")
     }
 
@@ -42,6 +45,15 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
+        }
+        // Mesures de performance (module :benchmark) : comme la publication, signée avec la clé de débogage, profilable
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            buildConfigField("boolean", "BENCH", "true")
+            proguardFiles("benchmark-rules.pro")
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -77,7 +89,16 @@ android {
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
+// Profil de référence : fusionné dans src/main (baseline-prof.txt versionné), généré sur l'appareil géré du module :baselineprofile
+baselineProfile {
+    mergeIntoMain = true
+    saveInSrc = true
+}
+
 dependencies {
+    // Installation du profil de référence au premier lancement (démarrage et défilement plus fluides)
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    baselineProfile(project(":baselineprofile"))
     implementation(project(":core"))
 
     val composeBom = platform("androidx.compose:compose-bom:2025.06.01")
@@ -101,8 +122,6 @@ dependencies {
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
-    // Verre givré : flou de l'arrière-plan derrière les cartes et les barres (backdrop-filter de la version web)
-    implementation("dev.chrisbanes.haze:haze:1.6.10")
     // Assistant IA 100 % local : exécution d'un petit modèle de langage sur le téléphone (MediaPipe LLM Inference)
     implementation("com.google.mediapipe:tasks-genai:0.10.24")
     // Health Connect (Santé d'Android) : validation automatique à partir des pas, du sommeil, du sport, de l'eau

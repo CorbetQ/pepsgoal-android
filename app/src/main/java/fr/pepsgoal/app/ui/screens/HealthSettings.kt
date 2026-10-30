@@ -53,7 +53,7 @@ fun HealthSettings(ui: AppState) {
                     Health.METRICS.chunked(2).forEach { row ->
                         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             row.forEach { m ->
-                                Row(Modifier.weight(1f).fillMaxHeight().clip(fr.pepsgoal.app.ui.smoothShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(Modifier.weight(1f).fillMaxHeight().background(p.surface2, androidx.compose.foundation.shape.RoundedCornerShape(17.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Emoji(m.emoji, 22.dp)
                                     Column { Muted(m.label, small = true, maxLines = 1); Text(Health.format(m.key, values[m.key]), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1) }
                                 }
@@ -71,7 +71,7 @@ fun HealthSettings(ui: AppState) {
                 if (g != null && m != null) Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     GoalIcon(g, 34.dp)
                     Column(Modifier.weight(1f)) { Text(g.title, fontWeight = FontWeight.Bold, maxLines = 1); Muted("${m.emoji} ${m.label} ${if (l.op == "<=") "≤" else "≥"} ${Health.format(l.metric, l.threshold)}", small = true) }
-                    IconBtn("x", "Retirer ce lien", { links = links - l; Health.saveLinks(ctx, links) }, plain = true, size = 36.dp)
+                    IconBtn("x", "Retirer ce lien", { links = links - l; Health.saveLinks(ctx, links) }, plain = true)
                 }
             }
             // Nouveau lien
@@ -80,6 +80,7 @@ fun HealthSettings(ui: AppState) {
                 var goal by remember { mutableStateOf<String?>(null) }; var metric by remember { mutableStateOf("steps") }; var thr by remember { mutableStateOf("") }
                 val m = Health.metric(metric)!!
                 var op by remember(metric) { mutableStateOf(m.op) }
+                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(2.dp).background(p.line))
                 SectionTitle("Ajouter un lien")
                 Text("Objectif", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Box(Modifier.padding(vertical = 6.dp)) { GoalChips(candidates, goal, { goal = it }) }
@@ -93,7 +94,7 @@ fun HealthSettings(ui: AppState) {
                         val t = if (m.kind == "time") Health.parseTime(raw, metric) else raw.replace(',', '.').toDoubleOrNull()
                         if (g == null || t == null || t <= 0) ui.toast("Choisis un objectif et un seuil valide.", "x")
                         else { links = links + Health.Link(g, metric, t, op); Health.saveLinks(ctx, links); goal = null; thr = ""; scope.launch { Health.sync(ctx, force = true) }; ui.toast("Objectif relié à Santé.", "heart") }
-                    }, icon = "link", kind = "primary", small = true)
+                    }, icon = "link", color = p.type("duration").c, small = true)
                 }
             } else if (links.isEmpty()) Muted("Crée d’abord une routine (ex. « Marcher 8 000 pas ») pour la relier.", small = true)
         }

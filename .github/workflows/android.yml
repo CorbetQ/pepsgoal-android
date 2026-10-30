@@ -25,6 +25,8 @@ jobs:
         run: ./gradlew --no-daemon :core:test
       - name: Application Android (debug + release)
         run: ./gradlew --no-daemon :app:assembleGithubDebug :app:assembleGithubRelease :app:bundlePlayRelease :wear:assembleRelease :wear:bundleRelease
+      - name: Modules de mesure (Macrobenchmark et profil de référence, compilation)
+        run: ./gradlew --no-daemon :benchmark:assemble :baselineprofile:compileNonMinifiedReleaseKotlin
       - uses: actions/upload-artifact@v4
         with:
           name: pepsgoal-apk

@@ -23,6 +23,7 @@ import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.step
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.TYPES
 import fr.pepsgoal.core.*
@@ -137,7 +138,7 @@ fun GoalsScreen(ui: AppState) {
                     val c = key in collapsed
                     if (label.isNotEmpty()) item("sec-$key") {
                         val (ic, name) = label.split("|", limit = 2)
-                        Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).clickable { collapsed = if (c) collapsed - key else collapsed + key; ui.prefs.collapsed = collapsed }.padding(6.dp),
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.surface, RoundedCornerShape(22.dp)).border(2.dp, p.edge, RoundedCornerShape(22.dp)).clickable { collapsed = if (c) collapsed - key else collapsed + key; ui.prefs.collapsed = collapsed }.padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             val gc = u.goalGroups.firstOrNull { it.id == key }?.color?.let { fr.pepsgoal.app.ui.theme.hex(it) }
                             EmojiTile(ic, gc ?: p.flame, 38.dp)
@@ -171,8 +172,8 @@ private fun OverTile(v: String, l: String, emoji: String, c: Color, on: Boolean,
     val press = rememberPress(inter)
     val fill = if (on) vivid(c) else androidx.compose.ui.graphics.lerp(p.surface, c, if (p.dark) .25f else .3f)
     val ink = if (on) fr.pepsgoal.app.ui.theme.PLUM else p.ink
-    Column(modifier.fillMaxHeight().chunk(fill, if (on) (if (p.contrast) p.ink else vivid(c).let { androidx.compose.ui.graphics.lerp(it, Color(0xFF5A1030), .32f) }) else androidx.compose.ui.graphics.lerp(p.edge, c, .55f), 22.dp, 4.dp, if (on) 0.dp else 2.dp, press)
-        .clip(RoundedCornerShape(20.dp)).springClick(inter, role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick).semantics { selected = on }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(modifier.fillMaxHeight().chunk(fill, if (on) (if (p.contrast) p.ink else vivid(c).step()) else androidx.compose.ui.graphics.lerp(p.edge, c, .55f), 22.dp, 4.dp, if (on) 0.dp else 2.dp, press)
+        .clip(RoundedCornerShape(22.dp)).springClick(inter, role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick).semantics { selected = on }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Emoji(emoji, 24.dp); Spacer(Modifier.weight(1f))
             if (on) Pi("check", size = 16.dp, tint = ink)

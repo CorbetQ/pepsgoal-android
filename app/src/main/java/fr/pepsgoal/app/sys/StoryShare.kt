@@ -24,10 +24,11 @@ object StoryShare {
     fun image(ctx: Context, g: Goal?, text: String): Bitmap {
         val pg = ctx.peps.pg; val u = pg.me()
         val w = 1080; val h = 1920; val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); val c = Canvas(bmp)
-        c.drawPaint(Paint().apply { shader = LinearGradient(0f, 0f, w.toFloat(), h.toFloat(), intArrayOf(0xFFFFB000.toInt(), 0xFFFF4A12.toInt(), 0xFFFF2D87.toInt()), null, Shader.TileMode.CLAMP) })
-        // Halo clair derrière le chiffre
-        c.drawCircle(w / 2f, 760f, 420f, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = RadialGradient(w / 2f, 760f, 420f, 0x55FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP) })
-        val ink = 0xFF10102A.toInt()
+        c.drawPaint(Paint().apply { shader = LinearGradient(0f, 0f, w.toFloat(), h.toFloat(), intArrayOf(0xFFFFB000.toInt(), 0xFFFF4A12.toInt(), 0xFFFF3D96.toInt()), null, Shader.TileMode.CLAMP) })
+        // Disque plein (crème) avec sa marche derrière le chiffre : aucun halo
+        c.drawCircle(w / 2f, 778f, 400f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC2185B.toInt() })
+        c.drawCircle(w / 2f, 760f, 400f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFF4EC.toInt() })
+        val ink = 0xFF2A1420.toInt()
         val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
         val st = u?.let { pg.globalStreak(it.id) }
         val big: String; val unit: String; val title: String
@@ -37,10 +38,10 @@ object StoryShare {
         tp.textSize = 300f; c.drawText(big.take(6), w / 2f, 860f, tp)
         tp.textSize = 64f; tp.typeface = Typeface.DEFAULT; c.drawText(unit.take(30), w / 2f, 960f, tp)
         // Texte libre, sur 3 lignes au plus
-        tp.textSize = 46f; tp.color = 0xDD10102A.toInt()
+        tp.textSize = 46f; tp.color = 0xFF2A1420.toInt()
         wrap(I18n.tr(text), tp, w - 200f).take(3).forEachIndexed { i, l -> c.drawText(l, w / 2f, 1180f + i * 64f, tp) }
         if (g != null && st != null && st.n > 1) { tp.textSize = 44f; tp.typeface = Typeface.DEFAULT_BOLD; c.drawText("🔥 ${st.n} " + I18n.tr("jours de série"), w / 2f, 1460f, tp) }
-        tp.textSize = 40f; tp.typeface = Typeface.DEFAULT_BOLD; tp.color = 0xAA10102A.toInt(); c.drawText("PepsGoal", w / 2f, h - 140f, tp)
+        tp.textSize = 40f; tp.typeface = Typeface.DEFAULT_BOLD; tp.color = 0xFF2A1420.toInt(); c.drawText("PepsGoal", w / 2f, h - 140f, tp)
         return bmp
     }
 

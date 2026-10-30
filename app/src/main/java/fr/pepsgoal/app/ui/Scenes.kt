@@ -49,12 +49,15 @@ fun SceneBg(key: String, modifier: Modifier = Modifier, still: Boolean = false) 
     if (still) { StillCanvas("scene:$key", modifier.fillMaxSize(), placeholder) { scene(key, .3f) }; return }
     // Fond animé : dessiné hors du fil principal, au rythme plafonné par les réglages de performance
     val phase = bgPhaseState(SCENE_DUR[key] ?: 40000, SCENE_FPS[key] ?: 12)
-    // Heure réelle (réglage « Suivre l'heure ») : la scène change d'éclairage au fil de la journée, redessinée au quart d'heure
+    // Lumière de la scène (Apparence) : heure réelle (redessinée au quart d'heure), toujours le jour, ou selon le thème
+    // (15 h en clair, 21 h 30 en sombre)
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val follow = ctx.peps.prefs.bgClock
-    val hour = androidx.compose.runtime.produceState(nowHour()) { while (true) { kotlinx.coroutines.delay(60_000); value = nowHour() } }
-    val h = if (follow) hour.value else null
-    OffscreenCanvas("scene:$key:${h?.let { (it * 4).toInt() }}", phase, modifier.fillMaxSize(), placeholder = placeholder) { t -> scene(key, t, h) }
+    val light = ctx.peps.prefs.bgLight
+    val dark = fr.pepsgoal.app.ui.theme.LocalPal.current.dark
+    val hour = if (light == "real") androidx.compose.runtime.produceState(nowHour()) { while (true) { kotlinx.coroutines.delay(60_000); value = nowHour() } }.value else 0f
+    val h = when (light) { "real" -> hour; "day" -> null; else -> if (dark) 21.5f else 15f }
+    // Rendu hors du fil principal à 50 % de la résolution, puis mis à l'échelle (la scène est voilée sous les cartes)
+    OffscreenCanvas("scene:$key:${h?.let { (it * 4).toInt() }}", phase, modifier.fillMaxSize(), scale = .5f, placeholder = placeholder) { t -> scene(key, t, h) }
 }
 
 /** Heure locale en heures décimales (14,5 = 14 h 30). */

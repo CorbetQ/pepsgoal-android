@@ -17,6 +17,7 @@ import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
+import fr.pepsgoal.app.ui.theme.step
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.cloud.*
@@ -47,7 +48,7 @@ fun LeagueScreen(ui: AppState) {
                     val (tn, te, _) = League.tier(mine.points); val nx = League.next(mine.points); val rank = l.indexOf(mine) + 1
                     Glass {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Box(Modifier.size(72.dp).clip(smoothShape(24.dp)).background(Brush.linearGradient(tierColors(tn).map(::hexC))), contentAlignment = Alignment.Center) { Emoji(te, 42.dp) }
+                            Box(Modifier.size(72.dp, 76.dp).chunk(vivid(hexC(tierColors(tn).first())), hexC(tierColors(tn).first()).step(), 24.dp, 4.dp, 0.dp), contentAlignment = Alignment.Center) { Emoji(te, 42.dp) }
                             Column(Modifier.weight(1f)) {
                                 Eyebrow("Ligue $tn")
                                 Text("${rank}${if (rank == 1) "er" else "e"} sur ${l.size}", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
@@ -66,7 +67,7 @@ fun LeagueScreen(ui: AppState) {
                         if (l.size <= 1) Empty("Seul pour l’instant", "Ajoute des amis pour vous mesurer chaque semaine.", icon = "users") { PButton("Trouver des amis", { ui.back(); ui.friendsTab = "discover"; ui.nav("friends") }, icon = "userplus", small = true) }
                         l.forEachIndexed { i, r ->
                             val meRow = r.userId == me; val (tn, te, _) = League.tier(r.points)
-                            Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(if (meRow) p.flame.copy(alpha = .14f) else Color.Transparent).padding(10.dp),
+                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(if (meRow) p.selTint(p.flame) else Color.Transparent).heightIn(min = 60.dp).padding(10.dp),
                                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text(when (i) { 0 -> "🥇"; 1 -> "🥈"; 2 -> "🥉"; else -> "${i + 1}" }, Modifier.width(28.dp), fontFamily = Unbounded, fontWeight = FontWeight.Bold)
                                 val av = remember(r.userId) { try { JSON.decodeFromJsonElement(Avatar.serializer(), r.avatar) } catch (e: Exception) { null } }
@@ -78,7 +79,7 @@ fun LeagueScreen(ui: AppState) {
                         }
                     }
                 }
-                item("help") { Muted("Paliers de la semaine : 🥉 Bronze, 🥈 Argent dès 150 flammes, 🥇 Or dès 350, 💎 Diamant dès 700. Tout repart à zéro chaque lundi.", small = true) }
+                item("help") { Hint("Paliers de la semaine : 🥉 Bronze, 🥈 Argent dès 150 flammes, 🥇 Or dès 350, 💎 Diamant dès 700. Tout repart à zéro chaque lundi.") }
             }
         }
     }
@@ -110,7 +111,7 @@ fun LeagueCard(ui: AppState) {
     val (tn, te, _) = League.tier(m.second.points)
     Glass(onClick = { ui.push(Screen.League) }) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(44.dp).clip(smoothShape(14.dp)).background(Brush.linearGradient(tierColors(tn).map(::hexC))), contentAlignment = Alignment.Center) { Emoji(te, 26.dp) }
+            Box(Modifier.size(44.dp, 47.dp).chunk(vivid(hexC(tierColors(tn).first())), hexC(tierColors(tn).first()).step(), 17.dp, 3.dp, 0.dp), contentAlignment = Alignment.Center) { Emoji(te, 26.dp) }
             Column(Modifier.weight(1f)) {
                 Text("Ligue $tn", fontWeight = FontWeight.ExtraBold)
                 Muted("${m.first}${if (m.first == 1) "er" else "e"} sur $size cette semaine · ${m.second.points} flammes", small = true)

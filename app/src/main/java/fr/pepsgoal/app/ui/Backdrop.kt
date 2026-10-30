@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -39,41 +38,26 @@ import kotlin.random.Random
 /** Image d'arrière-plan personnalisée, gardée sur l'appareil. */
 fun bgFile(ctx: android.content.Context) = File(ctx.filesDir, "bg.jpg")
 
-/** Arrière-plan derrière toute l'application (calque `.backdrop` de la version web). */
+/**
+ * Scène du fond (couche 1 de [AppBg], aperçus d'Apparence) : scène illustrée, fond gratuit, ciel de la Météo, image
+ * personnelle ou « Collines braise ». Rien d'opaque autour : le `bg` uni et le voile sont posés par l'appelant.
+ */
 @Composable
 fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: String = "", weather: String? = null) {
     val p = LocalPal.current
-    Box(Modifier.fillMaxSize().background(p.bg)) {
-        if (p.transp || p.contrast) return@Box
+    Box(Modifier.fillMaxSize()) {
+        if (p.contrast) return@Box
         if (sky != null) { SkyCanvas(sky); return@Box }
         when (kind) {
             "custom" -> CustomBg(bgStamp)
             "plain" -> {}
             "grid", "stars", "waves", "aurora", "mesh" -> FreeBg(kind)
-            else -> if (kind.startsWith("s:")) {
-                // Scène illustrée de la boutique, sous un léger voile aux couleurs du thème (lisibilité des cartes)
-                SceneBg(kind.removePrefix("s:"))
-                Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = if (p.dark) .28f else .18f)))
-            } else FreeBg("blob")
+            else -> if (kind.startsWith("s:")) SceneBg(kind.removePrefix("s:")) else PopBg()
         }
         // Effets décoratifs : coupés par Paramètres › Performance (ou le mode Économie)
         if (Perf.flags.fx) { if (snow || fx == "snow") SnowFx() else if (fx.isNotEmpty() && !p.motion) ThemeFx(fx) }
         // Temps qu'il fait dehors, par-dessus le fond (réglage Apparence › Fond à la météo)
         if (weather != null && Perf.flags.fx && !p.motion) WeatherFx(weather)
-    }
-}
-
-/**
- * Fond animé confiné (option Apparence › Fond animé) : dessiné seulement dans les 360 dp du haut de l'accueil, à 70 %
- * (clair) ou 55 % (sombre) d'opacité, et fondu vers le fond à partir de la moitié. [frozen] : horloges arrêtées (page
- * défilée, économie d'énergie, animations réduites). Les cartes, opaques, passent par-dessus.
- */
-@Composable
-fun ConfinedBackdrop(frozen: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val p = LocalPal.current
-    Box(modifier.fillMaxSize().graphicsLayer { alpha = if (p.dark) .55f else .7f; compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithContent { drawContent(); drawRect(Brush.verticalGradient(0f to Color.Black, .5f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn) }) {
-        CompositionLocalProvider(LocalBgPaused provides (frozen || LocalBgPaused.current)) { content() }
     }
 }
 
@@ -88,8 +72,9 @@ private fun WeatherFx(cond: String) {
         val t = clock.value; val d = density / 2.6f
         if (cond == "fog") {
             // Bancs de brume en trois couches qui glissent lentement
+            // Bandes de brume en aplats arrondis (aucun dégradé radial)
             for (i in 0 until 3) { val y = size.height * (.35f + i * .2f); val x = ((t + i * .33f) % 1f) * size.width * 2 - size.width
-                drawOval(Brush.radialGradient(listOf(Color.White.copy(alpha = .22f), Color.Transparent), Offset(x + size.width, y), size.width * .9f), Offset(x, y - size.height * .12f), androidx.compose.ui.geometry.Size(size.width * 2, size.height * .24f)) }
+                drawRoundRect(Color.White.copy(alpha = .14f), Offset(x, y - size.height * .05f), androidx.compose.ui.geometry.Size(size.width * 1.6f, size.height * .1f), androidx.compose.ui.geometry.CornerRadius(size.height * .05f)) }
             drawRect(Color.White.copy(alpha = .08f))
             return@Canvas
         }
@@ -106,8 +91,8 @@ private fun WeatherFx(cond: String) {
 }
 
 /**
- * Vrai quand le fond est entièrement caché (sous un écran opaque poussé par-dessus) : ses horloges s'arrêtent.
- * Sinon chaque image du fond invaliderait la source du verre givré et forcerait le recalcul de tous les flous.
+ * Vrai quand l'horloge du fond doit être figée : défilement (et 500 ms après), feuille ou dialogue ouverts, économie
+ * d'énergie, fond animé coupé, calque masqué. Figé = dernière image (aucun redessin).
  */
 val LocalBgPaused = compositionLocalOf { false }
 
@@ -155,14 +140,14 @@ fun slowPhaseState(dur: Int, fps: Int = 12, offset: Int = 0, running: Boolean = 
 /** Intensité des couleurs : renforcée en clair (sinon le fond paraît terne derrière le verre des cartes). */
 private fun Pal.al(): Float = if (dark) blobAlpha else min(1f, blobAlpha * 1.55f)
 /** Durée d'un cycle des fonds gratuits (ms). */
-private val FREE_DUR = mapOf("blob" to 26000, "aurora" to 18000, "waves" to 14000, "stars" to 12000, "mesh" to 30000, "grid" to 16000)
+private val FREE_DUR = mapOf( "aurora" to 18000, "waves" to 14000, "stars" to 12000, "mesh" to 30000, "grid" to 16000)
 
 /**
  * Fonds gratuits (Blob, Aurore, Vagues, Constellation, Dégradé, Grille) : dégradés « mesh » aux couleurs du thème,
  * dessinés dans Scenes.kt. L'horloge est lue dans la phase de dessin : pas de recomposition à chaque image.
  */
 @Composable
-private fun FreeBg(kind: String) {
+fun FreeBg(kind: String) {
     val p = LocalPal.current
     val t = bgPhaseState(FREE_DUR[kind] ?: 26000)
     val fp = remember(p.dark, p.bg, p.ink, p.blobs, p.blobAlpha) { FreePal(p.dark, p.bg, p.ink, p.blobs, p.al()) }
@@ -171,7 +156,7 @@ private fun FreeBg(kind: String) {
 
 @Composable
 private fun CustomBg(stamp: Long) {
-    val ctx = LocalContext.current; val p = LocalPal.current
+    val ctx = LocalContext.current
     // Décodée hors du fil principal, réduite à la taille de l'écran (une photo de 12 Mpx pèserait près de 50 Mo)
     val res by produceState<Pair<Boolean, ImageBitmap?>>(false to null, stamp) {
         value = true to kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -187,12 +172,9 @@ private fun CustomBg(stamp: Long) {
     }
     if (!res.first) return // décodage en cours : fond uni
     val bmp = res.second
-    if (bmp == null) { FreeBg("blob"); return }
-    // Flou et assombrissement réglables (Paramètres › Apparence) ; par défaut, un léger voile aux couleurs du thème
-    val raw = ctx.getSharedPreferences("pepsgoal.device", android.content.Context.MODE_PRIVATE)
-    val blur = remember(stamp) { raw.getInt("bgBlur", 0) }; val dim = remember(stamp) { raw.getFloat("bgDim", -1f) }
-    Image(bmp, null, Modifier.fillMaxSize().then(if (blur > 0 && Build.VERSION.SDK_INT >= 31 && Perf.flags.blur) Modifier.blur(blur.dp) else Modifier), contentScale = ContentScale.Crop)
-    Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = if (dim >= 0f) dim else if (p.dark) .45f else .3f)))
+    if (bmp == null) { PopBg(); return }
+    // Jamais floutée : le voile dégradé de AppBg (réglable dans Apparence › Ma photo) garde les cartes lisibles
+    Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
 }
 
 /** Effets des thèmes de la boutique : pétales, feuilles, cœurs et confettis tombent ; braises et bulles montent ; étoiles scintillent. */
@@ -409,18 +391,76 @@ private fun DrawScope.cloud(x: Float, y: Float, w: Float, h: Float, c: Color) {
     }
 }
 
+/* ------------------------------------------------------------------ 8.1 : Collines braise, marée de braise */
+
+/** Fond gratuit par défaut « Collines braise » : aplats seulement, collines qui ondulent très lentement (6 images/s). */
+@Composable
+fun PopBg(still: Boolean = false) {
+    val p = LocalPal.current
+    val t = if (still) null else bgPhaseState(40000, 6)
+    Canvas(Modifier.fillMaxSize()) { popHills(p.dark, t?.value ?: .3f) }
+}
+
 /**
- * Fond qui réagit à la journée : une lueur chaude monte du bas de l'écran au fil des validations ([progress] de 0 à 1),
- * et des confettis tombent doucement au fond les journées parfaites.
+ * « Collines braise » : ciel crème (prune la nuit), soleil (lune) en aplat avec anneau plein, confettis (étoiles), nuages
+ * en capsules, trois collines pleines et fleurs (lucioles) jusqu'en bas. Coût d'un fond uni.
+ */
+fun DrawScope.popHills(dark: Boolean, t: Float = .3f) {
+    val w = size.width; val h = size.height
+    fun hx(v: Long) = Color(v)
+    drawRect(if (dark) hx(0xFF1E1328) else hx(0xFFFFF1E6))
+    drawRect(if (dark) hx(0xFF261832) else hx(0xFFFFE6D6), Offset(0f, h * .18f), androidx.compose.ui.geometry.Size(w, h * .82f))
+    val sc = Offset(w * .80f, h * .16f)
+    drawCircle(if (dark) hx(0xFF3A2648) else hx(0xFFFFE08A), w * .17f, sc)
+    drawCircle(if (dark) hx(0xFFFFE07A) else hx(0xFFFFC23D), w * .11f, sc)
+    if (dark) drawCircle(hx(0xFF261832), w * .09f, sc + Offset(w * .05f, -w * .03f))
+    val dots = listOf(.08f to .08f, .22f to .2f, .4f to .1f, .55f to .25f, .62f to .06f, .93f to .3f, .3f to .32f, .12f to .36f)
+    val conf = listOf(hx(0xFFFF7AD9), hx(0xFF22D3FF), hx(0xFFFFB000), hx(0xFF7CFF6B))
+    dots.forEachIndexed { i, (x, y) ->
+        if (dark) drawCircle(hx(0xB3FFF4EC), 1.6.dp.toPx() + (i % 3) * .6f.dp.toPx(), Offset(w * x, h * y))
+        else drawRoundRect(conf[i % 4], Offset(w * x, h * y), androidx.compose.ui.geometry.Size(5.dp.toPx(), 9.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+    }
+    fun cloud(x: Float, y: Float, k: Float) {
+        val c = if (dark) hx(0xFF2F2040) else Color.White
+        drawRoundRect(c, Offset(x, y), androidx.compose.ui.geometry.Size(w * .26f * k, w * .07f * k), androidx.compose.ui.geometry.CornerRadius(w))
+        drawRoundRect(c, Offset(x + w * .05f * k, y - w * .04f * k), androidx.compose.ui.geometry.Size(w * .13f * k, w * .09f * k), androidx.compose.ui.geometry.CornerRadius(w))
+    }
+    cloud(w * (.06f + .04f * sin(t * 6.283f)), h * .14f, 1f); cloud(w * (.5f - .03f * sin(t * 6.283f)), h * .28f, .8f)
+    fun hill(base: Float, amp: Float, ph: Float, col: Color, k: Float) {
+        val path = Path().apply {
+            moveTo(0f, h); lineTo(0f, base)
+            var x = 0f
+            while (x <= w + 8f) { lineTo(x, base - amp * (.5f + .5f * sin(x / w * k * 2f * PI.toFloat() + ph + t * 2f * PI.toFloat() * .15f))); x += 8f }
+            lineTo(w, h); close()
+        }
+        drawPath(path, col)
+    }
+    if (dark) { hill(h * .40f, h * .06f, 1f, hx(0xFF3A1F3E), 1.3f); hill(h * .50f, h * .05f, 2.6f, hx(0xFF4A2440), 1.7f); hill(h * .62f, h * .045f, .4f, hx(0xFF2E1B3A), 1.1f) }
+    else { hill(h * .40f, h * .06f, 1f, hx(0xFFFFD0B8), 1.3f); hill(h * .50f, h * .05f, 2.6f, hx(0xFFFFB8CF), 1.7f); hill(h * .62f, h * .045f, .4f, hx(0xFFFFC79E), 1.1f) }
+    val fl = listOf(hx(0xFFFF7AD9), hx(0xFFFFB000), Color.White, hx(0xFF7CFF6B))
+    for (i in 0 until 14) {
+        val x = w * ((i * 0.137f + .05f) % 1f); val y = h * (.70f + ((i * 37) % 23) / 100f)
+        if (dark) drawCircle(hx(0x8CFFE07A), 2.2.dp.toPx(), Offset(x, y))
+        else { for (k in 0 until 5) { val a = k * 1.2566f; drawCircle(fl[i % 4], 3.dp.toPx(), Offset(x + cos(a) * 4.dp.toPx(), y + sin(a) * 4.dp.toPx())) }; drawCircle(hx(0xFFFFD23F), 2.6.dp.toPx(), Offset(x, y)) }
+    }
+}
+
+/**
+ * Fond qui réagit : « marée de braise ». Deux vagues en aplats translucides montent du bas de l'écran avec l'avancement
+ * du jour (8 % → 34 % de la hauteur), en ressort à chaque validation ; aucune animation infinie, aucun dégradé radial.
  */
 @Composable
-fun ReactiveBg(progress: Float, perfect: Boolean) {
+fun Tide(progress: Float) {
     val p = LocalPal.current
-    if (p.transp || p.contrast) return
-    val k by androidx.compose.animation.core.animateFloatAsState(progress.coerceIn(0f, 1f), androidx.compose.animation.core.tween(if (p.motion) 0 else 1200), label = "reactive")
-    if (k > .01f) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-        val c = androidx.compose.ui.geometry.Offset(size.width * .5f, size.height * 1.05f); val r = size.height * (.35f + .45f * k)
-        drawRect(androidx.compose.ui.graphics.Brush.radialGradient(0f to p.flame.copy(alpha = .26f * k), .5f to p.pink.copy(alpha = .1f * k), 1f to Color.Transparent, center = c, radius = r))
+    val k by androidx.compose.animation.core.animateFloatAsState(progress.coerceIn(0f, 1f), if (p.motion) snap() else tween(1200, easing = fr.pepsgoal.app.ui.Motion.Emphasized), label = "tide")
+    Canvas(Modifier.fillMaxSize()) {
+        val w = size.width; val h = size.height
+        val top = h * (1f - (.08f + .26f * k))
+        fun wave(y: Float, amp: Float, ph: Float, col: Color) {
+            val path = Path().apply { moveTo(0f, h); lineTo(0f, y); var x = 0f; while (x <= w + 6f) { lineTo(x, y + amp * sin(x / w * 2.2f * PI.toFloat() + ph)); x += 6f }; lineTo(w, h); close() }
+            drawPath(path, col)
+        }
+        wave(top, 16.dp.toPx(), 0f, Color(0xFFFF8A3D).copy(alpha = if (p.dark) .20f else .16f))
+        wave(top + 30.dp.toPx(), 12.dp.toPx(), 2f, Color(0xFFFF3D96).copy(alpha = if (p.dark) .18f else .13f))
     }
-    if (perfect && Perf.flags.fx && !p.motion) ThemeFx("confetti")
 }

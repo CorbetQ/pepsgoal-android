@@ -69,8 +69,8 @@ fun StickerView(id: String, fallback: String, sz: Dp, still: Boolean = false) {
     val t by if (anim) rememberInfiniteTransition(label = "stk").animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "stkT") else remember { mutableFloatStateOf(.25f) }
     val s = sin(t * 2 * PI.toFloat())
     Box(Modifier.size(sz), contentAlignment = Alignment.Center) {
-        // Halo chaud derrière la flamme
-        Canvas(Modifier.fillMaxSize()) { drawCircle(Brush.radialGradient(listOf(p.flame.copy(alpha = .35f), Color.Transparent), Offset(size.width / 2, size.height * .44f), size.width * .46f), size.width * .46f, Offset(size.width / 2, size.height * .44f)) }
+        // Disque plein derrière la flamme (aucun halo)
+        Canvas(Modifier.fillMaxSize()) { drawCircle(p.selTint(p.flame), size.width * .4f, Offset(size.width / 2, size.height * .44f)) }
         // Particules décoratives
         val r = remember(id) { Random(id.hashCode()) }; val parts = remember(id) { List(6) { floatArrayOf(r.nextFloat(), r.nextFloat(), r.nextFloat()) } }
         parts.forEachIndexed { i, f ->
@@ -79,7 +79,7 @@ fun StickerView(id: String, fallback: String, sz: Dp, still: Boolean = false) {
             Box(Modifier.offset(x = x - sz * .06f, y = y - sz * .06f).graphicsLayer { alpha = if (anim) (1f - k) else .7f }) {
                 when (def.deco) {
                     "confetti" -> Box(Modifier.size(sz * .05f, sz * .09f).graphicsLayer { rotationZ = k * 360f + i * 40 }.background(listOf(p.flame, p.pink, p.type("measure").c, p.type("routine").c)[i % 4]))
-                    "embers" -> Box(Modifier.size(sz * .05f).clip(CircleShape).background(listOf(Color(0xFFFFB000), Color(0xFFFF6A00), Color(0xFFFFD27F))[i % 3]))
+                    "embers" -> Box(Modifier.size(sz * .05f).clip(CircleShape).background(fr.pepsgoal.app.ui.theme.BRAISE[i % 3]))
                     else -> Emoji(def.deco, sz * .12f)
                 }
             }
@@ -100,8 +100,8 @@ fun StickerView(id: String, fallback: String, sz: Dp, still: Boolean = false) {
         // Emoji compagnon en bas à droite
         Box(Modifier.align(Alignment.BottomEnd).offset(x = -sz * .06f, y = -sz * .2f).graphicsLayer { rotationZ = if (def.anim == "wave") s * 18f else 0f }) { Emoji(def.emoji, sz * .3f) }
         // Mot du sticker, en capsule
-        Text(def.text, Modifier.align(Alignment.BottomCenter).clip(RoundedCornerShape(50)).background(Brush.horizontalGradient(listOf(p.flame2, p.pink))).padding(horizontal = sz * .08f, vertical = sz * .02f),
-            style = TextStyle(fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (sz.value * .12f).sp, color = Color.White, shadow = Shadow(Color(0x66000000), Offset(0f, 2f), 4f)), maxLines = 1)
+        Text(def.text, Modifier.align(Alignment.BottomCenter).clip(RoundedCornerShape(50)).background(p.flameBrush()).padding(horizontal = sz * .08f, vertical = sz * .02f),
+            style = TextStyle(fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = (sz.value * .12f).sp, color = fr.pepsgoal.app.ui.theme.PLUM), maxLines = 1)
     }
 }
 
@@ -109,7 +109,11 @@ fun StickerView(id: String, fallback: String, sz: Dp, still: Boolean = false) {
 @Composable
 fun StickerPicker(onPick: (StickerDef) -> Unit) {
     FlowRowCompat(gap = 6.dp) {
-        STICKERS.forEach { d -> Box(Modifier.clip(smoothShape(16.dp)).clickable(onClickLabel = "Sticker ${d.label}") { onPick(d) }.padding(2.dp)) { StickerView(d.id, d.emoji, 70.dp, still = true) } }
+        STICKERS.forEach { d ->
+            val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val press = rememberPress(inter)
+            Box(Modifier.chunk(LocalPal.current.surface, LocalPal.current.edge, 17.dp, 3.dp, 2.dp, press).clip(RoundedCornerShape(15.dp)).springClick(inter, label = "Sticker ${d.label}") { onPick(d) }.padding(2.dp)) { StickerView(d.id, d.emoji, 70.dp, still = true) }
+        }
     }
 }
 
@@ -151,8 +155,7 @@ fun EmojiBurst(key: String?, emojis: List<String>, bottom: Dp) {
 fun ShotNotice(ui: AppState, m: Message) {
     val p = LocalPal.current; val mine = m.from == ui.pg.meId()
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.Center) {
-        Text(if (mine) "📸 Tu as pris une capture d’écran · ${hm(m.at)}" else "📸 ${first(ui.pg.userById(m.from)?.name ?: "Quelqu’un")} a pris une capture d’écran · ${hm(m.at)}",
-            Modifier.clip(RoundedCornerShape(50)).background(p.glassStrong).border(1.dp, p.line, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 5.dp), fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        MiniPlaque(if (mine) "Tu as pris une capture d’écran · ${hm(m.at)}" else "${first(ui.pg.userById(m.from)?.name ?: "Quelqu’un")} a pris une capture d’écran · ${hm(m.at)}", emoji = "📸")
     }
 }
 
@@ -167,13 +170,13 @@ fun searchText(ui: AppState, m: Message): String {
 @Composable
 fun ChatSearchBar(q: String, onQ: (String) -> Unit, idx: Int, count: Int, onPrev: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
     val p = LocalPal.current
-    Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(smoothShape(18.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(18.dp)).padding(start = 8.dp, end = 4.dp),
+    Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth().chunk(p.surface, p.edge, 28.dp, 4.dp, 2.dp).padding(6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        Field(q, onQ, "", Modifier.weight(1f), placeholder = "Rechercher dans la conversation", max = 60, icon = "search")
-        Text(if (q.isBlank()) "" else if (count == 0) "0" else "${idx + 1}/$count", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
-        IconBtn("up", "Résultat précédent", onPrev, plain = true, size = 36.dp)
-        IconBtn("down", "Résultat suivant", onNext, plain = true, size = 36.dp)
-        IconBtn("x", "Fermer la recherche", onClose, plain = true, size = 36.dp)
+        PSearchField(q, onQ, "Rechercher dans la conversation", Modifier.weight(1f))
+        if (q.isNotBlank()) Text(if (count == 0) "0" else "${idx + 1}/$count", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        RoundBtn("chevronup", "Résultat précédent", onPrev)
+        RoundBtn("down", "Résultat suivant", onNext)
+        RoundBtn("x", "Fermer la recherche", onClose)
     }
 }
 
@@ -194,16 +197,24 @@ fun schedSlots(): List<Pair<String, Long>> {
 /** Choix de l'heure d'envoi d'un message programmé. */
 @Composable
 fun SchedulePanel(onPick: (Long) -> Unit, onCancel: () -> Unit) {
-    val ctx = LocalContext.current
+    var day by remember { mutableStateOf<String?>(null) }
+    var pickDay by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Programmer l’envoi", fontWeight = FontWeight.ExtraBold)
         Muted("Le message part tout seul à l’heure choisie, même si l’application est fermée.", small = true)
         FlowRowCompat(gap = 6.dp) {
             schedSlots().forEach { (l, at) -> PButton(l, { onPick(at) }, icon = "clock", small = true) }
-            PButton("Autre…", { pickDateTime(ctx, nowMs() + 3_600_000L) { t -> if (t > nowMs() + 30_000) onPick(t) } }, icon = "cal", small = true)
+            PButton("Autre…", { pickDay = true }, icon = "calendarplus", small = true)
         }
         PButton("Annuler", onCancel, kind = "ghost", small = true)
     }
+    // « Autre… » : jour puis heure, dans les sélecteurs Braise Pop
+    if (pickDay) PDatePicker(today(), { day = it }, { pickDay = false }, min = today(), title = "Jour d’envoi")
+    day?.let { d -> PTimePicker(java.time.LocalTime.now().plusHours(1).let { "%02d:00".format(it.hour) }, { hm0 ->
+        val (h, mi) = hm0.split(":").map { it.toInt() }
+        val t = java.time.LocalDate.parse(d).atTime(h, mi).atZone(Clock.zone()).toInstant().toEpochMilli()
+        if (t > nowMs() + 30_000) onPick(t)
+    }, { day = null }, title = "Heure d’envoi") }
 }
 
 /** Messages programmés de la conversation, au-dessus de la zone de saisie. */
@@ -213,7 +224,7 @@ fun ScheduledStrip(key: String) {
     Scheduled.rev
     val list = remember(Scheduled.rev, key) { Scheduled.of(ctx, key) }
     if (list.isEmpty()) return
-    Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().clip(smoothShape(18.dp)).background(p.glassStrong).border(1.dp, p.glassEdge, smoothShape(18.dp)).padding(horizontal = 10.dp, vertical = 6.dp)) {
+    Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 3.dp, 2.dp).padding(horizontal = 10.dp, vertical = 6.dp)) {
         list.forEach { s ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Pi("clock", size = 16.dp, tint = p.flameInk)

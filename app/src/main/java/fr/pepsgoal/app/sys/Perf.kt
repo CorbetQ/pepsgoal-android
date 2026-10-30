@@ -19,7 +19,7 @@ object Perf {
         val bgAnim: Boolean = true,
         /** Images par seconde des fonds animés (plafond). */
         val bgFps: Int = 12,
-        /** Verre givré flouté derrière les cartes et barres (sinon teinte unie). */
+        /** Ancien verre givré (8.0) : sans effet depuis Braise Pop, gardé pour les réglages enregistrés. */
         val blur: Boolean = true,
         /** Effets décoratifs : neige, pétales, confettis, étincelles, halos. */
         val fx: Boolean = true,
@@ -27,7 +27,7 @@ object Perf {
         val particles: Float = 1f,
         /** Apparition échelonnée des cartes et transitions riches entre écrans. */
         val rich: Boolean = true,
-        /** Ombres portées des cartes. */
+        /** Anciennes ombres portées (8.0) : sans effet depuis Braise Pop, gardé pour les réglages enregistrés. */
         val shadows: Boolean = true,
     )
 
@@ -40,10 +40,8 @@ object Perf {
     /** Options réglables une à une (clé, libellé, description). */
     val OPTIONS = listOf(
         Triple("bgAnim", "Arrière-plan animé", "Le fond bouge doucement ; désactivé, il reste figé"),
-        Triple("blur", "Verre givré", "Flou de l’arrière-plan derrière les cartes et les barres"),
         Triple("fx", "Effets décoratifs", "Neige, pétales, confettis, étincelles et halos"),
         Triple("rich", "Transitions riches", "Apparition échelonnée des cartes et transitions entre écrans"),
-        Triple("shadows", "Ombres des cartes", "Relief des cartes en verre"),
     )
 
     var flags by mutableStateOf(Flags()); private set

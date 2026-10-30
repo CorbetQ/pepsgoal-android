@@ -70,7 +70,7 @@ data class Pal(
     val dark: Boolean,
     val oled: Boolean,
     val bg: Color, val ink: Color, val ink2: Color, val ink3: Color,
-    val glass: Color, val glassStrong: Color, val glassEdge: Color, val line: Color, val scrim: Color,
+    val line: Color, val scrim: Color,
     val flame2: Color, val flame: Color, val pink: Color, val onAccent: Color,
     /** Accent utilisable comme couleur de texte (assombri sur fond clair, éclairci sur fond sombre si besoin). */
     val flameInk: Color,
@@ -79,7 +79,6 @@ data class Pal(
     val types: Map<String, TypeColor>,
     val materialYou: Boolean,
     val contrast: Boolean, val transp: Boolean, val mono: Boolean, val motion: Boolean,
-    val blur: Float,
     /** Mode Lecture facile : statuts en toutes lettres, mots simples, sans effets. */
     val easy: Boolean = false,
     /** Grandes cibles tactiles (48 dp) : TalkBack actif ou Lecture facile. */
@@ -106,9 +105,42 @@ data class Pal(
 ) {
     val accent get() = Brush.linearGradient(listOf(flame2, flame, pink))
     /** Rail des barres et anneaux. */
-    val rail: Color get() = if (dark && !contrast) Color(0xFF120B16) else surface2
+    val rail: Color get() = if (dark && !contrast) RAIL_NIGHT else surface2
     fun type(t: String) = types[t] ?: types.getValue("routine")
+
+    /* Jetons 8.1 « fond partout » */
+    /** Voile des feuilles : prune 32 % (clair) ou noir 50 % (sombre) ; la scène reste lisible au-dessus. */
+    val sheetScrim: Color get() = if (dark) SCRIM_SHEET_DARK else SCRIM_SHEET_LIGHT
+    /** Voile des dialogues : prune 45 % ou noir 62 %. */
+    val dialogScrim: Color get() = if (dark) SCRIM_DIALOG_DARK else SCRIM_DIALOG_LIGHT
+    /** Bord d'un champ ou d'un sélecteur ouvert, bulle choisie : la braise de la flamme. */
+    val focusEdge: Color get() = if (contrast) ink else EMBER
+    /** Fond des visionneuses de photos et de stories. */
+    val mediaBg: Color get() = Color.Black
+    /** Cinq niveaux pleins des cartes de chaleur (0 : creux, 4 : braise). */
+    fun heat(i: Int): Color = when {
+        contrast -> if (i <= 0) surface2 else lerp(surface, ink, .2f * i)
+        i <= 0 -> surface2; i == 1 -> lerp(surface, EMBER, .3f); i == 2 -> lerp(surface, EMBER, .55f); i == 3 -> lerp(surface, EMBER, .8f); else -> EMBER
+    }
+    /** Fond d'une ligne choisie (radio, option de menu) : la surface teintée du néon [c]. */
+    fun selTint(c: Color): Color = lerp(surface, c, if (dark) .16f else .14f)
 }
+
+/** Braise de la flamme (#FF4A12) : focus, carte de chaleur. */
+val EMBER = Color(0xFFFF4A12)
+/** Les trois teintes de la flamme d'origine (jaune, braise, rose) et sa marche. */
+val BRAISE = listOf(Color(0xFFFFB000), Color(0xFFFF4A12), Color(0xFFFF3D96))
+val BRAISE_STEP = Color(0xFFC2185B)
+/** Rail creusé en thème sombre. */
+val RAIL_NIGHT = Color(0xFF120B16)
+/** Prune très foncé : marche des toasts et des pastilles prune. */
+val PLUM_DEEP = Color(0xFF120810)
+/** Encre claire posée sur le prune (toasts, bulles de valeur). */
+val CREAM = Color(0xFFFFF4EC)
+private val SCRIM_SHEET_LIGHT = Color(0x522A1420)
+private val SCRIM_SHEET_DARK = Color(0x80000000)
+private val SCRIM_DIALOG_LIGHT = Color(0x732A1420)
+private val SCRIM_DIALOG_DARK = Color(0x9E000000)
 
 val LocalPal = staticCompositionLocalOf<Pal> { error("Pal") }
 
@@ -133,12 +165,10 @@ private val CVD = mapOf(
 )
 
 class ThemeInput(
-    val theme: String, val accent: Int, val accentCustom: List<String>?, val glassBlur: String,
+    val theme: String, val accent: Int, val accentCustom: List<String>?,
     val materialYou: Boolean, val contrast: Boolean, val cvd: String, val mono: Boolean, val motion: Boolean, val transp: Boolean,
     /** Thème Météo : sombre la nuit et au crépuscule. */
     val skyDark: Boolean,
-    /** Opacité du verre givré (réglage de l'appareil) : low, mid, high. */
-    val glassOpacity: String = "mid",
     val easy: Boolean = false, val big: Boolean = false, val oneHand: Boolean = false,
     /** Couleurs de saison de l'arrière-plan (null : aucune). */
     val season: List<Long>? = null,
@@ -223,8 +253,6 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
         deco = mode.blobs.take(2).map { mix(bg, hex(it), if (dark) .35f else .3f) }
     } else if (input.season != null && dyn == null) deco = input.season.take(2).map { mix(bg, Color(it).copy(alpha = 1f), if (dark) .3f else .25f) }
     if (input.contrast) { ink = if (dark) Color.White else Color.Black; ink2 = ink; ink3 = if (dark) Color(0xFFDDDDDD) else Color(0xFF222222); edge = ink; control = ink; deco = listOf(bg, bg) }
-    // Compatibilité : l'ancien verre est désormais une surface opaque
-    val glass = surface; val glassStrong = surface
     val line = edge
     // Base de tous les calculs de lisibilité : la surface des cartes
     val card = surface
@@ -242,13 +270,12 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     }.toMap()
 
     val pal = Pal(
-        dark, oled, bg, ink, ink2, ink3, glass, glassStrong, edge, line,
+        dark, oled, bg, ink, ink2, ink3, line,
         if (dark) Color(0xB3000000) else Color(0x802A1420),
         ac2[0], ac2[1], ac2[2], onAc, flameInk,
         if (dark) hex("#4FD08A") else hex("#1E7F45"), if (dark) hex("#FF7A84") else hex("#C0392B"), if (dark) hex("#6FE3FF") else hex("#0057D9"),
         if (dyn != null) listOf(dyn.primary, dyn.tertiary, dyn.secondary, dyn.primaryContainer) else input.season?.map { Color(it) } ?: mode?.let { m -> m.blobs.map(::hex) + ac[1] } ?: listOf(ac[0], ac[2], ac[1], hex("#22D3FF")),
         if (oled) .22f else if (dark) .42f else .55f, types, dyn != null, input.contrast, transp, input.mono, motion,
-        when (input.glassBlur) { "xlow" -> 20f; "low" -> 40f; "high" -> 110f; else -> 70f },
         input.easy, input.big || input.easy, input.oneHand,
         surface = surface, surface2 = surface2, edge = edge, control = control, flameStep = flameStep, deco = deco
     )

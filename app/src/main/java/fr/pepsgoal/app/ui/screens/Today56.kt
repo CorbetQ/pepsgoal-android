@@ -22,6 +22,8 @@ import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.data.Journal
 import fr.pepsgoal.app.ui.*
+import fr.pepsgoal.app.ui.theme.step
+import fr.pepsgoal.app.ui.theme.PLUM
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.core.*
@@ -47,24 +49,29 @@ fun TimelineCard(ui: AppState, plan: Plan) {
             Canvas(Modifier.fillMaxSize()) {
                 val y = size.height - 22.dp.toPx(); val W = size.width
                 val slots = listOf(6f to 11f, 11f to 14f, 14f to 18f, 18f to 24f)
-                slots.forEachIndexed { i, (a, b) -> drawRect(p.ink.copy(alpha = if (i % 2 == 0) .04f else .07f), Offset(W * (a - 6f) / 18f, 0f), androidx.compose.ui.geometry.Size(W * (b - a) / 18f, y)) }
-                drawLine(p.ink.copy(alpha = .25f), Offset(0f, y), Offset(W, y), strokeWidth = 2.dp.toPx())
+                // Créneaux en aplats alternés, rail creusé, heure courante = ligne de la flamme de 2 dp
+                slots.forEachIndexed { i, (a, b) -> if (i % 2 == 1) drawRoundRect(p.surface2, Offset(W * (a - 6f) / 18f, 0f), androidx.compose.ui.geometry.Size(W * (b - a) / 18f, y), androidx.compose.ui.geometry.CornerRadius(6.dp.toPx())) }
+                drawRoundRect(p.rail, Offset(0f, y - 3.dp.toPx()), androidx.compose.ui.geometry.Size(W, 6.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
                 if (nowH in 6f..24f) { val nx = W * (nowH - 6f) / 18f
-                    drawLine(p.flameInk, Offset(nx, 0f), Offset(nx, y), strokeWidth = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())))
-                    drawCircle(p.flameInk, 5.dp.toPx(), Offset(nx, y)) }
+                    drawLine(p.focusEdge, Offset(nx, 0f), Offset(nx, y), strokeWidth = 2.dp.toPx())
+                    drawCircle(p.focusEdge, 6.dp.toPx(), Offset(nx, y)) }
             }
-            for (h in listOf(6, 9, 12, 15, 18, 21)) Text("$h h", Modifier.offset(x = x(h.toFloat()) - (if (h == 6) 0.dp else 10.dp), y = 114.dp), fontSize = 11.sp, color = p.ink3, fontWeight = FontWeight.Bold)
+            for (h in listOf(6, 9, 12, 15, 18, 21)) Text("$h h", Modifier.offset(x = x(h.toFloat()) - (if (h == 6) 0.dp else 10.dp), y = 114.dp), fontSize = 12.sp, color = p.ink3, fontWeight = FontWeight.Bold)
             // Pastilles des objectifs, sur trois rangs pour éviter les chevauchements
             val lanes = FloatArray(3) { -99f }
             items.forEach { (d, h) ->
                 val lane = (0 until 3).firstOrNull { h - lanes[it] >= 1.6f } ?: (0 until 3).minByOrNull { lanes[it] }!!
                 lanes[lane] = h
                 val tc = p.type(d.g.type)
-                Box(Modifier.offset(x = x(h) - 17.dp, y = (6 + lane * 34).dp).size(34.dp).clip(CircleShape)
-                    .background(if (d.done) tc.c.copy(alpha = .9f) else p.glassStrong).border(2.dp, tc.c, CircleShape)
-                    .clickable(onClickLabel = d.g.title) { ui.open(Sheet.Goal(d.g.id)) }, contentAlignment = Alignment.Center) {
+                // Pastille néon à marche (pleine si faite), qui s'enfonce
+                val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val press = rememberPress(inter)
+                val c = vivid(tc.c)
+                Box(Modifier.offset(x = x(h) - 17.dp, y = (6 + lane * 34).dp).size(34.dp, 37.dp)
+                    .chunk(if (d.done) c else p.surface, if (d.done) c.step() else c, 17.dp, 3.dp, if (d.done) 0.dp else 2.dp, press).clip(CircleShape)
+                    .springClick(inter, label = d.g.title) { ui.open(Sheet.Goal(d.g.id)) }, contentAlignment = Alignment.Center) {
                     Emoji(d.g.icon, 18.dp)
-                    if (d.done) Box(Modifier.align(Alignment.BottomEnd).size(14.dp).clip(CircleShape).background(p.ok), contentAlignment = Alignment.Center) { Pi("check", size = 10.dp, tint = androidx.compose.ui.graphics.Color.White) }
+                    if (d.done) Box(Modifier.align(Alignment.BottomEnd).size(14.dp).clip(CircleShape).background(PLUM), contentAlignment = Alignment.Center) { Pi("check", size = 10.dp, tint = c) }
                 }
             }
         }
@@ -84,7 +91,7 @@ fun CatchUpCard(ui: AppState) {
     var no by remember { mutableStateOf(ui.prefs.raw.getStringSet(key, emptySet()) ?: emptySet()) }
     val missed = remember(ui.rev, no) { pg.missedYesterday().filter { it.id !in no } }
     if (missed.isEmpty()) return
-    Glass(border = p.flame.copy(alpha = .45f)) {
+    Glass(border = p.flame) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Emoji("🤔", 30.dp)
             Column(Modifier.weight(1f)) { Text("Tu l’as fait hier ?", fontWeight = FontWeight.ExtraBold); Muted("Oubli de validation ? Rattrape-le ce matin, ta série reste intacte.", small = true) }
@@ -94,7 +101,7 @@ fun CatchUpCard(ui: AppState) {
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("${g.icon} ${g.title}", Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1)
                 PButton("Non", { no = no + g.id; ui.prefs.raw.edit().putStringSet(key, no).apply() }, small = true, kind = "ghost")
-                PButton("Oui, fait", { if (pg.catchUp(g)) { Feedback.success(); ui.toast("« ${g.title} » rattrapé pour hier. Série intacte !", "check") }; ui.bump() }, small = true, kind = "primary")
+                PButton("Oui, fait", { if (pg.catchUp(g)) { Feedback.success(); ui.toast("« ${g.title} » rattrapé pour hier. Série intacte !", "check") }; ui.bump() }, small = true, kind = "type", color = p.type(g.type).c)
             }
         }
     }
@@ -120,9 +127,12 @@ fun EveningQuickCard(ui: AppState, plan: Plan) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Journal.MOODS.forEachIndexed { i, (l, em) ->
                 val on = e?.mood == i + 1
-                Column(Modifier.clip(smoothShape(14.dp)).background(if (on) p.flame.copy(alpha = .18f) else androidx.compose.ui.graphics.Color.Transparent)
-                    .clickable(onClickLabel = l) { Feedback.tick(); Journal.put(ctx, t, i + 1, note) }.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Emoji(em, if (on) 34.dp else 28.dp); Text(l, fontSize = 10.sp, color = if (on) p.ink else p.ink3, fontWeight = FontWeight.Bold)
+                val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val press = rememberPress(inter)
+                val mc = vivid(p.type("monthly").c)
+                Column(Modifier.chunk(if (on) mc else p.surface, if (on) mc.step() else p.edge, 17.dp, 3.dp, if (on) 0.dp else 2.dp, press).clip(RoundedCornerShape(15.dp))
+                    .springClick(inter, label = l) { Journal.put(ctx, t, i + 1, note) }.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Emoji(em, 28.dp); Text(l, fontSize = 12.sp, color = if (on) PLUM else p.ink2, fontWeight = FontWeight.Bold)
                 }
             }
         }

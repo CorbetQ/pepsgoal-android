@@ -1,6 +1,5 @@
 package fr.pepsgoal.app.ui.screens
 
-import android.app.DatePickerDialog
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -28,6 +27,8 @@ import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.Screen
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
+import fr.pepsgoal.app.ui.theme.step
+import androidx.compose.ui.draw.drawBehind
 import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.sheets.SheetHead
 import fr.pepsgoal.app.ui.theme.LocalPal
@@ -100,17 +101,20 @@ fun GiftCard(ui: AppState, m: Message, b: JsonObject, mine: Boolean) {
     val n = b.int("n").coerceIn(0, GIFT_MAX)
     var opened by remember(m.id, ui.rev) { mutableStateOf(pg.giftOpened(m.id)) }
     val wiggle = if (!mine && !opened && !p.motion) rememberInfiniteTransition(label = "gift").animateFloat(-6f, 6f, infiniteRepeatable(tween(500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "giftW").value else 0f
-    Column(Modifier.widthIn(min = 200.dp, max = 260.dp).clip(smoothShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFFFFE08A), Color(0xFFFF9A4A), Color(0xFFFF5E8A))))
+    // Carte cadeau : aplat or à marche, ruban néon, encre prune
+    val gold = vivid(p.gold)
+    Column(Modifier.widthIn(min = 200.dp, max = 260.dp).chunk(gold, gold.step(), 24.dp, 4.dp, 0.dp).clip(RoundedCornerShape(24.dp))
+        .drawBehind { drawRect(vivid(p.type("deadline").c), androidx.compose.ui.geometry.Offset(size.width * .46f, 0f), androidx.compose.ui.geometry.Size(size.width * .08f, size.height)) }
         .padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.graphicsLayer { rotationZ = wiggle }) { Emoji(if (opened || mine) "🔥" else "🎁", 48.dp) }
-        Text("$n flammes", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF2A1408))
-        b.strN("m")?.takeIf { it.isNotBlank() }?.let { Text("« $it »", fontStyle = FontStyle.Italic, color = Color(0xFF3A2010), textAlign = TextAlign.Center) }
+        Text("$n flammes", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = fr.pepsgoal.app.ui.theme.PLUM)
+        b.strN("m")?.takeIf { it.isNotBlank() }?.let { Text("« $it »", fontStyle = FontStyle.Italic, color = fr.pepsgoal.app.ui.theme.PLUM, textAlign = TextAlign.Center) }
         when {
-            mine -> Text("Cadeau offert", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3A2010))
-            opened -> Text("Ouvert · +$n flammes", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3A2010))
+            mine -> Text("Cadeau offert", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = fr.pepsgoal.app.ui.theme.PLUM)
+            opened -> Text("Ouvert · +$n flammes", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = fr.pepsgoal.app.ui.theme.PLUM)
             else -> PButton("Ouvrir le cadeau", {
                 if (pg.openGift(m.id, n)) { opened = true; Feedback.success(); ui.sparks(n); ui.toast("+$n flammes dans ton porte-monnaie !", "gift"); ui.bump() }
-            }, icon = "gift", small = true, kind = "primary")
+            }, icon = "gift", small = true)
         }
     }
 }
@@ -124,7 +128,8 @@ fun FriendPrivateCard(ui: AppState, x: User) {
     var note by remember(x.id) { mutableStateOf(pg.friendNote(x.id)) }
     var bday by remember(x.id, ui.rev) { mutableStateOf(pg.friendBday(x.id)) }
     var editing by remember(x.id) { mutableStateOf(false) }
-    Glass(pad = 14.dp, radius = 18.dp) {
+    var pickDay by remember { mutableStateOf(false) }
+    Glass(pad = 14.dp, radius = 22.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("🔒 Fiche privée", Modifier.weight(1f), fontWeight = FontWeight.ExtraBold)
             IconBtn("edit", "Modifier la fiche privée", { editing = !editing }, plain = true, size = 34.dp)
@@ -133,15 +138,15 @@ fun FriendPrivateCard(ui: AppState, x: User) {
             Muted(if (pg.friendNote(x.id).isNotBlank()) pg.friendNote(x.id) else "Ajoute une note (goûts, projets, idées de cadeau) et son anniversaire : toi seul les vois.", small = true)
             bday?.let { b -> val (m, d) = b.split("-").map { it.toInt() }; Muted("🎂 Anniversaire : $d ${Recaps.MONTHS_LONG[m - 1]}", small = true) }
         } else {
-            Field(note, { note = it }, "Note", placeholder = "Aime le vélo, prépare un marathon…", singleLine = false, minLines = 2, max = 300)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PButton(bday?.let { b -> val (m, d) = b.split("-").map { it.toInt() }; "🎂 $d ${Recaps.MONTHS_LONG[m - 1]}" } ?: "Ajouter son anniversaire", {
-                    val t = todayDate()
-                    DatePickerDialog(ctx, { _, _, mo, d -> bday = "%02d-%02d".format(mo + 1, d) }, 2000, (bday?.substring(0, 2)?.toInt() ?: t.monthValue) - 1, bday?.substring(3)?.toInt() ?: t.dayOfMonth).show()
-                }, small = true)
-                if (bday != null) IconBtn("x", "Effacer l’anniversaire", { bday = null }, plain = true, size = 32.dp)
+            // Anniversaire : sélecteur de date Braise Pop (l'année n'est pas gardée)
+            if (pickDay) { val t = todayDate()
+                PDatePicker(bday?.let { "2000-$it" } ?: "2000-%02d-%02d".format(t.monthValue, t.dayOfMonth), { v -> bday = v.substring(5) }, { pickDay = false }, title = "Anniversaire de ${first(x.name)}") }
+            PTextArea(note, { note = it }, "Note", placeholder = "Aime le vélo, prépare un marathon…", max = 300)
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PSelect("Anniversaire", bday?.let { b -> val (m, d) = b.split("-").map { it.toInt() }; "$d ${Recaps.MONTHS_LONG[m - 1]}" } ?: "Ajouter son anniversaire", { pickDay = true }, Modifier.weight(1f), emoji = "🎂", open = pickDay)
+                if (bday != null) Box(Modifier.padding(bottom = 4.dp)) { RoundBtn("x", "Effacer l’anniversaire", { bday = null }) }
             }
-            PButton("Enregistrer", { pg.setFriendNote(x.id, note); pg.setFriendBday(x.id, bday); editing = false; ui.bump(); ui.toast("Fiche privée enregistrée.", "check") }, icon = "check", small = true, kind = "primary")
+            PButton("Enregistrer", { pg.setFriendNote(x.id, note); pg.setFriendBday(x.id, bday); editing = false; ui.bump(); ui.toast("Fiche privée enregistrée.", "check") }, icon = "check", small = true)
         }
     }
 }
@@ -154,14 +159,14 @@ fun BirthdayCard(ui: AppState) {
     val pg = ui.pg; val p = LocalPal.current
     val list = remember(ui.rev) { pg.birthdaysToday() }
     if (list.isEmpty()) return
-    Glass(border = p.pink.copy(alpha = .5f)) {
+    Glass(border = vivid(p.pink)) {
         list.forEach { x ->
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box { Av(x, 46.dp); Box(Modifier.align(Alignment.TopEnd)) { Emoji("🎂", 20.dp) } }
                 Column(Modifier.weight(1f)) { Text("C’est l’anniversaire de ${first(x.name)} !", fontWeight = FontWeight.ExtraBold); Muted("Un petit mot fait toujours plaisir.", small = true) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PButton("Lui écrire", { ui.chatDraft = "Joyeux anniversaire ${first(x.name)} ! 🎂🎉"; ui.push(Screen.Chat(with = x.id)) }, icon = "comment", small = true, kind = "primary")
+                PButton("Lui écrire", { ui.chatDraft = "Joyeux anniversaire ${first(x.name)} ! 🎂🎉"; ui.push(Screen.Chat(with = x.id)) }, icon = "comment", small = true, kind = "type", color = p.pink)
                 PButton("Offrir des flammes", { ui.open(Sheet.Gift(x.id)) }, icon = "gift", small = true)
             }
         }
@@ -194,7 +199,7 @@ fun QuoteCard(ui: AppState) {
     val p = LocalPal.current
     val (q, a) = remember(today(), ui.rev) { ui.pg.quoteToday() }
     Glass {
-        Text("“", fontFamily = Unbounded, fontSize = 40.sp, color = p.flameInk, modifier = Modifier.height(30.dp))
+        Text("“", fontFamily = Unbounded, fontSize = 48.sp, color = p.flameInk, modifier = Modifier.height(30.dp))
         Text(q, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Muted("— $a", Modifier.weight(1f), small = true)
@@ -210,7 +215,7 @@ fun ChallengeCard(ui: AppState) {
     var skip by remember(today()) { mutableIntStateOf(ui.prefs.raw.getInt("defiSkip:${today()}", 0)) }
     val (e, txt) = remember(skip, today()) { pg.dailyChallenge(skip) }
     val done = remember(ui.rev) { pg.challengeDone() }
-    Glass(border = if (done) p.ok.copy(alpha = .5f) else null) {
+    Glass(border = if (done) vivid(p.type("routine").c).step() else null) {
         CardHead("Défi du jour", emoji = "⚡") { Muted("+$CHALLENGE_BONUS 🔥", small = true) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Emoji(e, 34.dp)
@@ -219,7 +224,7 @@ fun ChallengeCard(ui: AppState) {
         Spacer(Modifier.height(10.dp))
         if (done) Muted("Défi relevé ! À demain pour le suivant.", small = true)
         else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PButton("C’est fait !", { if (pg.completeChallenge()) { Feedback.success(); ui.sparks(CHALLENGE_BONUS); ui.toast("Défi relevé : +$CHALLENGE_BONUS flammes !", "check"); ui.bump() } }, icon = "check", small = true, kind = "primary")
+            PButton("C’est fait !", { if (pg.completeChallenge()) { Feedback.success(); ui.sparks(CHALLENGE_BONUS); ui.toast("Défi relevé : +$CHALLENGE_BONUS flammes !", "check"); ui.bump() } }, icon = "check", small = true, kind = "type", color = p.type("challenge").c)
             if (skip < 2) PButton("Un autre", { skip++; ui.prefs.raw.edit().putInt("defiSkip:${today()}", skip).apply() }, icon = "repeat", small = true, kind = "ghost")
         }
     }
@@ -230,16 +235,20 @@ fun ChallengeCard(ui: AppState) {
 fun AdventCard(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg
     val d = todayDate(); if (!adventOpen(d)) return
-    Glass(border = Color(0xFFE8412C).copy(alpha = .4f)) {
+    Glass(border = vivid(p.type("duel").c)) {
         CardHead("Calendrier de l’Avent", emoji = "🎄") { Emoji("🎄", 22.dp) }
         FlowRowCompat(gap = 6.dp) {
             for (day in 1..24) {
                 val opened = pg.adventOpened(day); val isToday = day == d.dayOfMonth; val past = day < d.dayOfMonth
-                Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(when { opened -> p.ok.copy(alpha = .25f); isToday -> Color(0xFFE8412C); else -> p.ink.copy(alpha = if (past) .04f else .08f) })
-                    .border(if (isToday) 2.dp else 1.dp, if (isToday) Color(0xFFFFD25A) else p.line, RoundedCornerShape(10.dp))
-                    .clickable(enabled = isToday && !opened, onClickLabel = "Ouvrir la case du $day") { pg.openAdvent()?.let { n -> Feedback.success(); ui.sparks(n); ui.toast("Case du $day décembre : +$n flammes ! 🎁", "gift"); ui.bump() } },
+                // Cases de 44 dp à marche : aujourd'hui = bord or 3 dp, ouvertes = aplat lime et coche prune
+                val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val press = rememberPress(inter, isToday && !opened)
+                val okc = vivid(p.type("routine").c)
+                Box(Modifier.size(44.dp, 48.dp).graphicsLayer { alpha = if (past && !opened) .45f else 1f }
+                    .chunk(if (opened) okc else p.surface, if (opened) okc.step() else if (isToday) p.gold else p.edge, 17.dp, 4.dp, if (isToday) 3.dp else if (opened) 0.dp else 2.dp, press).clip(RoundedCornerShape(15.dp))
+                    .springClick(inter, enabled = isToday && !opened, label = "Ouvrir la case du $day") { pg.openAdvent()?.let { n -> Feedback.success(); ui.sparks(n); ui.toast("Case du $day décembre : +$n flammes ! 🎁", "gift"); ui.bump() } },
                     contentAlignment = Alignment.Center) {
-                    if (opened) Emoji(if (day == 24) "🎁" else "⭐", 20.dp) else Text("$day", fontWeight = FontWeight.ExtraBold, color = if (isToday) Color.White else if (past) p.ink3 else p.ink)
+                    if (opened) Pi("check", size = 18.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) else Text("$day", fontWeight = FontWeight.ExtraBold, color = p.ink)
                 }
             }
         }
@@ -252,7 +261,7 @@ fun AdventCard(ui: AppState) {
 fun RecordCard(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg
     val r = remember(ui.rev) { pg.recordChase() } ?: return
-    Glass(border = p.flame.copy(alpha = .4f)) {
+    Glass(border = p.focusEdge) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Emoji(if (r.left == 0) "🏆" else "🎯", 34.dp)
             Column(Modifier.weight(1f)) {
@@ -278,11 +287,12 @@ fun WeekWeatherCard(ui: AppState) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             f.daily.take(7).forEach { dd ->
                 val d = parseYmd(dd.day); val ok = dd.day in good
-                Column(Modifier.clip(RoundedCornerShape(12.dp)).background(if (ok) p.ok.copy(alpha = .16f) else Color.Transparent).padding(horizontal = 4.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(WD[wdIdx(d)], fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (ok) p.ok else p.ink2)
+                Column(Modifier.clip(RoundedCornerShape(17.dp)).background(if (ok) vivid(p.type("routine").c) else Color.Transparent).padding(horizontal = 4.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    val ink = if (ok) fr.pepsgoal.app.ui.theme.PLUM else p.ink2
+                    Text(WD[wdIdx(d)], fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = ink)
                     Emoji(Weather.wmo(dd.code).emoji, 22.dp)
-                    Text(Weather.temp(dd.max), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("${Math.round(dd.pop ?: 0.0)} %", fontSize = 10.sp, color = p.ink3)
+                    Text(Weather.temp(dd.max), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (ok) ink else p.ink)
+                    Text("${Math.round(dd.pop ?: 0.0)} %", fontSize = 12.sp, color = if (ok) ink else p.ink3)
                 }
             }
         }
@@ -311,15 +321,18 @@ fun BreathSheet(ui: AppState) {
     SheetHead(ui, "Respiration guidée")
     Muted("Une minute de cohérence cardiaque : suis le cercle, inspire quand il grandit, expire quand il rétrécit.", small = true)
     Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
-        val c1 = p.type("measure").c; val c2 = p.type("routine").c
+        val c1 = vivid(p.type("period").c); val c2 = p.selTint(p.type("period").c)
         Canvas(Modifier.size(240.dp)) {
             val r = size.minDimension / 2 * scale.value
-            drawCircle(Brush.radialGradient(listOf(c1.copy(alpha = .55f), c2.copy(alpha = .25f), Color.Transparent), center, r * 1.3f), r * 1.3f)
-            drawCircle(c1.copy(alpha = .9f), r, style = Stroke(4.dp.toPx()))
+            // Cercle de respiration en aplats néon « période » (anneau plein, disque plus clair)
+            drawCircle(c2, r * 1.15f)
+            drawCircle(c1, r)
+            drawCircle(c1.step(), r, style = Stroke(4.dp.toPx()))
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(phase, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = TextAlign.Center)
-            if (running) Muted("Cycle $cycle/6", small = true)
+        // Phase en plaque, lisible sur le cercle
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Plaque { Text(phase, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = TextAlign.Center) }
+            if (running) MiniPlaque("Cycle $cycle/6")
         }
     }
     PButton(if (running) "Arrêter" else "Commencer", { running = !running; if (!running) phase = "Prêt ?" }, Modifier.fillMaxWidth(), icon = if (running) "pause" else "play", kind = "primary")

@@ -113,9 +113,10 @@ fun SwipeReveal(s: SwipeState, shape: Shape, threshold: Float = .26f, right: Swi
     val fill by animateFloatAsState(if (armed) 1f else 0f, spring(dampingRatio = .8f, stiffness = 520f), label = "swipeFill")
     val pop by animateFloatAsState(if (armed) 1.18f else .78f + .22f * k, spring(dampingRatio = .45f, stiffness = 600f), label = "swipePop")
     val ink = if (fill > .5f) readable(a.color) else a.color
+    val surf = fr.pepsgoal.app.ui.theme.LocalPal.current.surface
     Box(modifier.fillMaxSize().clip(shape)) {
         Canvas(Modifier.matchParentSize()) {
-            drawRect(a.color.copy(alpha = .08f + .14f * k))
+            drawRect(androidx.compose.ui.graphics.lerp(surf, a.color, .1f + .2f * k))
             // Cercle qui part de l'icône et couvre tout le fond une fois l'action armée
             if (fill > 0f) {
                 val cx = if (toRight) 34.dp.toPx() else size.width - 34.dp.toPx()

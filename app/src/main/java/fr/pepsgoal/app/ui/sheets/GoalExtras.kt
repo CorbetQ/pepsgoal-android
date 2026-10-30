@@ -12,7 +12,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Checkbox
+import fr.pepsgoal.app.ui.theme.step
+import fr.pepsgoal.app.ui.theme.PLUM
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,10 +63,7 @@ fun StepsBlock(ui: AppState, g: Goal, own: Boolean) {
     else Bar(done.size * 100.0 / steps.size, color = tc.c)
     steps.forEachIndexed { i, st ->
         val on = st.id in done
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (on) tc.c.copy(alpha = .14f) else Color.Transparent)
-            .clickable(enabled = own && !editing) { pg.stepToggle(g.id, st.id); Feedback.tick() }.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(on, { pg.stepToggle(g.id, st.id); Feedback.tick() }, enabled = own && !editing)
-            Text(st.t, Modifier.weight(1f), textDecoration = if (on) TextDecoration.LineThrough else null, color = if (on) p.ink2 else p.ink)
+        PCheckRow(st.t, null, on, { pg.stepToggle(g.id, st.id) }, tc.c, enabled = own && !editing, strike = true) {
             if (editing) {
                 if (steps.size > 1) { IconBtn("up", "Monter « ${st.t} »", { pg.stepMove(g.id, st.id, i - 1) }, plain = true, size = 32.dp); IconBtn("down", "Descendre « ${st.t} »", { pg.stepMove(g.id, st.id, i + 1) }, plain = true, size = 32.dp) }
                 IconBtn("x", "Supprimer « ${st.t} »", { pg.stepDel(g.id, st.id) }, plain = true, size = 32.dp)
@@ -121,20 +119,19 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
     if (list.isEmpty() && !editing) Muted("Garde une trace de ta réussite : une photo ou quelques mots, gardés sur ton téléphone.", small = true)
     Row(Modifier.fillMaxWidth().bleed(20.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         // Tuile d'ajout de la preuve du jour
-        if (own && doneNow && todayProof == null && !editing) Column(Modifier.width(104.dp).height(128.dp).clip(smoothShape(18.dp))
-            .background(Brush.linearGradient(listOf(tc.c.copy(alpha = .22f), p.pink.copy(alpha = .12f))))
-            .dashedBorder(tc.c.copy(alpha = .7f), 18.dp).clickable { editing = true },
+        if (own && doneNow && todayProof == null && !editing) { val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }; val press = rememberPress(inter)
+        Column(Modifier.width(104.dp).height(132.dp).chunk(p.selTint(tc.c), tc.c, 18.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(16.dp)).springClick(inter, label = "Ajouter une preuve") { editing = true },
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Box(Modifier.size(38.dp).clip(RoundedCornerShape(50)).background(tc.c), contentAlignment = Alignment.Center) { Pi("plus", size = 20.dp, tint = tc.ink) }
+            Box(Modifier.size(38.dp).clip(androidx.compose.foundation.shape.CircleShape).background(vivid(tc.c)), contentAlignment = Alignment.Center) { Pi("plus", size = 20.dp, tint = PLUM) }
             Text("Ajouter", Modifier.padding(top = 8.dp), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
-            Text("photo ou note", fontSize = 11.sp, color = p.ink2)
-        }
+            Text("photo ou note", fontSize = 12.sp, color = p.ink2)
+        } }
         list.take(60).forEach { pr -> ProofTile(ctx, pr, pr.id == big?.id) { big = if (big?.id == pr.id) null else pr } }
     }
     big?.let { pr ->
-        Column(Modifier.fillMaxWidth().clip(smoothShape(20.dp)).background(p.glassStrong).border(1.dp, p.line, smoothShape(20.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-            if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 380.dp).clip(smoothShape(14.dp)), contentScale = ContentScale.Fit)
+            if (bmp != null) Image(bmp, "Photo du ${fmtDate(pr.date)}", Modifier.fillMaxWidth().heightIn(max = 380.dp).clip(RoundedCornerShape(18.dp)), contentScale = ContentScale.Fit)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(cap(weekdayLongDate(parseYmd(pr.date))), Modifier.weight(1f), fontWeight = FontWeight.ExtraBold)
                 if (own && pr.date == k) PButton("Modifier", { note = pr.note; editing = true; big = null }, icon = "edit", small = true, kind = "ghost")
@@ -142,17 +139,17 @@ fun ProofsBlock(ui: AppState, g: Goal, own: Boolean) {
             if (pr.note.isNotBlank()) Text(pr.note, color = p.ink2)
         }
     }
-    if (editing) Column(Modifier.fillMaxWidth().clip(smoothShape(20.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f)).border(1.dp, p.line.copy(alpha = .6f), smoothShape(20.dp)).padding(12.dp),
+    if (editing) Column(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Field(note, { note = it }, "", placeholder = "Ce que tu as fait, comment tu t’es senti…", singleLine = false, minLines = 2, max = 500, icon = "edit")
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             val has = photo != null || todayProof?.photo != null
-            IconTile("image", if (has) p.ok else p.ink3, if (has) tc.c else p.ink3.copy(alpha = .6f), 36.dp, 12.dp)
+            IconTile("image", if (has) p.ok else p.ink3, if (has) tc.c else p.surface2, 36.dp, 12.dp)
             Text(if (photo != null) "Nouvelle photo prête" else if (todayProof?.photo != null) "Photo enregistrée" else "Aucune photo", Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
             PButton(if (has) "Changer" else "Choisir", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, small = true)
         }
         FlowRowCompat(gap = 6.dp) {
-            PButton("Enregistrer", { Proofs.put(ctx, g.id, k, note, photo); photo = null; editing = false; ui.toast("Preuve enregistrée.", "check") }, icon = "check", small = true, kind = "primary")
+            PButton("Enregistrer", { Proofs.put(ctx, g.id, k, note, photo); photo = null; editing = false; ui.toast("Preuve enregistrée.", "check") }, icon = "check", small = true, kind = "type", color = tc.c)
             if (todayProof != null) PButton("Supprimer", { Proofs.remove(ctx, g.id, k); note = ""; editing = false }, icon = "trash", small = true, kind = "danger")
             PButton("Annuler", { photo = null; editing = false }, small = true, kind = "ghost")
         }
@@ -172,14 +169,14 @@ private fun ProofTile(ctx: android.content.Context, pr: Proof, on: Boolean, onCl
     val p = LocalPal.current
     val bmp = rememberDecoded(pr.id, pr.photo) { Proofs.photoFile(ctx, pr)?.let { f ->
         val o = BitmapFactory.Options().apply { inSampleSize = 4 }; BitmapFactory.decodeFile(f.path, o)?.asImageBitmap() } }
-    Box(Modifier.width(104.dp).height(128.dp).clip(smoothShape(18.dp)).background(p.glassStrong)
-        .border(if (on) 2.dp else 1.dp, if (on) p.focus else p.line, smoothShape(18.dp)).clickable(onClick = onClick)) {
+    // Vignette à marche (rayon 18) ; choisie = bord braise
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Box(Modifier.width(104.dp).height(132.dp).chunk(p.surface, if (on) p.focusEdge else p.edge, 18.dp, 4.dp, if (on) 3.dp else 2.dp, press).clip(RoundedCornerShape(16.dp)).springClick(inter, onClick = onClick)) {
         if (bmp != null) Image(bmp, "Preuve du ${fmtDate(pr.date)}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Text("“${pr.note.take(80)}”", Modifier.padding(10.dp), fontSize = 12.sp, maxLines = 5, overflow = TextOverflow.Ellipsis, color = p.ink2, lineHeight = 16.sp)
-        // Date sur un dégradé, lisible sur la photo
-        Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = if (bmp != null) .55f else 0f)))).padding(8.dp)) {
-            Text(fmtDateShort(pr.date), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (bmp != null) Color.White else p.ink)
-        }
+        // Date en mini-plaque, lisible sur la photo
+        MiniPlaque(fmtDateShort(pr.date), Modifier.align(Alignment.BottomStart).padding(6.dp))
     }
 }
 
@@ -259,7 +256,7 @@ fun AgendaRow(ui: AppState, g: Goal, divider: Boolean = true) {
             PButton("Enregistrer", {
                 val c = cal ?: return@PButton ui.toast("Choisis un agenda.", "cal")
                 Agenda.set(ctx, g, c, time, mins)?.let { ui.toast(it, "x") } ?: run { slot = Agenda.slot(ctx, g.id); open = false; ui.toast("Créneau ajouté à ton agenda.", "cal") }
-            }, icon = "check", small = true, kind = "primary", enabled = cal != null)
+            }, icon = "check", small = true, enabled = cal != null)
             if (slot != null) PButton("Retirer", { Agenda.remove(ctx, g.id); slot = null; open = false; ui.toast("Créneau retiré de l’agenda.", "cal") }, small = true, kind = "ghost")
         }
     }
@@ -270,8 +267,7 @@ fun AgendaRow(ui: AppState, g: Goal, divider: Boolean = true) {
 fun OptionsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPal.current
     SectionTitle(title)
-    Column(Modifier.fillMaxWidth().clip(smoothShape(22.dp)).background(p.ink.copy(alpha = if (p.dark) .05f else .035f))
-        .border(1.dp, p.line.copy(alpha = .6f), smoothShape(22.dp)).padding(horizontal = 14.dp, vertical = 4.dp), content = content)
+    Column(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 24.dp, 4.dp, 2.dp).padding(horizontal = 14.dp, vertical = 4.dp)) { CompositionLocalProvider(LocalInCard provides true) { content() } }
 }
 
 /** Ligne d'option : pastille d'icône, titre, état en sous-titre ; l'éditeur se déplie dessous. */
@@ -281,8 +277,8 @@ fun OptionRow(icon: String, c1: Color, c2: Color, title: String, sub: String?, o
     val p = LocalPal.current
     val rot by androidx.compose.animation.core.animateFloatAsState(if (open) 90f else 0f, label = "chev")
     Column {
-        if (divider) Box(Modifier.fillMaxWidth().padding(start = 52.dp).height(1.dp).background(p.line.copy(alpha = .5f)))
-        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(smoothShape(16.dp)).clickable(onClickLabel = if (open) "Replier" else "Modifier", onClick = onClick).padding(vertical = 10.dp),
+        if (divider) Box(Modifier.fillMaxWidth().padding(start = 52.dp).height(2.dp).background(p.surface2))
+        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(17.dp)).clickable(onClickLabel = if (open) "Replier" else "Modifier", onClick = onClick).padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             IconTile(icon, c1, c2, 38.dp, 12.dp)
             Column(Modifier.weight(1f)) {
@@ -290,7 +286,7 @@ fun OptionRow(icon: String, c1: Color, c2: Color, title: String, sub: String?, o
                 sub?.let { Text(it, fontSize = 13.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 17.sp) }
             }
             right?.invoke()
-            Text("›", Modifier.graphicsLayer { rotationZ = rot }, color = p.ink3, fontSize = 22.sp)
+            Pi("chevronright", Modifier.graphicsLayer { rotationZ = rot }, 20.dp, p.ink3)
         }
         androidx.compose.animation.AnimatedVisibility(open, enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()) {
             Column(Modifier.fillMaxWidth().padding(start = 52.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = body)
@@ -315,9 +311,10 @@ fun SavingsCard(ui: AppState, g: Goal) {
             Triple(fmtNum(Math.round(sv.units * 10) / 10.0), "${g.unit.ifBlank { "unités" }} évité${if (sv.units > 1) "s" else ""}", p.type("abstinence").c),
             if (g.saveMin > 0) Triple(duration(sv.minutes), "de temps gagné", p.type("duration").c) else null
         ).forEach { (v, l, c) ->
-            Column(Modifier.weight(1f).fillMaxHeight().clip(smoothShape(18.dp)).background(Brush.verticalGradient(listOf(c.copy(alpha = .28f), c.copy(alpha = .12f)))).padding(12.dp)) {
-                Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
-                Text(l, fontSize = 12.sp, color = p.ink2, fontWeight = FontWeight.Bold)
+            val cc = vivid(c)
+            Column(Modifier.weight(1f).fillMaxHeight().chunk(cc, cc.step(), 22.dp, 4.dp, 0.dp).padding(12.dp)) {
+                Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1, color = PLUM)
+                Text(l, fontSize = 12.sp, color = PLUM, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -345,7 +342,7 @@ fun SavingsRow(ui: AppState, g: Goal, divider: Boolean = true) {
                 if (d(base) <= 0) return@PButton ui.toast("Indique ta consommation habituelle par jour.", "x")
                 g.saveBase = d(base); g.saveCost = d(cost); g.saveMin = d(mins); pg.store.commit(); open = false
                 ui.toast("Compteur d’économies activé.", "trend")
-            }, icon = "check", small = true, kind = "primary")
+            }, icon = "check", small = true)
             if (g.saveBase > 0) PButton("Retirer", { g.saveBase = 0.0; g.saveCost = 0.0; g.saveMin = 0.0; pg.store.commit(); open = false }, small = true, kind = "ghost")
         }
     }

@@ -1,7 +1,7 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.ui.platform.testTag
 import android.Manifest
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import fr.pepsgoal.app.ui.Text
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.graphicsLayer
@@ -98,13 +97,25 @@ val SET_SECTION_EMOJI = mapOf("Personnalisation" to "🎨", "Au quotidien" to "�
 val SET_COLORS = mapOf("appearance" to ("measure" to "abstinence"), "reminders" to ("period" to "project"), "account" to ("routine" to "duration"),
     "weather" to ("objective" to "period"), "places" to ("measure" to "routine"), "privacy" to ("abstinence" to "program"), "data" to ("challenge" to "limit"), "widgets" to ("challenge" to "deadline"), "ai" to ("program" to "measure"), "health" to ("deadline" to "duration"), "home" to ("routine" to "objective"), "a11y" to ("duration" to "objective"), "perf" to ("timed" to "challenge"), "help" to ("monthly" to "challenge"))
 
-/** Écran plein (au-dessus des onglets) avec un en-tête « retour », sur un fond coloré propre à la page. */
+/** Emoji de la tuile du héros, d'après le pictogramme de la page. */
+private val PAGE_EMOJI = mapOf("gear" to "⚙️", "trend" to "📈", "star" to "🛍️", "trophy" to "🏆", "image" to "🖼️", "book" to "📓", "cal" to "📅", "search" to "🔍",
+    "comment" to "💬", "clock" to "🕘", "flameo" to "🐣", "palette" to "🎨", "bell" to "🔔", "user" to "🔐", "lock" to "🔒", "cloud" to "☁️", "eye" to "👁️",
+    "shield" to "🛡️", "sparkle" to "✨", "heart" to "❤️", "pin" to "📍", "gauge" to "⚡", "list" to "🗂️", "users" to "👥", "sun" to "🌤️", "hand" to "♿",
+    "wand" to "🪄", "server" to "🖥️", "archive" to "📦", "mic" to "🎙️", "folder" to "🗂️", "github" to "💡", "globe" to "🌍", "medal" to "🏅", "target" to "🎯", "gift" to "🎁")
+
+/**
+ * Page poussée au-dessus des onglets, sans fond propre : la scène du fond reste dessous. Héros de page en tête de liste
+ * (retour, tuile emoji, titre en plaque ; 176 dp, [heroH] 150 pour les réglages) qui part avec le contenu, puis barre
+ * compacte opaque qui apparaît quand il est passé (mode une main : barre compacte en bas, sous le pouce).
+ */
 @Composable
 fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, right: @Composable RowScope.() -> Unit = {},
                 icon: String? = null, color: Color? = null, color2: Color? = null, bottom: (@Composable () -> Unit)? = null,
-                state: androidx.compose.foundation.lazy.LazyListState? = null, content: LazyListScope.() -> Unit) {
+                state: androidx.compose.foundation.lazy.LazyListState? = null, emoji: String? = null, heroH: androidx.compose.ui.unit.Dp = 176.dp,
+                content: LazyListScope.() -> Unit) {
     val p = LocalPal.current
-    val c1 = color ?: p.flame; val c2 = color2 ?: p.pink
+    val tile = color2 ?: color ?: p.flame
+    val em = emoji ?: icon?.let { PAGE_EMOJI[it] }
     // Retour prédictif : la page suit le geste de retour du système (elle rétrécit et glisse vers le bord), avec des
     // vibrations progressives ; geste annulé, elle reprend sa place en ressort
     var backK by remember { mutableFloatStateOf(0f) }; var backEdge by remember { mutableIntStateOf(0) }
@@ -132,51 +143,29 @@ fun ScreenFrame(ui: AppState, title: String, back: String, onBack: () -> Unit, r
             translationX = (if (backEdge == 0) 1f else -1f) * k * 28.dp.toPx()
             shape = RoundedCornerShape(32.dp * k); clip = true
         }
-    }) { CompositionLocalProvider(LocalHaze provides null) {
-        PageBackdrop(c1, c2)
-        // Mode une main : le bouton retour et les actions passent en bas de l'écran, sous le pouce
+    }) { run {
+        // Mode une main : la barre compacte (retour et actions) passe en bas de l'écran, sous le pouce
         val low = p.oneHand
         val list = state ?: androidx.compose.foundation.lazy.rememberLazyListState()
-        // En-tête qui se rétracte : passé le grand titre, il s'affiche en petit dans une barre givrée
-        // Le petit titre n'apparaît qu'une fois le grand presque effacé (pas de doublon à l'écran)
-        val dens = androidx.compose.ui.platform.LocalDensity.current; val fadePx = with(dens) { 44.dp.toPx() }
-        val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > fadePx * .85f } }
-        val k by androidx.compose.animation.core.animateFloatAsState(if (collapsed && !low) 1f else 0f, if (p.motion) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(220), label = "head")
-        val head = @Composable { mod: Modifier ->
-            Box(mod.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    IconBtn("chevronleft", "Retour : $back", onBack)
-                    Text(title, Modifier.weight(1f).padding(horizontal = 6.dp).graphicsLayer { alpha = k; translationY = (1f - k) * 10.dp.toPx() }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    right()
-                }
-            }
-        }
+        TrackScroll(list) { Fx.pageScroll = it }
+        val dens = androidx.compose.ui.platform.LocalDensity.current; val heroPx = with(dens) { (heroH - 56.dp).toPx() }
+        val passed by remember(heroPx) { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > heroPx } }
+        val k by androidx.compose.animation.core.animateFloatAsState(if (passed || low) 1f else 0f, if (p.motion) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(180), label = "head")
+        val bar = @Composable { mod: Modifier -> CompactBar(mod, shown = { k }) { CompactTitle(title, tile, back, onBack, em, icon); right() } }
         Column(Modifier.fillMaxSize().imePadding()) {
-            if (!low) head(Modifier.drawBehind {
-                // Barre opaque qui apparaît avec le titre compact (aucun verre ni reflet)
-                drawRect(p.bg.copy(alpha = k))
-            }.statusBarsPadding()) else Spacer(Modifier.statusBarsPadding().height(if (bottom == null) 40.dp else 8.dp))
             // Grand écran : colonne de lecture centrée, à largeur confortable
-            LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp), list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = if (low) 16.dp else 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                item("title") {
-                    // Le grand titre s'efface et rétrécit en défilant (lu dans la phase de dessin : pas de recomposition)
-                    Row(Modifier.enter().graphicsLayer {
-                        val off = if (list.firstVisibleItemIndex == 0) list.firstVisibleItemScrollOffset.toFloat() else 200f
-                        val f = (off / 44.dp.toPx()).coerceIn(0f, 1f); alpha = 1f - f; val sc = 1f - .08f * f; scaleX = sc; scaleY = sc
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
-                    }.padding(top = 6.dp, bottom = 6.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        if (icon != null) EmojiTileBox(c2, 52.dp) { Pi(icon, size = 26.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
-                        Text(title, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 34.sp)
-                    }
-                }
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().wrapContentWidth().widthIn(max = 760.dp).testTag("page_list"), list,
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp, bottom = if (low) 16.dp else 40.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item("title") { Box(Modifier.enter()) { PageHero(title, tile, back, onBack, em, icon, heroH, right) } }
                 content()
                 if (bottom == null && !low) item("nav") { Spacer(Modifier.navigationBarsPadding()) }
             }
             // Zone fixe en bas de page (saisie d'un commentaire…)
             if (bottom != null) Box(Modifier.fillMaxWidth().then(if (low) Modifier else Modifier.navigationBarsPadding())) { bottom() }
-            if (low) head(Modifier.navigationBarsPadding())
+            if (low) bar(Modifier.navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp))
         }
+        if (!low && k > .01f) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().widthIn(max = 776.dp).statusBarsPadding().padding(horizontal = 8.dp, vertical = 2.dp)) { bar(Modifier) }
     } }
 }
 
@@ -190,7 +179,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
         var q by rememberSaveable { mutableStateOf("") }
         val n = VoiceCmd.norm(q.trim())
         val cats = if (n.length < 2) SET_CATS else SET_CATS.filter { c -> listOf(c[1], c[2], SET_WORDS[c[0]] ?: "", setSummary(ui, c[0]) ?: "").any { VoiceCmd.norm(it).contains(n) } }
-        ScreenFrame(ui, "Paramètres", "Profil", { ui.back() }, icon = "gear") {
+        ScreenFrame(ui, "Paramètres", "Profil", { ui.back() }, icon = "gear", heroH = 150.dp) {
             item("search") { Field(q, { q = it }, "", placeholder = "Rechercher un réglage…", max = 40, icon = "search") }
             if (cats.isEmpty()) item("none") { Glass { Empty("Aucun réglage trouvé", "Essaie « thème », « rappel », « vibrations »…", icon = "search") } }
             else {
@@ -224,7 +213,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
         return
     }
     val (k1, k2) = SET_COLORS[c[0]] ?: ("routine" to "duration")
-    ScreenFrame(ui, c[1], "Paramètres", { ui.screens[ui.screens.lastIndex] = Screen.Settings() }, icon = c[3], color = p.type(k1).c, color2 = p.type(k2).c) {
+    ScreenFrame(ui, c[1], "Paramètres", { ui.screens[ui.screens.lastIndex] = Screen.Settings() }, icon = c[3], color = p.type(k1).c, color2 = p.type(k2).c, heroH = 150.dp) {
         when (c[0]) {
             "appearance" -> item("b") { AppearancePage(ui, u) }
             "reminders" -> item("b") { RemindersSettings(ui, u) }
@@ -244,7 +233,7 @@ fun SettingsScreen(ui: AppState, cat: String?) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Couleurs et effets", "🌈")
                     Glass(pad = 0.dp) { A11yRows(ui) }
-                    Muted("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.", Modifier.padding(horizontal = 8.dp), small = true)
+                    Hint("Ces réglages s’appliquent à cet appareil, pour tous les comptes, dès l’écran de connexion.")
                 }
             } }
             else -> item("b") { HelpSettings(ui) }
@@ -257,11 +246,10 @@ private fun save(ui: AppState) { ui.pg.store.commit() }
 /* ------------------------------------------------------------------ Rappels */
 @Composable
 fun TimeButton(value: String, onChange: (String) -> Unit, desc: String) {
-    val ctx = LocalContext.current
-    PButton(value, {
-        val (h, m) = value.split(":").map { it.toIntOrNull() ?: 0 }.let { (it.getOrElse(0) { 8 }) to (it.getOrElse(1) { 30 }) }
-        TimePickerDialog(ctx, { _, hh, mm -> onChange("${pad(hh)}:${pad(mm)}") }, h, m, true).apply { setTitle(desc) }.show()
-    }, icon = "clock", small = true)
+    // Heure : liste qui ouvre le sélecteur d'heure Braise Pop (plus de dialogue Android)
+    var open by remember { mutableStateOf(false) }
+    PSelect(null, value, { open = true }, Modifier.width(IntrinsicSize.Max), icon = "clock", open = open)
+    if (open) PTimePicker(value, onChange, { open = false }, desc)
 }
 
 /** En-tête d'une catégorie de réglages, aux couleurs et à l'icône de la catégorie. */
@@ -304,7 +292,7 @@ private fun RemindersSettings(ui: AppState, u: User) {
                 if (granted) Chip("Activées", "check", p.ok) else PButton("Autoriser", {
                     if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) perm.launch(Manifest.permission.POST_NOTIFICATIONS)
                     else Notifier.openSettings(ctx)
-                }, icon = "bell", kind = "primary", small = true)
+                }, icon = "bell", small = true)
             }
             if (granted) SetItem("Catégories de notifications", "Son, vibration et importance de chaque catégorie, dans Android.", "gear", cNotif, onClick = { Notifier.openSettings(ctx) })
             if (!Reminders.canExact(ctx)) SetItem("Rappels à l’heure exacte", "Android peut retarder les rappels de quelques minutes. Autorise les alarmes exactes pour qu’ils arrivent pile à l’heure.", "clock", p.type("deadline").c, onClick = { Reminders.openExactSettings(ctx) })
@@ -324,7 +312,7 @@ private fun RemindersSettings(ui: AppState, u: User) {
                 SetToggle("Notifications instantanées", "PepsGoal reste connecté en arrière-plan (petite notification discrète) pour relever les nouveautés chaque minute.", "bolt", cBg,
                     instant, { instant = it; ui.prefs.instantNotifs = it; Poller.startLink(ctx); ui.toast(if (it) "Connexion en direct activée." else "Connexion en direct désactivée.", "bell") })
                 SetItem("Optimisation de batterie", if (unr) "PepsGoal n’est pas limité par Android : les relèves continuent en veille." else "Android peut endormir PepsGoal et retarder les messages.", "gauge", cBg) {
-                    if (unr) Chip("Sans limite", "check", p.ok) else PButton("Autoriser", { Poller.askUnrestricted(ctx) }, kind = "primary", small = true)
+                    if (unr) Chip("Sans limite", "check", p.ok) else PButton("Autoriser", { Poller.askUnrestricted(ctx) }, small = true)
                 }
                 SetItem("Tester application fermée", "Ferme PepsGoal : une notification de confirmation arrive à la prochaine relève, en une à deux minutes.", "clock", cBg,
                     onClick = { ui.prefs.pollTest = System.currentTimeMillis(); ui.toast("Ferme l’application et attends la notification.", "bell") })
@@ -358,6 +346,11 @@ fun LifecycleResume(onResume: () -> Unit) {
 private fun AccountSettings(ui: AppState, u: User) {
     val pg = ui.pg; val p = LocalPal.current
     var name by remember(u.id) { mutableStateOf(u.name) }; var bio by remember(u.id) { mutableStateOf(u.bio) }
+    var askOut by remember { mutableStateOf(false) }
+    // Déconnexion : dialogue destructif (bouton « duel » et icône)
+    if (askOut) PDialog({ askOut = false }, "👋", if (pg.db.sandbox) "Quitter la démonstration ?" else "Se déconnecter ?",
+        if (pg.db.sandbox) "Les données d’exemple sont effacées." else "Tes objectifs restent enregistrés sur ton compte. Tu les retrouveras en te reconnectant.",
+        if (pg.db.sandbox) "Quitter" else "Se déconnecter", { askOut = false; signOut(ui) }, dismiss = "Rester connecté", danger = true, icon = "logout")
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         CatHero("account", if (pg.isGuest(u)) "Profil sans compte, gardé sur ce téléphone" else "@${u.username} · inscrit ${ago(u.createdAt)}", leading = { LevelRing(pg.level(pg.points(u.id)).tier, 52.dp) { Av(u, 52.dp) } }, chips = {
             when {
@@ -370,15 +363,16 @@ private fun AccountSettings(ui: AppState, u: User) {
         if (pg.isGuest(u) && !pg.db.sandbox) GuestUpgrade(ui)
         SetGroup("Profil public", note = "Ton nom et ta bio sont visibles par tes amis et sur tes publications.") {
             SetBlock {
-                Field(name, { name = it }, "Nom affiché", max = 40, keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words), icon = "user")
-                Field(bio, { bio = it }, "Bio", singleLine = false, minLines = 2, max = 160)
+                Field(name, { name = it }, "Nom affiché", max = 40, keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words), icon = "user", counter = true,
+                    error = if (name.isNotEmpty() && name.trim().length < 2) "2 caractères minimum." else null)
+                PTextArea(bio, { bio = it }, "Bio", placeholder = "Ce qui te motive en ce moment…", max = 160)
                 val dirty = name.trim() != u.name || bio.trim() != u.bio
                 PButton("Enregistrer", {
                     val n = name.trim()
                     if (n.length < 2) { ui.toast("Indique ton nom (2 caractères minimum).", "x"); return@PButton }
                     if (pg.store.acct) ui.run("Profil mis à jour.", "user") { ui.cloud.saveProfile(n, bio.trim()) }
                     else { u.name = n; u.bio = bio.trim(); save(ui); ui.toast("Profil mis à jour.", "user") }
-                }, Modifier.fillMaxWidth(), icon = "check", kind = "primary", enabled = dirty)
+                }, Modifier.fillMaxWidth(), icon = "check", kind = if (pg.isGuest(u) && !pg.db.sandbox) "normal" else "primary", enabled = dirty) // invité : « Créer mon compte » reste le seul principal
             }
             SetItem("Icône de profil", "Photo, emoji, picto ou initiales", "smile", p.type("measure").c, onClick = { ui.open(Sheet.Avatar) }) { Av(u, 32.dp) }
         }
@@ -387,7 +381,7 @@ private fun AccountSettings(ui: AppState, u: User) {
             val ok = pg.db.sandbox || !pg.store.acct || pg.store.online
             if (pg.isGuest(u)) SetItem("Mode sans compte", "Profil local créé ${ago(u.createdAt)}. Tu peux le reprendre depuis l'écran d'accueil avec « Reprendre sans compte ».", "user", p.type("routine").c)
             SetItem(if (pg.db.sandbox) "Quitter la démonstration" else "Se déconnecter", if (pg.db.sandbox) "Les données d’exemple sont effacées." else if (!pg.store.acct) "Tes données restent sur cet appareil." else if (ok) "Tes données sont sauvegardées sur le serveur PepsGoal." else "Hors ligne : la déconnexion reviendra avec la connexion.",
-                "logout", p.type("project").c, onClick = { signOut(ui) }, enabled = ok)
+                "logout", p.type("project").c, onClick = { askOut = true }, enabled = ok)
             if (!pg.isAdmin(u) && !pg.db.sandbox) SetItem("Supprimer mon compte", "Profil, objectifs, publications, stories et messages. Définitif.", "trash", danger = true, onClick = {
                 if (pg.store.acct) ui.open(Sheet.DeleteAccount)
                 else ui.confirm("Supprimer ton profil ?", "Ton profil sans compte et tous ses objectifs seront supprimés définitivement de cet appareil.", "Supprimer mon profil") {
@@ -458,7 +452,7 @@ private fun PasswordCard(ui: AppState) {
                     catch (e: ApiError) { err = if (e.status == 401) "Mot de passe actuel incorrect." else e.message } catch (e: Exception) { err = e.message }
                     finally { busy = false }
                 }
-            }, icon = "lock", kind = "primary", enabled = !busy)
+            }, icon = "lock", enabled = !busy)
         }
     } }
 }
@@ -497,7 +491,7 @@ fun VaultForm(ui: AppState) {
         if (locked) Text(rich("**Ton coffre de clés a été créé avec un ancien mot de passe.** Saisis cet ancien mot de passe pour le rouvrir, ou recrée le coffre avec ton mot de passe actuel (les clés absentes de tes appareils seront perdues)."), fontSize = 13.sp)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Field(pw, { pw = it }, if (locked) "Ancien mot de passe" else "Ton mot de passe", Modifier.weight(1f), password = true)
-            PButton("Déverrouiller", { go(false) }, icon = "lock", kind = "primary", small = true, enabled = !busy)
+            PButton("Déverrouiller", { go(false) }, icon = "lock", small = true, enabled = !busy)
         }
         if (locked) PButton("Recréer le coffre avec mon mot de passe actuel", { go(true) }, kind = "ghost", small = true, enabled = !busy)
         Err(err)
@@ -528,7 +522,7 @@ private fun WeatherSettings(ui: AppState, u: User) {
             SetBlock {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Field(q, { q = it }, "", Modifier.weight(1f), placeholder = if (pl0 == null) "Rechercher une ville" else "Changer de ville", max = 60, icon = "search")
-                    PButton("Chercher", search, small = true, kind = "primary", enabled = q.trim().length >= 2)
+                    PButton("Chercher", search, small = true, enabled = q.trim().length >= 2)
                 }
                 Err(err)
                 res?.let { list -> if (list.isEmpty()) Muted("Aucune ville trouvée.", small = true) }
@@ -569,7 +563,8 @@ private fun PrivacySettings(ui: AppState, u: User) {
         SetGroup("Visibilité", note = "Modifiable ensuite pour chaque objectif.") {
             SetBlock {
                 Text("Nouveaux objectifs visibles par", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-                Seg(VIS.keys.map { it to VIS.getValue(it).first }, s.defaultVis, { s.defaultVis = it; save(ui); ui.toast("Nouveaux objectifs : ${VIS.getValue(it).first.lowercase()} par défaut.", VIS.getValue(it).second) }, icons = VIS.values.map { it.second })
+                PRadioGroup(VIS.keys.map { it to VIS.getValue(it).first }, s.defaultVis, { s.defaultVis = it; save(ui); ui.toast("Nouveaux objectifs : ${VIS.getValue(it).first.lowercase()} par défaut.", VIS.getValue(it).second) },
+                    subs = listOf("Toi seul", "Tes amis", "Tout le monde sur PepsGoal"), emojis = listOf("🔒", "👥", "🌍"))
             }
             SetItem("Stories", "Visibles uniquement par tes amis pendant 24 heures, puis gardées dans ton archive (visible par toi seul).", "image", p.pink) { Chip("Amis · 24 h", "users", p.type("group").c) }
         }
@@ -612,9 +607,9 @@ private fun DataSettings(ui: AppState, u: User) {
             // Mes données en chiffres
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Objectifs", "Validations", "Publications", "Messages").forEachIndexed { i, l ->
-                    Column(Modifier.weight(1f).clip(smoothShape(14.dp)).background(p.ink.copy(alpha = .05f)).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        FitText(fmtNum(mine[i]), Modifier.fillMaxWidth(), size = 17, min = 11, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
-                        FitText(l, Modifier.fillMaxWidth().padding(horizontal = 4.dp), size = 11, min = 8, color = p.ink2, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Center)
+                    Column(Modifier.weight(1f).clip(RoundedCornerShape(17.dp)).background(p.surface2).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        FitText(fmtNum(mine[i]), Modifier.fillMaxWidth(), size = 18, min = 11, weight = FontWeight.ExtraBold, align = androidx.compose.ui.text.style.TextAlign.Center)
+                        FitText(l, Modifier.fillMaxWidth().padding(horizontal = 4.dp), size = 12, min = 8, color = p.ink2, weight = FontWeight.Bold, align = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }
@@ -707,7 +702,7 @@ private fun HelpSettings(ui: AppState) {
         var taps by remember { mutableIntStateOf(0) }
         val spin by androidx.compose.animation.core.animateFloatAsState(taps * 51.4f, Motion.emphasis(), label = "verSpin")
         CatHero("help", "PepsGoal $APP_VERSION · application Android native${if (ui.pg.db.sandbox) " · démonstration" else ""}", leading = {
-            Box(Modifier.size(52.dp).graphicsLayer { rotationZ = spin }.clip(smoothShape(17.dp)).background(Brush.linearGradient(listOf(p.flame2.copy(alpha = .3f), p.pink.copy(alpha = .22f))))
+            Box(Modifier.size(52.dp).graphicsLayer { rotationZ = spin }.clip(RoundedCornerShape(17.dp)).background(p.selTint(p.flame))
                 .clickable(onClickLabel = "PepsGoal $APP_VERSION") {
                     taps++; Feedback.tick()
                     when {
@@ -771,13 +766,13 @@ private fun UpdateCard(ui: AppState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 10.dp)) {
             IconTile("cloud", p.type("project").c, p.type("objective").c, 44.dp, 14.dp)
             Column(Modifier.weight(1f)) {
-                Text("Mises à jour", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+                Text("Mises à jour", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
                 Muted("Version installée : ${Updater.current}", small = true)
             }
         }
         val r = rel
         when (state) {
-            "checking" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = p.flame); Muted("Recherche d’une nouvelle version…", small = true) }
+            "checking" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { PSpinner(6.dp); Muted("Recherche d’une nouvelle version…", small = true) }
             "none" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Chip("À jour", "check", p.ok); Muted("Tu as la dernière version.", small = true) }
             "error" -> Muted("Impossible de joindre GitHub pour le moment. Vérifie ta connexion et réessaie.", small = true)
             "available", "downloading", "ready" -> if (r != null) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -786,7 +781,7 @@ private fun UpdateCard(ui: AppState) {
                     if (r.size > 0) Muted("· ${"%.1f".format(r.size / 1_048_576f)} Mo", small = true)
                 }
                 if (r.notes.isNotBlank()) Text(r.notes.lines().filter { it.startsWith("- ") }.take(6).joinToString("\n") { "• " + it.removePrefix("- ") }.ifEmpty { r.notes.take(400) }, fontSize = 13.sp, color = p.ink2)
-                if (state == "downloading") { Bar(prog * 100.0); Muted("Téléchargement… ${(prog * 100).toInt()} %", small = true) }
+                if (state == "downloading") { Bar(prog * 100.0, height = 12.dp); Muted("Téléchargement… ${(prog * 100).toInt()} %", small = true) }
                 else PButton(if (state == "ready") "Installer" else "Télécharger et installer", install, icon = "down", kind = "primary", modifier = Modifier.fillMaxWidth())
             }
             else -> {}
@@ -866,7 +861,7 @@ private fun BackupCard(ui: AppState) {
             Muted("Sans ce mot de passe, impossible de restaurer : note-le précieusement. Il n’est pas enregistré sur le téléphone.", small = true)
             PButton(if (busy) "Préparation…" else "Choisir le dossier et activer", {
                 when { pass.length < 8 -> ui.toast("Choisis un mot de passe d’au moins 8 caractères.", "x"); pass != pass2 -> ui.toast("Les deux mots de passe ne sont pas identiques.", "x"); else -> pickDir.launch(null) }
-            }, Modifier.fillMaxWidth(), icon = "lock", kind = "primary", small = true, enabled = !busy)
+            }, Modifier.fillMaxWidth(), icon = "lock", small = true, enabled = !busy)
         }
         SetItem("Restaurer une sauvegarde", "Ajoute les objectifs, validations et pages du journal d’un fichier .pgbak (nouveau téléphone, profil sans compte…). Rien n’est effacé.", "down", p.type("project").c, onClick = { pickFile.launch(arrayOf("*/*")) })
         SetItem("Importer un historique (CSV)", "Depuis Loop Habit Tracker (export « Checkmarks.csv ») ou un tableau : une colonne date, puis une colonne par habitude. Les validations importées ne rapportent pas de flammes.", "upload", p.type("measure").c,
@@ -883,7 +878,7 @@ private fun BackupCard(ui: AppState) {
                             if (n == null) ui.toast("Mot de passe incorrect, ou fichier qui n’est pas une sauvegarde PepsGoal.", "x")
                             else { restoreUri = null; ui.toast(if (n > 0) "Restauration terminée : ${pl(n, "objectif ajouté", "objectifs ajoutés")}." else "Restauration terminée : tout était déjà sur cet appareil.", "check") }
                         }
-                    }, icon = "check", kind = "primary", small = true, enabled = !busy && restorePass.isNotEmpty())
+                    }, icon = "check", small = true, enabled = !busy && restorePass.isNotEmpty())
                     PButton("Annuler", { restoreUri = null }, kind = "ghost", small = true)
                 }
             }

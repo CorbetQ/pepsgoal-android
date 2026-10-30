@@ -62,15 +62,18 @@ fun AuthScreen(ui: AppState) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)) { Logo() }
-            PButton("Accessibilité", { ui.open(Sheet.A11y) }, icon = "eye", kind = "ghost", small = true)
+            Box(Modifier.weight(1f)) { Plaque { Logo() } }
+            PButton("Accessibilité", { ui.open(Sheet.A11y) }, icon = "eye", small = true)
         }
         AuthHero()
-        Text(buildAnnotatedString { append("Fixe le cap.\n"); withStyle(SpanStyle(brush = Brush.linearGradient(listOf(p.flame2, p.flame, p.pink)))) { append("Garde la flamme.") } },
-            fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp, lineHeight = 40.sp)
-        Muted("Planifie tes objectifs, tes deadlines, tes routines et tes abstinences. Valide chaque jour, fais grandir ta série et avance avec tes amis.")
-        FlowRowCompat(gap = 8.dp) { listOf("objective", "deadline", "routine", "abstinence").forEach { TypeChip(it) } }
-        Glass(strong = true) {
+        // Accroche, texte et types dans une carte : rien n'est posé à nu sur la scène
+        Glass(Modifier.fillMaxWidth()) {
+            Text(buildAnnotatedString { append("Fixe le cap.\n"); withStyle(SpanStyle(brush = Brush.linearGradient(listOf(p.flame2, p.flame, p.pink)))) { append("Garde la flamme.") } },
+                fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 36.sp)
+            Muted("Planifie tes objectifs, tes deadlines, tes routines et tes abstinences. Valide chaque jour, fais grandir ta série et avance avec tes amis.", Modifier.padding(top = 8.dp, bottom = 10.dp))
+            FlowRowCompat(gap = 8.dp) { listOf("objective", "deadline", "routine", "abstinence").forEach { TypeChip(it) } }
+        }
+        Glass {
             Seg(listOf(false to "Connexion", true to "Créer un compte"), signup, { signup = it; err = null })
             Spacer(Modifier.height(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -86,8 +89,8 @@ fun AuthScreen(ui: AppState) {
             Muted("Sans compte : données sur cet appareil uniquement, sans synchronisation ni fonctions sociales.", Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp), small = true, center = true)
             PButton("Mode démonstration", { demoStart(ui) }, Modifier.fillMaxWidth(), leading = { Flame(18.dp) })
         }
-        LegalLinks(ui)
-        Muted("Mode démonstration : données d’exemple, rien n’est enregistré. · PepsGoal $APP_VERSION", Modifier.fillMaxWidth(), small = true, center = true)
+        Glass(pad = 8.dp) { LegalLinks(ui) }
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Hint("Mode démonstration : données d’exemple, rien n’est enregistré. · PepsGoal $APP_VERSION") }
     }
 }
 
@@ -137,11 +140,13 @@ fun demoStart(ui: AppState) {
 fun MaintenanceScreen(ui: AppState) {
     val m = ui.pg.maintNow()!!
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
-        Logo()
-        Text(buildAnnotatedString { append("On revient "); withStyle(SpanStyle(brush = Brush.linearGradient(listOf(LocalPal.current.flame2, LocalPal.current.pink)))) { append("très vite.") } }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
-        Muted("PepsGoal est en maintenance${m.until?.let { " jusqu'au ${fr.pepsgoal.core.fmtDT(it)}" } ?: ""}. ${m.message.ifEmpty { "Tes objectifs, ta série et tes flammes sont en sécurité." }}")
-        Muted("Ta série est protégée : les jours de maintenance ne la cassent pas.", small = true)
-        PButton("Se déconnecter", { ui.run { ui.cloud.logout() } }, icon = "logout", enabled = ui.pg.store.online)
+        Plaque { Logo() }
+        Glass(Modifier.fillMaxWidth()) {
+            Text(buildAnnotatedString { append("On revient "); withStyle(SpanStyle(brush = Brush.linearGradient(listOf(LocalPal.current.flame2, LocalPal.current.pink)))) { append("très vite.") } }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
+            Muted("PepsGoal est en maintenance${m.until?.let { " jusqu'au ${fr.pepsgoal.core.fmtDT(it)}" } ?: ""}. ${m.message.ifEmpty { "Tes objectifs, ta série et tes flammes sont en sécurité." }}", Modifier.padding(top = 8.dp))
+            Muted("Ta série est protégée : les jours de maintenance ne la cassent pas.", Modifier.padding(top = 6.dp, bottom = 10.dp), small = true)
+            PButton("Se déconnecter", { ui.run { ui.cloud.logout() } }, icon = "logout", enabled = ui.pg.store.online)
+        }
     }
 }
 
@@ -157,7 +162,11 @@ private fun AuthHero() {
     BoxWithConstraints(Modifier.fillMaxWidth().height(190.dp)) {
         val w = maxWidth; val h = maxHeight
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            if (!p.contrast) drawCircle(Brush.radialGradient(listOf(p.flame.copy(alpha = if (p.dark) .45f else .32f), p.pink.copy(alpha = .12f), androidx.compose.ui.graphics.Color.Transparent), radius = size.height * .62f), size.height * .62f)
+            // Disque plein à marche sous la flamme (aucun halo)
+            val rr = size.height * .42f
+            drawCircle(p.edge, rr, center + androidx.compose.ui.geometry.Offset(0f, 5.dp.toPx()))
+            drawCircle(p.surface, rr)
+            drawCircle(p.edge, rr, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
         }
         Box(Modifier.align(Alignment.Center).graphicsLayer {
             val t = ph.value * 6.2832f; val k = 1f + .04f * kotlin.math.sin(t); scaleX = k; scaleY = k

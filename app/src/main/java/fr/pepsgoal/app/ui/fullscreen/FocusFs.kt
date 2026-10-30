@@ -41,26 +41,28 @@ fun FocusFs(ui: AppState, preGoal: String?) {
     var goal by remember { mutableStateOf(preGoal ?: ui.prefs.focusGoal.ifEmpty { null }) }
     var minutes by remember { mutableIntStateOf(25) }
     Box(Modifier.fillMaxSize()) {
-        PageBackdrop(p.type("program").c, p.type("period").c)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Focus", Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
-                IconBtn("x", "Fermer", { ui.closeFs() }, size = 44.dp)
+                Box(Modifier.weight(1f)) { TitlePlaque("Focus") }
+                IconBtn("x", "Fermer", { ui.closeFs() })
             }
             val g = (if (running) ui.prefs.focusGoal.ifEmpty { null } else goal)?.let { pg.goalById(it) }
             // Grand anneau : temps restant
             val frac = if (running) (left.toFloat() / (if (total > 0) total else (minutes * 60_000L)).toFloat()).coerceIn(0f, 1f) else 1f
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Canvas(Modifier.size(260.dp)) {
+                // Anneau sur disque plein : rail surface2 cerclé de control, avancée de la flamme
+                Canvas(Modifier.size(240.dp)) {
                     val sw = 18.dp.toPx(); val r = Size(size.width - sw, size.height - sw)
-                    drawArc(p.ink.copy(alpha = .1f), 0f, 360f, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw))
-                    drawArc(Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)), -90f, 360f * frac, false, Offset(sw / 2, sw / 2), r, style = Stroke(sw, cap = StrokeCap.Round))
+                    drawCircle(p.surface, size.minDimension / 2)
+                    drawCircle(p.control, size.minDimension / 2, style = Stroke(2.dp.toPx()))
+                    drawArc(p.surface2, 0f, 360f, false, Offset(sw / 2 + 4.dp.toPx(), sw / 2 + 4.dp.toPx()), Size(r.width - 8.dp.toPx(), r.height - 8.dp.toPx()), style = Stroke(sw))
+                    drawArc(Brush.sweepGradient(listOf(p.flame2, p.flame, p.pink, p.flame2)), -90f, 360f * frac, false, Offset(sw / 2 + 4.dp.toPx(), sw / 2 + 4.dp.toPx()), Size(r.width - 8.dp.toPx(), r.height - 8.dp.toPx()), style = Stroke(sw, cap = StrokeCap.Round))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     // La flamme se consume au fil de la session
                     if (running) Box(Modifier.size(64.dp), contentAlignment = Alignment.BottomCenter) { Flame((24 + 40 * frac).dp, dim = frac < .05f) }
                     val shown = if (running) left else minutes * 60_000L
-                    Text("%02d:%02d".format(shown / 60_000, (shown / 1000) % 60), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 48.sp)
+                    Text("%02d:%02d".format(shown / 60_000, (shown / 1000) % 60), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 48.sp, color = p.ink)
                     Muted(if (running) (g?.let { "${it.icon} ${it.title}" } ?: "Session libre") else "prêt à démarrer", small = true)
                 }
             }
@@ -78,7 +80,7 @@ fun FocusFs(ui: AppState, preGoal: String?) {
                 }
                 PButton("Démarrer la session", { total = minutes * 60_000L; Focus.start(ctx, minutes, goal); running = true; left = Focus.left(ctx) }, Modifier.fillMaxWidth(), icon = "play", kind = "primary")
             } else {
-                Muted("Le compte à rebours reste visible dans la barre d’état. ${if (g?.type == "duration") "Le minuteur de l’objectif tourne en même temps." else if (g != null) "L’objectif sera validé à la fin de la session." else ""}", center = true, small = true)
+                Hint("Le compte à rebours reste visible dans la barre d’état. ${if (g?.type == "duration") "Le minuteur de l’objectif tourne en même temps." else if (g != null) "L’objectif sera validé à la fin de la session." else ""}")
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     PButton("Arrêter", { Focus.stop(ctx, false); running = false }, icon = "x", kind = "danger")
                     PButton("Terminer maintenant", { Focus.stop(ctx, true); running = false; ui.toast("Session terminée, bravo !", "check") }, icon = "check", kind = "primary")

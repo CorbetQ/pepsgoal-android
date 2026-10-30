@@ -1,18 +1,15 @@
 package fr.pepsgoal.app.ui.sheets
 
-import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import fr.pepsgoal.app.ui.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,39 +35,63 @@ import fr.pepsgoal.core.setVacation
 import fr.pepsgoal.core.endVacation
 import fr.pepsgoal.core.VACATION_MAX
 
-/** Fenêtres du bas (feuilles modales Material 3), une à la fois comme dans la version web. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Fenêtres du bas : feuilles Braise Pop ([PSheet]), une à la fois comme dans la version web. Ouverture rebondissante,
+ * voile allégé (la scène reste visible au-dessus), fermeture en glissant, par le voile ou Retour (prédictif : la feuille
+ * suit le geste). Une confirmation courte s'affiche en dialogue ([PDialog]) par-dessus la feuille d'où elle vient.
+ */
 @Composable
 fun SheetHost(ui: AppState) {
-    val s = ui.sheet ?: return
-    val p = LocalPal.current
+    val cur = ui.sheet
     // Grand écran : la fiche d'un objectif s'affiche dans le volet latéral (voir Shell), pas en fenêtre du bas
-    if (s is Sheet.Goal && androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 900 && ui.screens.isEmpty() && ui.fs == null) return
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    // La fenêtre s'arrête sous la barre d'état ; ses cartes n'ont pas de flou (autre fenêtre que l'arrière-plan)
-    val slot = remember(s) { FootSlot() }
-    ModalBottomSheet(onDismissRequest = { ui.back() }, modifier = Modifier.statusBarsPadding(), sheetState = state, containerColor = p.bg, contentColor = p.ink,
-        scrimColor = p.scrim, shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        // Fiche d'objectif : la poignée est dessinée dans son bandeau néon ; ailleurs, poignée de 40 × 5 dp
-        dragHandle = if (s is Sheet.Goal) null else ({ Box(Modifier.padding(top = 10.dp, bottom = 2.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(50)).background(p.ink3)) })) {
-        key(s) { CompositionLocalProvider(LocalHaze provides null, LocalInSheet provides true, LocalFootSlot provides slot) {
-            val foot = slot.content
-            // Contenu d'une fenêtre (ou de l'étape suivante dans la même fenêtre) : fondu et léger glissement vers le haut
-            val shown = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else 0f) }
-            LaunchedEffect(Unit) { if (shown.value < 1f) shown.animateTo(1f, Motion.sheet()) }
-            Column(Modifier.fillMaxWidth().imePadding().graphicsLayer { alpha = shown.value.coerceIn(0f, 1f); translationY = (1f - shown.value) * 18.dp.toPx() }) {
-                // Fiche d'objectif : le bandeau néon va jusqu'aux bords ; son contenu garde les marges de 16 dp
-                val goal = s is Sheet.Goal
-                Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()).then(if (foot == null) Modifier.navigationBarsPadding() else Modifier)
-                    .padding(start = if (goal) 0.dp else 16.dp, end = if (goal) 0.dp else 16.dp, top = if (goal) 0.dp else 8.dp, bottom = if (foot == null) 24.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SheetBody(ui, s)
-                }
-                // Boutons d'action toujours visibles en bas, même quand le contenu défile
-                if (foot != null) Row(Modifier.fillMaxWidth().drawBehind { drawRect(p.surface2, size = androidx.compose.ui.geometry.Size(size.width, 2.dp.toPx())) }
-                    .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) { foot() }
-            }
-        } }
+    val side = cur is Sheet.Goal && androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 900 && ui.screens.isEmpty() && ui.fs == null
+    val confirm = cur as? Sheet.Confirm
+    val dialog = confirm != null && confirm.text.length <= 160
+    val target = when { side -> null; dialog -> confirm!!.back; else -> cur }
+    // Dernière feuille montrée : gardée le temps de sa sortie animée
+    val last = remember { mutableStateOf<Sheet?>(null) }
+    SideEffect { if (target != null) last.value = target }
+    var backK by remember { mutableFloatStateOf(0f) }
+    androidx.activity.compose.PredictiveBackHandler(enabled = target != null && !dialog) { events ->
+        try { events.collect { e -> backK = e.progress }; ui.back() } catch (c: kotlin.coroutines.cancellation.CancellationException) { backK = 0f }
     }
+    LaunchedEffect(target) { if (target != null) backK = 0f }
+    val s = target ?: last.value
+    if (s != null) {
+        val slot = remember(s) { FootSlot() }
+        PSheet(visible = target != null, onDismiss = { if (ui.sheet === s || ui.sheet === confirm) ui.back() }, onGone = { if (last.value === s) last.value = null },
+            title = sheetTitle(s), handle = s !is Sheet.Goal, back = { backK }) {
+            key(s) { CompositionLocalProvider(LocalInSheet provides true, LocalFootSlot provides slot) {
+                val p = LocalPal.current
+                val foot = slot.content
+                // Contenu d'une fenêtre (ou de l'étape suivante dans la même fenêtre) : fondu et léger glissement vers le haut
+                val shown = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else 0f) }
+                LaunchedEffect(Unit) { if (shown.value < 1f) shown.animateTo(1f, Motion.sheet()) }
+                Column(Modifier.fillMaxWidth().imePadding().graphicsLayer { alpha = shown.value.coerceIn(0f, 1f); translationY = (1f - shown.value) * 18.dp.toPx() }) {
+                    // Fiche d'objectif : le bandeau néon va jusqu'aux bords ; son contenu garde les marges de 16 dp
+                    val goal = s is Sheet.Goal
+                    Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()).then(if (foot == null) Modifier.navigationBarsPadding() else Modifier)
+                        .padding(start = if (goal) 0.dp else 16.dp, end = if (goal) 0.dp else 16.dp, top = if (goal) 0.dp else 4.dp, bottom = if (foot == null) 16.dp else 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SheetBody(ui, s)
+                    }
+                    // Pied collé en bas, fond bg et filet de 2 dp : le bouton principal reste visible quand le contenu défile
+                    if (foot != null) Row(Modifier.fillMaxWidth().background(p.bg).drawBehind { drawRect(p.edge, size = androidx.compose.ui.geometry.Size(size.width, 2.dp.toPx())) }
+                        .navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) { foot() }
+                }
+            } }
+        }
+    }
+    if (dialog) {
+        val c = confirm!!
+        val cancel = { if (ui.sheet === c) { if (c.back != null) ui.sheet = c.back else ui.close() } }
+        PDialog(cancel, if (c.danger) "⚠️" else "🤔", c.title, c.text, c.ok, { ui.sheet = c.back; if (c.back == null) ui.close(); c.run() }, danger = c.danger)
+    }
+}
+
+/** Titre annoncé par TalkBack à l'ouverture d'une feuille. */
+private fun sheetTitle(s: Sheet): String = when (s) {
+    is Sheet.GoalForm -> "Nouvel objectif"; is Sheet.Goal -> "Fiche de l’objectif"; is Sheet.Notifs -> "Notifications"; is Sheet.Confirm -> s.title
+    is Sheet.Avatar -> "Avatar"; is Sheet.Compose -> "Nouvelle publication"; is Sheet.Progress -> "Saisir une quantité"; else -> "Fenêtre"
 }
 
 /** Emplacement des boutons du pied de fenêtre, rendu hors de la zone qui défile. */
@@ -147,19 +168,15 @@ fun SheetFoot(content: @Composable RowScope.() -> Unit) {
     DisposableEffect(slot) { onDispose { slot.content = null } }
 }
 
-/** Choix d'une date (AAAA-MM-JJ) avec le sélecteur d'Android ; `optional` permet de l'effacer. */
+/** Choix d'une date (AAAA-MM-JJ) : liste qui ouvre le sélecteur Braise Pop ; `optional` permet de l'effacer. */
 @Composable
-fun DateField(label: String, value: String, onChange: (String) -> Unit, optional: Boolean = false, min: String? = null) {
-    val ctx = LocalContext.current
-    SetRow(label, if (value.isEmpty()) "Aucune date" else fmtDate(value)) {
-        PButton(if (value.isEmpty()) "Choisir" else "Changer", {
-            val d = if (value.isEmpty()) parseYmd(today()) else parseYmd(value)
-            DatePickerDialog(ctx, { _, y, m, dd -> onChange(ymd(java.time.LocalDate.of(y, m + 1, dd))) }, d.year, d.monthValue - 1, d.dayOfMonth).apply {
-                min?.let { datePicker.minDate = java.time.LocalDate.parse(it).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() }
-            }.show()
-        }, icon = "cal", small = true)
-        if (optional && value.isNotEmpty()) PButton("Retirer", { onChange("") }, kind = "ghost", small = true)
+fun DateField(label: String, value: String, onChange: (String) -> Unit, optional: Boolean = false, min: String? = null, max: String? = null) {
+    var open by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        PSelect(label, if (value.isEmpty()) "Aucune date" else fmtDate(value), { open = true }, Modifier.weight(1f), icon = "cal", open = open)
+        if (optional && value.isNotEmpty()) Box(Modifier.padding(bottom = 4.dp)) { RoundBtn("x", "Retirer la date", { onChange("") }) }
     }
+    if (open) PDatePicker(value.ifEmpty { null }, onChange, { open = false }, min, max, label)
 }
 
 /** Puces des jours de la semaine (L M M J V S D). */
@@ -176,14 +193,11 @@ fun FriendPicker(ui: AppState, selected: List<String>, single: Boolean, exclude:
     val pg = ui.pg
     val fr = pg.friendsOf(pg.meId()).mapNotNull { pg.userById(it) }.filter { it.id !in exclude && !pg.isBlockedPair(pg.meId(), it.id) }
     if (fr.isEmpty()) { Muted("Ajoute d'abord des amis depuis l'onglet Amis.", small = true); return }
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(Modifier.then(if (single) Modifier.selectableGroup() else Modifier), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         fr.forEach { x ->
             val on = x.id in selected
-            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Av(x, 34.dp); Text(x.name, Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                if (single) androidx.compose.material3.RadioButton(on, { onChange(listOf(x.id)) })
-                else androidx.compose.material3.Checkbox(on, { onChange(if (on) selected - x.id else selected + x.id) })
-            }
+            if (single) PRadioRow(x.name, "@${x.username}", on, { onChange(listOf(x.id)) }, leading = { Av(x, 36.dp) })
+            else PCheckRow(x.name, "@${x.username}", on, { onChange(if (on) selected - x.id else selected + x.id) }, leading = { Av(x, 36.dp) })
         }
     }
 }
@@ -194,7 +208,8 @@ fun ConfirmSheet(ui: AppState, s: Sheet.Confirm) {
     Muted(s.text)
     SheetFoot {
         PButton("Annuler", { if (s.back != null) ui.sheet = s.back else ui.close() }, kind = "ghost")
-        PButton(s.ok, { ui.close(); s.run() }, kind = if (s.danger) "danger" else "primary")
+        if (s.danger) PButton(s.ok, { ui.close(); s.run() }, kind = "type", color = LocalPal.current.type("duel").c, icon = "trash")
+        else PButton(s.ok, { ui.close(); s.run() }, kind = "primary")
     }
 }
 
@@ -243,6 +258,6 @@ private fun VacationBlock(ui: AppState) {
         DateField("Fin", to, { to = it }, min = from)
         PButton("Partir en vacances", {
             pg.setVacation(from, to)?.let { ui.toast(it, "x") } ?: ui.toast("Bonnes vacances ! Tes séries t’attendront.", "sun")
-        }, icon = "check", kind = "primary", small = true)
+        }, icon = "check", color = LocalPal.current.type("period").c, small = true)
     }
 }
