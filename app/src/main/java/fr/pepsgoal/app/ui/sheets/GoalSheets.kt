@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Checkbox
+import fr.pepsgoal.app.ui.theme.step
 import fr.pepsgoal.app.ui.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
@@ -113,7 +114,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
             val list = ks.filter { !(it in SOCIAL_TYPES && !social) }
             if (list.isNotEmpty()) {
                 Eyebrow(lab)
-                list.chunked(2).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { k -> TypeTile(k, k == type, Modifier.weight(1f).fillMaxHeight()) { type = k; d.type = k; go("values") } }; if (row.size == 1) Spacer(Modifier.weight(1f)) } }
+                list.chunked(3).forEach { row -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) { row.forEach { k -> TypeTile(k, k == type, Modifier.weight(1f).fillMaxHeight()) { type = k; d.type = k; go("values") } }; repeat(3 - row.size) { Spacer(Modifier.weight(1f)) } } }
             }
         }
         SheetFoot { PButton("Retour", { go("mode") }, kind = "ghost", icon = "chevronleft"); PButton("Continuer", { go("values") }, kind = "primary") }
@@ -138,7 +139,7 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     }
     Field(title, { title = it }, "Intitulé", placeholder = "Ex. Courir 30 minutes", max = 80)
     SetRow("Icône") {
-        Box(Modifier.size(48.dp).clip(smoothShape(14.dp)).background(p.type(type).c.copy(alpha = .22f)).clickable { showIcons = !showIcons }, contentAlignment = Alignment.Center) { Emoji(icon, 30.dp) }
+        EmojiTile(icon, p.type(type).c, 48.dp)
         PButton(if (showIcons) "Fermer" else "Changer", { showIcons = !showIcons }, small = true)
     }
     if (showIcons) EmojiPicker(icon) { icon = it; showIcons = false }
@@ -297,15 +298,18 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
     }
 }
 
-/** Indicateur d'étapes de l'assistant de création. */
+/** Indicateur d'étapes de l'assistant de création : barres de 8 dp (flamme pour les étapes passées), pastille de l'étape. */
 @Composable
 private fun StepBar(steps: List<Pair<String, String>>, cur: String) {
     val p = LocalPal.current; val i = steps.indexOfFirst { it.first == cur }.coerceAtLeast(0)
     Column(Modifier.semantics(mergeDescendants = true) { contentDescription = "Étape ${i + 1} sur ${steps.size} : ${steps[i].second}" }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            steps.forEachIndexed { k, _ -> Box(Modifier.weight(1f).height(5.dp).clip(CircleShape).background(if (k <= i) p.flame else p.ink.copy(alpha = .12f))) }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            steps.forEachIndexed { k, _ -> Box(Modifier.weight(1f).height(8.dp).clip(CircleShape).background(if (k <= i) p.flameBrush() else SolidColor(p.rail))) }
         }
-        Text("Étape ${i + 1}/${steps.size} · ${steps[i].second}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(22.dp).background(vivid(p.flame), CircleShape), contentAlignment = Alignment.Center) { Text("${i + 1}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = PLUM) }
+            Text("${steps[i].second} · ${i + 1}/${steps.size}", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.ink2)
+        }
     }
 }
 
@@ -314,13 +318,13 @@ private fun StepBar(steps: List<Pair<String, String>>, cur: String) {
 private fun ModeCard(icon: String, title: String, desc: String, ai: Boolean, onClick: () -> Unit) {
     val p = LocalPal.current
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(Modifier.fillMaxWidth().bounce(inter, .97f).then(if (ai) Modifier.border(2.dp, p.flame, smoothShape(20.dp)) else Modifier).clip(smoothShape(20.dp))
-        .background(if (ai) p.flame.copy(alpha = .12f) else p.ink.copy(alpha = .05f)).border(1.dp, if (ai) p.flame.copy(alpha = .5f) else p.line, smoothShape(20.dp))
+    val press = rememberPress(inter)
+    Row(Modifier.fillMaxWidth().chunk(if (ai) p.selTint(p.flame) else p.surface, if (ai) p.focusEdge else p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(20.dp))
         .springClick(inter, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         IconTile(icon, if (ai) p.type("program").c else p.type("routine").c, if (ai) p.type("measure").c else p.type("objective").c, 48.dp, 16.dp)
         Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp); Muted(desc, small = true) }
-        Text("›", color = p.ink3, fontSize = 24.sp)
+        Pi("chevronright", size = 20.dp, tint = p.ink3)
     }
 }
 
@@ -328,7 +332,7 @@ private fun ModeCard(icon: String, title: String, desc: String, ai: Boolean, onC
 @Composable
 private fun GoalSummary(ui: AppState, u: User, g: Goal, grp: String?, health: String?) {
     val p = LocalPal.current; val pg = ui.pg; val tc = p.type(g.type)
-    Column(Modifier.fillMaxWidth().clip(smoothShape(22.dp)).background(tc.c.copy(alpha = .16f)).border(1.dp, tc.c.copy(alpha = .5f), smoothShape(22.dp)).padding(16.dp),
+    Column(Modifier.fillMaxWidth().chunk(p.selTint(tc.c), tc.c, 24.dp, 4.dp, 2.dp).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             GoalIcon(g, 54.dp)
@@ -484,12 +488,21 @@ private fun saveGoal(ui: AppState, u: User, g0: Goal?, g: Goal, type: String, ti
     return null
 }
 
+/** Emoji de chaque type d'objectif (tuiles du formulaire). */
+val TYPE_EMOJI = mapOf("routine" to "🔁", "cap" to "💧", "abstinence" to "🚭", "objective" to "📚", "duration" to "⏱️", "deadline" to "⏰", "group" to "👥", "duel" to "⚔️",
+    "measure" to "📏", "limit" to "🚦", "monthly" to "📅", "project" to "🗂️", "challenge" to "🏆", "program" to "📈", "timed" to "🕖", "period" to "🔄")
+
+/** Tuile de type : aplat du néon à marche, emoji 34, libellé prune ; choisie = bord braise. */
 @Composable
 private fun TypeTile(k: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val p = LocalPal.current; val tc = p.type(k); val info = typeInfo(k)
-    Column(modifier.clip(smoothShape(18.dp)).background(tc.c.copy(alpha = if (on) .32f else .12f)).border(if (on) 2.dp else 1.dp, if (on) tc.c else p.line, smoothShape(18.dp))
-        .clickable(onClick = onClick).padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Pi(info.icon, tint = tc.ink); Text(info.label, fontWeight = FontWeight.ExtraBold); Text(info.desc, fontSize = 12.sp, color = p.ink2, lineHeight = 15.sp)
+    val p = LocalPal.current; val c = vivid(p.type(k).c); val info = typeInfo(k)
+    val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Column(modifier.chunk(c, if (on) p.focusEdge else if (p.contrast) p.ink else c.step(), 22.dp, 4.dp, if (on) 3.dp else 0.dp, press).clip(RoundedCornerShape(20.dp))
+        .springClick(inter, role = androidx.compose.ui.semantics.Role.Button, label = info.desc, onClick = onClick).semantics { contentDescription = "${info.label} : ${info.desc}" }
+        .padding(horizontal = 6.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Emoji(TYPE_EMOJI[k] ?: "🎯", 34.dp)
+        Text(info.label, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 17.sp)
     }
 }
 
@@ -517,17 +530,18 @@ private fun GoalBanner(ui: AppState, g: Goal) {
     val pop = remember { androidx.compose.animation.core.Animatable(if (p.motion) 1f else .55f) }
     LaunchedEffect(Unit) { pop.animateTo(1f, Motion.pop()) }
     Box(Modifier.fillMaxWidth().heightIn(min = 176.dp).background(c).drawBehind {
-        drawCircle(Color.White.copy(alpha = .22f), size.height * .7f, androidx.compose.ui.geometry.Offset(size.width * .86f, size.height * .55f))
-        drawCircle(Color.White.copy(alpha = .16f), size.height * .22f, androidx.compose.ui.geometry.Offset(size.width * .55f, size.height * .1f))
+        // Décor en aplats : deux cercles plus clairs (opaques)
+        drawCircle(androidx.compose.ui.graphics.lerp(c, Color.White, .22f), size.height * .7f, androidx.compose.ui.geometry.Offset(size.width * .86f, size.height * .55f))
+        drawCircle(androidx.compose.ui.graphics.lerp(c, Color.White, .16f), size.height * .22f, androidx.compose.ui.geometry.Offset(size.width * .55f, size.height * .1f))
     }) {
-        Box(Modifier.align(Alignment.TopCenter).padding(top = 10.dp).size(40.dp, 5.dp).clip(CircleShape).background(PLUM.copy(alpha = .35f)))
+        Box(Modifier.align(Alignment.TopCenter).padding(top = 10.dp).size(40.dp, 5.dp).clip(CircleShape).background(c.step()))
         Box(Modifier.align(Alignment.CenterEnd).padding(end = 22.dp, top = 24.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value; rotationZ = 8f - (1f - pop.value) * 25f }) { Emoji(g.icon, 96.dp) }
         Row(Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 8.dp)) {
             IconBtn("star", if (pg.isFav(g)) "Retirer des favoris" else "Ajouter aux favoris", { pg.toggleFav(g.id) }, tint = if (pg.isFav(g)) p.flameInk else p.ink3)
             if (LocalInSheet.current) IconBtn("x", "Fermer", { ui.close() })
         }
         Column(Modifier.align(Alignment.BottomStart).fillMaxWidth(.66f).padding(start = 20.dp, bottom = 20.dp, top = 64.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.clip(CircleShape).background(Color.White.copy(alpha = .5f)).padding(horizontal = 10.dp, vertical = 3.dp)) {
+            Box(Modifier.clip(CircleShape).background(Color.White.copy(alpha = .42f)).padding(horizontal = 10.dp, vertical = 3.dp)) {
                 Text("${typeInfo(g.type).label}${moment?.let { " · $it" } ?: ""}", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, maxLines = 1)
             }
             Text(g.title, Modifier.semantics { heading() }, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, lineHeight = 31.sp, color = PLUM, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
@@ -549,8 +563,12 @@ private fun ColumnScope.GoalSheetBody(ui: AppState, g: Goal) {
         }
         pg.barPct(g)?.let { Bar(it, Modifier.padding(top = 10.dp), tc.c, 12.dp) }
         if (own) PauseBanner(ui, g)
+        // Ajout rapide (§ 8.1) : le pas en bouton de type, deux pas en secondaire, saisie libre en rond, et le rappel du geste
+        val stepV = stepOf(pg, g)
+        val quick = own && !g.archived && stepV != null && g.completedAt == null && g.failedAt == null
+        if (quick) QuickAdd(ui, g, stepV!!)
         if (!g.archived) FlowRowCompat(Modifier.padding(top = 12.dp), gap = 8.dp) {
-        GoalActions(ui, g, doneToday, running)
+        if (!quick) GoalActions(ui, g, doneToday, running)
         // Version mini : garde la série les jours sans énergie
         if (own && g.miniLabel != null && !pg.hasCheck(g.id, pg.stepDate(g)) && pg.todayPlan().due.any { it.g.id == g.id }) PButton("Mini : ${g.miniLabel}", { pg.validateMini(g.id)?.let { ui.toast(it, "x") } ?: ui.toast("Version mini validée : ta série continue 💪", "check") }, icon = "check")
         if (own && pg.isMiniDone(g)) Chip("Version mini", "check")
@@ -615,6 +633,38 @@ private fun ColumnScope.GoalSheetBody(ui: AppState, g: Goal) {
         }
     }
     if (!own) Muted("Créé par ${pg.userById(g.userId)?.name ?: ""}", small = true)
+}
+
+/** Ajout rapide d'un objectif chiffré : « + 250 ml » (type), « + 500 ml » (secondaire), « Saisir » (rond), puis le geste de l'accueil. */
+@Composable
+private fun QuickAdd(ui: AppState, g: Goal, st: Double) {
+    val p = LocalPal.current; val pg = ui.pg; val tc = p.type(g.type); val sfx = pg.unitSfx(g)
+    Spacer(Modifier.height(14.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        PButton("+ ${fmtNum(st)}$sfx", { addStep(ui, g) }, Modifier.weight(1.25f), kind = "type", color = tc.c, leading = { Emoji(g.icon, 22.dp) })
+        PButton("+ ${fmtNum(st * 2)}$sfx", { addStep(ui, g, 2) }, Modifier.weight(1f))
+        RoundGlass("Saisir une quantité", { ui.open(Sheet.Progress(g.id)) }) { Pi("edit", size = 20.dp, tint = p.ink) }
+    }
+    Spacer(Modifier.height(10.dp))
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(p.surface2).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Emoji("👆", 22.dp)
+        Text(rich("Sur l’accueil : **un appui = + ${fmtNum(st)}$sfx**, appui long = saisir."), Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = p.ink2, lineHeight = 17.sp)
+    }
+    // Journal du jour (cap) : chaque ajout, annulable
+    if (g.type == "cap") {
+        val adds = pg.db.checkins.filter { it.goalId == g.id && it.kind == "progress" && it.userId == pg.meId() && it.date == today() && it.value > 0 }.sortedBy { it.at }
+        if (adds.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text("Aujourd’hui", fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            adds.takeLast(6).forEach { c ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (c.at > 0) hm(c.at) else "—", Modifier.width(56.dp), fontWeight = FontWeight.ExtraBold, color = p.ink2, fontSize = 14.sp)
+                    Text("+ ${fmtNum(c.value)}$sfx", Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                    PButton("Annuler", { pg.capAdd(g, -c.value, silent = true); ui.toast("Ajout annulé.", "x") }, kind = "ghost", small = true)
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -695,9 +745,9 @@ private fun GoalDetail(ui: AppState, g: Goal, own: Boolean) {
             val t = today()
             FlowRowCompat(gap = 4.dp) {
                 for (i in 0 until g.length) { val k = ymd(parseYmd(g.start).plusDays(i.toLong())); val on = pg.hasCheck(g.id, k)
-                    Box(Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)).background(if (on) tc.c else if (k > t) p.ink.copy(alpha = .05f) else Color.Transparent)
-                        .border(if (k == t) 2.dp else 1.dp, if (k == t) p.ink else if (!on && k < t) p.ink3 else p.line, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
-                        Text("${i + 1}", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color(0xFF10102A) else p.ink2) } }
+                    Box(Modifier.size(32.dp).clip(RoundedCornerShape(6.dp)).background(if (on) vivid(tc.c) else p.surface2)
+                        .border(if (k == t) 2.5.dp else 2.dp, if (k == t) p.focusEdge else if (!on && k < t) p.control else p.edge, RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
+                        Text("${i + 1}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = if (on) PLUM else p.ink2) } }
             }
             Muted("Un jour manqué interrompt le challenge : la régularité, c'est tout le jeu.", small = true)
         }
@@ -738,10 +788,13 @@ private fun GoalDetail(ui: AppState, g: Goal, own: Boolean) {
 
 @Composable
 private fun DuelSide(u: User?, name: String, v: Double, lead: Boolean) {
-    val p = LocalPal.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.alpha(if (lead) 1f else .75f)) {
-        Box(Modifier.then(if (lead) Modifier.border(3.dp, p.flame, CircleShape) else Modifier).padding(3.dp)) { Av(u, 52.dp) }
-        Text(name, fontWeight = FontWeight.Bold); Text(fmtNum(round1(v)), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+    val p = LocalPal.current; val c = vivid(p.type("duel").c)
+    // Colonne du duel : en tête = aplat néon (encre prune), sinon carte neutre
+    Column(Modifier.width(120.dp).chunk(if (lead) c else p.surface, if (lead) c.step() else p.edge, 22.dp, 4.dp, if (lead) 0.dp else 2.dp).padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Av(u, 52.dp)
+        Text(name, fontWeight = FontWeight.Bold, color = if (lead) PLUM else p.ink, maxLines = 1)
+        Text(fmtNum(round1(v)), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = if (lead) PLUM else p.ink)
     }
 }
 
@@ -752,9 +805,7 @@ private fun ProjectTasks(ui: AppState, g: Goal, own: Boolean) {
     SectionTitle("Étapes")
     if (own && ts.size > 1) Muted("Utilise les flèches pour réordonner les étapes.", small = true)
     ts.forEachIndexed { i, task ->
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (task.done) tc.c.copy(alpha = .14f) else Color.Transparent).padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(task.done, { pg.taskToggle(g.id, task.id) }, enabled = own)
-            Text(task.t, Modifier.weight(1f), textDecoration = if (task.done) TextDecoration.LineThrough else null, color = if (task.done) p.ink2 else p.ink)
+        PCheckRow(task.t, null, task.done, { pg.taskToggle(g.id, task.id) }, tc.c, enabled = own, strike = true) {
             if (own) {
                 if (ts.size > 1) { IconBtn("up", "Monter l'étape ${task.t}", { pg.taskMove(g.id, task.id, i - 1) }, plain = true, size = 32.dp); IconBtn("down", "Descendre l'étape ${task.t}", { pg.taskMove(g.id, task.id, i + 1) }, plain = true, size = 32.dp) }
                 IconBtn("x", "Supprimer l'étape ${task.t}", { pg.taskDel(g.id, task.id) }, plain = true, size = 32.dp)
@@ -775,8 +826,15 @@ fun ProgressSheet(ui: AppState, id: String) {
     var v by remember { mutableStateOf(x.value) }
     SheetHead(ui, x.title)
     Muted("${g.icon} ${g.title} : ${x.info}")
+    if (!x.text) {
+        val st = stepOf(pg, g) ?: x.quick.firstOrNull() ?: 1.0
+        val cur = pg.parseProgress(g, v).takeIf { !it.isNaN() } ?: 0.0
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            PStepper(fmtNum(round1(cur)), g.unit, { v = fmtNum(round1(maxOf(0.0, cur - st))) }, { v = fmtNum(round1(cur + st)) }, minusEnabled = cur > 0)
+        }
+    }
     Field(v, { v = it }, x.label, keyboard = if (x.text) KeyboardOptions(keyboardType = KeyboardType.Text) else NUM, max = 12)
-    if (x.quick.isNotEmpty()) FlowRowCompat(gap = 6.dp) { x.quick.forEach { n -> PButton(if (x.quickAbsolute) fmtNum(n) else "+${fmtNum(n)}", { v = fmtNum(n) }, small = true) } }
+    if (x.quick.isNotEmpty()) FlowRowCompat(gap = 6.dp) { x.quick.forEach { n -> FChip(if (x.quickAbsolute) fmtNum(n) else "+${fmtNum(n)}", v == fmtNum(n), { v = fmtNum(n) }, color = LocalPal.current.type(g.type).c) } }
     SheetFoot {
         PButton("Annuler", { ui.close() }, kind = "ghost")
         PButton("Valider", {
@@ -817,7 +875,7 @@ private fun GeoRow(ui: AppState, g: Goal) {
     OptionRow("pin", p.type("measure").c, p.type("routine").c, "Rappel par lieu",
         c?.let { "${if (it.exit) "En partant de" else "En arrivant à"} ${it.label.ifBlank { "l’endroit enregistré" }} · ${it.radius} m" } ?: "En arrivant à un endroit, ou en le quittant",
         open, { open = !open }) {
-        if (c != null && !bgOk && android.os.Build.VERSION.SDK_INT >= 29) PButton("Autoriser la position en arrière-plan", { bgPerm.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) }, icon = "pin", small = true, kind = "primary")
+        if (c != null && !bgOk && android.os.Build.VERSION.SDK_INT >= 29) PButton("Autoriser la position en arrière-plan", { bgPerm.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) }, icon = "pin", small = true)
         Seg(listOf(false to "En arrivant", true to "En partant"), exit, { exit = it })
         // Emplacements enregistrés (Paramètres › Emplacements) : un geste suffit
         val saved = ui.pg.me()?.places.orEmpty()
@@ -840,7 +898,7 @@ private fun GeoRow(ui: AppState, g: Goal) {
             PButton(if (busy) "Localisation…" else if (c != null) "Mettre à jour ici" else "Utiliser ma position", {
                 if (fr.pepsgoal.app.sys.GeoReminders.hasFine(ctx)) save()
                 else finePerm.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
-            }, icon = "pin", small = true, kind = "primary", enabled = !busy)
+            }, icon = "pin", small = true, enabled = !busy)
             if (c != null) PButton("Retirer", { fr.pepsgoal.app.sys.GeoReminders.remove(ctx, g.id); cur = null; open = false }, small = true, kind = "ghost")
         }
     }

@@ -129,6 +129,9 @@ data class Pal(
 
 /** Braise de la flamme (#FF4A12) : focus, carte de chaleur. */
 val EMBER = Color(0xFFFF4A12)
+/** Les trois teintes de la flamme d'origine (jaune, braise, rose) et sa marche. */
+val BRAISE = listOf(Color(0xFFFFB000), Color(0xFFFF4A12), Color(0xFFFF3D96))
+val BRAISE_STEP = Color(0xFFC2185B)
 /** Rail creusé en thème sombre. */
 val RAIL_NIGHT = Color(0xFF120B16)
 /** Prune très foncé : marche des toasts et des pastilles prune. */

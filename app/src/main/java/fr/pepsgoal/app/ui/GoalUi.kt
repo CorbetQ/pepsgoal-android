@@ -112,11 +112,32 @@ fun tickingNow(active: Boolean): Long {
 
 @Composable
 fun AvStack(pg: Pg, ids: List<String>, size: Dp = 22.dp) {
-    Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) { ids.mapNotNull { pg.userById(it) }.take(4).forEach { Av(it, size, modifier = Modifier.border(2.dp, LocalPal.current.glassStrong, CircleShape)) } }
+    Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) { ids.mapNotNull { pg.userById(it) }.take(4).forEach { Av(it, size, modifier = Modifier.border(2.dp, LocalPal.current.surface, CircleShape)) } }
 }
 
 @Composable
 fun FavStar(pg: Pg, g: Goal) { if (pg.isFav(g)) Pi("star", size = 14.dp, tint = LocalPal.current.flame2) }
+
+/** Pas d'ajout rapide d'un objectif chiffré (« appui = + 1 pas ») : 10 % du cap arrondi, 1 pour les autres. null : pas d'ajout rapide. */
+fun stepOf(pg: Pg, g: Goal): Double? = when (g.type) {
+    "cap" -> pg.capQuick(g).firstOrNull() ?: 1.0
+    "objective", "monthly", "program", "group", "duel" -> 1.0
+    else -> null
+}
+
+/** Ajoute un pas (ou [n] pas) à un objectif chiffré, avec un message « Annuler ». */
+fun addStep(ui: AppState, g: Goal, n: Int = 1) {
+    val pg = ui.pg; val st = (stepOf(pg, g) ?: return) * n
+    if (g.type == "cap") pg.capAdd(g, st, silent = true) else pg.addProgress(g.id, st)
+    Feedback.tick()
+    val v = when (g.type) { "cap" -> pg.capDay(g); "monthly" -> pg.monthProgress(g); "objective" -> pg.objProgress(g); else -> null }
+    val sfx = pg.unitSfx(g)
+    ui.undoable("+${fmtNum(st)}$sfx${if (v != null) " · ${fmtNum(round1(v))} / ${fmtNum(g.target)}$sfx" else ""}", "bolt") {
+        if (g.type == "cap") pg.capAdd(g, -st, silent = true) else pg.addProgress(g.id, -st)
+        pg.hooks.liveChanged()
+    }
+    pg.hooks.liveChanged()
+}
 
 /** Moment de la journée d'un objectif, d'après l'heure de son rappel (ou de son créneau) : morning, afternoon, evening ou day. */
 fun momentOf(pg: Pg, g: Goal): String {
@@ -145,6 +166,10 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null, 
     var ctlProg: Float? = null; var ctlIcon = "check"; var ctlDisabled = false; var ctlLong: (() -> Unit)? = null
     var ctlClick: () -> Unit = { doValidate(ui, g.id) }
     val progress = { v: Double -> (v / 100.0).coerceIn(0.0, 1.0).toFloat() }
+    // Case de progrès : un appui = + 1 pas (le pas monte au-dessus de la case), appui long = saisie d'une quantité
+    var stepTick by remember(g.id) { mutableIntStateOf(0) }
+    val stepV = stepOf(pg, g)
+    var stepLbl: String? = null
     when (g.type) {
         "limit" -> { val used = pg.limitUsed(g); val over = used > g.max
             meta = "${fmtNum(used)}/${fmtNum(g.max)} ${g.unit} ${if (g.period == "week") "cette semaine" else "aujourd'hui"}${if (over) " · limite dépassée" else ""}"; urgent = over; bar = used / maxOf(g.max, 1.0) * 100
@@ -156,7 +181,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null, 
             ctlLabel = if (running) "Mettre en pause : $title" else "Démarrer le minuteur : $title"; ctlClick = { pg.toggleTimer(g) }; ctlLong = if (!done) ({ quickFocus(ui, g) }) else null }
         "measure" -> { meta = "Dernière : ${pg.measureStat(g).v}"; ctlProg = 0f; ctlLabel = "Nouvelle mesure : $title" }
         "cap" -> { val v = pg.capDay(g); meta = "${fmtNum(v)} / ${fmtNum(g.target)}${pg.unitSfx(g)} aujourd’hui"; bar = minOf(100.0, v / g.target * 100)
-            ctlProg = progress(bar!!); ctlLabel = if (done) "Ajouter encore : $title" else "Ajouter : $title"; ctlLong = { ui.open(Sheet.Goal(g.id)) } }
+            ctlProg = progress(bar!!); ctlLabel = if (done) "Ajouter encore : $title" else "Ajouter : $title" }
         "timed" -> { val w = pg.timedWindow(g); meta = w.txt; urgent = !w.open && !done; ctlDisabled = !w.open && !done
             ctlLabel = if (g.mode == "notafter") "J'ai tenu hier soir : $title" else ctlLabel }
         "period" -> { val w = pg.periodWindow(g); meta = w.txt; urgent = !w.open && !done; ctlDisabled = !w.open && !done }
@@ -176,6 +201,14 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null, 
             ctlProg = progress(bar!!); ctlLabel = "Ajouter un progrès : $title"; ctlLong = { ui.open(Sheet.Goal(g.id)) } }
         else -> { val s = pg.statBig(g); meta = "${metaOverride ?: pg.metaLine(g)} · ${s.v} ${s.l}" }
     }
+    // Types chiffrés : appui = + 1 pas, appui long = saisie (feuille Progrès)
+    if (stepV != null && (!done || g.type == "cap")) {
+        stepLbl = "${fmtNum(stepV)}${pg.unitSfx(g)}"
+        ctlClick = { addStep(ui, g); stepTick++ }
+        ctlLong = { ui.open(Sheet.Progress(g.id)) }
+        if (ctlProg == null) ctlProg = 0f
+    }
+    if (g.type == "limit" && !done) stepLbl = "1${pg.unitSfx(g)}"
     // Faite : heure de la validation en tête de la sous-ligne
     if (done) pg.db.checkins.lastOrNull { it.goalId == g.id && it.userId == pg.meId() && it.kind == "done" && it.date == today() && it.at > 0 }?.let { meta = "Fait à ${hm(it.at)} · $meta" }
     if (pg.isPaused(g)) meta = "⏸️ En pause jusqu’au ${g.pausedUntil?.let { fmtDateShort(it) } ?: ""} · $meta"
@@ -243,7 +276,7 @@ fun GoalRow(ui: AppState, g: Goal, done: Boolean, metaOverride: String? = null, 
                 }
                 if (!done) bar?.let { Bar(it, Modifier.padding(top = 4.dp, end = 4.dp), c, 8.dp) }
             }
-            CheckButton(done && !running, just, ctlLabel, c, ctlDisabled, ctlIcon, running, ctlProg, ctlLong, onClick = ctlClick)
+            CheckButton(done && !running, just, ctlLabel, c, ctlDisabled, ctlIcon, running, ctlProg, ctlLong, stepLabel = stepLbl, stepTick = stepTick, onClick = ctlClick)
         }
     }
 }
@@ -298,7 +331,7 @@ fun Last7(pg: Pg, g: Goal) {
 fun GoalCard(ui: AppState, g: Goal, modifier: Modifier = Modifier) {
     val p = LocalPal.current; val pg = ui.pg; val tc = p.type(g.type); val s = pg.statBig(g)
     // Balayage, comme dans « À valider » : vers la droite pour valider, vers la gauche pour les actions rapides
-    val sw = rememberSwipe(); val shape = smoothShape(28.dp)
+    val sw = rememberSwipe(); val shape = RoundedCornerShape(24.dp)
     val canDo = g.userId == pg.meId() && !g.archived && !pg.isClosedGoal(g)
     Box(modifier) {
     SwipeReveal(sw, shape, right = if (canDo) SwipeAction("check", "Valider", p.ok) else null, left = SwipeAction("list", "Actions", p.focus), modifier = Modifier.matchParentSize())
@@ -343,18 +376,20 @@ fun GoalCalendar(pg: Pg, g: Goal) {
                 val d = start.plusDays((w * 7 + i).toLong()); val k = ymd(d); val fut = k > t
                 val on = pg.db.checkins.any { it.goalId == g.id && it.date == k && pg.isWin(it) }; val rel = pg.hasCheck(g.id, k, "relapse")
                 val cls = when { rel -> "relapse"; on -> "on"; fut -> "fut"; k >= created && pg.scheduled(g, d) && !(g.type == "abstinence" && k < g.since) -> if (k == t) "pending" else "miss"; else -> "rest" }
-                Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(9.dp))
-                    .background(when (cls) { "on" -> tc.c; "relapse" -> vivid(p.danger); "rest" -> p.surface2; else -> Color.Transparent })
-                    .then(if (cls == "fut") Modifier.border(1.5.dp, p.edge, RoundedCornerShape(9.dp)) else Modifier)
-                    .then(if (cls == "miss" || cls == "pending") Modifier.border(1.5.dp, if (cls == "pending") tc.c else p.ink3.copy(alpha = .6f), RoundedCornerShape(9.dp)) else Modifier)
-                    .then(if (k == t) Modifier.border(2.dp, p.ink, RoundedCornerShape(9.dp)) else Modifier), contentAlignment = Alignment.Center) {
+                // Cases en aplats : validé = néon, écart = danger, manqué = creux bordé, aujourd'hui = bord braise
+                val sh = RoundedCornerShape(6.dp)
+                Box(Modifier.weight(1f).aspectRatio(1f).clip(sh)
+                    .background(when (cls) { "on" -> vivid(tc.c); "relapse" -> vivid(p.danger); "rest", "miss" -> p.surface2; else -> Color.Transparent })
+                    .then(if (cls == "fut") Modifier.border(2.dp, p.edge, sh) else Modifier)
+                    .then(if (cls == "miss" || cls == "pending") Modifier.border(2.dp, if (cls == "pending") tc.c else p.control, sh) else Modifier)
+                    .then(if (k == t) Modifier.border(2.5.dp, p.focusEdge, sh) else Modifier), contentAlignment = Alignment.Center) {
                     Text("${d.dayOfMonth}", fontSize = 12.sp, fontWeight = if (cls == "on" || k == t) FontWeight.ExtraBold else FontWeight.Bold, color = if (cls == "on" || cls == "relapse") PLUM else if (fut) p.ink3 else p.ink2)
                 }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(top = 4.dp)) {
             Legend(tc.c, "Validé")
-            if (g.type != "objective") Legend(Color.Transparent, "Manqué", p.ink3)
+            if (g.type != "objective") Legend(p.surface2, "Manqué", p.control)
             if (g.type == "abstinence") Legend(p.danger, "Écart")
         }
     }
@@ -363,7 +398,7 @@ fun GoalCalendar(pg: Pg, g: Goal) {
 @Composable
 private fun Legend(c: Color, l: String, border: Color? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        Box(Modifier.size(12.dp).clip(RoundedCornerShape(4.dp)).background(c).then(if (border != null) Modifier.border(1.5.dp, border, RoundedCornerShape(4.dp)) else Modifier))
+        Box(Modifier.size(12.dp).clip(RoundedCornerShape(6.dp)).background(c).then(if (border != null) Modifier.border(2.dp, border, RoundedCornerShape(6.dp)) else Modifier))
         Text(l, fontSize = 12.sp, color = LocalPal.current.ink2, fontWeight = FontWeight.Bold)
     }
 }
@@ -372,7 +407,7 @@ private fun Legend(c: Color, l: String, border: Color? = null) {
 @Composable
 fun ProgLine(label: String, pct: Double, value: String, color: Color, hit: Boolean = false, cur: Boolean = false, fut: Boolean = false, over: Boolean = false, lead: (@Composable () -> Unit)? = null) {
     val p = LocalPal.current
-    Row(Modifier.fillMaxWidth().then(if (cur) Modifier.border(2.dp, color, RoundedCornerShape(8.dp)) else Modifier).padding(horizontal = 6.dp, vertical = 5.dp).alpha(if (fut) .5f else 1f),
+    Row(Modifier.fillMaxWidth().then(if (cur) Modifier.border(2.dp, color, RoundedCornerShape(17.dp)) else Modifier).padding(horizontal = 6.dp, vertical = 5.dp).alpha(if (fut) .5f else 1f),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.width(110.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { lead?.invoke(); Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         Bar(pct, Modifier.weight(1f), if (over) p.danger else color, 7.dp)
@@ -413,10 +448,10 @@ fun MeasureChart(pg: Pg, g: Goal) {
             if (tg != null) drawLine(p.ink2, Offset(L, Y(tg)), Offset(size.width - R, Y(tg)), 1.5f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
             val line = Path().apply { xy.forEachIndexed { i, o -> if (i == 0) moveTo(o.x, o.y) else lineTo(o.x, o.y) } }
             val area = Path().apply { addPath(line); lineTo(xy.last().x, size.height - B); lineTo(xy.first().x, size.height - B); close() }
-            drawPath(area, Brush.verticalGradient(listOf(tc.c.copy(alpha = .45f), Color.Transparent)))
+            drawPath(area, lerp(p.surface, tc.c, .3f))
             drawPath(line, tc.ink, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
             xy.dropLast(1).forEach { drawCircle(tc.ink, 2.6.dp.toPx(), it) }
-            drawCircle(tc.c.copy(alpha = .35f), 9.dp.toPx(), xy.last()); drawCircle(tc.ink, 4.5.dp.toPx(), xy.last())
+            drawCircle(vivid(tc.c), 9.dp.toPx(), xy.last()); drawCircle(tc.ink, 4.5.dp.toPx(), xy.last())
         }
         Row(Modifier.fillMaxWidth()) {
             Muted(fmtDateShort(pts.first().date), Modifier.weight(1f), small = true)
@@ -440,15 +475,15 @@ fun WeekStrip(pg: Pg, id: String, onColor: Boolean = false) {
             val k = ymd(ws.plusDays(i.toLong())); val fut = k > t; val on = days.contains(k); val fz = !on && frozen.contains(k)
             val desc = "${WD[i]} : ${when { on -> "réussi"; fz -> "joker"; k == t -> "à protéger"; fut -> "à venir"; else -> "manqué" }}"
             Column(Modifier.semantics(mergeDescendants = true) { contentDescription = desc }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(WD[i].take(1), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = ink.copy(alpha = if (k == t) 1f else .75f))
+                Text(WD[i].take(1), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = ink)
                 when {
                     on -> Box(Modifier.size(34.dp).background(if (onColor) PLUM else p.ink, CircleShape), contentAlignment = Alignment.Center) { Flame(20.dp) }
                     fz -> Box(Modifier.size(34.dp).background(Color.White, CircleShape).then(if (onColor) Modifier else Modifier.border(2.dp, p.edge, CircleShape)), contentAlignment = Alignment.Center) { Emoji("🧊", 20.dp) }
-                    k == t -> Box(Modifier.size(34.dp).background(Color.White.copy(alpha = if (onColor) .45f else 0f), CircleShape).drawBehind {
+                    k == t -> Box(Modifier.size(34.dp).background(if (onColor) Color.White.copy(alpha = .42f) else Color.Transparent, CircleShape).drawBehind {
                         drawCircle(ink, size.minDimension / 2 - 1.25.dp.toPx(), style = Stroke(2.5.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
                     }, contentAlignment = Alignment.Center) { Flame(18.dp, dim = true) }
-                    fut -> Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) { Box(Modifier.size(8.dp).background(ink.copy(alpha = .3f), CircleShape)) }
-                    else -> Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) { Box(Modifier.size(10.dp).border(2.dp, ink.copy(alpha = .45f), CircleShape)) }
+                    fut -> Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) { Box(Modifier.size(8.dp).background(if (onColor) PLUM else p.control, CircleShape)) }
+                    else -> Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) { Box(Modifier.size(10.dp).border(2.dp, if (onColor) PLUM else p.control, CircleShape)) }
                 }
             }
         }
@@ -477,7 +512,7 @@ fun QtyChart(g: Goal, target: Double, unit: String, valueOf: (String) -> Double)
         val n = pts.size; val gap = 2.dp.toPx(); val w = (size.width - gap * (n - 1)) / n
         pts.forEachIndexed { i, (_, v) ->
             val h = (v / max * size.height).toFloat()
-            val r4 = androidx.compose.ui.geometry.CornerRadius(minOf(4.dp.toPx(), w / 2))
+            val r4 = androidx.compose.ui.geometry.CornerRadius(minOf(6.dp.toPx(), w / 2))
             if (v < target) drawRoundRect(p.surface2, Offset(i * (w + gap), 0f), androidx.compose.ui.geometry.Size(w, size.height), r4)
             drawRoundRect(if (v >= target) tc.c else lerp(tc.c, p.surface2, .45f), Offset(i * (w + gap), size.height - h), androidx.compose.ui.geometry.Size(w, h.coerceAtLeast(2f)), r4)
         }
