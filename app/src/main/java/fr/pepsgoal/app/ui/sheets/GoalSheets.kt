@@ -268,6 +268,8 @@ fun GoalFormSheet(ui: AppState, s: Sheet.GoalForm) {
             Muted("Valide pendant la tranche horaire (ou jusqu’à une heure après) ; un rappel arrive au début de chaque période, et la période en cours s’affiche en direct dans la barre d’état.", small = true)
         }
     }
+    // Plan « si… alors… » : déclencheur facultatif et phrase
+    if (type in IF_TYPES) IfThenForm(ui, g0, title, t)
     // Binôme
     val friends = pg.friendsOf(u.id).mapNotNull { pg.userById(it) }
     if (type !in SOCIAL_TYPES && social && friends.isNotEmpty()) {
@@ -349,6 +351,7 @@ private fun GoalSummary(ui: AppState, u: User, g: Goal, grp: String?, health: St
             g.members?.filter { it != u.id }?.takeIf { it.isNotEmpty() }?.let { m -> add("users" to "Avec ${m.mapNotNull { pg.userById(it)?.let { x -> first(x.name) } }.joinToString(", ")}") }
             u.goalGroups.firstOrNull { it.id == grp }?.let { add("folder" to "Groupe : ${it.icon} ${it.name}") }
             health?.takeIf { it.isNotEmpty() }?.let { h -> fr.pepsgoal.app.sys.Health.metric(h)?.let { add("heart" to "Rempli automatiquement avec Santé : ${it.label.lowercase()}") } }
+            pg.ifThenOf(g)?.let { add("bolt" to it) }
             if (g.note.isNotBlank()) add("star" to "« ${g.note} »")
         }
         lines.forEach { (ic, l) -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Pi(ic, size = 16.dp, tint = tc.ink); Text(l, fontSize = 14.sp) } }
@@ -487,11 +490,15 @@ internal fun buildGoal0(ui: AppState, u: User, g0: Goal?, type: String, title0: 
             if (g.end <= g.start) return bad("L’heure de fin doit être après l’heure de début.")
         }
     }
+    applyIfThenFields(g, g0, t)?.let { return bad(it) }
     return g to null
 }
 
 private fun saveGoal(ui: AppState, u: User, g0: Goal?, g: Goal, type: String, title: String, grp: String?): String? {
     val pg = ui.pg
+    // Déclencheur « si… alors… » : rappel à l'heure, enchaînement, zone du lieu (ce que l'ancien avait posé est retiré)
+    val old = g0?.let { o -> Goal(o.id, o.userId, o.type, o.title).also { it.data = LinkedHashMap(o.data) } }
+    syncIfThen(g, old)
     if (g0 != null) {
         pg.setGoalGroup(u, g0.id, grp)
         g0.title = g.title; g0.icon = g.icon; g0.note = g.note; g0.visibility = g.visibility; g0.data = g.data
@@ -505,6 +512,9 @@ private fun saveGoal(ui: AppState, u: User, g0: Goal?, g: Goal, type: String, ti
         ui.toast("« $title » est prêt. À toi de jouer !", "flame")
     }
     pg.store.commit(); pg.queueBadgeCheck(); pg.hooks.liveChanged()
+    val ctx = fr.pepsgoal.app.PepsApp.instance
+    fr.pepsgoal.app.sys.GeoReminders.syncIfThen(ctx, g0 ?: g, old)
+    if (g.ifKind == "time" || old?.ifKind == "time") fr.pepsgoal.app.sys.Reminders.reschedule(ctx)
     return null
 }
 
@@ -617,6 +627,7 @@ private fun ColumnScope.GoalSheetBody(ui: AppState, g: Goal) {
         if (g.note.isNotEmpty()) Info("Pourquoi") { Text(g.note) }
       }
     }
+    IfThenCard(ui, g)
     GoalDetail(ui, g, own)
     if (g.type in STEP_TYPES && !pg.isClosedGoal(g)) StepsBlock(ui, g, own)
     if (own) SavingsCard(ui, g)

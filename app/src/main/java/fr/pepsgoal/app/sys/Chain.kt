@@ -23,7 +23,7 @@ object Chain {
         if (b.after != a.id || pg.todayPlan().due.none { it.g.id == b.id && !it.done }) return
         val k = "${u.id}|${today()}|chain${b.id}"; if (pg.db.reminderLog[k] != null) return
         pg.db.reminderLog[k] = 1
-        pg.notify(u.id, "Après ${a.icon} « ${a.title} », c’est le moment de ${b.icon} « ${b.title} ».", "reminder", b.id)
+        pg.notify(u.id, pg.ifThenReminder(b, "after", "Après ${a.icon} « ${a.title} », c’est le moment de ${b.icon} « ${b.title} »."), "reminder", b.id)
         pg.store.commit(false)
     }
 }

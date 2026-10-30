@@ -992,7 +992,7 @@ class Pg(val store: Store, var hooks: Hooks = object : Hooks {}) {
         }
         // Rappel propre à chaque objectif, à son heure (s'il reste à faire)
         if (!rest) for (x in plan.due) { val at = effectiveRemind(x.g) ?: continue
-            if (!x.done && h >= at && h <= addHM(at, 90)) once("gr" + x.g.id) { notify(u.id, "C’est l’heure : ${x.g.shownIcon()} « ${x.g.shownTitle()} ».", "reminder", x.g.id, "today") }
+            if (!x.done && h >= at && h <= addHM(at, 90)) once("gr" + x.g.id) { notify(u.id, ifThenReminder(x.g, "time", "C’est l’heure : ${x.g.shownIcon()} « ${x.g.shownTitle()} »."), "reminder", x.g.id, "today") }
         }
         for (g in plan.ongoing) if (g.type == "deadline") {
             val n = daysUntil(g.due)
