@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,10 +66,11 @@ fun PacksStep(ui: AppState, onBack: () -> Unit) {
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { k ->
                     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                    Column(Modifier.weight(1f).fillMaxHeight().bounce(inter, .96f).clip(smoothShape(18.dp)).background(p.ink.copy(alpha = .05f)).border(1.dp, p.line, smoothShape(18.dp))
-                        .springClick(inter, label = k.name) { pack = k }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Emoji(k.emoji, 32.dp); Text(k.name, fontWeight = FontWeight.ExtraBold); Text(k.desc, fontSize = 12.sp, color = p.ink2)
-                        Text(pl(k.goals.size, "objectif", "objectifs"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.flameInk)
+                    val press = rememberPress(inter)
+                    Column(Modifier.weight(1f).fillMaxHeight().chunk(p.surface, p.edge, 24.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(24.dp))
+                        .springClick(inter, label = k.name) { pack = k }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Emoji(k.emoji, 34.dp); Text(k.name, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text(k.desc, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2)
+                        Text(pl(k.goals.size, "objectif", "objectifs"), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
                     }
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -87,11 +86,8 @@ fun PacksStep(ui: AppState, onBack: () -> Unit) {
     val built = cur.goals.map { x -> buildGoal0(ui, u, null, x.type, x.title, x.icon, "", u.settings.defaultVis, x.fields, emptyList()).first }
     cur.goals.forEachIndexed { i, x ->
         val g = built[i]; val on = i in pick; val tc = p.type(x.type)
-        Row(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(tc.c.copy(alpha = if (on) .18f else .06f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Checkbox(on, { if (it) pick.add(i) else pick.remove(i) }, colors = CheckboxDefaults.colors(checkedColor = p.flame))
-            Emoji(x.icon, 28.dp)
-            Column(Modifier.weight(1f)) { Text(x.title, fontWeight = FontWeight.ExtraBold); Muted("${typeInfo(x.type).label}${g?.let { " · " + pg.metaLine(it) } ?: ""}", small = true, maxLines = 2) }
-        }
+        PCheckRow(x.title, "${tr(typeInfo(x.type).label)}${g?.let { " · " + pg.metaLine(it) } ?: ""}", on, { v -> if (v) pick.add(i) else pick.remove(i) }, color = tc.c,
+            leading = { Emoji(x.icon, 28.dp) })
     }
     SheetFoot {
         PButton("Autres packs", { pack = null }, kind = "ghost", icon = "chevronleft")

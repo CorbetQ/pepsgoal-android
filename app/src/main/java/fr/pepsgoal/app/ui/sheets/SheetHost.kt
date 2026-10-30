@@ -258,6 +258,6 @@ private fun VacationBlock(ui: AppState) {
         DateField("Fin", to, { to = it }, min = from)
         PButton("Partir en vacances", {
             pg.setVacation(from, to)?.let { ui.toast(it, "x") } ?: ui.toast("Bonnes vacances ! Tes séries t’attendront.", "sun")
-        }, icon = "check", kind = "primary", small = true)
+        }, icon = "check", color = LocalPal.current.type("period").c, small = true)
     }
 }

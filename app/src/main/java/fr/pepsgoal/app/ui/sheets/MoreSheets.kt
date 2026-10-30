@@ -22,6 +22,8 @@ import fr.pepsgoal.app.ui.Text
 import fr.pepsgoal.app.ui.screens.TimeButton
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
+import fr.pepsgoal.app.ui.theme.step
+import androidx.compose.foundation.selection.selectableGroup
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
 import fr.pepsgoal.app.peps
@@ -47,7 +49,7 @@ fun RemindRow(ui: AppState, g: Goal, divider: Boolean = true) {
             Text("Heure", Modifier.weight(1f), fontWeight = FontWeight.Bold); TimeButton(time, { time = it }, "Heure du rappel")
         }
         FlowRowCompat(gap = 6.dp) {
-            PButton("Enregistrer", { g.remindAt = time; pg.store.commit(); open = false; fr.pepsgoal.app.sys.Reminders.reschedule(ui.app); ui.toast("Rappel à $time.", "bell") }, icon = "check", small = true, kind = "primary")
+            PButton("Enregistrer", { g.remindAt = time; pg.store.commit(); open = false; fr.pepsgoal.app.sys.Reminders.reschedule(ui.app); ui.toast("Rappel à $time.", "bell") }, icon = "check", small = true, color = p.type("period").c)
             if (g.remindAt != null) PButton("Retirer", { g.remindAt = null; pg.store.commit(); open = false }, small = true, kind = "ghost")
         }
     }
@@ -105,8 +107,10 @@ fun MissSheet(ui: AppState, id: String, date: String) {
     val cur = g.missWhy()[date]
     SheetHead(ui, "Je n’ai pas pu")
     Muted("${g.icon} ${g.title} · ${if (date == today()) "aujourd’hui" else fmtDate(date)}. Noter la raison t’aide à voir ce qui coince, sans culpabiliser.", small = true)
-    FlowRowCompat(gap = 8.dp) {
-        MISS_REASONS.forEach { (k, l) -> FChip(l, cur == k, { pg.setMissReason(g, date, k); ui.close(); ui.toast("C’est noté. Demain est un autre jour 💪", "heart") }) }
+    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        MISS_REASONS.forEach { (k, l) ->
+            PRadioRow(l.substringAfter(' '), null, cur == k, { pg.setMissReason(g, date, k); ui.close(); ui.toast("C’est noté. Demain est un autre jour 💪", "heart") }, emoji = l.substringBefore(' '), color = p.type("abstinence").c)
+        }
     }
     if (cur != null) PButton("Effacer la raison", { pg.setMissReason(g, date, null); ui.close() }, small = true, kind = "ghost")
 }
@@ -124,14 +128,17 @@ fun RewardsCard(ui: AppState, compact: Boolean = false) {
         if (list.isEmpty()) Empty("Offre-toi quelque chose", "Fixe ta récompense : « un resto à 30 jours de série ». Elle t’attend au bout de l’effort.", icon = "star")
         list.forEach { r ->
             val n = pg.rewardProgress(r); val done = n >= r.target; val g = r.goalId?.let { pg.goalById(it) }
-            Row(Modifier.fillMaxWidth().clip(smoothShape(18.dp)).clickable { ui.open(Sheet.Reward(r.id)) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.size(48.dp).clip(smoothShape(16.dp)).background(if (done) p.flame.copy(alpha = .25f) else p.ink.copy(alpha = .05f)), contentAlignment = Alignment.Center) { Emoji(r.emoji, 30.dp) }
+            val inter = remember(r.id) { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val press = rememberPress(inter)
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).chunk(if (done) p.selTint(p.gold) else p.surface, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(22.dp))
+                .springClick(inter, label = r.title) { ui.open(Sheet.Reward(r.id)) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(48.dp).background(if (done) vivid(p.gold) else p.surface2, RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) { Emoji(r.emoji, 30.dp) }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(r.title, fontWeight = FontWeight.ExtraBold)
                     Bar(minOf(100.0, n * 100.0 / r.target), color = if (done) p.ok else p.flame)
                     Muted(if (done) "Atteinte ! Tu l’as bien méritée." else "${minOf(n, r.target)}/${r.target} jours de série${g?.let { " · ${it.icon} ${it.title}" } ?: ""}", small = true)
                 }
-                if (done) PButton("Je me l’offre", { r.claimedAt = nowMs(); pg.store.commit(); Feedback.success(); ui.toast("Profite bien de « ${r.title} » 🎉", "star") }, small = true, kind = "primary")
+                if (done) PButton("Je me l’offre", { r.claimedAt = nowMs(); pg.store.commit(); Feedback.success(); ui.toast("Profite bien de « ${r.title} » 🎉", "star") }, small = true, color = p.gold)
             }
         }
         val claimed = u.rewards.filter { it.claimedAt != null }
@@ -152,7 +159,7 @@ fun RewardSheet(ui: AppState, id: String?) {
     val goals = pg.myGoals(u.id).filter { !pg.isClosedGoal(it) && it.userId == u.id && it.type in setOf("routine", "abstinence", "limit", "duration", "cap", "timed", "period") }
     SheetHead(ui, if (edit == null) "Nouvelle récompense" else "Récompense")
     Field(title, { title = it }, "Ma récompense", placeholder = "Un resto, une nouvelle paire de baskets…", max = 60, icon = "star")
-    FlowRowCompat(gap = 6.dp) { REWARD_EMOJIS.forEach { e -> FChip(e, emoji == e, { emoji = e }) } }
+    FlowRowCompat(gap = 6.dp) { REWARD_EMOJIS.forEach { e -> PickTile(emoji == e, e, { emoji = e }, color = p.gold) { Emoji(e, 26.dp) } } }
     SectionTitle("Quand ?")
     FlowRowCompat(gap = 6.dp) { listOf(7, 14, 21, 30, 60, 100, 365).forEach { n -> FChip("$n jours", target == n, { target = n }) } }
     SectionTitle("Série comptée")
@@ -178,7 +185,7 @@ fun MiniRow(ui: AppState, g: Goal, divider: Boolean = true) {
     OptionRow("down", p.type("abstinence").c, p.type("routine").c, "Version mini", g.miniLabel?.let { "« $it » les jours difficiles · série gardée, moitié des flammes" } ?: "Une version réduite pour les jours sans énergie", open, { open = !open }, divider) {
         Field(label, { label = it }, "Ma version mini", placeholder = "1 page, 5 minutes, 10 pompes…", max = 40)
         FlowRowCompat(gap = 6.dp) {
-            PButton("Enregistrer", { g.miniLabel = label.trim().ifEmpty { null }; pg.store.commit(); open = false }, icon = "check", small = true, kind = "primary")
+            PButton("Enregistrer", { g.miniLabel = label.trim().ifEmpty { null }; pg.store.commit(); open = false }, icon = "check", small = true, color = p.type("abstinence").c)
             if (g.miniLabel != null) PButton("Retirer", { g.miniLabel = null; label = ""; pg.store.commit(); open = false }, small = true, kind = "ghost")
         }
     }
@@ -194,9 +201,9 @@ fun GoalQrSheet(ui: AppState, id: String) {
     SheetHead(ui, "Partager l’objectif")
     Muted("Ton ami scanne ce code depuis PepsGoal (onglet Objectifs › Scanner) pour créer sa propre copie de « ${g.title} ». Ton historique n’est jamais partagé.", small = true)
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Column(Modifier.clip(smoothShape(24.dp)).background(androidx.compose.ui.graphics.Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.chunk(androidx.compose.ui.graphics.Color.White, p.edge, 24.dp, 4.dp, 2.dp).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             androidx.compose.foundation.Image(bmp.asImageBitmapCompat(), "Code QR de ${g.title}", Modifier.size(240.dp))
-            Text("${g.icon} ${g.title}", color = androidx.compose.ui.graphics.Color(0xFF10102A), fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp))
+            Text("${g.icon} ${g.title}", color = fr.pepsgoal.app.ui.theme.PLUM, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp))
         }
     }
     SheetFoot {
@@ -218,9 +225,9 @@ fun ImportGoalSheet(ui: AppState, link: String) {
     SheetHead(ui, "Objectif reçu")
     if (o == null) { Muted("Ce lien ou ce code n’est pas un objectif PepsGoal.", small = true); return }
     val type = o["y"]?.jsonPrimitive?.content ?: "routine"
-    Row(Modifier.fillMaxWidth().clip(smoothShape(22.dp)).background(p.type(type).c.copy(alpha = .2f)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    Row(Modifier.fillMaxWidth().chunk(vivid(p.type(type).c), p.type(type).c.step(), 28.dp, 4.dp, 0.dp).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Emoji(o["i"]?.jsonPrimitive?.content ?: "🎯", 46.dp)
-        Column { Text(o["t"]?.jsonPrimitive?.content ?: "", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp); TypeChip(type) }
+        Column { Text(o["t"]?.jsonPrimitive?.content ?: "", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = fr.pepsgoal.app.ui.theme.PLUM); TypeChip(type) }
     }
     Muted("Une copie est ajoutée à tes objectifs, avec les mêmes réglages : tu pourras les modifier ensuite.", small = true)
     SheetFoot {
@@ -252,7 +259,7 @@ fun NfcRow(ui: AppState, g: Goal, divider: Boolean = true) {
     OptionRow("bolt", p.type("timed").c, p.type("objective").c, "Tag NFC", if (g.bool("nfc")) "Pose ton téléphone sur le tag pour valider" else "Valider en touchant un autocollant NFC", open, { open = !open }, divider) {
         if (!fr.pepsgoal.app.sys.NfcTags.enabled(ctx)) Muted("Active le NFC dans les réglages du téléphone.", small = true)
         if (waiting) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("📲", fontSize = 26.sp); Text("Approche le tag du dos du téléphone…", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+            Emoji("📲", 28.dp); Text("Approche le tag du dos du téléphone…", Modifier.weight(1f), fontWeight = FontWeight.Bold)
             PButton("Annuler", { fr.pepsgoal.app.sys.NfcTags.cancel(ctx); waiting = false }, small = true, kind = "ghost")
         } else {
             Muted("Colle un autocollant NFC là où tu fais l’habitude (brosse à dents, tapis de yoga…). Une fois associé, le toucher avec le téléphone valide l’objectif, même application fermée.", small = true)
@@ -262,7 +269,7 @@ fun NfcRow(ui: AppState, g: Goal, divider: Boolean = true) {
                     waiting = false
                     if (err != null) ui.toast(err, "x") else { g.set("nfc", true); pg.store.commit(); open = false; ui.toast("Tag associé à « ${g.title} » ✓", "check") }
                 }
-            }, icon = "bolt", small = true, kind = "primary")
+            }, icon = "bolt", small = true, color = p.type("timed").c)
         }
     }
 }

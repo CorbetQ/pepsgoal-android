@@ -1097,3 +1097,30 @@ fun BgTile(label: String, sub: String?, on: Boolean, onClick: () -> Unit, enable
         if (sub != null) Text(sub, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3, maxLines = 1, textAlign = TextAlign.Center)
     }
 }
+
+/* ================================================================== pastilles et tuiles de choix */
+
+/** Pastille de couleur ronde à marche (44 dp dans une cible 48) ; choisie : bord braise 3 dp et coche prune. */
+@Composable
+fun PSwatch(fill: Brush, on: Boolean, name: String, onClick: () -> Unit, size: Dp = 44.dp) {
+    val p = LocalPal.current
+    val inter = remember { MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Box(Modifier.size(maxOf(48.dp, size + 4.dp)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(size, size + 3.dp).chunk(fill, if (on) p.focusEdge else p.edge, size / 2, 3.dp, if (on) 3.dp else 2.dp, press).clip(CircleShape)
+            .springClick(inter, label = name, role = Role.RadioButton, onClick = onClick).semantics { selected = on }, contentAlignment = Alignment.Center) {
+            if (on) Box(Modifier.size(size * .55f).background(Color.White, CircleShape), contentAlignment = Alignment.Center) { Pi("check", size = size * .36f, tint = PLUM) }
+        }
+    }
+}
+
+/** Tuile de choix carrée à marche (emoji, picto) : rayon 17, choisie = teinte du néon et bord braise 3 dp. */
+@Composable
+fun PickTile(on: Boolean, desc: String, onClick: () -> Unit, size: Dp = 48.dp, color: Color? = null, content: @Composable BoxScope.() -> Unit) {
+    val p = LocalPal.current
+    val inter = remember { MutableInteractionSource() }
+    val press = rememberPress(inter)
+    Box(Modifier.size(size, size + 3.dp).chunk(if (on) p.selTint(color ?: p.flame) else p.surface, if (on) p.focusEdge else p.edge, 17.dp, 3.dp, if (on) 3.dp else 2.dp, press)
+        .clip(RoundedCornerShape(17.dp)).springClick(inter, label = desc, role = Role.RadioButton, onClick = onClick).semantics { selected = on },
+        contentAlignment = Alignment.Center, content = content)
+}

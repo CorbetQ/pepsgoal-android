@@ -60,16 +60,17 @@ fun AvatarSheet(ui: AppState) {
         }
     }
     SheetHead(ui, "Icône de profil")
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Av(u, 104.dp, d) }
-    Seg(listOf("initials" to "Initiales", "photo" to "Photo", "emoji" to "Emoji", "picto" to "Picto"), d.kind, { k -> d = d.copy().apply { kind = k }; if (k == "photo" && d.photo.isEmpty()) pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { AvatarMedallion(104.dp, null, null, null, "Aperçu de l’icône") { Av(u, 104.dp, d) } }
+    val kinds = listOf("initials" to "Initiales", "photo" to "Photo", "emoji" to "Emoji", "picto" to "Picto")
+    PTabs(kinds.map { it.second to null }, kinds.indexOfFirst { it.first == d.kind }.coerceAtLeast(0), { i -> val k = kinds[i].first; d = d.copy().apply { kind = k }; if (k == "photo" && d.photo.isEmpty()) pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
     when (d.kind) {
         "photo" -> { PButton(if (d.photo.isNotEmpty()) "Changer de photo" else "Choisir une photo", { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, icon = "image"); Muted("La photo est recadrée en carré. La couleur choisie forme l'anneau autour.", small = true) }
         "emoji" -> EmojiPicker(d.emoji) { e -> d = d.copy().apply { emoji = e } }
-        "picto" -> FlowRowCompat(gap = 8.dp) { PICTOS.forEach { pc -> Box(Modifier.size(48.dp).clip(smoothShape(14.dp)).background(if (d.picto == pc) p.flame.copy(alpha = .3f) else p.glass).border(1.dp, p.line, smoothShape(14.dp)).clickable { d = d.copy().apply { picto = pc } }, contentAlignment = Alignment.Center) { Pi(pc, size = 24.dp) } } }
+        "picto" -> FlowRowCompat(gap = 8.dp) { PICTOS.forEach { pc -> PickTile(d.picto == pc, pc, { d = d.copy().apply { picto = pc } }) { Pi(pc, size = 24.dp, tint = p.ink) } } }
         else -> Muted("Tes initiales sont tirées de ton nom affiché.", small = true)
     }
     SectionTitle("Couleur")
-    FlowRowCompat(gap = 8.dp) { ACCENTS.forEachIndexed { i, a -> Box(Modifier.size(36.dp).clip(CircleShape).background(accentBrush(i)).border(if (d.color == i) 3.dp else 1.dp, if (d.color == i) p.ink else p.line, CircleShape).clickable(onClickLabel = a.name) { d = d.copy().apply { color = i } }) } }
+    FlowRowCompat(gap = 4.dp) { ACCENTS.forEachIndexed { i, a -> PSwatch(accentBrush(i), d.color == i, a.name, { d = d.copy().apply { color = i } }) } }
     SheetFoot {
         PButton("Annuler", { ui.close() }, kind = "ghost")
         PButton("Enregistrer", {
@@ -99,8 +100,8 @@ fun LegalSheet(ui: AppState, doc: String) {
     val links = TextLinkStyles(SpanStyle(color = p.type("objective").ink, fontWeight = FontWeight.Bold))
     d["sections"]!!.jsonArray.forEach { sec ->
         val a = sec.jsonArray
-        Text(a[0].jsonPrimitive.content, fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
-        Text(AnnotatedString.fromHtml(a[1].jsonPrimitive.content.replace("<li>", "<li>• ").replace("</p>", "</p><br>"), links), fontSize = 14.sp, lineHeight = 21.sp)
+        Text(a[0].jsonPrimitive.content, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 23.sp, modifier = Modifier.padding(top = 8.dp))
+        Text(AnnotatedString.fromHtml(a[1].jsonPrimitive.content.replace("<li>", "<li>• ").replace("</p>", "</p><br>"), links), fontSize = 15.sp, fontWeight = FontWeight.Bold, lineHeight = 22.sp, color = p.ink2)
     }
     SectionTitle("Autres documents")
     FlowRowCompat(gap = 6.dp) { docs.filterKeys { it != doc }.forEach { (k, x) -> PButton(x.jsonObject["title"]!!.jsonPrimitive.content, { ui.sheet = Sheet.Legal(k) }, small = true) } }
@@ -114,12 +115,14 @@ fun NotesSheet(ui: AppState) {
     SheetHead(ui, "Notes de version")
     notes.forEachIndexed { i, n ->
         val a = n.jsonArray; val v = a[0].jsonPrimitive.content; val on = i in open
-        Column(Modifier.fillMaxWidth().clip(smoothShape(16.dp)).background(p.glass).clickable { open = if (on) open - i else open + i }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+        val press = rememberPress(inter)
+        Column(Modifier.fillMaxWidth().chunk(p.surface, p.edge, 22.dp, 4.dp, 2.dp, press).clip(RoundedCornerShape(22.dp)).springClick(inter, label = v) { open = if (on) open - i else open + i }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(v, fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold); if (v == APP_VERSION) Chip("Actuelle", color = p.flame)
-                Spacer(Modifier.weight(1f)); Muted(a[1].jsonPrimitive.content, small = true); Text(if (on) "▾" else "▸", color = p.ink3)
+                Spacer(Modifier.weight(1f)); Muted(a[1].jsonPrimitive.content, small = true); Pi(if (on) "chevronup" else "chevron", size = 18.dp, tint = p.ink3)
             }
-            if (on) a[2].jsonArray.forEach { Text("• " + it.jsonPrimitive.content, fontSize = 14.sp) }
+            if (on) a[2].jsonArray.forEach { Text("• " + it.jsonPrimitive.content, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = p.ink2, lineHeight = 21.sp) }
         }
     }
     Muted("Le détail technique de chaque version est publié sur GitHub.", small = true)
@@ -131,9 +134,9 @@ fun ExportSheet(ui: AppState, json: String) {
     val ctx = LocalContext.current
     SheetHead(ui, "Exporter mes données")
     Muted("Garde ce fichier en lieu sûr : il contient tes objectifs, validations, publications, stories et messages déchiffrés.")
-    Text(json.take(4000) + if (json.length > 4000) "\n…" else "", Modifier.fillMaxWidth().clip(smoothShape(14.dp)).background(LocalPal.current.glass).padding(12.dp), fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 14.sp)
+    Text(json.take(4000) + if (json.length > 4000) "\n…" else "", Modifier.fillMaxWidth().background(LocalPal.current.surface2, RoundedCornerShape(17.dp)).padding(12.dp), fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 16.sp)
     SheetFoot {
-        PButton("Copier", { copyText(ctx, ui, json) }, kind = "ghost")
+        PButton("Copier", { copyText(ctx, ui, json) }, icon = "copy")
         PButton("Enregistrer ou partager", {
             val f = File(ctx.cacheDir, "exports").apply { mkdirs() }.let { File(it, "pepsgoal-${today()}.json") }; f.writeText(json)
             val uri = androidx.core.content.FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
@@ -151,23 +154,21 @@ fun GoalGroupsSheet(ui: AppState) {
     SheetHead(ui, "Groupes d’objectifs")
     Muted("Range tes objectifs par thème. Chaque objectif appartient à un groupe au plus ; supprimer un groupe ne supprime pas ses objectifs.")
     @Composable fun IconPick(cur: String, key: String, set: (String) -> Unit) {
-        Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(p.glass).clickable { pickFor = if (pickFor == key) null else key }, contentAlignment = Alignment.Center) { Emoji(cur, 24.dp) }
+        PickTile(pickFor == key, "Choisir l’icône", { pickFor = if (pickFor == key) null else key }) { Emoji(cur, 26.dp) }
     }
     u.goalGroups.toList().forEach { gr ->
         var n by remember(gr.id) { mutableStateOf(gr.name) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconPick(gr.icon, gr.id) {}
             Field(n, { n = it; if (it.isNotBlank()) { gr.name = it.trim(); pg.store.commit() } }, "Nom du groupe", Modifier.weight(1f), max = 30)
-            Muted("${u.goalGroupOf.values.count { it == gr.id }}", small = true)
+            MiniPlaque("${u.goalGroupOf.values.count { it == gr.id }}")
             IconBtn("trash", "Supprimer le groupe ${gr.name}", { u.goalGroups.removeAll { it.id == gr.id }; u.goalGroupOf.entries.removeAll { it.value == gr.id }; if (ui.groupFilter == gr.id) ui.groupFilter = "all"; pg.store.commit(); ui.toast("Groupe supprimé : ses objectifs sont conservés.", "trash") }, plain = true)
         }
-        if (pickFor == gr.id) FlowRowCompat(gap = 4.dp) { GROUP_ICONS.forEach { e -> Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).clickable { gr.icon = e; pickFor = null; pg.store.commit() }, contentAlignment = Alignment.Center) { Emoji(e, 24.dp) } } }
+        if (pickFor == gr.id) FlowRowCompat(gap = 6.dp) { GROUP_ICONS.forEach { e -> PickTile(gr.icon == e, e, { gr.icon = e; pickFor = null; pg.store.commit() }, 44.dp) { Emoji(e, 24.dp) } } }
         // Couleur du dossier (pastille dans les filtres et en-tête de section)
-        Row(Modifier.padding(start = 50.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRowCompat(Modifier.padding(start = 52.dp), gap = 0.dp) {
             (listOf<String?>(null) + GROUP_COLORS).forEach { c ->
-                val on = gr.color == c
-                Box(Modifier.size(24.dp).clip(RoundedCornerShape(12.dp)).background(c?.let { fr.pepsgoal.app.ui.theme.hex(it) } ?: p.ink.copy(alpha = .08f))
-                    .border(if (on) 2.5.dp else 1.dp, if (on) p.ink else p.line, RoundedCornerShape(12.dp)).clickable(onClickLabel = c ?: "Sans couleur") { gr.color = c; pg.store.commit(); ui.bump() })
+                PSwatch(androidx.compose.ui.graphics.SolidColor(c?.let { fr.pepsgoal.app.ui.theme.hex(it) } ?: p.surface2), gr.color == c, c ?: "Sans couleur", { gr.color = c; pg.store.commit(); ui.bump() }, 32.dp)
             }
         }
     }
@@ -177,10 +178,10 @@ fun GoalGroupsSheet(ui: AppState) {
         PButton("Créer", {
             if (name.isBlank()) return@PButton
             u.goalGroups.add(GoalGroup(uid(), name.trim(), icon)); name = ""; icon = "📁"; pg.store.commit()
-        }, kind = "primary", small = true)
+        }, icon = "plus", small = true, color = p.type("project").c, enabled = name.isNotBlank())
     }
-    if (pickFor == "new") FlowRowCompat(gap = 4.dp) { GROUP_ICONS.forEach { e -> Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).clickable { icon = e; pickFor = null }, contentAlignment = Alignment.Center) { Emoji(e, 24.dp) } } }
-    SheetFoot { PButton("Terminé", { ui.close() }) }
+    if (pickFor == "new") FlowRowCompat(gap = 6.dp) { GROUP_ICONS.forEach { e -> PickTile(icon == e, e, { icon = e; pickFor = null }, 44.dp) { Emoji(e, 24.dp) } } }
+    SheetFoot { PButton("Terminé", { ui.close() }, kind = "primary") }
 }
 
 /** Couleurs proposées pour les dossiers d'objectifs. */
