@@ -222,7 +222,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.simpleHome(ui: AppSta
     )
     for ((id, head, keys) in sections) {
         val shown = keys.filter { it in cards }; if (shown.isEmpty()) continue
-        item("sec:$id") { HomeSectionHead(head.first, head.second, id in collapsed) { toggle(id) } }
+        // Préfixe distinct des sections de moment de dueItems (« sec:day » existe déjà : clé dupliquée = plantage au défilement)
+        item("home:$id") { HomeSectionHead(head.first, head.second, id in collapsed) { toggle(id) } }
         if (id !in collapsed) for (k in shown) homeCard(ui, k, plan, lv, due, collapsed, toggle)
     }
 }
