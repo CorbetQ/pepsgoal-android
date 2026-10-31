@@ -122,6 +122,7 @@ fun HomeHeader(ui: AppState, plan: Plan, st: Streak, lv: Level) {
                 StreakPill("🧊", pl(u.freezes, "joker", "jokers"), off)
                 StreakPill("🏆", "Record $best", off)
                 StreakPill("✅", "$done/$total ${if (done > 1) "faits" else "fait"}", off)
+                if (Eggs.sixSeven(st.n)) StreakPill("🤲", "Six Seven", off)
             }
         }
     }

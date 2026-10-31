@@ -149,6 +149,14 @@ fun PepsRoot(ui: AppState) {
             val skinKey = u?.flameSkin ?: "classic"
             // Jour de fête (Halloween, 1er avril) : la flamme change de couleurs pour la journée
             val flame = remember(skinKey, u?.id, rev) { fr.pepsgoal.core.Eggs.flameColors()?.map(::hex) ?: FLAME_SKINS.firstOrNull { it.key == skinKey && it.colors != null && u != null && pg.bestStreak(u.id) >= it.min }?.colors?.map(::hex) }
+            // Surprise « Six Seven » : série de 67 jours ou plus, la flamme fait le geste ; débloquée la première fois
+            val sixSeven = remember(rev, u?.id) { u != null && fr.pepsgoal.core.Eggs.sixSeven(pg.globalStreak(u.id).n) }
+            LaunchedEffect(sixSeven, u?.id) {
+                if (sixSeven && u != null && "sixseven" !in pg.eggsFound(u)) {
+                    kotlinx.coroutines.delay(1200)
+                    ui.egg("sixseven", "6️⃣7️⃣ Six Seven ! ${fr.pepsgoal.core.Eggs.SIX_SEVEN} jours de série : ta flamme ne tient plus en place 🤲", "confetti")
+                }
+            }
             // Statuts du jour (moins de 24 h) : emoji sur les avatars
             val statuses = remember(rev) { pg.db.stories.filter { it.kind == "status" && fr.pepsgoal.core.nowMs() - it.at < fr.pepsgoal.core.STORY_TTL }.sortedBy { it.at }
                 .mapNotNull { s -> (s.data?.get("e") as? kotlinx.serialization.json.JsonPrimitive)?.content?.takeIf { it.isNotBlank() }?.let { s.userId to it } }.toMap() }
@@ -158,7 +166,7 @@ fun PepsRoot(ui: AppState) {
                 val t = fr.pepsgoal.core.today(); val h = java.time.LocalTime.now().hour
                 if (u != null && ui.prefs.briefAuto && ui.prefs.briefDay != t && h in 5..11) { ui.prefs.briefDay = t; kotlinx.coroutines.delay(1200); fr.pepsgoal.app.sys.Speaker.briefing(bctx) }
             }
-            CompositionLocalProvider(LocalContentColor provides p.ink, LocalFlame provides flame, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses,
+            CompositionLocalProvider(LocalContentColor provides p.ink, LocalFlame provides flame, LocalSixSeven provides sixSeven, LocalFlameStyle provides FlameStyle(ui.prefs.flameShape, ui.prefs.flameFx), LocalStatuses provides statuses,
                 LocalSceneTint provides rememberSceneTint(ui)) {
                 Box(Modifier.fillMaxSize()) { Reachable(ui) {
                 Box(Modifier.fillMaxSize().then(hideLayer)) { CompositionLocalProvider(LocalBgPaused provides hidden) {

@@ -191,12 +191,12 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
                 var lastDay = ""; var lastFrom = ""
                 list.forEach { m ->
                     val d = ymd(m.at)
-                    if (d != lastDay) { val dd = d; item("d:$d") { Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { MiniPlaque(if (dd == today()) "Aujourd'hui" else fmtDate(dd)) } }; lastFrom = ""; lastDay = d }
-                    if (Social.body(ui, m)?.str("k") == "shot") { item("m:${m.id}") { ShotNotice(ui, m) }; lastFrom = ""; return@forEach }
+                    if (d != lastDay) { val dd = d; item("d:$d", contentType = "day") { Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { MiniPlaque(if (dd == today()) "Aujourd'hui" else fmtDate(dd)) } }; lastFrom = ""; lastDay = d }
+                    if (Social.body(ui, m)?.str("k") == "shot") { item("m:${m.id}", contentType = "shot") { ShotNotice(ui, m) }; lastFrom = ""; return@forEach }
                     val mine = m.from == u.id
                     val who = if (g != null && !mine && m.from != lastFrom) (pg.userById(m.from)?.name ?: "Ancien membre") else null
                     lastFrom = m.from
-                    item("m:${m.id}") {
+                    item("m:${m.id}", contentType = "msg") {
                         MessageRow(ui, m, mine, who, g?.members, reacts[m.id], menu == m.id, more,
                             selected = m.id in sel || (searching && hits.getOrNull(hit) == m.id), selecting = sel.isNotEmpty(), editedText = edits[m.id], gone = m.id in gone, accent = chosen,
                             onMenu = { sel = if (m.id in sel) sel - m.id else sel + m.id; more = false; Feedback.tick() }, onMore = { more = !more },

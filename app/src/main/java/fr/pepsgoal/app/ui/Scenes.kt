@@ -29,7 +29,7 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
-import fr.pepsgoal.core.SHOP_BGS
+import fr.pepsgoal.core.ALL_BGS
 import fr.pepsgoal.app.peps
 
 /*
@@ -43,7 +43,7 @@ import fr.pepsgoal.app.peps
 @Composable
 fun SceneBg(key: String, modifier: Modifier = Modifier, still: Boolean = false) {
     // Dégradé du ciel, affiché le temps du premier rendu hors écran
-    val sky = remember(key) { (SHOP_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")).map { c(it) } }
+    val sky = remember(key) { (ALL_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")).map { c(it) } }
     val placeholder: DrawScope.() -> Unit = { drawRect(Brush.verticalGradient(sky)) }
     // Aperçu figé : rendu une seule fois, puis repris du cache à chaque défilement
     if (still) { StillCanvas("scene:$key", modifier.fillMaxSize(), placeholder) { scene(key, .3f) }; return }
@@ -57,7 +57,8 @@ fun SceneBg(key: String, modifier: Modifier = Modifier, still: Boolean = false) 
     val hour = if (light == "real") androidx.compose.runtime.produceState(nowHour()) { while (true) { kotlinx.coroutines.delay(60_000); value = nowHour() } }.value else 0f
     val h = when (light) { "real" -> hour; "day" -> null; else -> if (dark) 21.5f else 15f }
     // Rendu hors du fil principal à 50 % de la résolution, puis mis à l'échelle (la scène est voilée sous les cartes)
-    OffscreenCanvas("scene:$key:${h?.let { (it * 4).toInt() }}", phase, modifier.fillMaxSize(), scale = .5f, placeholder = placeholder) { t -> scene(key, t, h) }
+    // (le régulateur de fluidité peut l'abaisser temporairement : Paramètres › Performances)
+    OffscreenCanvas("scene:$key:${h?.let { (it * 4).toInt() }}", phase, modifier.fillMaxSize(), scale = fr.pepsgoal.app.sys.Perf.flags.sceneScale, placeholder = placeholder) { t -> scene(key, t, h) }
 }
 
 /** Heure locale en heures décimales (14,5 = 14 h 30). */
@@ -109,12 +110,13 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
         "savanna" -> savanna(t); "lanterns" -> lanterns(t); "icefield" -> icefield(t)
         "angers" -> angers(t, td); "angevine" -> angevine(t); "nantes" -> nantes(t, td)
         "xmastree" -> xmastree(t); "valentine" -> valentine(t); "loiresummer" -> loiresummer(t)
+        "kopa" -> kopa(t)
         else -> {
-            val sky = SHOP_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")
+            val sky = ALL_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")
             drawRect(Brush.verticalGradient(sky.map { c(it) }))
         }
     }
-    val dark = SHOP_BGS.firstOrNull { it.key == key }?.dark ?: true
+    val dark = ALL_BGS.firstOrNull { it.key == key }?.dark ?: true
     if (td != null && !dark && key !in OWN_TOD) grade(td)
     finish(dark || (td?.night ?: 0f) > .5f, if (key == "tram") .6f else 1f)
 }
@@ -122,10 +124,10 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
 /** Durée d'un cycle d'animation par scène (ms) : les scènes à mouvement visible (poissons, pluie) tournent plus vite. */
 private val SCENE_DUR = mapOf("tram" to 40000, "deepsea" to 60000, "coderain" to 20000, "fireworks" to 24000, "rainwindow" to 50000, "autumnwood" to 30000, "sakura" to 30000,
     "tunnel" to 20000, "lighthouse" to 30000, "nighttrain" to 40000, "lanterns" to 60000, "jellyfish" to 50000, "savanna" to 60000, "angers" to 60000, "angevine" to 40000, "nantes" to 60000,
-    "xmastree" to 30000, "valentine" to 40000, "loiresummer" to 60000)
+    "xmastree" to 30000, "valentine" to 40000, "loiresummer" to 60000, "kopa" to 40000)
 /** Images par seconde : les scènes très détaillées et presque immobiles se contentent de moins (batterie). */
 private val SCENE_FPS = mapOf("tram" to 8, "mountains" to 6, "mistforest" to 8, "dunes" to 6, "planet" to 6, "citynight" to 8, "tunnel" to 15, "rooftops" to 6, "canyon" to 6, "vineyard" to 8, "angers" to 12, "angevine" to 8, "nantes" to 12,
-    "xmastree" to 10, "valentine" to 10, "loiresummer" to 8)
+    "xmastree" to 10, "valentine" to 10, "loiresummer" to 8, "kopa" to 10)
 
 /*
  * Arrière-plans illustrés : peints sur Canvas en couches (perspective atmosphérique, lumière directionnelle, brume,
@@ -3464,4 +3466,91 @@ private fun DrawScope.loiresummer(t: Float) {
     for (i in 0 until 3) { val x = ((m() + t * .5f) % 1f) * W; val y = H * (.25f + m() * .12f); val s = S * .018f; val f = sin(t * TAU * 12 + i) * .3f
         val p = Path(); p.moveTo(x - s, y - s * (.2f + f)); p.quadraticBezierTo(x - s * .4f, y - s * .6f, x, y); p.quadraticBezierTo(x + s * .4f, y - s * .6f, x + s, y - s * (.2f + f))
         drawPath(p, c("#3A4A5A"), style = Stroke(max(1f, S / 380f), cap = StrokeCap.Round)) }
+}
+
+/* ------------------------------------------------------------------ Stade Raymond-Kopa : soir de match à Angers (fond secret) */
+
+/**
+ * Un soir de match au stade d'Angers, en aplats : ciel d'encre et croissant de lune, tours rayées du château au loin,
+ * quatre pylônes de projecteurs et leurs faisceaux pleins (translucides, sans halo), tribunes noir et blanc où la foule
+ * fait la ola et agite écharpes et drapeaux, banderole rayée, pelouse tondue en bandes et ballon qui roule. Ni logo ni
+ * inscription.
+ */
+private fun DrawScope.kopa(t: Float) {
+    val W = size.width; val H = size.height; val S = min(W, H)
+    bands("#070912", "#0A0D1A", "#0E1324", "#121A30", "#17203C", "#1C2645", y1 = H * .42f)
+    rect(0f, H * .42f - 1f, W, H * .2f, c("#1C2645"))
+    // Étoiles discrètes et croissant de lune (deux disques pleins)
+    val st = Mul(67)
+    for (i in 0 until 26) { val x = st() * W; val y = st() * H * .22f; val on = ((t * 10f).toInt() + i) % 5 != 0; if (on) disc(x, y, S * (.0016f + st() * .002f), c("#FFFFFF", .75f)) }
+    disc(W * .84f, H * .09f, S * .045f, c("#F2F2EE")); disc(W * .84f + S * .02f, H * .09f - S * .01f, S * .04f, c("#0A0D1A"))
+    // Château au loin : tours rayées schiste et tuffeau, courtine en ardoise
+    val by = H * .33f; val tw = W * .045f
+    rect(W * .03f, by - H * .035f, W * .26f, H * .06f, c("#232A3E"))
+    for (k in 0 until 4) {
+        val x = W * (.04f + k * .07f); val th = H * (.07f + (k % 2) * .012f)
+        for (b in 0 until 7) rect(x, by - th + b * th / 7f, tw, th / 7f + 1f, if (b % 2 == 0) c("#2E3448") else c("#3C4258"))
+        rect(x - tw * .08f, by - th - H * .006f, tw * 1.16f, H * .008f, c("#262C40"))
+    }
+    // Pylônes de projecteurs et faisceaux pleins
+    val pyl = listOf(.1f to .1f, .3f to .16f, .7f to .16f, .9f to .1f)
+    for ((i, xy) in pyl.withIndex()) {
+        val (px, top) = xy; val x = W * px; val y = H * top; val bw = W * .09f; val bh = H * .045f
+        line(x, y + bh, x, H * .4f, max(1.5f, S / 200f), c("#3A4258"))
+        val pulse = .1f + .025f * sin(t * TAU * 2 + i)
+        fill(poly(x - bw * .4f, y + bh, x + bw * .4f, y + bh, W * (if (px < .5f) .62f else .38f), H * .74f, W * (if (px < .5f) .22f else .78f), H * .74f), c("#F4F7FF", pulse))
+        rect(x - bw / 2, y, bw, bh, c("#2A3044"))
+        for (r in 0 until 2) for (k in 0 until 5) rect(x - bw / 2 + bw * (.06f + k * .19f), y + bh * (.12f + r * .45f), bw * .14f, bh * .34f, c("#FFFFFF"))
+    }
+    // Toit des tribunes et tribune haute
+    fill(poly(0f, H * .36f, W, H * .36f, W, H * .385f, 0f, H * .385f), c("#1A1D26"))
+    rect(0f, H * .385f, W, H * .23f, c("#0E0F14"))
+    // Foule : rangées de supporters noir et blanc qui font la ola (une vague qui traverse le stade)
+    val crowd = Mul(9)
+    val rows = 6; val per = 46
+    for (r in 0 until rows) {
+        val y0 = H * (.4f + r * .034f); val pw = W / per
+        for (k in 0 until per) {
+            val x = (k + .15f) * pw
+            val wave = (sin((k / per.toFloat() - t * 2f) * TAU) + 1f) / 2f
+            val lift = if (wave > .8f) (wave - .8f) * 5f else 0f
+            val head = if ((k + r) % 3 == 0) c("#F2F2F2") else if ((k + r) % 3 == 1) c("#1F2026") else c("#C9C9CF")
+            val yy = y0 - lift * H * .012f
+            rect(x, yy + pw * .45f, pw * .7f, H * .02f, if ((k + r * 2) % 2 == 0) c("#F5F5F5") else c("#26272E"))
+            disc(x + pw * .35f, yy + pw * .3f, pw * .26f, c("#E8C7A8"))
+            if (crowd() < .25f || lift > .2f) line(x + pw * .05f, yy + pw * .4f, x + pw * .05f, yy - pw * .2f - lift * pw * .4f, max(1f, pw * .14f), head)
+        }
+    }
+    // Drapeaux mi-noir mi-blanc qui flottent
+    for ((i, fx) in listOf(.18f, .46f, .74f).withIndex()) {
+        val x = W * fx; val y = H * .41f; val fw = W * .07f; val fh = H * .03f; val f = sin(t * TAU * 3 + i * 2f) * fh * .25f
+        line(x, y, x, y + H * .09f, max(1.5f, S / 260f), c("#B8B8C0"))
+        fill(poly(x, y, x + fw / 2, y + f, x + fw / 2, y + fh + f, x, y + fh), c("#F7F7F7"))
+        fill(poly(x + fw / 2, y + f, x + fw, y - f * .5f, x + fw, y + fh - f * .5f, x + fw / 2, y + fh + f), c("#16171C"))
+    }
+    // Banderole rayée le long de la main courante
+    val bnY = H * .6f; val bnH = H * .022f; val n = 18
+    for (k in 0 until n) rect(k * W / n, bnY, W / n + 1f, bnH, if (k % 2 == 0) c("#F5F5F5") else c("#121318"))
+    rect(0f, bnY + bnH, W, H * .006f, c("#2B2D36"))
+    // Pelouse en perspective : bandes de tonte claires et foncées
+    val py = bnY + bnH + H * .006f
+    rect(0f, py, W, H - py, c("#2A7A3B"))
+    val stripes = 9
+    for (k in 0 until stripes) {
+        val y1 = py + (H - py) * (k / stripes.toFloat()).let { it * it * .55f + it * .45f }
+        val y2 = py + (H - py) * ((k + 1) / stripes.toFloat()).let { it * it * .55f + it * .45f }
+        if (k % 2 == 0) rect(0f, y1, W, y2 - y1 + 1f, c("#33893F"))
+    }
+    // Lignes blanches : rond central et ligne médiane (vus en perspective)
+    val lw = max(1.5f, S / 180f); val cy = py + (H - py) * .5f
+    line(W * .5f, py, W * .5f, H, lw, c("#F4F7F2", .9f), StrokeCap.Butt)
+    drawOval(c("#F4F7F2", .9f), topLeft = Offset(W * .5f - W * .2f, cy - (H - py) * .16f), size = Size(W * .4f, (H - py) * .32f), style = Stroke(lw))
+    disc(W * .5f, cy, lw * 1.4f, c("#F4F7F2"))
+    line(0f, py + lw, W, py + lw, lw, c("#F4F7F2", .9f), StrokeCap.Butt)
+    // Ballon qui roule d'un camp à l'autre (aller-retour)
+    val u = (sin(t * TAU) + 1f) / 2f; val bx = W * (.2f + .6f * u); val bY = py + (H - py) * (.62f + .08f * sin(t * TAU * 2))
+    val br = S * .016f
+    disc(bx + br * .3f, bY + br * .5f, br, c("#16301C", .5f))
+    disc(bx, bY, br, c("#FFFFFF"))
+    fill(star5(bx, bY, br * .55f), c("#1A1B20"))
 }

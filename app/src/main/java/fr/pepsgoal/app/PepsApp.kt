@@ -84,8 +84,15 @@ class PepsApp : Application() {
             override fun onStart(owner: LifecycleOwner) { foreground = true; onForeground() }
             override fun onStop(owner: LifecycleOwner) { foreground = false; onBackground() }
         })
-        SyncWorker.schedule(this)
-        Poller.schedule(this); fr.pepsgoal.app.sys.GeoReminders.register(this); fr.pepsgoal.app.sys.AutoBackup.schedule(this)
+        Poller.schedule(this)
+        // Tâches de fond (WorkManager, géorepérage des services Google) : planifiées juste après le démarrage, hors du
+        // chemin critique de la première image (leur initialisation coûte plusieurs dizaines de millisecondes)
+        scope.launch {
+            delay(1500)
+            try { SyncWorker.schedule(this@PepsApp) } catch (e: Exception) {}
+            try { fr.pepsgoal.app.sys.GeoReminders.register(this@PepsApp) } catch (e: Exception) {}
+            try { fr.pepsgoal.app.sys.AutoBackup.schedule(this@PepsApp) } catch (e: Exception) {}
+        }
         // Notifications du serveur (messages, publications, amis…) relevées toutes les minutes à l'écran
         // Relève au premier plan : toutes les 20 s quand le feed (ou les commentaires d'une publication) est à l'écran, sinon chaque minute
         scope.launch { while (true) { delay(if (foreground && (ui.tab == "feed" || ui.screens.lastOrNull() is Screen.Comments)) 20_000L else Poller.EVERY_MS); if (foreground && cloud.poll()) Poller.lastNews = System.currentTimeMillis() } }

@@ -91,7 +91,7 @@ fun CoachChatScreen(ui: AppState) {
                     }
                 }
                 if (msgs.isEmpty()) item("hello") { Welcome(ui, persona.hello.replace("{name}", firstName(ctx) ?: "toi"), send) }
-                msgs.forEachIndexed { i, m -> item("m${m.at}") { Bubble(ui, m, last = i == msgs.lastIndex && !busy) } }
+                msgs.forEachIndexed { i, m -> item("m${m.at}", contentType = "msg") { Bubble(ui, m, last = i == msgs.lastIndex && !busy) } }
                 if (busy) item("busy") { Writing(partial) }
             }
             // Questions proposées selon le moment

@@ -73,6 +73,14 @@ class InteractionBenchmarks {
     @Test fun statsPage() = rule.measureRepeated(PACKAGE, listOf(FrameTimingMetric()), PARTIAL, iterations = 5, startupMode = StartupMode.WARM,
         setupBlock = { pressHome(); startDemo(open = "stats") }) { scrollList("page_list") }
 
+    /** Boutique : défilement des aperçus de scènes (rendus une fois hors du fil principal, puis repris du cache). */
+    @Test fun shopScroll() = rule.measureRepeated(PACKAGE, listOf(FrameTimingMetric()), PARTIAL, iterations = 5, startupMode = StartupMode.WARM,
+        setupBlock = { pressHome(); startDemo(open = "shop") }) { scrollList("page_list", 4) }
+
+    /** Page Performances ouverte (FPS mesurés en direct, graphique) : le suivi des images ne doit rien coûter de visible. */
+    @Test fun perfPage() = rule.measureRepeated(PACKAGE, listOf(FrameTimingMetric()), PARTIAL, iterations = 5, startupMode = StartupMode.WARM,
+        setupBlock = { pressHome(); startDemo(open = "perf") }) { scrollList("page_list", 2) }
+
     /** Conversation de démonstration : défilement des messages. */
     @Test fun chatScroll() = rule.measureRepeated(PACKAGE, listOf(FrameTimingMetric()), PARTIAL, iterations = 5, startupMode = StartupMode.WARM,
         setupBlock = { pressHome(); startDemo(open = "chat") }) { scrollList("chat_list", 4) }

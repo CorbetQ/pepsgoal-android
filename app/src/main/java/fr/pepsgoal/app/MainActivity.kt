@@ -66,6 +66,11 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 34) registerScreenCaptureCallback(mainExecutor, shotCb as android.app.Activity.ScreenCaptureCallback)
     }
 
+    override fun onPause() {
+        fr.pepsgoal.app.sys.FpsMonitor.detach()
+        super.onPause()
+    }
+
     override fun onStop() {
         if (Build.VERSION.SDK_INT >= 34) unregisterScreenCaptureCallback(shotCb as android.app.Activity.ScreenCaptureCallback)
         super.onStop()
@@ -73,6 +78,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Suivi des images par seconde (régulateur de fluidité, page Performances) : seulement au premier plan
+        fr.pepsgoal.app.sys.FpsMonitor.attach(window.decorView)
         askNotifications()
         // Version Play Store : mise à jour proposée par Google Play, et demande d'avis après une belle série
         fr.pepsgoal.app.sys.StoreServices.checkUpdate(this)
@@ -115,7 +122,7 @@ class MainActivity : ComponentActivity() {
         // Mesures de performance (variante « benchmark » uniquement) : données de démonstration, fond Partout ou Nulle part
         if (BuildConfig.BENCH) i.getStringExtra("bench")?.let { where ->
             i.removeExtra("bench"); ui.prefs.bgWhere = where; fr.pepsgoal.app.ui.screens.demoStart(ui); ui.themeTick++
-            i.getStringExtra("open")?.let { o -> when (o) { "stats" -> ui.push(Screen.Stats); "chat" -> pg.friendsOf(pg.meId()).firstOrNull()?.let { ui.push(Screen.Chat(with = it)) } } }
+            i.getStringExtra("open")?.let { o -> when (o) { "stats" -> ui.push(Screen.Stats); "shop" -> ui.push(Screen.Shop); "perf" -> ui.push(Screen.Settings("perf")); "chat" -> pg.friendsOf(pg.meId()).firstOrNull()?.let { ui.push(Screen.Chat(with = it)) } } }
             return
         }
         if (BuildConfig.DEBUG) i.getStringExtra("shot")?.let { shot -> i.removeExtra("shot"); i.getStringExtra("lang")?.let { fr.pepsgoal.app.ui.I18n.apply(this, it); peps.ui.themeTick++ }; shot(shot); return }
