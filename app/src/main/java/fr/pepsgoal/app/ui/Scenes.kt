@@ -57,7 +57,8 @@ fun SceneBg(key: String, modifier: Modifier = Modifier, still: Boolean = false) 
     val hour = if (light == "real") androidx.compose.runtime.produceState(nowHour()) { while (true) { kotlinx.coroutines.delay(60_000); value = nowHour() } }.value else 0f
     val h = when (light) { "real" -> hour; "day" -> null; else -> if (dark) 21.5f else 15f }
     // Rendu hors du fil principal à 50 % de la résolution, puis mis à l'échelle (la scène est voilée sous les cartes)
-    OffscreenCanvas("scene:$key:${h?.let { (it * 4).toInt() }}", phase, modifier.fillMaxSize(), scale = .5f, placeholder = placeholder) { t -> scene(key, t, h) }
+    // (le régulateur de fluidité peut l'abaisser temporairement : Paramètres › Performances)
+    OffscreenCanvas("scene:$key:${h?.let { (it * 4).toInt() }}", phase, modifier.fillMaxSize(), scale = fr.pepsgoal.app.sys.Perf.flags.sceneScale, placeholder = placeholder) { t -> scene(key, t, h) }
 }
 
 /** Heure locale en heures décimales (14,5 = 14 h 30). */

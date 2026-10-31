@@ -66,6 +66,11 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 34) registerScreenCaptureCallback(mainExecutor, shotCb as android.app.Activity.ScreenCaptureCallback)
     }
 
+    override fun onPause() {
+        fr.pepsgoal.app.sys.FpsMonitor.detach()
+        super.onPause()
+    }
+
     override fun onStop() {
         if (Build.VERSION.SDK_INT >= 34) unregisterScreenCaptureCallback(shotCb as android.app.Activity.ScreenCaptureCallback)
         super.onStop()
@@ -73,6 +78,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Suivi des images par seconde (régulateur de fluidité, page Performances) : seulement au premier plan
+        fr.pepsgoal.app.sys.FpsMonitor.attach(window.decorView)
         askNotifications()
         // Version Play Store : mise à jour proposée par Google Play, et demande d'avis après une belle série
         fr.pepsgoal.app.sys.StoreServices.checkUpdate(this)
