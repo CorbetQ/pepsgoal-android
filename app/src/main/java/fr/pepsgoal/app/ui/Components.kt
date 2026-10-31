@@ -67,7 +67,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import coil3.compose.SubcomposeAsyncImage
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
 import fr.pepsgoal.app.ui.theme.hex
@@ -100,6 +99,12 @@ private const val FLAME_OUT = "M12 22.5c-4.4 0-7.6-3.1-7.6-7.3 0-3.6 2.4-5.8 4-7
 private const val FLAME_IN = "M12 21.6c-2 0-3.4-1.4-3.4-3.3 0-1.6 1-2.7 2-3.7.2 1 .7 1.6 1.3 1.8.1-1.7.8-3 2.1-3.9 0 1.7.6 2.7 1.1 3.6.3.6.5 1.2.5 2.1 0 1.9-1.6 3.4-3.6 3.4z"
 
 /** Style de la flamme choisi dans le profil : forme (classique, ronde, effilée, jumelle) et effet (étincelles, braises, halo). */
+/** Tracés de la flamme, analysés une fois (lecture seule). */
+private object FlamePaths {
+    val outer by lazy { PathParser().parsePathString(FLAME_OUT).toPath() }
+    val inner by lazy { PathParser().parsePathString(FLAME_IN).toPath() }
+}
+
 @androidx.compose.runtime.Immutable
 data class FlameStyle(val shape: String = "classic", val fx: String = "none")
 val LocalFlameStyle = staticCompositionLocalOf { FlameStyle() }
@@ -111,8 +116,8 @@ fun Flame(size: Dp, modifier: Modifier = Modifier, dim: Boolean = false, colors:
     val p = LocalPal.current
     val cs = colors ?: LocalFlame.current ?: listOf(p.pink, p.flame, p.flame2)
     val st = style ?: LocalFlameStyle.current
-    val outer = remember { PathParser().parsePathString(FLAME_OUT).toPath() }
-    val inner = remember { PathParser().parsePathString(FLAME_IN).toPath() }
+    // Tracés analysés une seule fois pour toute l'application (et non à chaque flamme affichée dans une liste)
+    val outer = FlamePaths.outer; val inner = FlamePaths.inner
     // Effets animés réservés aux grandes flammes (accueil, profil, Focus) : rien à calculer pour les petites icônes
     val fxOn = st.fx != "none" && size >= 40.dp && !dim && !p.motion && Perf.flags.fx
     val ph = if (fxOn) slowPhaseState(2600, 15) else null
@@ -166,8 +171,10 @@ fun Emoji(e: String, size: Dp, modifier: Modifier = Modifier, colorFilter: Color
     val key = remember(e) { emojiKey(e) }
     val sp = with(LocalDensity.current) { (size * .82f).toSp() }
     if (key == null) { Text(e, fontSize = sp, modifier = modifier); return }
-    SubcomposeAsyncImage(model = "file:///android_asset/emoji/$key.webp", contentDescription = e, modifier = modifier.size(size), contentScale = ContentScale.Fit, colorFilter = colorFilter,
-        error = { Box(Modifier.size(size), contentAlignment = Alignment.Center) { Text(e, fontSize = sp, textAlign = TextAlign.Center) } })
+    // Dessin connu (index des assets) : image simple, sans sous-composition (bien plus léger dans les listes) ;
+    // inconnu : emoji du système directement, sans tenter de charger un fichier absent
+    if (FluentEmoji.has(key)) { AsyncImage(model = "file:///android_asset/emoji/$key.webp", contentDescription = e, modifier = modifier.size(size), contentScale = ContentScale.Fit, colorFilter = colorFilter); return }
+    Box(modifier.size(size), contentAlignment = Alignment.Center) { Text(e, fontSize = sp, textAlign = TextAlign.Center) }
 }
 
 /* ------------------------------------------------------------------ cartes, boutons, puces */

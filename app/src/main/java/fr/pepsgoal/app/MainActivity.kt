@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
         // Mesures de performance (variante « benchmark » uniquement) : données de démonstration, fond Partout ou Nulle part
         if (BuildConfig.BENCH) i.getStringExtra("bench")?.let { where ->
             i.removeExtra("bench"); ui.prefs.bgWhere = where; fr.pepsgoal.app.ui.screens.demoStart(ui); ui.themeTick++
-            i.getStringExtra("open")?.let { o -> when (o) { "stats" -> ui.push(Screen.Stats); "chat" -> pg.friendsOf(pg.meId()).firstOrNull()?.let { ui.push(Screen.Chat(with = it)) } } }
+            i.getStringExtra("open")?.let { o -> when (o) { "stats" -> ui.push(Screen.Stats); "shop" -> ui.push(Screen.Shop); "perf" -> ui.push(Screen.Settings("perf")); "chat" -> pg.friendsOf(pg.meId()).firstOrNull()?.let { ui.push(Screen.Chat(with = it)) } } }
             return
         }
         if (BuildConfig.DEBUG) i.getStringExtra("shot")?.let { shot -> i.removeExtra("shot"); i.getStringExtra("lang")?.let { fr.pepsgoal.app.ui.I18n.apply(this, it); peps.ui.themeTick++ }; shot(shot); return }

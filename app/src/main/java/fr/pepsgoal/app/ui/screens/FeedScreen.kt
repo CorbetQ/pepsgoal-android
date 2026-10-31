@@ -61,7 +61,7 @@ fun FeedScreen(ui: AppState) {
         item("challenges") { ChallengesCard(ui) }
         item("gel") { GelCard(ui, u, true) }
         if (posts.isEmpty()) item("empty") { Glass { Empty(if (ui.feedTab == "friends") "Ton fil est encore calme" else "Aucune publication publique", if (ui.feedTab == "friends") "Ajoute des amis ou publie ta première victoire." else "Sois la première personne à partager.") } }
-        posts.take(ui.postLimit).forEach { p -> item(p.id) { PostCard(ui, p) } }
+        posts.take(ui.postLimit).forEach { p -> item(p.id, contentType = "post") { PostCard(ui, p) } }
         if (posts.size > ui.postLimit) item("more") { PButton("Voir plus de publications (${posts.size - ui.postLimit})", { ui.postLimit += 20 }, Modifier.fillMaxWidth()) }
     }
 }
@@ -383,7 +383,7 @@ fun CommentsScreen(ui: AppState, postId: String) {
         item("post") { PostCard(ui, post, inPage = true) }
         item("head") { SectionPlaque(pl(list.size, "commentaire", "commentaires"), "💬") }
         if (list.isEmpty()) item("empty") { Empty("", "Aucun commentaire pour l’instant. Sois le premier à encourager !") }
-        list.forEach { c -> item("c:${c.id}") { CommentBubble(ui, c.userId, c.text, c.at) } }
+        list.forEach { c -> item("c:${c.id}", contentType = "comment") { CommentBubble(ui, c.userId, c.text, c.at) } }
         item("end") { Spacer(Modifier.height(4.dp)) }
     }
 }

@@ -31,12 +31,25 @@ import coil3.compose.AsyncImage
  * (le même que dans la version web), à la taille du texte qui l'entoure.
  */
 object FluentEmoji {
-    @Volatile private var keys: Set<String> = emptySet()
+    @Volatile private var keys0: Set<String> = emptySet()
+    @Volatile private var loader: Thread? = null
     private val cache = android.util.LruCache<String, Any>(600)
     private val NONE = Any()
 
-    /** Liste des dessins disponibles (dossier assets/emoji), chargée au démarrage de l'application. */
-    fun load(ctx: Context) { keys = ctx.assets.list("emoji")?.map { it.removeSuffix(".webp") }?.toSet() ?: emptySet() }
+    /**
+     * Liste des dessins disponibles (dossier assets/emoji, plusieurs milliers de fichiers) : lue sur un fil à part dès le
+     * démarrage, en parallèle de la base, au lieu de bloquer le fil principal. Le premier texte qui en a besoin attend
+     * la fin de la lecture (déjà terminée en pratique).
+     */
+    fun load(ctx: Context) {
+        val am = ctx.applicationContext.assets
+        loader = Thread({ keys0 = am.list("emoji")?.map { it.removeSuffix(".webp") }?.toSet() ?: emptySet() }, "emoji-index").apply { start() }
+    }
+
+    private val keys: Set<String> get() { loader?.let { if (it.isAlive) try { it.join() } catch (e: InterruptedException) {} ; loader = null }; return keys0 }
+
+    /** Le dessin Fluent [key] existe-t-il dans l'application ? */
+    fun has(key: String): Boolean = key in keys
 
     // Symboles du plan de base affichés en emoji même sans sélecteur de variante (FE0F)
     private val PRESENTATION = setOf(0x231A, 0x231B, 0x23E9, 0x23EA, 0x23EB, 0x23EC, 0x23F0, 0x23F3, 0x25FD, 0x25FE, 0x2614, 0x2615, 0x267F, 0x2693, 0x26A1, 0x26AA, 0x26AB,

@@ -114,7 +114,7 @@ fun TodayScreen(ui: AppState) {
             // Le matin : rattrapage des oublis de la veille
             item("catchup") { CatchUpCard(ui) }
             // Accueil classique : toutes les cartes, dans l'ordre choisi (Paramètres › Accueil)
-            for (k in cards) homeCard(ui, k, plan, lv, due, collapsed, toggle)
+            for (k in cards) homeCard(ui, k, plan, st, lv, due, collapsed, toggle)
         } else simpleHome(ui, cards, plan, st, lv, collapsed, due, toggle)
         item("custom") {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -126,11 +126,11 @@ fun TodayScreen(ui: AppState) {
 }
 
 /** Une carte de l'accueil, par sa clé (voir HOME_CARDS). */
-private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState, k: String, plan: Plan, lv: Level, due: DueState, collapsed: Set<String>, toggle: (String) -> Unit) {
+private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState, k: String, plan: Plan, st: Streak, lv: Level, due: DueState, collapsed: Set<String>, toggle: (String) -> Unit) {
     val pg = ui.pg; val u = pg.me() ?: return
     val done = plan.due.count { it.done }; val total = plan.due.size
     when (k) {
-        "hero" -> { item("hero") { HomeHeader(ui, plan, pg.globalStreak(u.id), lv) }; item("ctx") { ContextCards(ui) } }
+        "hero" -> { item("hero") { HomeHeader(ui, plan, st, lv) }; item("ctx") { ContextCards(ui) } }
         "aipromo" -> item("aipromo") { AiPromoCard(ui) }
         "day" -> item("day") {
             Glass {
@@ -214,10 +214,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.homeCard(ui: AppState
 private fun androidx.compose.foundation.lazy.LazyListScope.simpleHome(ui: AppState, cards: List<String>, plan: Plan, st: Streak, lv: Level, collapsed: Set<String>, due: DueState, toggle: (String) -> Unit) {
     val pg = ui.pg; val u = pg.me() ?: return
     if ("hero" in cards || "day" in cards) item("hero") { HomeHeader(ui, plan, st, lv) }
-    for (k in listOf("due", "verify", "ongoing")) if (k in cards) homeCard(ui, k, plan, lv, due, collapsed, toggle)
+    for (k in listOf("due", "verify", "ongoing")) if (k in cards) homeCard(ui, k, plan, st, lv, due, collapsed, toggle)
     // Modules secondaires, sous la liste
     if ("hero" in cards || "day" in cards) { item("ctx") { ContextCards(ui) }; item("month") { MonthFocusCard(ui) } }
-    if ("aipromo" in cards) homeCard(ui, "aipromo", plan, lv, due, collapsed, toggle)
+    if ("aipromo" in cards) homeCard(ui, "aipromo", plan, st, lv, due, collapsed, toggle)
     val moments = cards.filter { it in MOMENT_KEYS }
     item("moments") {
         val tiles = rememberMoments(ui, moments)
@@ -238,7 +238,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.simpleHome(ui: AppSta
         val shown = keys.filter { it in cards }; if (shown.isEmpty()) continue
         // Préfixe distinct des sections de moment de dueItems (« sec:day » existe déjà : clé dupliquée = plantage au défilement)
         item("home:$id") { HomeSectionHead(head.first, head.second, id in collapsed) { toggle(id) } }
-        if (id !in collapsed) for (k in shown) homeCard(ui, k, plan, lv, due, collapsed, toggle)
+        if (id !in collapsed) for (k in shown) homeCard(ui, k, plan, st, lv, due, collapsed, toggle)
     }
 }
 
@@ -306,7 +306,8 @@ fun Starters(ui: AppState) {
 @Composable
 private fun Board(ui: AppState) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()!!
-    val board = (listOf(u.id) + pg.friendsOf(u.id).filter { it.isNotEmpty() }).mapNotNull { id -> pg.userById(id)?.let { it to pg.globalStreak(id).n } }.sortedByDescending { it.second }.take(5)
+    // Séries des amis : recalculées à chaque changement de la base, pas à chaque recomposition
+    val board = remember(ui.rev, u.id) { (listOf(u.id) + pg.friendsOf(u.id).filter { it.isNotEmpty() }).mapNotNull { id -> pg.userById(id)?.let { it to pg.globalStreak(id).n } }.sortedByDescending { it.second }.take(5) }
     Glass {
         CardHead("Classement des flammes", emoji = "🏆") { PButton("Amis", { ui.nav("friends") }, kind = "ghost", small = true) }
         if (board.size > 1) board.forEachIndexed { i, (x, n) ->
@@ -452,13 +453,13 @@ fun androidx.compose.foundation.lazy.LazyListScope.dueItems(ui: AppState, d: Due
     }
     d.sections.forEachIndexed { i, (k, list) ->
         val (emoji, title) = MOMENTS.first { it.first == k }.second
-        item("sec:$k") {
+        item("sec:$k", contentType = "sec") {
             SectionTitle(title, emoji, list.size, modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
                 // Coach IA : une pilule « Ordre conseillé » dans le premier en-tête
                 if (i == 0 && d.ai) CoachPill(d.aiPending)
             }
         }
-        list.forEach { x -> item("g:" + x.g.id) { DueRow(ui, x, d.reasons[x.g.id]) } }
+        list.forEach { x -> item("g:" + x.g.id, contentType = "due") { DueRow(ui, x, d.reasons[x.g.id]) } }
     }
     if (d.later > 0) item("due:later") {
         Row(Modifier.fillMaxWidth().animateItem(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -469,7 +470,7 @@ fun androidx.compose.foundation.lazy.LazyListScope.dueItems(ui: AppState, d: Due
     }
     if (d.doneList.isNotEmpty()) {
         item("sec:done") { DoneHead(ui, d.doneList, doneOpen, toggleDone, Modifier.animateItem()) }
-        if (doneOpen) d.doneList.forEach { x -> item("g:" + x.g.id) { DueRow(ui, x, null) } }
+        if (doneOpen) d.doneList.forEach { x -> item("g:" + x.g.id, contentType = "due") { DueRow(ui, x, null) } }
     }
 }
 
