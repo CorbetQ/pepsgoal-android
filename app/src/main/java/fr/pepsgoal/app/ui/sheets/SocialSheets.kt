@@ -277,6 +277,12 @@ private fun publish(ui: AppState, text: String, photo: ByteArray?, poll: PollDra
             val st = ui.cloud.publish(text, photo, poll, vis, goalId)
             ui.close(); ui.nav("feed"); ui.feedTab = if (vis == "public" && ui.feedTab == "public") "public" else "friends"
             ui.toast(if (st == "pending") "Envoyé à la modération : ta publication sera visible après validation." else "Publié.", "feed")
+            // Surprise « Feur » : une publication visible qui finit par « quoi ? » reçoit la réponse du compte officiel
+            if (st != "pending" && fr.pepsgoal.core.Eggs.feur(text)) {
+                kotlinx.coroutines.delay(1500)
+                try { ui.cloud.refreshSocial() } catch (_: Exception) {}
+                ui.egg("feur", "PepsGoal Officiel t’a répondu « Feur ».", "confetti")
+            }
         } catch (e: Exception) { ui.toast(e.message ?: "Publication impossible.", "x") } finally { setBusy(false) }
     }
 }

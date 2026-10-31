@@ -25,7 +25,14 @@ object Eggs {
         Egg("calendar", "Jour spécial", "Reviens un jour de fête", "📅"),
         Egg("sco", "Noir & Blanc", "Trois lettres qui font chanter un stade angevin, dans la recherche", "⚽"),
         Egg("sixseven", "Six Seven", "Tiens ta série jusqu’à un nombre que tout le monde mime", "🤲"),
+        Egg("feur", "Feur", "Termine une publication par une question… et attends la réponse du compte officiel", "🫢"),
     )
+
+    /**
+     * Publication qui se termine par « quoi ? » (« quoi? » et « quoi » aussi, sans tenir compte de la casse) : le compte
+     * PepsGoal Officiel y répond « Feur » (côté serveur, même règle) et la surprise est trouvée.
+     */
+    fun feur(text: String): Boolean = Regex("(^|[^\\p{L}])quoi\\s*\\?*\\s*$", RegexOption.IGNORE_CASE).containsMatchIn(text.trim())
 
     /** Série globale à partir de laquelle la flamme fait le geste « six seven ». */
     const val SIX_SEVEN = 67
