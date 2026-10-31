@@ -248,7 +248,9 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     }
     if (oled) { bg = Color.Black; surface = hex("#170F1C"); surface2 = hex("#241A2B"); edge = hex("#2F2337") }
     if (mode != null) {
-        // Ambiance de la boutique : teinte le fond et le décor, jamais les surfaces ni les néons
+        // Ambiance de la boutique : teinte le fond et le décor, jamais les néons ; les surfaces seulement si l'ambiance
+        // en définit (Noir & Blanc : gris anthracite neutres au lieu des prunes)
+        mode.surface?.let { surface = hex(it) }; mode.surface2?.let { surface2 = hex(it) }; mode.edge?.let { edge = hex(it); control = mix(hex(it), Color.White, .4f) }
         bg = hex(mode.bg); ink = readable(hex(mode.ink), surface, 7f); ink2 = mix(ink, surface, .25f); ink3 = mix(ink, surface, if (dark) .4f else .35f)
         deco = mode.blobs.take(2).map { mix(bg, hex(it), if (dark) .35f else .3f) }
     } else if (input.season != null && dyn == null) deco = input.season.take(2).map { mix(bg, Color(it).copy(alpha = 1f), if (dark) .3f else .25f) }

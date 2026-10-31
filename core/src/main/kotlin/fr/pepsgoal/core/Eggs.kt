@@ -23,12 +23,35 @@ object Eggs {
         Egg("joke", "Coach farceur", "Demande une blague à ton coach", "😄"),
         Egg("owl", "Oiseau de nuit", "Ouvre l’application à l’heure où tout le monde dort", "🦉"),
         Egg("calendar", "Jour spécial", "Reviens un jour de fête", "📅"),
+        Egg("sco", "Noir & Blanc", "Trois lettres qui font chanter un stade angevin, dans la recherche", "⚽"),
+        Egg("sixseven", "Six Seven", "Tiens ta série jusqu’à un nombre que tout le monde mime", "🤲"),
     )
 
-    /** Ambiance secrète débloquée par la surprise « angers » (jamais vendue dans la boutique). */
+    /** Série globale à partir de laquelle la flamme fait le geste « six seven ». */
+    const val SIX_SEVEN = 67
+
+    /**
+     * La flamme fait le geste tant que la série en cours atteint [SIX_SEVEN] jours ou plus (et non seulement le jour
+     * même) : comme les flammes de collection, la récompense reste tant que la série tient ; elle s'arrête si la série
+     * casse, et revient quand une nouvelle série atteint 67.
+     */
+    fun sixSeven(streak: Int): Boolean = streak >= SIX_SEVEN
+
+    /** Ambiances secrètes débloquées par les surprises « angers » et « sco » (jamais vendues dans la boutique). */
     val SECRET_MODES = listOf(
         ShopMode("angers", "Douceur angevine", "Tuffeau, ardoise et Loire · ambiance secrète", 1, false,
-            "#F1ECE1", "#222932", "#FFFCF5", listOf("#CDBF9F", "#5E7A8C", "#E9873A"), listOf("#F2A65A", "#E9873A", "#3E6E8E"))
+            "#F1ECE1", "#222932", "#FFFCF5", listOf("#CDBF9F", "#5E7A8C", "#E9873A"), listOf("#F2A65A", "#E9873A", "#3E6E8E")),
+        // Noir & Blanc : fond noir, surfaces gris anthracite neutres, texte blanc (≥ 15:1 sur les cartes), accent blanc
+        // et argent sur lequel le texte prune se lit à plus de 10:1
+        ShopMode("sco", "Noir & Blanc", "Noir profond et blanc franc, les soirs de match · ambiance secrète", 1, true,
+            "#0A0A0B", "#F7F7F7", "#161618", listOf("#FFFFFF", "#6E6E74", "#2A2A2E"), listOf("#FFFFFF", "#E4E4E8", "#B9B9C0"),
+            surface = "#161618", surface2 = "#222225", edge = "#3A3A3F"),
+    )
+
+    /** Fonds secrets débloqués par une surprise (jamais vendus dans la boutique). */
+    val SECRET_BGS = listOf(
+        ShopBg("kopa", "Stade Raymond-Kopa", "Tribunes, pelouse et projecteurs, un soir de match à Angers · fond secret", 1,
+            listOf("#0B0E1A", "#1C2440", "#2F7A3E"), dark = true),
     )
 
     /** Réponse de la recherche : texte, surprise trouvée, et effet visuel (« confetti », « fish »…). */
@@ -50,6 +73,8 @@ object Eggs {
                 Hit("Code accepté. +30 vies… ah non, ici ce sont des flammes.", "konami", "confetti")
             q in setOf("easter egg", "easter eggs", "œuf", "oeuf", "surprise", "surprises", "secret") ->
                 Hit("Il y a bien des surprises cachées dans PepsGoal… Ta collection est dans Profil › Collection.", null)
+            q == "sco" ->
+                Hit("Allez le SCO ! ⚫⚪ Le fond « Stade Raymond-Kopa » et l’ambiance « Noir & Blanc » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", "sco", "confetti")
             q == "pepsgoal" -> Hit("Oui, c’est moi ! Merci d’avoir pensé à me chercher 🔥", null)
             else -> null
         }
@@ -118,8 +143,18 @@ fun Pg.findEgg(key: String): Boolean {
     u.shopClaimed = trimClaimed(u.shopClaimed + "egg:$key")
     u.shopBonus += Eggs.BONUS
     if (key == "angers" && "mode:angers" !in u.shopOwned) u.shopOwned = (u.shopOwned + "mode:angers").toMutableList()
+    if (key == "sco") u.shopOwned = (u.shopOwned + listOf("mode:sco", "bg:kopa").filter { it !in u.shopOwned }).toMutableList()
     val e = Eggs.ALL.first { it.key == key }
     notify(u.id, "Surprise trouvée : « ${e.name} » ${e.emoji} +${Eggs.BONUS} flammes.", "badge")
     store.commit()
     return true
+}
+
+/** Applique tout de suite le fond « Stade Raymond-Kopa », l'ambiance « Noir & Blanc » et ses couleurs (surprise « sco »). */
+fun Pg.applySco() {
+    val u = me() ?: return
+    val m = Eggs.SECRET_MODES.first { it.key == "sco" }
+    if (!owns("mode:sco", m.price, u)) return
+    u.settings.theme = "m:sco"; u.settings.bg = "s:kopa"; u.settings.accentCustom = m.accent
+    store.commit()
 }

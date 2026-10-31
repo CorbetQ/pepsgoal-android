@@ -122,7 +122,18 @@ fun Flame(size: Dp, modifier: Modifier = Modifier, dim: Boolean = false, colors:
     val fxOn = st.fx != "none" && size >= 40.dp && !dim && !p.motion && Perf.flags.fx
     val ph = if (fxOn) slowPhaseState(2600, 15) else null
     val a = if (dim) .35f else 1f
-    Canvas(modifier.size(size)) {
+    // Surprise « Six Seven » (série de 67 jours et plus) : deux petites mains autour des grandes flammes
+    val six = LocalSixSeven.current && size >= 56.dp && !dim
+    if (six) Box(modifier.size(size)) {
+        Canvas(Modifier.fillMaxSize()) { flameBody(cs, st, outer, inner, a, fxOn, ph) }
+        SixSevenHands(size)
+    } else Canvas(modifier.size(size)) { flameBody(cs, st, outer, inner, a, fxOn, ph) }
+}
+
+/** Dessin de la flamme (corps, cœur, effet du profil) dans un carré de 24 unités mis à l'échelle. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.flameBody(cs: List<Color>, st: FlameStyle, outer: androidx.compose.ui.graphics.Path, inner: androidx.compose.ui.graphics.Path,
+                                                                       a: Float, fxOn: Boolean, ph: State<Float>?) {
+    run {
         val k = this.size.minDimension / 24f
         val t = ph?.value ?: 0f
         if (fxOn && st.fx == "halo") { val pulse = .5f + .5f * kotlin.math.sin(t * 6.2832f); drawCircle(cs[1].copy(alpha = .14f + .1f * pulse), 11.5f * k, Offset(12f * k, 14f * k)) }
@@ -141,6 +152,49 @@ fun Flame(size: Dp, modifier: Modifier = Modifier, dim: Boolean = false, colors:
                 drawCircle(Color(0xFFFFF2B0).copy(alpha = (1f - q) * .9f), (.55f - q * .35f) * k, Offset(x, y)) }
             "embers" -> for (i in 0 until 7) { val q = (t + i / 7f) % 1f; val side = if (i % 2 == 0) -1f else 1f; val x = (12f + side * (4f + q * 4f) + kotlin.math.sin(q * 9f + i) * 1.2f) * k; val y = (20f - q * 18f) * k
                 drawCircle(cs[1].copy(alpha = (1f - q) * .85f), (.7f - q * .45f) * k, Offset(x, y)) }
+        }
+    }
+}
+
+/** Série de 67 jours ou plus : la flamme fait le geste « six seven » (fourni à la racine). */
+val LocalSixSeven = staticCompositionLocalOf { false }
+
+private val HAND = Color(0xFFFFE2B8)
+private val HAND_STEP = Color(0xFFE29A63)
+
+/**
+ * Geste « six seven » : deux petites mains en aplats, paumes vers le haut, de part et d'autre de la flamme, qui montent
+ * et descendent en alternance (graphicsLayer, horloge lue au dessin : aucune recomposition). Le geste dure 20 s puis
+ * les mains se posent (comme la danse du médaillon) ; figées en animations réduites ou sans effets décoratifs.
+ */
+@Composable
+private fun BoxScope.SixSevenHands(flame: Dp) {
+    val p = LocalPal.current
+    var live by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(20_000); live = false }
+    val ph = slowPhaseState(1000, 30, running = live && Perf.flags.fx, initial = .25f)
+    val w = flame * .4f; val h = flame * .24f
+    val fp = with(LocalDensity.current) { flame.toPx() }
+    for (side in 0..1) {
+        val left = side == 0
+        Canvas(Modifier.align(Alignment.BottomStart).size(w, h).graphicsLayer {
+            // Main gauche à gauche, main droite en miroir à droite, un peu sous le milieu de la flamme
+            translationX = if (left) -fp * .2f else fp * .8f
+            translationY = -fp * .22f
+            val s = kotlin.math.sin(ph.value * 2f * kotlin.math.PI.toFloat()) * (if (left) 1f else -1f)
+            translationY += -s * fp * .13f
+            rotationZ = s * 7f
+            scaleX = if (left) 1f else -1f
+        }) {
+            // Paume (et doigts tendus vers l'extérieur), pouce dressé : une marche plus foncée dessous
+            val u = this.size.width / 20f
+            for (pass in 0..1) {
+                val dy = if (pass == 0) 1.6f * u else 0f
+                val c = if (pass == 0) (if (p.contrast) p.ink else HAND_STEP) else HAND
+                drawRoundRect(c, Offset(4f * u, 5.2f * u + dy), androidx.compose.ui.geometry.Size(15f * u, 4.6f * u), androidx.compose.ui.geometry.CornerRadius(2.3f * u))
+                drawRoundRect(c, Offset(0f, 4f * u + dy), androidx.compose.ui.geometry.Size(9f * u, 6.8f * u), androidx.compose.ui.geometry.CornerRadius(3.2f * u))
+                drawRoundRect(c, Offset(6.4f * u, 1.4f * u + dy), androidx.compose.ui.geometry.Size(3.2f * u, 5.6f * u), androidx.compose.ui.geometry.CornerRadius(1.6f * u))
+            }
         }
     }
 }

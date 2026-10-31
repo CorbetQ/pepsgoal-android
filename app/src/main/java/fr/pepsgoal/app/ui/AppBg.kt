@@ -51,13 +51,13 @@ fun AppState.sceneKind(): String {
     // Scène de saison animée, proposée d'office à sa période (option d'Apparence), sauf sur une image perso
     if (prefs.bgSeasonAuto && s.bg != "custom") seasonalScene()?.let { return "s:${it.key}" }
     // Scène de saison choisie pendant sa période gratuite, puis ni achetée ni en saison : retour au fond par défaut
-    if (s.bg.startsWith("s:")) SHOP_BGS.firstOrNull { "s:${it.key}" == s.bg }?.let { b -> if (b.freeIn != null && !pg.ownsBg(b)) return "pop" }
+    if (s.bg.startsWith("s:")) fr.pepsgoal.core.ALL_BGS.firstOrNull { "s:${it.key}" == s.bg }?.let { b -> if (b.freeIn != null && !pg.ownsBg(b)) return "pop" }
     return when (s.bg) { "blob", "" -> "pop"; else -> s.bg }
 }
 
 /** Point focal vertical de la scène (fraction de la hauteur), calé dans le héros. */
 private fun focusOf(kind: String): Float = when {
-    kind.startsWith("s:") -> SHOP_BGS.firstOrNull { it.key == kind.removePrefix("s:") }?.focus ?: .3f
+    kind.startsWith("s:") -> fr.pepsgoal.core.ALL_BGS.firstOrNull { it.key == kind.removePrefix("s:") }?.focus ?: .3f
     kind == "custom" -> .5f
     else -> .3f
 }
@@ -70,7 +70,7 @@ fun rememberSceneTint(ui: AppState): Color? {
     if (p.contrast || where == "off" || kind == "plain") return null
     return remember(kind, p.dark, ui.prefs.bgStamp, p.deco) {
         when {
-            kind.startsWith("s:") -> SHOP_BGS.firstOrNull { it.key == kind.removePrefix("s:") }?.let { hex(if (p.dark) it.tintDark else it.tint) }
+            kind.startsWith("s:") -> fr.pepsgoal.core.ALL_BGS.firstOrNull { it.key == kind.removePrefix("s:") }?.let { hex(if (p.dark) it.tintDark else it.tint) }
             kind == "pop" -> if (p.dark) Color(0xFF4A2440) else Color(0xFFFFB59A)
             kind == "custom" -> ui.prefs.bgPalette.firstOrNull()?.let { runCatching { hex(it) }.getOrNull() }
             kind == "sky" -> if (p.dark) Color(0xFF1C2A5A) else Color(0xFF5AA8EF)

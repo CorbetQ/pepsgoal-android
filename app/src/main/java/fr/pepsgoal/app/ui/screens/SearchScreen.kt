@@ -94,6 +94,15 @@ fun SearchScreen(ui: AppState, initial: String) {
                     IconTile("sparkle", p.flame2, p.pink, 44.dp, 14.dp)
                     Text(egg.text, Modifier.weight(1f), fontWeight = FontWeight.Bold)
                 }
+                // Surprise « sco » : débloquer ne veut pas dire appliquer ; un bouton l'applique tout de suite
+                if (egg.egg == "sco") {
+                    val on = u.settings.theme == "m:sco" && u.settings.bg == "s:kopa"
+                    PButton(if (on) "Stade et Noir & Blanc appliqués" else "Appliquer le stade et Noir & Blanc", {
+                        if ("sco" !in pg.eggsFound(u)) ui.egg("sco", egg.text, egg.fx, say = false)
+                        pg.applySco(); ui.themeTick++
+                        ui.toast("⚫⚪ Stade Raymond-Kopa et ambiance Noir & Blanc appliqués. À retrouver dans Apparence.", "palette")
+                    }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
+                }
             }
         }
         // Objectifs

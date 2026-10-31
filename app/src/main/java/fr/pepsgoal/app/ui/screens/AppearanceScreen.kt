@@ -69,7 +69,7 @@ private val FX_NAMES = linkedMapOf("snow" to "Neige", "petals" to "Pétales", "l
     "bubbles" to "Bulles", "confetti" to "Confettis", "stars" to "Étoiles")
 
 /** Nom lisible de l'arrière-plan en cours. */
-private fun bgName(bg: String): String = SHOP_BGS.firstOrNull { "s:${it.key}" == bg }?.name ?: BGS.firstOrNull { it.first == bg }?.second ?: "Collines braise"
+private fun bgName(bg: String): String = fr.pepsgoal.core.ALL_BGS.firstOrNull { "s:${it.key}" == bg }?.name ?: BGS.firstOrNull { it.first == bg }?.second ?: "Collines braise"
 
 /** Page Apparence, insérée dans la liste des réglages (un seul élément de la LazyColumn). */
 @Composable
@@ -329,8 +329,9 @@ private fun BackgroundSection(ui: AppState, u: User) {
     val weather = s.theme == "weather"
     // Tuiles : fonds gratuits (rendus en vrai, figés), fonds illustrés possédés, image perso, boutique
     val free = BGS.filter { it.first != "custom" }
-    val scenes = SHOP_BGS.filter { ui.pg.ownsBg(it, u) }
-    val more = SHOP_BGS.size - scenes.size
+    // Scènes possédées, fonds secrets des surprises compris
+    val scenes = fr.pepsgoal.core.ALL_BGS.filter { ui.pg.ownsBg(it, u) }
+    val more = SHOP_BGS.count { !ui.pg.ownsBg(it, u) }
     Glass {
         Head("image", "Arrière-plan", if (weather) "Le thème Météo affiche le ciel en direct : change de thème pour choisir un fond." else "${bgName(s.bg)} · ${when (ui.prefs.bgWhere) { "home" -> "en haut de l’accueil"; "off" -> "masqué"; else -> "sur tout l’écran" }}")
         Box(Modifier.alpha(if (weather) .5f else 1f)) {
@@ -343,7 +344,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
                         Tile(BGS.first { it.first == key }.second, s.bg == key, 86.dp, 132.dp, { if (!weather) { s.bg = key; commit(ui) } }) { MiniBackdrop(key, ui) }
                     }
                     k.startsWith("s:") -> {
-                        val b = SHOP_BGS.first { "s:${it.key}" == k }
+                        val b = fr.pepsgoal.core.ALL_BGS.first { "s:${it.key}" == k }
                         Tile(b.name, s.bg == k, 86.dp, 132.dp, { if (!weather) { ui.pg.applyBg(b); ui.themeTick++ } }) { SceneBg(b.key, Modifier.fillMaxSize(), still = true) }
                     }
                     k == "custom" -> Tile(if (has) "Mon image" else "Ma photo", s.bg == "custom" && has, 86.dp, 132.dp, { if (!weather) { if (has) { s.bg = "custom"; commit(ui) } else openPicker() } }) {

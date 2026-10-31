@@ -68,10 +68,10 @@ class ShopBg(val key: String, val name: String, val desc: String, val price: Int
 
 /** Points focaux des scènes dont le sujet n'est pas dans le tiers haut. */
 private val BG_FOCUS = mapOf("xmastree" to .45f, "loiresummer" to .42f, "loire" to .30f, "mountains" to .62f, "lighthouse" to .55f, "rooftops" to .5f, "angers" to .3f, "balloons" to .3f, "tram" to .45f, "nantes" to .35f,
-    "nighttrain" to .5f, "canyon" to .45f, "savanna" to .5f, "lagoon" to .45f, "dunes" to .5f, "vineyard" to .45f, "icefield" to .45f)
+    "nighttrain" to .5f, "canyon" to .45f, "savanna" to .5f, "lagoon" to .45f, "dunes" to .5f, "vineyard" to .45f, "icefield" to .45f, "kopa" to .4f)
 /** Teinte des barres (clair, sombre) des scènes vedettes. */
 private val BG_TINT = mapOf("xmastree" to ("#2B416E" to "#22355C"), "valentine" to ("#F393BB" to "#7A3A5A"), "loiresummer" to ("#4FA3D9" to "#2E4670"), "loire" to ("#5E93CF" to "#2E4670"), "mountains" to ("#F59E8B" to "#3B2F5E"), "balloons" to ("#7FB2E6" to "#2B3F66"),
-    "angers" to ("#4F86C6" to "#2B3F66"), "lighthouse" to ("#5E7FB8" to "#2E4670"), "rooftops" to ("#A06A9A" to "#3A3F7A"))
+    "angers" to ("#4F86C6" to "#2B3F66"), "lighthouse" to ("#5E7FB8" to "#2E4670"), "rooftops" to ("#A06A9A" to "#3A3F7A"), "kopa" to ("#3A3A3F" to "#2A2A2E"))
 
 val SHOP_BGS = listOf(
     ShopBg("nebula", "Nébuleuse", "Nuages cosmiques et étoiles filantes", 200, listOf("#0B0628", "#3B1D6E", "#C14BA8"), dark = true),
@@ -119,6 +119,9 @@ val SHOP_BGS = listOf(
     ShopBg("valentine", "Cœurs de la Saint-Valentin", "Nuages roses et cœurs qui montent", 150, listOf("#FFE3EE", "#FFC8DD", "#F393BB"), freeIn = "love"),
     ShopBg("loiresummer", "Été sur la Loire", "Soleil, vagues, toue et château de tuffeau", 150, listOf("#6FBDF5", "#E1F2FC", "#4FA3D9"), freeIn = "summer"),
 )
+
+/** Tous les fonds illustrés : ceux de la boutique et les fonds secrets des surprises. */
+val ALL_BGS: List<ShopBg> by lazy { SHOP_BGS + Eggs.SECRET_BGS }
 
 /** La scène est offerte en ce moment (scène de saison pendant sa période). */
 fun ShopBg.freeNow(d: java.time.LocalDate = todayDate()): Boolean = freeIn?.let { seasonWindow(it, d) != null } == true
@@ -209,7 +212,9 @@ fun Pg.applyTheme(t: ShopTheme) {
  * choisie par l'utilisateur ; [accent] est l'accent conseillé, proposé à l'achat.
  */
 class ShopMode(val key: String, val name: String, val desc: String, val price: Int, val dark: Boolean,
-               val bg: String, val ink: String, val glass: String, val blobs: List<String>, val accent: List<String>)
+               val bg: String, val ink: String, val glass: String, val blobs: List<String>, val accent: List<String>,
+               /** Surfaces propres à l'ambiance (cartes, creux, bords) ; null : surfaces Braise Pop habituelles. */
+               val surface: String? = null, val surface2: String? = null, val edge: String? = null)
 
 val SHOP_MODES = listOf(
     ShopMode("midnight", "Minuit", "Bleu nuit profond, étoiles froides", 180, true, "#0A1024", "#EAF0FF", "#1A2448", listOf("#2B4BFF", "#7AA2FF", "#00C2FF"), listOf("#7AA2FF", "#3D6BFF", "#B36BFF")),
