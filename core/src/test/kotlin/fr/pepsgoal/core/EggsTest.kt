@@ -50,4 +50,12 @@ class ScoEggTest {
         for (bg in listOf(m.bg, m.surface!!, m.surface2!!)) assertTrue(cr(m.ink, bg) >= 4.5, "texte sur $bg")
         for (a in m.accent) assertTrue(cr("#2A1420", a) >= 4.5, "texte prune sur l’accent $a")
     }
+
+    @kotlin.test.Test
+    fun feurOnlyWhenThePostEndsWithQuoi() {
+        assertTrue(Eggs.feur("Tu sais quoi ?")); assertTrue(Eggs.feur("Et alors QUOI?")); assertTrue(Eggs.feur("quoi"))
+        assertTrue(Eggs.feur("Devine quoi ?  "))
+        kotlin.test.assertFalse(Eggs.feur("Pourquoi ?")); kotlin.test.assertFalse(Eggs.feur("quoi de neuf ?")); kotlin.test.assertFalse(Eggs.feur("Quoicoubeh"))
+        assertTrue(Eggs.ALL.any { it.key == "feur" })
+    }
 }
