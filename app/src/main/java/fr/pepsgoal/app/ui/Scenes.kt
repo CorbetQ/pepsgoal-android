@@ -3569,6 +3569,24 @@ private fun DrawScope.seg7(ch: Char, x: Float, y: Float, w: Float, h: Float, on:
     s('d', x + g, b, r - g, b); s('e', x, mid + g, x, b - g); s('f', x, y + g, x, mid - g); s('g', x + g, mid, r - g, mid)
 }
 
+/** Écran géant sur deux lignes : « OL » et 4 (blanc), « SrFC » et 0 (rouge qui clignote), noms en ambre. */
+private fun DrawScope.scoreBoard2(x: Float, y: Float, w: Float, h: Float, ch: Float, t: Float) {
+    val fr = ch * .14f
+    rect(x - fr, y - fr, w + fr * 2, h + fr * 2, c("#3A3640")); rect(x - fr, y + h + fr * .5f, w + fr * 2, fr * .5f, c("#1E1B22"))
+    rect(x, y, w, h, c("#050304"))
+    val pitch = ch / 5f
+    var gy = y + pitch / 2
+    while (gy < y + h) { var gx = x + pitch / 2; while (gx < x + w) { disc(gx, gy, pitch * .16f, c("#1A1113")); gx += pitch }; gy += pitch }
+    val off = c("#22171A"); val amber = c("#FFB000"); val cw = ch * .55f; val step = cw * 1.55f
+    val left = x + w * .06f; val right = x + w * .94f - cw
+    val r1 = y + ch * .35f; val r2 = r1 + ch * 1.4f
+    var cx = left; for (c0 in "OL") { seg7(c0, cx, r1, cw, ch, amber, off); cx += step }
+    seg7('4', right, r1, cw, ch, c("#FFFFFF"), off)
+    rect(x + w * .05f, r1 + ch * 1.18f, w * .9f, max(1.5f, ch * .05f), c("#2A1E22"))
+    cx = left; for (c0 in "SrFC") { seg7(c0, cx, r2, cw, ch, amber, off); cx += step }
+    seg7('0', right, r2, cw, ch, if ((t * 20f).toInt() % 4 == 0) off else c("#FF3B3B"), off)
+}
+
 /**
  * Afficheur à LED sur une ligne : « OL 4 – 0 SrFC » centré, noms en ambre, 4 en blanc, 0 en rouge qui clignote,
  * sur une trame de diodes éteintes. [frame] : cadre épais de l'écran géant.
@@ -3609,11 +3627,11 @@ private fun DrawScope.ecran(t: Float) {
         val x = ((i * .31f + t * .25f) % 1.3f - .15f) * W; val y = H * (.06f + .05f * (i % 2))
         for (k in 0 until 4) disc(x + k * S * .06f, y + (k % 2) * S * .015f, S * (.05f + .01f * (k % 2)), c("#2C2128", .9f))
     }
-    // Écran géant en haut, sur une seule ligne, dans la bande que les titres laissent libre : OL 4 – 0 SrFC
-    val sw = W * .94f; val sh = min(sw * .2f, H * .09f); val sx = (W - sw) / 2; val sy = H * .065f
-    val post = sw * .03f
-    rect(sx + sw * .15f - post / 2, sy + sh, post, H * .5f - sy - sh, c("#2B2A30")); rect(sx + sw * .85f - post / 2, sy + sh, post, H * .5f - sy - sh, c("#2B2A30"))
-    scoreBoard(sx, sy, sw, sh, t, frame = true)
+    // Écran géant en haut à droite, sur deux lignes (OL 4 / SrFC 0) : la place que le titre de page laisse libre
+    val sw = W * .33f; val ch0 = sw * .88f / 4.8f; val sh = ch0 * 3.1f; val sx = W * .64f; val sy = H * .065f
+    val post = sw * .06f
+    rect(sx + sw * .25f - post / 2, sy + sh, post, H * .5f - sy - sh, c("#2B2A30")); rect(sx + sw * .75f - post / 2, sy + sh, post, H * .5f - sy - sh, c("#2B2A30"))
+    scoreBoard2(sx, sy, sw, sh, ch0, t)
     // Tribunes sombres, presque vides : quelques supporters immobiles
     rect(0f, H * .5f, W, H * .14f, c("#141016"))
     val crowd = Mul(42); val per = 40
