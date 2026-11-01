@@ -3569,10 +3569,48 @@ private fun DrawScope.seg7(ch: Char, x: Float, y: Float, w: Float, h: Float, on:
     s('d', x + g, b, r - g, b); s('e', x, mid + g, x, b - g); s('f', x, y + g, x, mid - g); s('g', x + g, mid, r - g, mid)
 }
 
-/** Un mot sur l'afficheur, caractère par caractère (les espaces laissent une case vide). */
-private fun DrawScope.segText(txt: String, x: Float, y: Float, cw: Float, ch: Float, on: Color, off: Color) {
-    var cx = x
-    for (c0 in txt) { if (c0 != ' ') seg7(c0, cx, y, cw, ch, on, off); cx += cw * 1.55f }
+/** Écran géant sur deux lignes : « OL » et 4 (blanc), « SrFC » et 0 (rouge qui clignote), noms en ambre. */
+private fun DrawScope.scoreBoard2(x: Float, y: Float, w: Float, h: Float, ch: Float, t: Float) {
+    val fr = ch * .14f
+    rect(x - fr, y - fr, w + fr * 2, h + fr * 2, c("#3A3640")); rect(x - fr, y + h + fr * .5f, w + fr * 2, fr * .5f, c("#1E1B22"))
+    rect(x, y, w, h, c("#050304"))
+    val pitch = ch / 5f
+    var gy = y + pitch / 2
+    while (gy < y + h) { var gx = x + pitch / 2; while (gx < x + w) { disc(gx, gy, pitch * .16f, c("#1A1113")); gx += pitch }; gy += pitch }
+    val off = c("#22171A"); val amber = c("#FFB000"); val cw = ch * .55f; val step = cw * 1.55f
+    val left = x + w * .06f; val right = x + w * .94f - cw
+    val r1 = y + ch * .35f; val r2 = r1 + ch * 1.4f
+    var cx = left; for (c0 in "OL") { seg7(c0, cx, r1, cw, ch, amber, off); cx += step }
+    seg7('4', right, r1, cw, ch, c("#FFFFFF"), off)
+    rect(x + w * .05f, r1 + ch * 1.18f, w * .9f, max(1.5f, ch * .05f), c("#2A1E22"))
+    cx = left; for (c0 in "SrFC") { seg7(c0, cx, r2, cw, ch, amber, off); cx += step }
+    seg7('0', right, r2, cw, ch, if ((t * 20f).toInt() % 4 == 0) off else c("#FF3B3B"), off)
+}
+
+/**
+ * Afficheur à LED sur une ligne : « OL 4 – 0 SrFC » centré, noms en ambre, 4 en blanc, 0 en rouge qui clignote,
+ * sur une trame de diodes éteintes. [frame] : cadre épais de l'écran géant.
+ */
+private fun DrawScope.scoreBoard(x: Float, y: Float, w: Float, h: Float, t: Float, frame: Boolean) {
+    if (frame) { val fr = h * .1f; rect(x - fr, y - fr, w + fr * 2, h + fr * 2, c("#3A3640")); rect(x - fr, y + h + fr * .5f, w + fr * 2, fr * .5f, c("#1E1B22")) }
+    rect(x, y, w, h, c("#050304"))
+    val pitch = h / 7f
+    var gy = y + pitch / 2
+    while (gy < y + h) { var gx = x + pitch / 2; while (gx < x + w) { disc(gx, gy, pitch * .16f, c("#1A1113")); gx += pitch }; gy += pitch }
+    val off = c("#22171A"); val amber = c("#FFB000"); val white = c("#FFFFFF"); val red = c("#FF3B3B")
+    // Taille des caractères : la plus grande qui tient (11 cases de 1,55 largeur)
+    val ch = min(h * .64f, w * .9f / (17f * .55f)); val cw = ch * .55f; val step = cw * 1.55f
+    var cx = x + (w - step * 11f + cw * .55f) / 2; val cy = y + (h - ch) / 2
+    for (c0 in "OL 4-0 SrFC") {
+        when {
+            c0 == ' ' -> {}
+            c0 == '-' -> line(cx + cw * .2f, cy + ch / 2, cx + cw * .8f, cy + ch / 2, max(1.5f, cw * .16f), white)
+            c0 == '4' -> seg7(c0, cx, cy, cw, ch, white, off)
+            c0 == '0' -> seg7(c0, cx, cy, cw, ch, if ((t * 20f).toInt() % 4 == 0) off else red, off)
+            else -> seg7(c0, cx, cy, cw, ch, amber, off)
+        }
+        cx += step
+    }
 }
 
 /**
@@ -3589,23 +3627,11 @@ private fun DrawScope.ecran(t: Float) {
         val x = ((i * .31f + t * .25f) % 1.3f - .15f) * W; val y = H * (.06f + .05f * (i % 2))
         for (k in 0 until 4) disc(x + k * S * .06f, y + (k % 2) * S * .015f, S * (.05f + .01f * (k % 2)), c("#2C2128", .9f))
     }
-    // Écran géant : structure, cadre et afficheur
-    val sw = W * .74f; val sh = H * .2f; val sx = (W - sw) / 2; val sy = H * .1f
-    rect(W * .3f, sy + sh, W * .02f, H * .2f, c("#2B2A30")); rect(W * .68f, sy + sh, W * .02f, H * .2f, c("#2B2A30"))
-    rect(sx - S * .012f, sy - S * .012f, sw + S * .024f, sh + S * .024f, c("#34313A"))
-    rect(sx, sy, sw, sh, c("#050405"))
-    val on = c("#FFB000"); val red = c("#FF4A4A"); val off = c("#1B1416")
-    val ch = sh * .3f; val cw = ch * .55f
-    // Ligne 1 : OL 4 ; ligne 2 : SrFC 0 (le score qui fait mal clignote doucement)
-    val blink = if ((t * 20f).toInt() % 4 == 0) off else red
-    segText("OL", sx + sw * .07f, sy + sh * .12f, cw, ch, on, off)
-    seg7('4', sx + sw * .78f, sy + sh * .12f, cw, ch, on, off)
-    segText("SrFC", sx + sw * .07f, sy + sh * .56f, cw, ch, on, off)
-    seg7('0', sx + sw * .78f, sy + sh * .56f, cw, ch, blink, off)
-    // Temps écoulé : 90 et deux points
-    val tx = sx + sw * .47f; val tch = ch * .7f; val tcw = tch * .55f
-    seg7('9', tx, sy + sh * .36f, tcw, tch, c("#F4F4F4"), off); seg7('0', tx + tcw * 1.6f, sy + sh * .36f, tcw, tch, c("#F4F4F4"), off)
-    disc(tx + tcw * 3.05f, sy + sh * .36f + tch * .3f, tcw * .12f, c("#F4F4F4")); disc(tx + tcw * 3.05f, sy + sh * .36f + tch * .7f, tcw * .12f, c("#F4F4F4"))
+    // Écran géant en haut à droite, sur deux lignes (OL 4 / SrFC 0) : la place que le titre de page laisse libre
+    val sw = W * .33f; val ch0 = sw * .88f / 4.8f; val sh = ch0 * 3.1f; val sx = W * .64f; val sy = H * .065f
+    val post = sw * .06f
+    rect(sx + sw * .25f - post / 2, sy + sh, post, H * .5f - sy - sh, c("#2B2A30")); rect(sx + sw * .75f - post / 2, sy + sh, post, H * .5f - sy - sh, c("#2B2A30"))
+    scoreBoard2(sx, sy, sw, sh, ch0, t)
     // Tribunes sombres, presque vides : quelques supporters immobiles
     rect(0f, H * .5f, W, H * .14f, c("#141016"))
     val crowd = Mul(42); val per = 40
@@ -3615,6 +3641,8 @@ private fun DrawScope.ecran(t: Float) {
         rect(x, y + pw * .4f, pw * .7f, H * .016f, if ((k + r) % 2 == 0) c("#3A2A33") else c("#2A2027"))
         disc(x + pw * .35f, y + pw * .25f, pw * .24f, c("#C9A88C"))
     }
+    // Panneau publicitaire à LED tout le long du terrain, qui répète le score en grand
+    scoreBoard(0f, H * .565f, W, H * .072f, t, frame = false)
     // Pelouse détrempée
     val py = H * .64f
     rect(0f, py, W, H - py, c("#21512C"))
