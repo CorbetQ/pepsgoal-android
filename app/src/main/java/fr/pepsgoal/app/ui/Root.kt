@@ -207,6 +207,7 @@ fun PepsRoot(ui: AppState) {
                         is Screen.Journal -> JournalScreen(ui)
                         is Screen.Stats -> StatsScreen(ui)
                         is Screen.Week -> WeekScreen(ui)
+                        is Screen.BraisePop -> BraisePopScreen(ui)
                         is Screen.Shop -> ShopScreen(ui)
                         is Screen.League -> LeagueScreen(ui)
                         is Screen.Gallery -> GalleryScreen(ui, sc.goalId)
