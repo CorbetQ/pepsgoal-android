@@ -3589,23 +3589,32 @@ private fun DrawScope.ecran(t: Float) {
         val x = ((i * .31f + t * .25f) % 1.3f - .15f) * W; val y = H * (.06f + .05f * (i % 2))
         for (k in 0 until 4) disc(x + k * S * .06f, y + (k % 2) * S * .015f, S * (.05f + .01f * (k % 2)), c("#2C2128", .9f))
     }
-    // Écran géant : structure, cadre et afficheur
-    val sw = W * .74f; val sh = H * .2f; val sx = (W - sw) / 2; val sy = H * .1f
-    rect(W * .3f, sy + sh, W * .02f, H * .2f, c("#2B2A30")); rect(W * .68f, sy + sh, W * .02f, H * .2f, c("#2B2A30"))
-    rect(sx - S * .012f, sy - S * .012f, sw + S * .024f, sh + S * .024f, c("#34313A"))
-    rect(sx, sy, sw, sh, c("#050405"))
-    val on = c("#FFB000"); val red = c("#FF4A4A"); val off = c("#1B1416")
-    val ch = sh * .3f; val cw = ch * .55f
-    // Ligne 1 : OL 4 ; ligne 2 : SrFC 0 (le score qui fait mal clignote doucement)
-    val blink = if ((t * 20f).toInt() % 4 == 0) off else red
-    segText("OL", sx + sw * .07f, sy + sh * .12f, cw, ch, on, off)
-    seg7('4', sx + sw * .78f, sy + sh * .12f, cw, ch, on, off)
-    segText("SrFC", sx + sw * .07f, sy + sh * .56f, cw, ch, on, off)
-    seg7('0', sx + sw * .78f, sy + sh * .56f, cw, ch, blink, off)
-    // Temps écoulé : 90 et deux points
-    val tx = sx + sw * .47f; val tch = ch * .7f; val tcw = tch * .55f
-    seg7('9', tx, sy + sh * .36f, tcw, tch, c("#F4F4F4"), off); seg7('0', tx + tcw * 1.6f, sy + sh * .36f, tcw, tch, c("#F4F4F4"), off)
-    disc(tx + tcw * 3.05f, sy + sh * .36f + tch * .3f, tcw * .12f, c("#F4F4F4")); disc(tx + tcw * 3.05f, sy + sh * .36f + tch * .7f, tcw * .12f, c("#F4F4F4"))
+    // Écran géant, dimensionné sur la largeur (lisible en portrait comme en miniature) : poteaux, cadre et afficheur
+    val sw = min(W * .88f, H * .4f / .62f); val sh = sw * .62f; val sx = (W - sw) / 2; val sy = H * .1f
+    val post = sw * .05f
+    rect(sx + sw * .2f - post / 2, sy + sh, post, H * .5f - sy - sh, c("#2B2A30")); rect(sx + sw * .8f - post / 2, sy + sh, post, H * .5f - sy - sh, c("#2B2A30"))
+    val fr = sw * .03f
+    rect(sx - fr, sy - fr, sw + fr * 2, sh + fr * 2, c("#3A3640"))
+    rect(sx - fr, sy + sh + fr - fr * .5f, sw + fr * 2, fr * .5f, c("#1E1B22"))
+    rect(sx, sy, sw, sh, c("#050304"))
+    // Trame de diodes éteintes : l'écran se lit comme un vrai panneau à LED
+    val pitch = sw / 48f
+    var gy = sy + pitch / 2
+    while (gy < sy + sh) { var gx = sx + pitch / 2; while (gx < sx + sw) { disc(gx, gy, pitch * .16f, c("#1A1113")); gx += pitch }; gy += pitch }
+    val off = c("#22171A"); val amber = c("#FFB000"); val white = c("#FFFFFF"); val red = c("#FF3B3B")
+    // Bandeau du haut : 90:00, en blanc
+    val tch = sh * .17f; val tcw = tch * .56f; val tw = tcw * 1.55f * 4 + tcw * .6f; var tx = sx + (sw - tw) / 2; val ty = sy + sh * .07f
+    seg7('9', tx, ty, tcw, tch, white, off); tx += tcw * 1.55f; seg7('0', tx, ty, tcw, tch, white, off); tx += tcw * 1.55f
+    disc(tx - tcw * .12f, ty + tch * .3f, tcw * .13f, white); disc(tx - tcw * .12f, ty + tch * .7f, tcw * .13f, white); tx += tcw * .6f
+    seg7('0', tx, ty, tcw, tch, white, off); tx += tcw * 1.55f; seg7('0', tx, ty, tcw, tch, white, off)
+    rect(sx + sw * .05f, sy + sh * .31f, sw * .9f, max(1.5f, sh * .012f), c("#3A2A2E"))
+    // Deux lignes : OL 4 et SrFC 0 (le zéro rouge clignote doucement)
+    val ch = sh * .24f; val cw = ch * .55f
+    val r1 = sy + sh * .37f; val r2 = sy + sh * .69f; val left = sx + sw * .07f; val right = sx + sw * .93f - cw
+    segText("OL", left, r1, cw, ch, amber, off); seg7('4', right, r1, cw, ch, white, off)
+    rect(sx + sw * .05f, sy + sh * .655f, sw * .9f, max(1.5f, sh * .008f), c("#2A1E22"))
+    segText("SrFC", left, r2, cw, ch, amber, off)
+    seg7('0', right, r2, cw, ch, if ((t * 20f).toInt() % 4 == 0) off else red, off)
     // Tribunes sombres, presque vides : quelques supporters immobiles
     rect(0f, H * .5f, W, H * .14f, c("#141016"))
     val crowd = Mul(42); val per = 40

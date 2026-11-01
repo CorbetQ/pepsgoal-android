@@ -68,7 +68,7 @@ class ShopBg(val key: String, val name: String, val desc: String, val price: Int
 
 /** Points focaux des scènes dont le sujet n'est pas dans le tiers haut. */
 private val BG_FOCUS = mapOf("xmastree" to .45f, "loiresummer" to .42f, "loire" to .30f, "mountains" to .62f, "lighthouse" to .55f, "rooftops" to .5f, "angers" to .3f, "balloons" to .3f, "tram" to .45f, "nantes" to .35f,
-    "nighttrain" to .5f, "canyon" to .45f, "savanna" to .5f, "lagoon" to .45f, "dunes" to .5f, "vineyard" to .45f, "icefield" to .45f, "kopa" to .4f, "ecran" to .35f)
+    "nighttrain" to .5f, "canyon" to .45f, "savanna" to .5f, "lagoon" to .45f, "dunes" to .5f, "vineyard" to .45f, "icefield" to .45f, "kopa" to .4f, "ecran" to .2f)
 /** Teinte des barres (clair, sombre) des scènes vedettes. */
 private val BG_TINT = mapOf("xmastree" to ("#2B416E" to "#22355C"), "valentine" to ("#F393BB" to "#7A3A5A"), "loiresummer" to ("#4FA3D9" to "#2E4670"), "loire" to ("#5E93CF" to "#2E4670"), "mountains" to ("#F59E8B" to "#3B2F5E"), "balloons" to ("#7FB2E6" to "#2B3F66"),
     "angers" to ("#4F86C6" to "#2B3F66"), "lighthouse" to ("#5E7FB8" to "#2E4670"), "rooftops" to ("#A06A9A" to "#3A3F7A"), "kopa" to ("#3A3A3F" to "#2A2A2E"), "ecran" to ("#5A1A24" to "#3A1018"))
