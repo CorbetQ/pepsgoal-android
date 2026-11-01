@@ -716,6 +716,7 @@ private fun HelpSettings(ui: AppState) {
         SetGroup("Découvrir") {
             SetItem("Tutoriel", "Revoir les bases de PepsGoal", "play", p.flame, onClick = { ui.fs = Fs.Tuto() })
             SetItem("Notes de version", "Les nouveautés de chaque version", "list", p.type("monthly").c, onClick = { ui.open(Sheet.Notes) })
+            SetItem("Découvrir Braise Pop", "Le design system de PepsGoal : couleurs, composants, histoire et intégration", "palette", p.type("deadline").c, onClick = { ui.push(fr.pepsgoal.app.Screen.BraisePop) })
         }
         SetGroup("PepsGoal", note = "Édité par Quentin CORBET. ${if (ui.pg.store.acct) "Ton compte est synchronisé avec le serveur PepsGoal." else "Tes données restent sur cet appareil."}") {
             SetItem("Site de PepsGoal", "Présentation, nouveautés et téléchargement", "globe", p.type("objective").c, onClick = { open(Links.SITE) })
