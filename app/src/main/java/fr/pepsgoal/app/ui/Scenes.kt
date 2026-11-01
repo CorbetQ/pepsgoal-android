@@ -110,7 +110,7 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
         "savanna" -> savanna(t); "lanterns" -> lanterns(t); "icefield" -> icefield(t)
         "angers" -> angers(t, td); "angevine" -> angevine(t); "nantes" -> nantes(t, td)
         "xmastree" -> xmastree(t); "valentine" -> valentine(t); "loiresummer" -> loiresummer(t)
-        "kopa" -> kopa(t)
+        "kopa" -> kopa(t); "ecran" -> ecran(t)
         else -> {
             val sky = ALL_BGS.firstOrNull { it.key == key }?.sky ?: listOf("#1A1240", "#07081A")
             drawRect(Brush.verticalGradient(sky.map { c(it) }))
@@ -124,10 +124,10 @@ internal fun DrawScope.scene(key: String, t: Float, h: Float? = null) {
 /** Durée d'un cycle d'animation par scène (ms) : les scènes à mouvement visible (poissons, pluie) tournent plus vite. */
 private val SCENE_DUR = mapOf("tram" to 40000, "deepsea" to 60000, "coderain" to 20000, "fireworks" to 24000, "rainwindow" to 50000, "autumnwood" to 30000, "sakura" to 30000,
     "tunnel" to 20000, "lighthouse" to 30000, "nighttrain" to 40000, "lanterns" to 60000, "jellyfish" to 50000, "savanna" to 60000, "angers" to 60000, "angevine" to 40000, "nantes" to 60000,
-    "xmastree" to 30000, "valentine" to 40000, "loiresummer" to 60000, "kopa" to 40000)
+    "xmastree" to 30000, "valentine" to 40000, "loiresummer" to 60000, "kopa" to 40000, "ecran" to 30000)
 /** Images par seconde : les scènes très détaillées et presque immobiles se contentent de moins (batterie). */
 private val SCENE_FPS = mapOf("tram" to 8, "mountains" to 6, "mistforest" to 8, "dunes" to 6, "planet" to 6, "citynight" to 8, "tunnel" to 15, "rooftops" to 6, "canyon" to 6, "vineyard" to 8, "angers" to 12, "angevine" to 8, "nantes" to 12,
-    "xmastree" to 10, "valentine" to 10, "loiresummer" to 8, "kopa" to 10)
+    "xmastree" to 10, "valentine" to 10, "loiresummer" to 8, "kopa" to 10, "ecran" to 10)
 
 /*
  * Arrière-plans illustrés : peints sur Canvas en couches (perspective atmosphérique, lumière directionnelle, brume,
@@ -3554,3 +3554,80 @@ private fun DrawScope.kopa(t: Float) {
     disc(bx, bY, br, c("#FFFFFF"))
     fill(star5(bx, bY, br * .55f), c("#1A1B20"))
 }
+
+/* ------------------------------------------------------------------ Écran géant : OL 4 – 0 SRFC (fond secret) */
+
+/** Segments allumés (a à g, dans l'ordre haut, haut droit, bas droit, bas, bas gauche, haut gauche, milieu) par caractère. */
+private val SEG7 = mapOf('0' to "abcdef", 'O' to "abcdef", '4' to "bcfg", '9' to "abcdfg", 'L' to "def", 'S' to "acdfg", 'r' to "eg", 'F' to "aefg", 'C' to "adef")
+
+/** Un caractère d'afficheur à sept segments (aplats arrondis), de largeur [w] et de hauteur [h]. */
+private fun DrawScope.seg7(ch: Char, x: Float, y: Float, w: Float, h: Float, on: Color, off: Color) {
+    val k = max(1.5f, w * .16f); val m = SEG7[ch] ?: ""
+    fun s(id: Char, x1: Float, y1: Float, x2: Float, y2: Float) = line(x1, y1, x2, y2, k, if (id in m) on else off)
+    val r = x + w; val mid = y + h / 2; val b = y + h; val g = k * .9f
+    s('a', x + g, y, r - g, y); s('b', r, y + g, r, mid - g); s('c', r, mid + g, r, b - g)
+    s('d', x + g, b, r - g, b); s('e', x, mid + g, x, b - g); s('f', x, y + g, x, mid - g); s('g', x + g, mid, r - g, mid)
+}
+
+/** Un mot sur l'afficheur, caractère par caractère (les espaces laissent une case vide). */
+private fun DrawScope.segText(txt: String, x: Float, y: Float, cw: Float, ch: Float, on: Color, off: Color) {
+    var cx = x
+    for (c0 in txt) { if (c0 != ' ') seg7(c0, cx, y, cw, ch, on, off); cx += cw * 1.55f }
+}
+
+/**
+ * Un soir de défaite à l'extérieur, en aplats : ciel d'orage, petite pluie, tribunes sombres et clairsemées, et un
+ * écran géant à sept segments qui affiche sans pitié « OL 4 – 0 SRFC » et le temps écoulé. Ni logo ni inscription
+ * autre que le score.
+ */
+private fun DrawScope.ecran(t: Float) {
+    val W = size.width; val H = size.height; val S = min(W, H)
+    bands("#0A0709", "#120B0E", "#1A0F14", "#22131A", "#2A1820", y1 = H * .5f)
+    rect(0f, H * .5f - 1f, W, H * .12f, c("#2A1820"))
+    // Nuages d'orage qui passent lentement
+    for (i in 0 until 4) {
+        val x = ((i * .31f + t * .25f) % 1.3f - .15f) * W; val y = H * (.06f + .05f * (i % 2))
+        for (k in 0 until 4) disc(x + k * S * .06f, y + (k % 2) * S * .015f, S * (.05f + .01f * (k % 2)), c("#2C2128", .9f))
+    }
+    // Écran géant : structure, cadre et afficheur
+    val sw = W * .74f; val sh = H * .2f; val sx = (W - sw) / 2; val sy = H * .1f
+    rect(W * .3f, sy + sh, W * .02f, H * .2f, c("#2B2A30")); rect(W * .68f, sy + sh, W * .02f, H * .2f, c("#2B2A30"))
+    rect(sx - S * .012f, sy - S * .012f, sw + S * .024f, sh + S * .024f, c("#34313A"))
+    rect(sx, sy, sw, sh, c("#050405"))
+    val on = c("#FFB000"); val red = c("#FF4A4A"); val off = c("#1B1416")
+    val ch = sh * .3f; val cw = ch * .55f
+    // Ligne 1 : OL 4 ; ligne 2 : SrFC 0 (le score qui fait mal clignote doucement)
+    val blink = if ((t * 20f).toInt() % 4 == 0) off else red
+    segText("OL", sx + sw * .07f, sy + sh * .12f, cw, ch, on, off)
+    seg7('4', sx + sw * .78f, sy + sh * .12f, cw, ch, on, off)
+    segText("SrFC", sx + sw * .07f, sy + sh * .56f, cw, ch, on, off)
+    seg7('0', sx + sw * .78f, sy + sh * .56f, cw, ch, blink, off)
+    // Temps écoulé : 90 et deux points
+    val tx = sx + sw * .47f; val tch = ch * .7f; val tcw = tch * .55f
+    seg7('9', tx, sy + sh * .36f, tcw, tch, c("#F4F4F4"), off); seg7('0', tx + tcw * 1.6f, sy + sh * .36f, tcw, tch, c("#F4F4F4"), off)
+    disc(tx + tcw * 3.05f, sy + sh * .36f + tch * .3f, tcw * .12f, c("#F4F4F4")); disc(tx + tcw * 3.05f, sy + sh * .36f + tch * .7f, tcw * .12f, c("#F4F4F4"))
+    // Tribunes sombres, presque vides : quelques supporters immobiles
+    rect(0f, H * .5f, W, H * .14f, c("#141016"))
+    val crowd = Mul(42); val per = 40
+    for (r in 0 until 4) for (k in 0 until per) {
+        if (crowd() < .55f) continue
+        val pw = W / per; val x = (k + .2f) * pw; val y = H * (.52f + r * .03f)
+        rect(x, y + pw * .4f, pw * .7f, H * .016f, if ((k + r) % 2 == 0) c("#3A2A33") else c("#2A2027"))
+        disc(x + pw * .35f, y + pw * .25f, pw * .24f, c("#C9A88C"))
+    }
+    // Pelouse détrempée
+    val py = H * .64f
+    rect(0f, py, W, H - py, c("#21512C"))
+    for (k in 0 until 8) if (k % 2 == 0) { val y1 = py + (H - py) * k / 8f; rect(0f, y1, W, (H - py) / 8f + 1f, c("#275E33")) }
+    val lw = max(1.5f, S / 180f)
+    line(0f, py + lw, W, py + lw, lw, c("#E8EEE6", .8f), StrokeCap.Butt)
+    line(W * .5f, py, W * .5f, H, lw, c("#E8EEE6", .8f), StrokeCap.Butt)
+    // Petite pluie : traits fins qui tombent en boucle
+    val rain = Mul(7)
+    for (i in 0 until 60) {
+        val x = rain() * W; val sp = .6f + rain() * .4f
+        val y = ((rain() + t * 6f * sp) % 1f) * H
+        line(x, y, x - S * .006f, y + S * .03f, max(1f, S / 400f), c("#9AA6B8", .35f))
+    }
+}
+

@@ -88,7 +88,8 @@ fun SearchScreen(ui: AppState, initial: String) {
         // Surprise cachée derrière certains mots
         val egg = fr.pepsgoal.core.Eggs.search(q)
         if (egg != null) item("egg") {
-            LaunchedEffect(q.trim().lowercase()) { kotlinx.coroutines.delay(450); ui.egg(egg.egg, egg.text, egg.fx, say = false) }
+            // « srfc » : le toast affiche le texte de la surprise (« Direction la ligue 2 »)
+            LaunchedEffect(q.trim().lowercase()) { kotlinx.coroutines.delay(450); ui.egg(egg.egg, egg.text, egg.fx, say = egg.egg == "srfc") }
             Glass(border = p.focusEdge) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     IconTile("sparkle", p.flame2, p.pink, 44.dp, 14.dp)
@@ -101,6 +102,16 @@ fun SearchScreen(ui: AppState, initial: String) {
                         if ("sco" !in pg.eggsFound(u)) ui.egg("sco", egg.text, egg.fx, say = false)
                         pg.applySco(); ui.themeTick++
                         ui.toast("⚫⚪ Stade Raymond-Kopa et ambiance Noir & Blanc appliqués. À retrouver dans Apparence.", "palette")
+                    }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
+                }
+                // Surprise « srfc » : fond « Écran géant » (OL 4 – 0 SRFC) et ambiance « Rouge & Noir », à appliquer d'un geste
+                if (egg.egg == "srfc") {
+                    val on = u.settings.theme == "m:srfc" && u.settings.bg == "s:ecran"
+                    Muted("Le fond « Écran géant » et l’ambiance « Rouge & Noir » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", Modifier.padding(top = 8.dp), small = true)
+                    PButton(if (on) "Écran géant et Rouge & Noir appliqués" else "Appliquer l’écran géant et Rouge & Noir", {
+                        if ("srfc" !in pg.eggsFound(u)) ui.egg("srfc", egg.text, egg.fx, say = false)
+                        pg.applySrfc(); ui.themeTick++
+                        ui.toast("🔴⚫ Écran géant et ambiance Rouge & Noir appliqués. À retrouver dans Apparence.", "palette")
                     }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
                 }
             }

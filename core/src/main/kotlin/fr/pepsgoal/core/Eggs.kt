@@ -25,6 +25,7 @@ object Eggs {
         Egg("calendar", "Jour spécial", "Reviens un jour de fête", "📅"),
         Egg("sco", "Noir & Blanc", "Trois lettres qui font chanter un stade angevin, dans la recherche", "⚽"),
         Egg("sixseven", "Six Seven", "Tiens ta série jusqu’à un nombre que tout le monde mime", "🤲"),
+        Egg("srfc", "Direction la ligue 2", "Quatre lettres bretonnes, dans la recherche", "🔴"),
         Egg("feur", "Feur", "Termine une publication par une question… et attends la réponse du compte officiel", "🫢"),
     )
 
@@ -53,12 +54,18 @@ object Eggs {
         ShopMode("sco", "Noir & Blanc", "Noir profond et blanc franc, les soirs de match · ambiance secrète", 1, true,
             "#0A0A0B", "#F7F7F7", "#161618", listOf("#FFFFFF", "#6E6E74", "#2A2A2E"), listOf("#FFFFFF", "#E4E4E8", "#B9B9C0"),
             surface = "#161618", surface2 = "#222225", edge = "#3A3A3F"),
+        // Rouge & Noir : fond noir rougeoyant, surfaces sombres, texte crème, accent rouge assez clair pour le texte prune
+        ShopMode("srfc", "Rouge & Noir", "Rouge vif et noir profond, ambiance de tribune bretonne · ambiance secrète", 1, true,
+            "#0B0607", "#FFF2F0", "#1A0D10", listOf("#E1001A", "#6E0A14", "#2A1013"), listOf("#FF7A6B", "#FF5252", "#FF3D5A"),
+            surface = "#1A0D10", surface2 = "#271317", edge = "#43202A"),
     )
 
     /** Fonds secrets débloqués par une surprise (jamais vendus dans la boutique). */
     val SECRET_BGS = listOf(
         ShopBg("kopa", "Stade Raymond-Kopa", "Tribunes, pelouse et projecteurs, un soir de match à Angers · fond secret", 1,
             listOf("#0B0E1A", "#1C2440", "#2F7A3E"), dark = true),
+        ShopBg("ecran", "Écran géant", "Un soir de pluie, un écran géant et un score sans appel : OL 4 – 0 SRFC · fond secret", 1,
+            listOf("#0A0709", "#22131A", "#21512C"), dark = true),
     )
 
     /** Réponse de la recherche : texte, surprise trouvée, et effet visuel (« confetti », « fish »…). */
@@ -82,6 +89,8 @@ object Eggs {
                 Hit("Il y a bien des surprises cachées dans PepsGoal… Ta collection est dans Profil › Collection.", null)
             q == "sco" ->
                 Hit("Allez le SCO ! ⚫⚪ Le fond « Stade Raymond-Kopa » et l’ambiance « Noir & Blanc » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", "sco", "confetti")
+            q == "srfc" ->
+                Hit("Direction la ligue 2", "srfc", "confetti")
             q == "pepsgoal" -> Hit("Oui, c’est moi ! Merci d’avoir pensé à me chercher 🔥", null)
             else -> null
         }
@@ -151,6 +160,7 @@ fun Pg.findEgg(key: String): Boolean {
     u.shopBonus += Eggs.BONUS
     if (key == "angers" && "mode:angers" !in u.shopOwned) u.shopOwned = (u.shopOwned + "mode:angers").toMutableList()
     if (key == "sco") u.shopOwned = (u.shopOwned + listOf("mode:sco", "bg:kopa").filter { it !in u.shopOwned }).toMutableList()
+    if (key == "srfc") u.shopOwned = (u.shopOwned + listOf("mode:srfc", "bg:ecran").filter { it !in u.shopOwned }).toMutableList()
     val e = Eggs.ALL.first { it.key == key }
     notify(u.id, "Surprise trouvée : « ${e.name} » ${e.emoji} +${Eggs.BONUS} flammes.", "badge")
     store.commit()
@@ -163,5 +173,14 @@ fun Pg.applySco() {
     val m = Eggs.SECRET_MODES.first { it.key == "sco" }
     if (!owns("mode:sco", m.price, u)) return
     u.settings.theme = "m:sco"; u.settings.bg = "s:kopa"; u.settings.accentCustom = m.accent
+    store.commit()
+}
+
+/** Applique tout de suite le fond « Écran géant », l'ambiance « Rouge & Noir » et ses couleurs (surprise « srfc »). */
+fun Pg.applySrfc() {
+    val u = me() ?: return
+    val m = Eggs.SECRET_MODES.first { it.key == "srfc" }
+    if (!owns("mode:srfc", m.price, u)) return
+    u.settings.theme = "m:srfc"; u.settings.bg = "s:ecran"; u.settings.accentCustom = m.accent
     store.commit()
 }

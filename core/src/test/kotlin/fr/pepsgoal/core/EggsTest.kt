@@ -58,4 +58,29 @@ class ScoEggTest {
         kotlin.test.assertFalse(Eggs.feur("Pourquoi ?")); kotlin.test.assertFalse(Eggs.feur("quoi de neuf ?")); kotlin.test.assertFalse(Eggs.feur("Quoicoubeh"))
         assertTrue(Eggs.ALL.any { it.key == "feur" })
     }
+
+    @Test fun srfcUnlocksScreenBackgroundAndRedBlackMode() {
+        val store = Store(files)
+        val u = fr.pepsgoal.core.model.User("me", "camille", "Camille Roux")
+        store.use(fr.pepsgoal.core.model.Db(session = "me", users = mutableListOf(u)), false)
+        val pg = Pg(store)
+        kotlin.test.assertEquals("srfc", Eggs.search("SRFC")?.egg); kotlin.test.assertEquals("Direction la ligue 2", Eggs.search(" srfc ")?.text)
+        assertFalse(pg.owns("mode:srfc", 1, u)); assertFalse(pg.owns("bg:ecran", 1, u))
+        assertTrue(pg.findEgg("srfc")); assertTrue(pg.owns("mode:srfc", 1, u)); assertTrue(pg.owns("bg:ecran", 1, u))
+        kotlin.test.assertEquals(false, u.settings.bg == "s:ecran")
+        pg.applySrfc()
+        kotlin.test.assertEquals("m:srfc", u.settings.theme); kotlin.test.assertEquals("s:ecran", u.settings.bg)
+        kotlin.test.assertEquals("Rouge & Noir", themeName("m:srfc")); kotlin.test.assertEquals("dark", baseTheme("m:srfc"))
+        kotlin.test.assertEquals(null, shopPriceOf("bg:ecran")); kotlin.test.assertEquals(null, shopPriceOf("mode:srfc"))
+        assertTrue(ALL_BGS.any { it.key == "ecran" })
+    }
+
+    /** Contraste de l'ambiance Rouge & Noir : texte crème sur fond et cartes, texte prune sur l'accent rouge (≥ 4,5:1). */
+    @Test fun srfcContrast() {
+        fun lum(h: String): Double { val c = listOf(1, 3, 5).map { h.substring(it, it + 2).toInt(16) / 255.0 }.map { if (it <= .03928) it / 12.92 else Math.pow((it + .055) / 1.055, 2.4) }; return .2126 * c[0] + .7152 * c[1] + .0722 * c[2] }
+        fun cr(a: String, b: String): Double { val x = lum(a); val y = lum(b); return (maxOf(x, y) + .05) / (minOf(x, y) + .05) }
+        val m = Eggs.SECRET_MODES.first { it.key == "srfc" }
+        for (bg in listOf(m.bg, m.surface!!, m.surface2!!)) assertTrue(cr(m.ink, bg) >= 4.5, "texte sur $bg")
+        for (a in m.accent) assertTrue(cr("#2A1420", a) >= 4.5, "texte prune sur l’accent $a")
+    }
 }
