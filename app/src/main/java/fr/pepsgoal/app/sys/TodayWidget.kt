@@ -37,16 +37,54 @@ import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.target
 import fr.pepsgoal.core.model.unit
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Met à jour tous les widgets après chaque changement important (validation, minuteur, fin de journée, réglages). */
 object WidgetUpdater {
     private val scope = MainScope()
-    fun update(ctx: Context) {
-        scope.launch {
-            val c = ctx.applicationContext
-            for (w in listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget(), FlameWidget(), TimelineWidget(), QuoteWidget())) try { w.updateAll(c) } catch (e: Exception) {}
-            WearSync.push(c)
+    private var pending: Job? = null
+    private var lastSignature: List<Any?>? = null
+    private var urgentPending = false
+    private var dirty = false
+    fun update(ctx: Context, urgent: Boolean = false) {
+        val c = ctx.applicationContext
+        urgentPending = urgentPending || urgent
+        dirty = true
+        if (pending?.isActive == true) return
+        pending = scope.launch {
+            do {
+            dirty = false
+            delay(200) // collapse a burst of hooks without continuously postponing updates
+            val app = c.peps
+            val manager = AppWidgetManager.getInstance(c)
+            val receivers = ALL.mapNotNull { it[0] as? Class<*> }
+            val ids = receivers.map { manager.getAppWidgetIds(ComponentName(c, it)).toList() }
+            val pg = app.pg; val u = pg.me()
+            // Business values only: chat/network revisions must not redraw the home screen.
+            val signature = if (ids.all { it.isEmpty() }) emptyList() else listOf(today(), java.time.LocalTime.now().hour,
+                app.prefs.widgetTheme, app.prefs.widgetHideDone, c.resources.configuration.uiMode, app.prefs.raw.getString("lang", "auto"), ids,
+                u?.let { listOf(it.id, it.settings.theme, it.settings.social, it.freezes, it.frozenDays.toList(), it.restDays.toList(),
+                    it.vacations.toList(), it.hardDays.toList(), it.essentials.toList(), it.favGoals.toList(),
+                    it.myQuotes.map { q -> listOf(q.id, q.text, q.author) }) },
+                pg.myGoals().map { g -> listOf(g.id, g.userId, g.type, g.title, g.icon, g.createdAt, g.archived, g.completedAt, g.failedAt, g.data.toMap(), g.members?.toList()) },
+                pg.db.checkins.filter { it.userId == u?.id }.map { v -> listOf(v.id, v.goalId, v.date, v.kind, v.value, v.pts, v.pending, v.taskId, v.at) },
+                pg.db.timers.mapValues { listOf(it.value.goalId, it.value.start) },
+                pg.db.maintLog.map { listOf(it.id, it.mode, it.start, it.until, it.endedAt) })
+            val immediate = urgentPending; urgentPending = false
+            if (signature != lastSignature) {
+                var ok = true
+                val widgets = listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget(), FlameWidget(), TimelineWidget(), QuoteWidget())
+                widgets.forEachIndexed { i, widget ->
+                    if (ids[i].isNotEmpty()) try { widget.updateAll(c) }
+                    catch (e: CancellationException) { throw e } catch (e: Exception) { ok = false }
+                }
+                if (ok) lastSignature = signature
+            }
+            WearSync.push(c, urgent = immediate)
+            } while (dirty)
         }
     }
 
@@ -88,7 +126,8 @@ class ValidateAction : ActionCallback {
             is Pg.VResult.OpenGoal -> context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(MainActivity.EXTRA_GOAL, id))
             else -> {}
         }
-        LiveUpdates.refresh(context); WidgetUpdater.update(context)
+        app.store.flush()
+        LiveUpdates.refresh(context); WidgetUpdater.update(context, urgent = true)
     }
 }
 
@@ -302,7 +341,8 @@ class CapAddAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val app = context.peps; val g = app.pg.goalById(parameters[GoalKey]) ?: return
         app.pg.capAdd(g, app.pg.capQuick(g).first(), silent = true)
-        LiveUpdates.refresh(context); WidgetUpdater.update(context)
+        app.store.flush()
+        LiveUpdates.refresh(context); WidgetUpdater.update(context, urgent = true)
     }
 }
 

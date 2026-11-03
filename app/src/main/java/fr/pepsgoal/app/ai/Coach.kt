@@ -146,7 +146,7 @@ $list
 Choisis les ${minOf(3, left.size)} objectifs les plus adaptés à ce moment (heure, météo). Réponds uniquement par des lignes au format NUMERO|RAISON (moins de 12 mots, dans ton style).
 """ }
         // Demande de fond : cède la place si l'utilisateur discute avec le coach
-        val out = if (LocalAi.on(ctx, ctx.peps.prefs.aiRecommend)) LocalAi.generate(ctx, 120, .4f, background = true, build = prompt) else null
+        val out = if (LocalAi.on(ctx, ctx.peps.prefs.aiRecommend)) LocalAi.generate(ctx, 120, .4f, background = true, backgroundKey = "recommendations", build = prompt) else null
         val ai = out?.lines()?.mapNotNull { l ->
             val m = Regex("^\\D*(\\d+)\\s*[|.:)-]\\s*(.+)$").find(l.trim()) ?: return@mapNotNull null
             val g = left.take(9).getOrNull(m.groupValues[1].toInt() - 1) ?: return@mapNotNull null
@@ -196,7 +196,7 @@ ${if (health.isNotBlank() && lvl < 2) "$health\n" else ""}Contexte : il est $hou
 Objectifs du jour : ${plan.due.joinToString(", ") { it.g.title }.ifEmpty { "aucun" }}.
 Donne UN conseil pour maintenant, en 2 phrases maximum, sans liste ni titre : $angle.
 """ }
-        val out = (if (LocalAi.on(ctx, app.prefs.aiTips)) LocalAi.generate(ctx, 90, .9f, background = true, build = prompt) else null)?.let { fixName(ctx, it) }?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.take(260)
+        val out = (if (LocalAi.on(ctx, app.prefs.aiTips)) LocalAi.generate(ctx, 90, .9f, background = true, backgroundKey = "tips", build = prompt) else null)?.let { fixName(ctx, it) }?.lines()?.filter { it.isNotBlank() }?.joinToString(" ")?.trim()?.trim('"')?.take(260)
         val t = out?.takeIf { it.length > 15 } ?: (rulesTip(st.n, st.lit, done, plan.due.size, hour) + " " + Personas.current(ctx).cheer.random())
         app.prefs.aiTip = t; app.prefs.aiTipKey = key
         return t
@@ -257,7 +257,7 @@ Personnes suggérées comme amis :
 $list
 Classe-les de la plus pertinente à la moins pertinente pour se motiver ensemble. Réponds uniquement par des lignes NUMERO|RAISON (moins de 12 mots, tutoiement).
 """ }
-        val out = LocalAi.generate(ctx, 160, .4f, background = true, build = prompt) ?: return null
+        val out = LocalAi.generate(ctx, 160, .4f, background = true, backgroundKey = "friends", build = prompt) ?: return null
         val picks = out.lines().mapNotNull { l ->
             val m = Regex("^\\D*(\\d+)\\s*[|.:)-]\\s*(.+)$").find(l.trim()) ?: return@mapNotNull null
             val c = cands.take(8).getOrNull(m.groupValues[1].toInt() - 1) ?: return@mapNotNull null

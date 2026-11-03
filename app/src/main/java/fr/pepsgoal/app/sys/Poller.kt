@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import fr.pepsgoal.app.PepsApp
 import fr.pepsgoal.app.peps
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -25,7 +26,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 /**
  * Relève des notifications du serveur toutes les minutes, application fermée : le serveur PepsGoal ne parle que
  * Web Push, l'application native interroge donc elle-même les messages, publications, demandes d'amis,
- * encouragements… Une alarme « chaînée » d'une minute (exacte si Android l'autorise) réveille l'application ;
+ * encouragements… Une alarme inexacte adaptée à l’activité réveille l’application ;
  * en mode Économie d'énergie / Doze, Android espace de lui-même les réveils (WorkManager reste le filet de sécurité).
  */
 object Poller {
@@ -50,7 +51,7 @@ object Poller {
     fun schedule(ctx: Context, delayMs: Long? = null) {
         val app = ctx.peps
         val a = ctx.getSystemService(AlarmManager::class.java); val p = pi(ctx)
-        if (!app.store.acct) { a.cancel(p); return }
+        if (!app.store.acct || app.cloud.forceOffline) { a.cancel(p); return }
         // Avec la connexion en direct, le service relève lui-même : l'alarme n'est plus qu'un filet de sécurité
         val d = delayMs ?: if (app.prefs.pollTest > 0) 30_000L else if (app.prefs.instantNotifs) 15 * 60_000L else interval(app)
         val t = SystemClock.elapsedRealtime() + d
@@ -64,22 +65,27 @@ object Poller {
 
     /** Une relève : réseau relu, serveur interrogé, nouveautés notifiées ; le processeur reste éveillé le temps de la relève. */
     suspend fun run(app: PepsApp, src: String) {
+        if (!app.store.acct || app.cloud.forceOffline) return
         if (!lock.tryLock()) return
         // Relève toute récente (service et alarme qui se croisent) : inutile de recommencer
-        if (System.currentTimeMillis() - lastRun < 40_000L && app.prefs.pollTest == 0L) { lock.unlock(); return }
-        val wl = app.getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pepsgoal:poll")
+        if (lastRun > 0 && SystemClock.elapsedRealtime() - lastRun < (if (app.foreground) 15_000L else 40_000L) && app.prefs.pollTest == 0L) { lock.unlock(); return }
+        var wl: PowerManager.WakeLock? = null
         try {
-            wl.acquire(40_000)
+            if (!app.foreground) {
+                wl = app.getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pepsgoal:poll")
+                wl.acquire(40_000)
+            }
             val ok = withTimeoutOrNull(30_000) {
                 app.cloud.navOnline = app.networkUp()
-                if (app.cloud.poll()) { lastNews = System.currentTimeMillis(); WidgetUpdater.update(app) }
-                try { SmartReminders.check(app) } catch (e: Exception) {}
+                if (app.cloud.poll(if (app.foreground) 15_000 else 40_000)) { lastNews = System.currentTimeMillis(); WidgetUpdater.update(app) }
+                if (!app.foreground) try { SmartReminders.check(app) } catch (e: CancellationException) { throw e } catch (e: Exception) {}
                 // Santé Connect : relu au plus tous les quarts d'heure
-                if (System.currentTimeMillis() - lastHealth > 15 * 60_000L) { lastHealth = System.currentTimeMillis(); try { Health.sync(app) } catch (e: Exception) {} }
+                if (System.currentTimeMillis() - lastHealth > 15 * 60_000L) { lastHealth = System.currentTimeMillis(); try { Health.sync(app) } catch (e: CancellationException) { throw e } catch (e: Exception) {} }
+                app.store.flush()
                 true
             }
             if (ok == null) app.cloud.pollStatus = "délai dépassé"
-            val now = System.currentTimeMillis(); lastRun = now
+            val now = System.currentTimeMillis(); lastRun = SystemClock.elapsedRealtime()
             if (app.store.online) app.prefs.lastPoll = now
             val hm = java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE).format(java.util.Date(now))
             app.prefs.pollLog = (listOf("$hm · $src · ${app.cloud.pollStatus}") + app.prefs.pollLog).take(6)
@@ -87,16 +93,17 @@ object Poller {
                 app.prefs.pollTest = 0
                 Notifier.test(app, "✓ Relève en arrière-plan reçue ($src, ${app.cloud.pollStatus}). Les messages t’arriveront aussi application fermée.")
             }
+        } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
             app.cloud.pollStatus = "erreur : ${e::class.simpleName}"
-        } finally { if (wl.isHeld) wl.release(); lock.unlock() }
+        } finally { wl?.let { if (it.isHeld) it.release() }; lock.unlock() }
     }
 
     /** (Re)lance le service de connexion en direct si le compte et le réglage le permettent (sinon l'arrête). */
     fun startLink(ctx: Context) {
         val app = ctx.peps
         val i = Intent(ctx, LinkService::class.java)
-        if (!app.store.acct || !app.prefs.instantNotifs) { ctx.stopService(i); return }
+        if (!app.store.acct || !app.prefs.instantNotifs || app.cloud.forceOffline) { ctx.stopService(i); return }
         try { ContextCompat.startForegroundService(ctx, i) } catch (e: Exception) { /* démarrage refusé hors premier plan : l'alarme prend le relais */ }
     }
 
@@ -114,7 +121,7 @@ class PollReceiver : BroadcastReceiver() {
         val app = ctx.peps
         // Au premier plan, la boucle de l'application s'en charge déjà
         if (app.foreground) { Poller.schedule(ctx); return }
-        // Une alarme exacte autorise à (re)lancer le service de connexion, s'il a été arrêté par le système
+        // Le système peut autoriser à (re)lancer le service de connexion, s'il a été arrêté par le système
         Poller.startLink(ctx)
         val done = goAsync()
         app.scope.launch {
@@ -137,7 +144,7 @@ class LinkService : Service() {
         try {
             ServiceCompat.startForeground(this, Notifier.LINK_ID, Notifier.link(this), if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0)
         } catch (e: Exception) { stopSelf(); return START_NOT_STICKY }
-        if (!app.store.acct || !app.prefs.instantNotifs) { stopSelf(); return START_NOT_STICKY }
+        if (!app.store.acct || !app.prefs.instantNotifs || app.cloud.forceOffline) { stopSelf(); return START_NOT_STICKY }
         if (job?.isActive != true) job = app.scope.launch {
             while (isActive) {
                 delay(Poller.interval(app))

@@ -57,7 +57,7 @@ class ActionReceiver : BroadcastReceiver() {
                 app.scope.launch {
                     try { if (!post.likes.contains(pg.meId())) app.cloud.toggleLike(post); app.cloud.comment(post, text); if (nid != 0) Notifier.cancel(ctx, nid) }
                     catch (e: Exception) {}
-                    finally { done.finish() }
+                    finally { try { app.flushLocalSafely() } finally { done.finish() } }
                 }
             }
             CONFIRM -> { app.cloud.confirmCheck(intent.getStringExtra("checkin") ?: return, intent.getBooleanExtra("ok", true)); if (nid != 0) Notifier.cancel(ctx, nid) }
@@ -79,7 +79,7 @@ class ActionReceiver : BroadcastReceiver() {
                         if (chat != null) app.cloud.openGroup(chat) else if (to != null) app.cloud.openChat(to)
                         Notifier.conversation(app, key, sent = text)
                     } catch (e: Exception) { Notifier.conversation(app, key, sent = "⚠️ Envoi impossible : $text") }
-                    finally { done.finish() }
+                    finally { try { app.flushLocalSafely() } finally { done.finish() } }
                 }
             }
             READ -> {
@@ -88,10 +88,11 @@ class ActionReceiver : BroadcastReceiver() {
                 val done = goAsync()
                 app.scope.launch {
                     try { if (key.startsWith("g:")) app.cloud.openGroup(key.drop(2)) else app.cloud.openChat(key.drop(2)) } catch (e: Exception) {}
-                    finally { done.finish() }
+                    finally { try { app.flushLocalSafely() } finally { done.finish() } }
                 }
             }
         }
+        if (intent.action in setOf(VALIDATE, PROGRESS, CONFIRM, TIMER)) persistBeforeFinish(app)
     }
 }
 
@@ -103,6 +104,7 @@ class AlarmReceiver : BroadcastReceiver() {
         app.pg.checkReminders()
         SmartReminders.check(ctx)
         LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx); Reminders.reschedule(ctx)
+        persistBeforeFinish(app)
     }
 }
 

@@ -9,6 +9,11 @@ import fr.pepsgoal.core.msOf
 import fr.pepsgoal.core.nowMs
 import fr.pepsgoal.core.uid
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
@@ -39,10 +44,14 @@ class E2eKeys(private val c: Cloud) {
     /** Coffre créé avec un ancien mot de passe : la messagerie demande l'ancien mot de passe. */
     var vaultIssue: String? = null
 
-    private fun all(): MutableMap<String, KeyStore> = c.secrets.get(DEV_KEY)?.let { try { JSON.decodeFromString<MutableMap<String, KeyStore>>(it) } catch (e: Exception) { null } } ?: mutableMapOf()
+    private fun all(): MutableMap<String, KeyStore> = c.secrets.get(DEV_KEY)?.let { try { JSON.decodeFromString<MutableMap<String, KeyStore>>(it) } catch (e: CancellationException) { throw e } catch (e: Exception) { null } } ?: mutableMapOf()
     fun store(uid: String = c.meId()): KeyStore = all()[uid] ?: KeyStore()
     private fun saveRaw(k: KeyStore, uid: String = c.meId()) { val a = all(); a[uid] = k; c.secrets.set(DEV_KEY, JSON.encodeToString(a)) }
-    private fun save(k: KeyStore) { saveRaw(k); c.scope.launch { try { vaultPush() } catch (e: Exception) {} } }
+    private suspend fun save(k: KeyStore) {
+        saveRaw(k) // key durability remains immediate
+        // Child of the current operation: concurrent with message delivery, but not detached from cancellation.
+        CoroutineScope(currentCoroutineContext()).launch { try { vaultPush() } catch (e: CancellationException) { throw e } catch (e: Exception) {} }
+    }
     fun forgetLocal() { val a = all(); a.remove(c.meId()); c.secrets.set(DEV_KEY, JSON.encodeToString(a)) }
     fun hasVault() = store().vault != null
     fun keyCount() = store().pairs.size
@@ -108,18 +117,19 @@ class E2eKeys(private val c: Cloud) {
         val n = vaultImport(k, vk, r.arr("keys")); saveRaw(k); return n
     }
 
-    suspend fun vaultPush() {
-        val k = store(); if (!c.store.acct) return; val vkS = k.vault ?: return
-        val keys = vaultEntries(k, E2e.unb64(vkS), true); if (keys.isEmpty()) return
+    private val vaultPushLock = Mutex()
+    suspend fun vaultPush(): Unit = vaultPushLock.withLock {
+        val k = store(); if (!c.store.acct) return@withLock; val vkS = k.vault ?: return@withLock
+        val keys = vaultEntries(k, E2e.unb64(vkS), true); if (keys.isEmpty()) return@withLock
         for (i in keys.indices step 500) api.post("/v1/e2e/vault/keys", buildJsonObject { put("keys", JsonArray(keys.subList(i, minOf(keys.size, i + 500)))) })
         val k2 = store(); keys.forEach { k2.vaulted[it.str("keyId")] = 1 }; saveRaw(k2)
     }
 
     /** Nouveau mot de passe : seule la clé du coffre est rechiffrée. */
     suspend fun vaultRewrap(oldPassword: String, newPassword: String) {
-        if (store().vault == null) try { vaultUnlock(oldPassword) } catch (e: Exception) {}
+        if (store().vault == null) try { vaultUnlock(oldPassword) } catch (e: CancellationException) { throw e } catch (e: Exception) {}
         val k = store()
-        val vkS = k.vault ?: run { try { vaultUnlock(newPassword) } catch (e: Exception) {}; return }
+        val vkS = k.vault ?: run { try { vaultUnlock(newPassword) } catch (e: CancellationException) { throw e } catch (e: Exception) {}; return }
         val vk = E2e.unb64(vkS); val salt = E2e.b64(Nacl.randomBytes(16)); val derived = E2e.deriveVault(newPassword, salt, E2e.VAULT_ITER)
         api.put("/v1/e2e/vault", buildJsonObject { put("mode", "rewrap"); put("salt", salt); put("iterations", E2e.VAULT_ITER); put("check", E2e.checkOf(derived)); put("wrappedKey", E2e.pack(vk, derived)); put("kcv", E2e.checkOf(vk)) })
     }
@@ -130,7 +140,7 @@ class E2eKeys(private val c: Cloud) {
             val me = c.pg.me() ?: return "locked"
             val r = api.post("/v1/auth/login", buildJsonObject { put("username", me.username); put("password", password) })
             val old = api.tokens?.refreshToken
-            if (old != null) try { api.post("/v1/auth/logout", buildJsonObject { put("refreshToken", old) }) } catch (e: Exception) {}
+            if (old != null) try { api.post("/v1/auth/logout", buildJsonObject { put("refreshToken", old) }) } catch (e: CancellationException) { throw e } catch (e: Exception) {}
             api.tokens = Tokens(r.str("accessToken"), r.str("refreshToken"))
         }
         if (reset) { vaultCreate(password, true); decryptAll(); return "created" }
@@ -209,7 +219,7 @@ class E2eKeys(private val c: Cloud) {
         return E2e.decrypt(p, key)
     }
 
-    suspend fun decryptAll() {
+    suspend fun decryptAll(): Boolean {
         val k = store(); val mine = c.meId(); val convs = LinkedHashMap<String, Conv>()
         for (m in c.db.messages) {
             val p = m.e2e ?: continue
@@ -218,9 +228,14 @@ class E2eKeys(private val c: Cloud) {
             val conv = if (m.chat != null) Conv(group = m.chat) else Conv(peer = if (m.from == mine) m.to else m.from)
             convs[(conv.group ?: "") + (conv.peer ?: "")] = conv
         }
-        if (convs.isNotEmpty()) try { vaultPull() } catch (e: Exception) {}
-        for (conv in convs.values) try { openConv(conv) } catch (e: Exception) {}
-        for (m in c.db.messages) if (m.e2e != null && cache[m.id] == null) cache[m.id] = decryptLocal(m)
+        if (convs.isNotEmpty()) try { vaultPull() } catch (e: CancellationException) { throw e } catch (e: Exception) {}
+        for (conv in convs.values) try { openConv(conv) } catch (e: CancellationException) { throw e } catch (e: Exception) {}
+        var changed = false
+        for (m in c.db.messages) if (m.e2e != null && cache[m.id] == null) {
+            val plain = decryptLocal(m)
+            if (plain != null) { cache[m.id] = plain; changed = true }
+        }
+        return changed
     }
 
     /* ---------------------------------------------------------------- envoi */

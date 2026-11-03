@@ -16,6 +16,8 @@ import com.google.android.gms.location.GeofencingEvent
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import kotlinx.coroutines.withTimeoutOrNull
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.core.autoPlace
 import fr.pepsgoal.core.autoMin
@@ -47,9 +49,15 @@ object GeoReminders {
     @SuppressLint("MissingPermission")
     suspend fun here(ctx: Context): android.location.Location? {
         if (!hasFine(ctx)) return null
-        return suspendCancellableCoroutine { c ->
-            LocationServices.getFusedLocationProviderClient(ctx).getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-                .addOnSuccessListener { c.resume(it) }.addOnFailureListener { c.resume(null) }
+        return withTimeoutOrNull(20_000) {
+            suspendCancellableCoroutine { c ->
+                val token = CancellationTokenSource()
+                c.invokeOnCancellation { token.cancel() }
+                // Keep fine accuracy for small user geofences; cancel the one-shot acquisition on exit.
+                LocationServices.getFusedLocationProviderClient(ctx).getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, token.token)
+                    .addOnSuccessListener { if (c.isActive) c.resume(it) }.addOnFailureListener { if (c.isActive) c.resume(null) }
+                    .addOnCanceledListener { c.cancel() }
+            }
         }
     }
 
@@ -127,5 +135,6 @@ class GeoReceiver : BroadcastReceiver() {
             Notifier.simple(ctx, key.hashCode(), Notifier.CH_REMIND, "${g.shownIcon()} ${g.shownTitle()}",
                 pg.ifThenReminder(g, "place", "${if (pl.exit) "Tu quittes" else "Te voilà à"} ${pl.label.ifBlank { "l’endroit choisi" }} : c’est le moment !"), goalId = id.takeIf { g.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit") })
         }
+        persistBeforeFinish(app)
     }
 }

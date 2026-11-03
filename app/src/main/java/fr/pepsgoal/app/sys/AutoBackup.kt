@@ -11,6 +11,8 @@ import fr.pepsgoal.app.peps
 import fr.pepsgoal.core.*
 import fr.pepsgoal.core.crypto.E2e
 import fr.pepsgoal.core.model.Db
+import fr.pepsgoal.core.model.snapshot
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
@@ -47,18 +49,20 @@ object AutoBackup {
 
     fun schedule(ctx: Context) {
         if (!configured(ctx)) return
-        val req = PeriodicWorkRequestBuilder<BackupWorker>(24, TimeUnit.HOURS).setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.MINUTES).build()
-        WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("pepsgoal-backup", ExistingPeriodicWorkPolicy.KEEP, req)
+        val req = PeriodicWorkRequestBuilder<BackupWorker>(24, TimeUnit.HOURS, 6, TimeUnit.HOURS).setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).setRequiresStorageNotLow(true).build()).setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("pepsgoal-backup", ExistingPeriodicWorkPolicy.UPDATE, req)
     }
 
     /** Contenu sauvegardé : la base de l'appareil et le journal. */
-    private fun payload(ctx: Context): String {
-        val app = ctx.peps
-        return buildJsonObject {
-            put("app", APP_VERSION); put("account", app.store.acct)
-            put("db", JSON.encodeToJsonElement(Db.serializer(), app.pg.db))
-            put("journal", JSON.encodeToJsonElement(ListSerializer(JournalEntry.serializer()), Journal.all(ctx)))
-        }.toString()
+    private suspend fun payload(ctx: Context): String {
+        val (account, snapshot) = withContext(Dispatchers.Main) { ctx.peps.store.acct to ctx.peps.pg.db.snapshot() }
+        return withContext(Dispatchers.Default) {
+            buildJsonObject {
+                put("app", APP_VERSION); put("account", account)
+                put("db", JSON.encodeToJsonElement(Db.serializer(), snapshot))
+                put("journal", JSON.encodeToJsonElement(ListSerializer(JournalEntry.serializer()), Journal.all(ctx)))
+            }.toString()
+        }
     }
 
     /** Écrit la sauvegarde du jour (remplace celle du même jour) et ne garde que les 7 dernières. */
@@ -72,11 +76,12 @@ object AutoBackup {
             val name = "PepsGoal-sauvegarde-${today()}.pgbak"
             dir.findFile(name)?.delete()
             val f = dir.createFile("application/octet-stream", name) ?: return@withContext false
-            val raw = withContext(Dispatchers.Main) { payload(ctx) }
+            val raw = payload(ctx)
             ctx.contentResolver.openOutputStream(f.uri, "wt")?.use { it.write(Backup.seal(raw, key, salt).toByteArray(Charsets.UTF_8)) } ?: return@withContext false
             dir.listFiles().filter { it.name?.startsWith("PepsGoal-sauvegarde-") == true }.sortedByDescending { it.name }.drop(KEEP).forEach { it.delete() }
             app.prefs.backupLast = nowMs(); app.prefs.backupError = ""
             true
+        } catch (e: CancellationException) { throw e
         } catch (e: Exception) { app.prefs.backupError = e.message ?: "Écriture impossible"; false }
     }
 
@@ -98,5 +103,11 @@ object AutoBackup {
 }
 
 class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
-    override suspend fun doWork(): Result = if (AutoBackup.run(applicationContext)) Result.success() else Result.retry()
+    override suspend fun doWork(): Result {
+        if (!AutoBackup.configured(applicationContext)) return Result.success()
+        val app = applicationContext.peps
+        val eligible = withContext(Dispatchers.Main) { !app.pg.db.sandbox && app.pg.me() != null }
+        if (!eligible) return Result.success()
+        return if (AutoBackup.run(applicationContext)) Result.success() else Result.retry()
+    }
 }

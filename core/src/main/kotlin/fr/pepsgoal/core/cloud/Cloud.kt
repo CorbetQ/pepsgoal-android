@@ -5,6 +5,10 @@ import fr.pepsgoal.core.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.random.Random
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -65,16 +69,24 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     var statsAt = 0L
     val profileLoaded = HashSet<String>()
     val viewed = HashSet<String>()
-    private var refreshing: Job? = null
-    private var refreshAgain = false
+    private val socialLock = Mutex()
+    private val pollLock = Mutex()
+    private var lastPollSuccess: Long? = null
+    private var pingEnabled = true
+    private var lastStatusAt = System.nanoTime() / 1_000_000
     private var syncTimer: Job? = null
     private var socialTimer: Job? = null
     private var pingJob: Job? = null
+    private var bootKeysJob: Job? = null
+    private var bootKeysPending = false
 
     init {
         api.forceOffline = forceOffline
         api.onServerDown = { serverDown() }
-        api.onSessionLost = { scope.launch { sessionLost() } }
+        api.onSessionLost = {
+            val refusedToken = api.tokens?.refreshToken
+            scope.launch { if (api.tokens?.refreshToken == refusedToken) sessionLost() }
+        }
         pg.cloud = this
     }
 
@@ -91,27 +103,50 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         }
     }
     private fun setServerOk(v: Boolean) { serverOk = v; updateOnline() }
-    private fun serverDown() { if (serverOk) { setServerOk(false); failures = 0; schedulePing(RETRY[0]) } }
-    private fun onReconnect() { if (store.acct) { scope.launch { syncNow(); refreshSocial() } } }
+    private fun serverDown() { if (serverOk) { setServerOk(false); failures = 0; if (pingEnabled) schedulePing(RETRY[0]) } }
+    private fun onReconnect() { if (store.acct && pingEnabled) { scheduleSync(); scheduleSocial() } }
 
-    private fun schedulePing(ms: Long) { pingJob?.cancel(); pingJob = scope.launch { delay(ms); ping() } }
-
-    /** Le serveur répond-il ? (nouvel essai à 5 s, 10 s, 20 s, 40 s puis chaque minute) */
-    suspend fun ping() {
+    private fun schedulePing(ms: Long) {
         pingJob?.cancel()
-        if (forceOffline) return
+        if (!pingEnabled || !navOnline || forceOffline) { pingJob = null; return }
+        pingJob = scope.launch {
+            delay(ms + Random.nextLong(0, (ms / 5).coerceAtLeast(1)))
+            ping() // ping() never cancels the job at entry; lifecycle can still cancel an in-flight probe
+        }
+    }
+
+    /** Stop heartbeat work in the background; alarm/service/worker still probe when needed. */
+    fun setForeground(visible: Boolean) {
+        pingEnabled = visible
+        if (!visible) { pingJob?.cancel(); pingJob = null; bootKeysJob?.cancel() }
+        else if (bootKeysPending && store.acct && !forceOffline && navOnline) {
+            bootKeysPending = false
+            bootKeysJob = scope.launch {
+                try { e2e.device(); e2e.shareMissing() }
+                catch (e: CancellationException) { bootKeysPending = true; throw e }
+                catch (e: Exception) { bootKeysPending = true }
+            }
+        }
+    }
+
+    suspend fun ping() {
+        if (forceOffline || !navOnline) return
         try {
             val s = api.status()
             if (!s.bool("ok")) throw ApiError(503, "down", "")
             failures = 0; maintenanceStatus = s.obj("maintenance"); minAppVersion = s.strN("minAppVersion"); applyMaintenanceStatus()
+            lastStatusAt = System.nanoTime() / 1_000_000
             setServerOk(true)
-            schedulePing(60_000)
+            // Healthy status refreshes piggyback on poll(); only outages have a retry timer.
         } catch (e: ApiError) {
             setServerOk(false)
-            schedulePing(RETRY[minOf(failures++, RETRY.size - 1)])
+            if (pingEnabled) schedulePing(RETRY[minOf(failures++, RETRY.size - 1)])
         }
     }
-    fun pingSoon() { failures = 0; scope.launch { ping() } }
+    fun pingSoon() {
+        if (!pingEnabled || !navOnline || forceOffline) return
+        failures = 0; schedulePing(0)
+    }
 
     /* ------------------------------------------------------------------ session */
     private fun cloudState(): CloudState { if (db.cloud == null) db.cloud = CloudState(); return db.cloud!! }
@@ -144,6 +179,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     private fun enterAccount(payload: JsonObject, newDb: Db) {
         api.tokens = Tokens(payload.str("accessToken"), payload.str("refreshToken"))
         val user = payload.obj("user")!!
+        pollSnapshot = null; lastPollSuccess = null
+        openConversationSummary.clear(); openConversationFullAt.clear()
         store.use(newDb, true)
         val u = upsertUser(user) { it.bio = user.str("bio"); it.freezes = user.int("freezes") }!!
         Mapping.applyServerSettings(u, user.obj("settings"))
@@ -158,10 +195,12 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         val cached = store.readAccount()
         if (api.tokens != null && cached?.session != null) { store.use(cached, true); cloudState() }
         else store.use(store.readLocal() ?: Db(), false)
-        scope.launch {
+        bootKeysPending = store.acct && !pingEnabled
+        // An Application can be created solely for an offline/local worker. Do not start network work then.
+        if (pingEnabled) scope.launch {
             ping()
             if (store.acct) {
-                launch { try { e2e.device(); e2e.shareMissing() } catch (e: Exception) {} }
+                launch { try { e2e.device(); e2e.shareMissing() } catch (e: CancellationException) { throw e } catch (e: Exception) {} }
                 syncNow(); refreshSocial()
             }
         }
@@ -230,6 +269,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     }
 
     fun leaveAccount(callServer: Boolean) {
+        pollSnapshot = null; lastPollSuccess = null
+        openConversationSummary.clear(); openConversationFullAt.clear()
         val rt = api.tokens?.refreshToken
         if (callServer) {
             val dev = e2e.store().device
@@ -240,6 +281,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         }
         e2e.forgetLocal()
         api.tokens = null; store.deleteAccount()
+        bootKeysJob?.cancel(); bootKeysPending = false
         e2e.cache.clear(); profileLoaded.clear(); pulledOnce = false
         store.use(store.readLocal() ?: Db(), false); db.session = null
         events.sessionChanged()
@@ -347,26 +389,29 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     suspend fun syncNow() {
         if (!store.acct || !store.online) return
         syncing?.let { if (it.isActive) { it.await(); return } }
-        val d = scope.async {
-            try {
-                if (normalizeIds()) store.rawSave()
-                val (ops, marks) = collectOps()
-                for (i in ops.indices step 100) {
-                    val batch = ops.subList(i, minOf(ops.size, i + 100)); val bm = marks.subList(i, minOf(marks.size, i + 100))
-                    api.post("/v1/sync/push", buildJsonObject { put("deviceId", deviceId()); put("ops", JsonArray(batch)) })
-                    // Opération refusée (version plus récente ailleurs, données invalides) : la version du serveur fera foi au prochain tirage
-                    bm.forEach { markSynced(it) }
-                    store.rawSave()
-                }
-                pull()
-                lastSync = nowMs(); syncError = ""
-                if (ops.isNotEmpty()) events.synced(ops.size)
-            } catch (e: ApiError) { syncError = e.message ?: "Erreur de synchronisation" }
-            catch (e: Exception) { syncError = e.message ?: "Erreur de synchronisation" }
-            finally { store.changed() }
+        coroutineScope {
+            val d = async {
+                try {
+                    if (normalizeIds()) store.rawSave()
+                    val (ops, marks) = collectOps()
+                    for (i in ops.indices step 100) {
+                        val batch = ops.subList(i, minOf(ops.size, i + 100)); val bm = marks.subList(i, minOf(marks.size, i + 100))
+                        api.post("/v1/sync/push", buildJsonObject { put("deviceId", deviceId()); put("ops", JsonArray(batch)) })
+                        // Opération refusée (version plus récente ailleurs, données invalides) : la version du serveur fera foi au prochain tirage
+                        bm.forEach { markSynced(it) }
+                        store.rawSave()
+                    }
+                    pull()
+                    lastSync = nowMs(); syncError = ""
+                    if (ops.isNotEmpty()) events.synced(ops.size)
+                } catch (e: ApiError) { syncError = e.message ?: "Erreur de synchronisation" }
+                catch (e: CancellationException) { throw e }
+                catch (e: Exception) { syncError = e.message ?: "Erreur de synchronisation" }
+                finally { store.changed() }
+            }
+            syncing = d
+            try { d.await() } finally { if (syncing === d) syncing = null }
         }
-        syncing = d
-        d.await()
     }
 
     private suspend fun pull() {
@@ -414,62 +459,70 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     }
 
     suspend fun refreshSocial() {
-        if (!store.acct || !store.online) return
-        // Un rechargement est déjà en cours : on attend sa fin (les relèves en arrière-plan doivent finir avant de rendre la main)
-        if (refreshing?.isActive == true) { refreshAgain = true; refreshing?.join(); return }
-        val job = scope.launch {
-            try { doRefreshSocial() } catch (e: ApiError) { pollStatus = "erreur serveur ${e.status}"; if (e.status != 0) events.error(e.message ?: "") }
-            catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { pollStatus = "erreur : ${e::class.simpleName} ${e.message ?: ""}".trim() }
-        }
-        refreshing = job
-        job.join()
-        if (refreshAgain) { refreshAgain = false; scheduleSocial(150) }
+        try { refreshSocial(emptyMap()) }
+        catch (e: CancellationException) { throw e }
+        catch (e: ApiError) { pollStatus = "erreur serveur ${e.status}"; if (e.status != 0) events.error(e.message ?: "") }
+        catch (e: Exception) { pollStatus = "erreur : ${e::class.simpleName}" }
     }
 
-    private var pollSig: Int? = null
+    private suspend fun refreshSocial(seed: Map<String, JsonElement>) {
+        if (!store.acct || !store.online) return
+        // Structured concurrency: cancellation and the poll budget cover all refresh requests.
+        socialLock.withLock { doRefreshSocial(seed) }
+    }
+
+    private var pollSnapshot: List<JsonElement>? = null
     /** Résultat de la dernière relève (diagnostic affiché dans les réglages). */
     var pollStatus = ""
 
-    /**
-     * Relève légère (toutes les minutes, y compris en arrière-plan) : notifications, conversations, groupes et
-     * publications des amis. Si quelque chose a changé depuis la dernière relève, tout le social est rechargé
-     * (ce qui déclenche les notifications système des nouveautés). Renvoie true si un rechargement a eu lieu.
-     */
-    suspend fun poll(): Boolean {
-        if (!store.acct) { pollStatus = "pas de compte"; return false }
-        // Application réveillée après un long sommeil : l'état « hors ligne » peut dater (réseau coupé pendant la veille,
-        // nouvel essai de connexion jamais exécuté car le processus était gelé) : on revérifie tout de suite
-        if (!store.online) { if (!navOnline) { pollStatus = "pas de réseau"; return false }; failures = 0; ping() }
-        if (!store.online) { pollStatus = "serveur injoignable"; return false }
-        val sig = try {
-            coroutineScope {
-                val n = async { api.get("/v1/notifications") }; val c = async { api.get("/v1/conversations") }
-                val g = async { try { api.get("/v1/groups") } catch (e: ApiError) { JsonArray(emptyList()) } }
-                val f = async { api.get("/v1/feed?tab=friends") }
-                listOf(
-                    n.await().list().map { it.str("id") + it.str("read") },
-                    c.await().list().map { it.obj("peer").str("id") + ":" + it.int("unread") + ":" + (it["last"]?.toString() ?: "") },
-                    g.await().list().map { it.str("id") + ":" + it.int("unread") + ":" + (it["last"]?.toString() ?: "") },
-                    // Encouragements compris : ceux des amis apparaissent sans rafraîchir le feed
-                    f.await().arr("posts").map { it.str("id") + ":" + it.arr("comments").size + ":" + it.arr("likers").size },
-                ).hashCode()
+    /** Shared exclusion and monotonic successful-window check for every caller. */
+    suspend fun poll(minIntervalMs: Long = 40_000): Boolean {
+        if (!pollLock.tryLock()) return false
+        try {
+            val now = System.nanoTime() / 1_000_000
+            if (lastPollSuccess?.let { now - it < minIntervalMs } == true) return false
+            if (!store.acct) { pollStatus = "pas de compte"; return false }
+            if (store.online && now - lastStatusAt >= 60_000) ping()
+            if (!store.online) { if (!navOnline) { pollStatus = "pas de réseau"; return false }; failures = 0; ping() }
+            if (!store.online) { pollStatus = "serveur injoignable"; return false }
+            val ownerDb = db
+            val paths = listOf("/v1/notifications", "/v1/conversations", "/v1/groups", "/v1/feed?tab=friends")
+            val values = coroutineScope {
+                paths.map { path -> async {
+                    try { api.get(path) } catch (e: ApiError) {
+                        if (path == "/v1/groups" && e.status == 404) JsonArray(emptyList()) else throw e
+                    }
+                } }.map { it.await() }
             }
-        } catch (e: Exception) { pollStatus = "erreur : ${e.message ?: e::class.simpleName}"; return false }
-        if (sig == pollSig) { pollStatus = "à jour"; return false }
-        pollSig = sig
-        pollStatus = "nouveautés relevées"
-        refreshSocial()
-        return true
+            if (db !== ownerDb || !store.acct) return false
+            val changed = values != pollSnapshot
+            if (changed) {
+                val previous = pollSnapshot
+                if (previous != null && values[0] == previous[0] && values[3] == previous[3]) refreshInbox(values)
+                else refreshSocial(paths.zip(values).toMap())
+            }
+            if (db !== ownerDb || !store.acct) return false
+            lastPollSuccess = System.nanoTime() / 1_000_000
+            pollStatus = if (changed) "nouveautés relevées" else "à jour"
+            return changed
+        } catch (e: CancellationException) { throw e
+        } catch (e: Exception) { pollStatus = "erreur : ${e.message ?: e::class.simpleName}"; return false
+        } finally { pollLock.unlock() }
     }
 
-    private suspend fun doRefreshSocial() = coroutineScope {
-        val meR = async { api.get("/v1/me") }; val fr = async { api.get("/v1/friends") }
-        val feedF = async { api.get("/v1/feed?tab=friends") }; val feedP = async { api.get("/v1/feed?tab=public") }
-        val stories = async { api.get("/v1/stories") }; val notifs = async { api.get("/v1/notifications") }; val convs = async { api.get("/v1/conversations") }
-        val groups = async { try { api.get("/v1/groups") } catch (e: ApiError) { JsonArray(emptyList()) } }
-        val blocks = async { try { api.get("/v1/blocks") } catch (e: ApiError) { JsonArray(emptyList()) } }
-        val myStories = async { try { api.get("/v1/me/stories") } catch (e: ApiError) { JsonArray(emptyList()) } }
-        val sugg = async { try { api.get("/v1/friends/suggestions") } catch (e: ApiError) { null } }
+    private suspend fun doRefreshSocial(seed: Map<String, JsonElement>) = coroutineScope {
+        val ownerDb = db
+        suspend fun fetch(path: String): JsonElement = seed[path] ?: api.get(path)
+        val meR = async { fetch("/v1/me") }; val fr = async { fetch("/v1/friends") }
+        val feedF = async { fetch("/v1/feed?tab=friends") }; val feedP = async { fetch("/v1/feed?tab=public") }
+        val stories = async { fetch("/v1/stories") }; val notifs = async { fetch("/v1/notifications") }; val convs = async { fetch("/v1/conversations") }
+        val groups = async { try { fetch("/v1/groups") } catch (e: ApiError) { if (e.status == 404) JsonArray(emptyList()) else throw e } }
+        val blocks = async { try { fetch("/v1/blocks") } catch (e: ApiError) { if (e.status == 404) JsonArray(emptyList()) else throw e } }
+        val myStories = async { try { fetch("/v1/me/stories") } catch (e: ApiError) { if (e.status == 404) JsonArray(emptyList()) else throw e } }
+        val sugg = async { try { fetch("/v1/friends/suggestions") } catch (e: ApiError) { if (e.status == 404) null else throw e } }
+        // Fetch all resources before mutating the model; a failed response must not leave a partial refresh.
+        listOf(meR, fr, feedF, feedP, stories, notifs, convs, groups, blocks, myStories, sugg).forEach { it.await() }
+        if (db !== ownerDb || !store.acct) return@coroutineScope
         val mine = meId()
         val m = meR.await()
         val u = upsertUser(m.jsonObject) { it.bio = m.str("bio"); it.freezes = m.int("freezes"); it.createdAt = msOf(m.strN("createdAt")) ?: it.createdAt }!!
@@ -514,34 +567,54 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         db.notifs = (db.notifs.filter { !it.srv && it.userId == mine } + srvN).toMutableList()
         val freshN = srvN.filter { it.id !in known && !it.read }
         if (freshN.isNotEmpty() && pulledBefore) events.serverNotifications(freshN)
-        // Conversations : conversations non lues (ou jamais chargées) chargées en entier
         val before = db.messages.map { it.id }.toSet()
-        for (c in convs.await().list()) {
-            val peer = upsertUser(c.obj("peer")) ?: continue
-            if (c.int("unread") > 0 || db.messages.none { it.from == peer.id || it.to == peer.id }) loadConversation(peer.id, true)
-        }
-        // Groupes de discussion
-        val gl = groups.await().list()
-        db.chats = gl.map { g -> g.arr("members").forEach { upsertUser(it) }
-            Chat(g.str("id"), g.str("name"), g.str("emoji"), g.strN("ownerId"), g.arr("members").map { it.str("id") }.toMutableList(), msOf(g.strN("createdAt")) ?: nowMs()) }.toMutableList()
-        val live = db.chats.map { it.id }.toSet()
-        db.messages = db.messages.filter { it.chat == null || it.chat in live }.toMutableList()
-        for (g in gl) if (g.int("unread") > 0 || (g.obj("last") != null && db.messages.none { it.chat == g.str("id") })) loadGroup(g.str("id"), true)
+        applyConversations(convs.await(), groups.await())
+        if (db !== ownerDb || !store.acct) return@coroutineScope
         // Comptes bloqués
         db.blocks = blocks.await().list().mapNotNull { b -> val uu = upsertUser(b.obj("user")) ?: return@mapNotNull null; Block(mine, uu.id, msOf(b.strN("blockedAt")) ?: 0) }.toMutableList()
         sugg.await()?.let { s -> suggestions = s.list().onEach { upsertUser(it.obj("user")) } }
         if (pg.isAdmin(u)) refreshModeration()
         repairRefs()
-        store.rawSave()
         e2e.decryptAll()
         val freshM = db.messages.filter { it.id !in before && it.from != mine && !it.read && !it.readBy.contains(mine) }
         // Premier chargement social du compte sur cet appareil : l'historique ne déclenche pas de notifications
         val seenBefore = db.cloud?.socialPulled == true || before.isNotEmpty()
         if (freshM.isNotEmpty() && seenBefore) events.incomingMessages(freshM)
         if (freshP.isNotEmpty() && (oldPosts.isNotEmpty() || db.cloud?.socialPulled == true) && pulledBefore) events.newPosts(freshP)
-        db.cloud?.let { if (!it.socialPulled) { it.socialPulled = true; store.rawSave() } }
+        db.cloud?.socialPulled = true
+        store.rawSave()
+        pollSnapshot = listOf(notifs.await(), convs.await(), groups.await(), feedF.await())
         store.changed()
         pg.queueBadgeCheck()
+    }
+
+    private suspend fun applyConversations(conversations: JsonElement, groups: JsonElement) {
+        val mine = meId()
+        // Conversations : conversations non lues (ou jamais chargées) chargées en entier
+        for (c in conversations.list()) {
+            val peer = upsertUser(c.obj("peer")) ?: continue
+            if (c.int("unread") > 0 || db.messages.none { it.from == peer.id || it.to == peer.id }) loadConversation(peer.id, true)
+        }
+        // Groupes de discussion
+        val gl = groups.list()
+        db.chats = gl.map { g -> g.arr("members").forEach { upsertUser(it) }
+            Chat(g.str("id"), g.str("name"), g.str("emoji"), g.strN("ownerId"), g.arr("members").map { it.str("id") }.toMutableList(), msOf(g.strN("createdAt")) ?: nowMs()) }.toMutableList()
+        val live = db.chats.map { it.id }.toSet()
+        db.messages = db.messages.filter { it.chat == null || it.chat in live }.toMutableList()
+        for (g in gl) if (g.int("unread") > 0 || (g.obj("last") != null && db.messages.none { it.chat == g.str("id") })) loadGroup(g.str("id"), true)
+    }
+
+    private suspend fun refreshInbox(values: List<JsonElement>) = socialLock.withLock {
+        val ownerDb = db
+        val mine = meId()
+        val known = db.messages.map { it.id }.toSet()
+        applyConversations(values[1], values[2])
+        if (db !== ownerDb || !store.acct) return@withLock
+        e2e.decryptAll()
+        val fresh = db.messages.filter { it.id !in known && it.from != mine && !it.read && mine !in it.readBy }
+        if (fresh.isNotEmpty() && db.cloud?.socialPulled == true) events.incomingMessages(fresh)
+        store.rawSave()
+        pollSnapshot = values
     }
 
     fun postFromServer(p: JsonObject): Post {
@@ -555,23 +628,63 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
             reactions = p.arr("likers").associate { it.str("id") to it.str("reaction", "fire") }.toMutableMap())
     }
 
-    suspend fun loadConversation(peerId: String, quiet: Boolean) {
-        val list = api.get("/v1/conversations/$peerId").list(); val mine = meId()
-        db.messages = (db.messages.filter { !((it.from == peerId && it.to == mine) || (it.from == mine && it.to == peerId)) } + list.map { m ->
+    private val openConversationSummary = mutableMapOf<Conv, JsonElement?>()
+    private val openConversationFullAt = mutableMapOf<Conv, Long>()
+
+    /** Existing list endpoints expose lastAt/lastE2e/unread; no invented `since` parameter.
+     * New messages keep the six-second probe. A full reconciliation every 30 seconds also
+     * covers server changes not represented in a summary (including history corrections).
+     */
+    suspend fun refreshOpenConversation(peer: String?, group: String?, force: Boolean = false): Boolean {
+        if (!store.acct || !store.online) return false
+        val key = Conv(peer = peer, group = group)
+        val now = System.nanoTime() / 1_000_000
+        if (!force) {
+            val rows = api.get(if (group != null) "/v1/groups" else "/v1/conversations").list()
+            val summary = rows.firstOrNull { if (group != null) it.str("id") == group else it.obj("peer").str("id") == peer }
+            val previous = openConversationSummary[key]
+            openConversationSummary[key] = summary
+            if (summary == previous && now - (openConversationFullAt[key] ?: -30_000L) < 30_000L) return false
+        }
+        val changed = if (group != null) openGroup(group) else openChat(requireNotNull(peer))
+        openConversationFullAt[key] = now
+        return changed
+    }
+
+    suspend fun loadConversation(peerId: String, quiet: Boolean): Boolean {
+        val ownerDb = db; val mine = meId()
+        val list = api.get("/v1/conversations/$peerId").list()
+        if (db !== ownerDb || !store.acct) return false
+        val old = db.messages.filter { it.chat == null && ((it.from == peerId && it.to == mine) || (it.from == mine && it.to == peerId)) }
+        val incoming = list.map { m ->
             val e2eP = m.obj("e2e")?.let { try { JSON.decodeFromJsonElement(fr.pepsgoal.core.crypto.E2ePayload.serializer(), it) } catch (e: Exception) { null } }
             Message(m.str("id"), if (m.bool("mine")) mine else peerId, if (m.bool("mine")) peerId else mine, null, msOf(m.strN("createdAt")) ?: 0,
                 m.bool("mine") || m.bool("read") || !quiet, mutableListOf(), e2eP, if (e2eP == null) m.str("text") else null, m.bool("official"), m.strN("tag") ?: if (m.bool("official")) "info" else null)
-        }).toMutableList()
+        }
+        if (sameMessages(old, incoming)) return false
+        db.messages = (db.messages.filterNot { it in old } + incoming).toMutableList()
+        return true
     }
 
-    suspend fun loadGroup(gid: String, quiet: Boolean) {
-        val list = api.get("/v1/groups/$gid/messages").list(); val mine = meId()
-        db.messages = (db.messages.filter { it.chat != gid } + list.map { m ->
+    private fun sameMessages(a: List<Message>, b: List<Message>): Boolean = a.size == b.size && a.zip(b).all { (x, y) ->
+        x.id == y.id && x.from == y.from && x.to == y.to && x.chat == y.chat && x.at == y.at &&
+            x.read == y.read && x.readBy == y.readBy && x.e2e == y.e2e && x.text == y.text && x.official == y.official && x.tag == y.tag
+    }
+
+    suspend fun loadGroup(gid: String, quiet: Boolean): Boolean {
+        val ownerDb = db; val mine = meId()
+        val list = api.get("/v1/groups/$gid/messages").list()
+        if (db !== ownerDb || !store.acct) return false
+        val old = db.messages.filter { it.chat == gid }
+        val incoming = list.map { m ->
             ensureUserStub(m.str("senderId"))
             Message(m.str("id"), m.str("senderId"), null, gid, msOf(m.strN("createdAt")) ?: 0, true,
                 if (m.bool("mine") || m.bool("read") || !quiet) mutableListOf(mine) else mutableListOf(),
                 m.obj("e2e")?.let { try { JSON.decodeFromJsonElement(fr.pepsgoal.core.crypto.E2ePayload.serializer(), it) } catch (e: Exception) { null } })
-        }).toMutableList()
+        }
+        if (sameMessages(old, incoming)) return false
+        db.messages = (db.messages.filter { it.chat != gid } + incoming).toMutableList()
+        return true
     }
 
     suspend fun loadStoryViews(s: Story) {

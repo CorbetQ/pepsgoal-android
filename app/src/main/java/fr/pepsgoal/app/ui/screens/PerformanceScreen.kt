@@ -85,7 +85,7 @@ fun PerformancePage(ui: AppState) {
                 ScoreRing(Perf.score)
                 Column(Modifier.weight(1f)) {
                     Text(if (Perf.score < 0) "Pas encore analysé" else "Recommandé : ${Perf.MODES.first { it.first == Perf.recommended }.second}", fontWeight = FontWeight.ExtraBold)
-                    Muted(Perf.report.ifEmpty { "Une estimation d’après le matériel est déjà appliquée. L’analyse complète mesure aussi la fluidité réelle de l’affichage (3 secondes)." }, small = true)
+                    Muted(Perf.report.ifEmpty { "Une estimation d’après le matériel est déjà appliquée. Le test estime la disponibilité du fil principal (3 secondes)." }, small = true)
                 }
             }
             if (testing) Bench { fps, jank, hz ->
@@ -150,6 +150,7 @@ private fun LiveCard() {
         }
         Spacer(Modifier.height(12.dp))
         FpsChart()
+        Muted("Cadence estimée du fil principal. Le jank et les images réellement présentées se mesurent avec les traces de performance.", small = true)
         Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
             Muted("Il y a 1 min", small = true); Spacer(Modifier.weight(1f)); Muted("Maintenant", small = true)
         }

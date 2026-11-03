@@ -263,7 +263,7 @@ class AppState(val app: PepsApp) : Hooks {
     }
 
     override fun liveChanged() {
-        LiveUpdates.refresh(app); WidgetUpdater.update(app); fr.pepsgoal.app.sys.Duo.syncSoon(app); fr.pepsgoal.app.sys.ValidateTile.refreshAll(app)
+        LiveUpdates.refresh(app); WidgetUpdater.update(app, urgent = app.foreground); fr.pepsgoal.app.sys.Duo.syncSoon(app); fr.pepsgoal.app.sys.ValidateTile.refreshAll(app)
         // Agenda : l'occurrence du jour est cochée dans le calendrier du téléphone (hors du fil principal)
         scope.launch(kotlinx.coroutines.Dispatchers.IO) { try { fr.pepsgoal.app.sys.Agenda.syncDone(app) } catch (e: Exception) {} }
     }

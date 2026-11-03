@@ -3,6 +3,13 @@ package fr.pepsgoal.app.ai
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import android.os.BatteryManager
+import android.os.PowerManager
+import android.net.ConnectivityManager
+import android.os.SystemClock
+import fr.pepsgoal.core.EnergyPolicy
+import fr.pepsgoal.core.cloud.consumeCancellable
+import fr.pepsgoal.app.sys.EnergyState
 import android.os.StatFs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -55,6 +62,9 @@ object LocalAi {
     private var engine: LlmInference? = null
     private var idleJob: Job? = null
     private var download: Job? = null
+    private var cancellingDownload = false
+    private var nativeFinishing: Deferred<Unit>? = null
+    private val backgroundAt = mutableMapOf<String, Long>()
 
     private fun dir(ctx: Context) = File(ctx.filesDir, "ai").apply { mkdirs() }
     fun modelFile(ctx: Context) = File(dir(ctx), "model.task")
@@ -101,35 +111,42 @@ object LocalAi {
     private var lastFile = ""
 
     /** Trouve le fichier .task d'un dépôt Hugging Face public (non restreint) : (adresse, taille). */
-    private fun resolve(repo: String): Pair<String, Long>? {
-        val r = http.newCall(Request.Builder().url("https://huggingface.co/api/models/$repo?blobs=true").header("User-Agent", "PepsGoal-Android/${BuildConfig.VERSION_NAME}").build()).execute()
-        r.use {
-            if (!it.isSuccessful) return null
+    private suspend fun resolve(repo: String): Pair<String, Long>? =
+        http.newCall(Request.Builder().url("https://huggingface.co/api/models/$repo?blobs=true").header("User-Agent", "PepsGoal-Android/${BuildConfig.VERSION_NAME}").build()).consumeCancellable {
+            if (!it.isSuccessful) return@consumeCancellable null
             val o = Json.parseToJsonElement(it.body!!.string()).jsonObject
             val gated = o["gated"]?.jsonPrimitive?.contentOrNull
-            if (gated != null && gated != "false") return null
-            val files = o["siblings"]?.jsonArray?.map { s -> s.jsonObject }?.filter { s -> s["rfilename"]?.jsonPrimitive?.content?.endsWith(".task") == true } ?: return null
+            if (gated != null && gated != "false") return@consumeCancellable null
+            val files = o["siblings"]?.jsonArray?.map { s -> s.jsonObject }?.filter { s -> s["rfilename"]?.jsonPrimitive?.content?.endsWith(".task") == true } ?: return@consumeCancellable null
             fun name(s: JsonObject) = s["rfilename"]!!.jsonPrimitive.content
             fun size(s: JsonObject) = s["size"]?.jsonPrimitive?.longOrNull ?: 0L
             // Préférence : quantification 8 bits, contexte ~1280 jetons (rapide), sinon le plus petit fichier
-            val pick = files.sortedWith(compareBy({ if (name(it).contains("q8")) 0 else 1 }, { if (name(it).contains("ekv1280")) 0 else 1 }, { size(it) })).firstOrNull() ?: return null
+            val pick = files.sortedWith(compareBy({ if (name(it).contains("q8")) 0 else 1 }, { if (name(it).contains("ekv1280")) 0 else 1 }, { size(it) })).firstOrNull() ?: return@consumeCancellable null
             lastFile = name(pick)
-            return "https://huggingface.co/$repo/resolve/main/${name(pick)}" to size(pick)
+            return@consumeCancellable "https://huggingface.co/$repo/resolve/main/${name(pick)}" to size(pick)
         }
-    }
 
     /** Télécharge (avec reprise) puis teste le modèle. */
-    fun install(ctx: Context) {
-        if (download?.isActive == true) return
+    fun downloadRecommended(ctx: Context): Boolean =
+        !ctx.getSystemService(ConnectivityManager::class.java).isActiveNetworkMetered && ctx.getSystemService(BatteryManager::class.java).isCharging
+
+    fun install(ctx: Context, allowExpensiveDownload: Boolean = false) {
+        if (!allowExpensiveDownload && !downloadRecommended(ctx)) { error = "Wi-Fi et charge conseillés pour installer le modèle."; return }
+        if (download?.isActive == true || cancellingDownload) return
         val app = ctx.applicationContext; val v = variant(app)
         status = "downloading"; progress = 0f; error = null
         download = scope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    val (url, size) = v.repos.firstNotNullOfOrNull { runCatching { resolve(it) }.getOrNull() } ?: throw IllegalStateException("Modèle introuvable sur Hugging Face pour le moment.")
+                    var model: Pair<String, Long>? = null
+                    for (repo in v.repos) {
+                        try { model = resolve(repo) } catch (e: CancellationException) { throw e } catch (e: Exception) {}
+                        if (model != null) break
+                    }
+                    val (url, size) = model ?: throw IllegalStateException("Modèle introuvable sur Hugging Face pour le moment.")
                     val part = partFile(app); var done = if (part.exists()) part.length() else 0L
                     val req = Request.Builder().url(url).header("User-Agent", "PepsGoal-Android/${BuildConfig.VERSION_NAME}").apply { if (done > 0) header("Range", "bytes=$done-") }.build()
-                    http.newCall(req).execute().use { r ->
+                    http.newCall(req).consumeCancellable { r ->
                         if (r.code == 416) { done = part.length() } else {
                             if (!r.isSuccessful) throw IllegalStateException("Téléchargement impossible (${r.code}).")
                             if (r.code != 206) { part.delete(); done = 0 }
@@ -137,15 +154,16 @@ object LocalAi {
                             r.body!!.byteStream().use { input -> java.io.FileOutputStream(part, true).use { out ->
                                 val buf = ByteArray(256 * 1024); var last = 0L
                                 while (true) {
-                                    ensureActive()
+                                    if (download?.isCancelled == true) throw CancellationException()
                                     val n = input.read(buf); if (n < 0) break
                                     out.write(buf, 0, n); done += n
-                                    if (done - last > 2_000_000) { last = done; val p = (done.toFloat() / total).coerceIn(0f, 1f); withContext(Dispatchers.Main) { progress = p } }
+                                    if (done - last > 2_000_000) { last = done; val p = (done.toFloat() / total).coerceIn(0f, 1f); scope.launch { progress = p } }
                                 }
                             } }
                         }
                     }
-                    part.renameTo(modelFile(app))
+                    ensureActive()
+                    check(part.renameTo(modelFile(app))) { "Le modèle téléchargé n’a pas pu être installé." }
                     app.peps.prefs.aiCtx = Regex("ekv(\\d+)").find(lastFile)?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(512, 4096) ?: 1024
                 }
                 progress = 1f
@@ -157,11 +175,19 @@ object LocalAi {
         }
     }
 
-    fun cancel(ctx: Context) { download?.cancel(); partFile(ctx).delete(); status = "absent"; progress = 0f }
+    fun cancel(ctx: Context) {
+        cancellingDownload = true
+        val job = download; job?.cancel()
+        scope.launch {
+            try { job?.join(); withContext(Dispatchers.IO) { partFile(ctx).delete() }; status = if (installed(ctx)) "ready" else "absent"; progress = 0f }
+            finally { cancellingDownload = false }
+        }
+    }
 
     /** Supprime le modèle (l'IA est désactivée ; la mémoire est conservée sauf si on la vide). */
     fun uninstall(ctx: Context) {
-        scope.launch { lock.withLock { withContext(Dispatchers.Default) { engine?.close(); engine = null } }; modelFile(ctx).delete(); partFile(ctx).delete(); ctx.peps.prefs.aiEnabled = false; status = "absent"; speed = null }
+        stopGeneration()
+        scope.launch { lock.withLock { nativeFinishing?.await(); withContext(Dispatchers.Default) { engine?.close(); engine = null } }; modelFile(ctx).delete(); partFile(ctx).delete(); ctx.peps.prefs.aiEnabled = false; status = "absent"; speed = null }
     }
 
     /** Premier chargement et mesure de vitesse : valide que le modèle tourne vraiment sur ce téléphone. */
@@ -180,6 +206,7 @@ object LocalAi {
     @Volatile private var bgSession: LlmInferenceSession? = null
     /** Session de la génération en cours, pour l'arrêter proprement (le texte déjà écrit est gardé). */
     @Volatile private var curSession: LlmInferenceSession? = null
+    fun stopBackgroundGeneration() { bgSession?.let { try { it.cancelGenerateResponseAsync() } catch (_: Throwable) {} } }
     fun stopGeneration() { curSession?.let { try { it.cancelGenerateResponseAsync() } catch (_: Throwable) {} } }
 
     /** Ancienne forme : une consigne toute faite. */
@@ -196,11 +223,16 @@ object LocalAi {
      * Le modèle est chargé à la demande et libéré après deux minutes d'inactivité.
      */
     suspend fun generate(ctx: Context, maxTokens: Int = 256, temperature: Float = .7f, background: Boolean = false,
-                         onPartial: ((String) -> Unit)? = null, build: (Int) -> String): String? {
+                         backgroundKey: String = "background", onPartial: ((String) -> Unit)? = null, build: (Int) -> String): String? {
         val f = modelFile(ctx); if (!f.exists()) return null
-        if (background && lock.isLocked) return null
+        if (nativeFinishing?.isCompleted == false) { error = "Le coach termine l’arrêt de la demande précédente."; return null }
+        if (background && SystemClock.elapsedRealtime() - (backgroundAt[backgroundKey] ?: -300_000L) < 300_000) return null
+        if (!EnergyPolicy.allowInteractiveAi(EnergyState.thermalStatus)) { error = "Le téléphone est trop chaud : laisse-le refroidir avant de relancer le coach."; return null }
+        if (background && (!EnergyPolicy.allowBackgroundAi(ctx.peps.foreground, ctx.getSystemService(PowerManager::class.java).isPowerSaveMode,
+                EnergyState.batteryLow(ctx), EnergyState.thermalStatus) || lock.isLocked)) return null
         if (!background) bgSession?.let { try { it.cancelGenerateResponseAsync() } catch (_: Throwable) {} }
         return lock.withLock {
+            if (background) backgroundAt[backgroundKey] = SystemClock.elapsedRealtime()
             busy = true
             try {
                 withContext(Dispatchers.Default) {
@@ -215,15 +247,15 @@ object LocalAi {
                     if (background) bgSession = s
                     curSession = s
                     try {
-                        s.addQueryChunk(prompt)
-                        withTimeoutOrNull(90_000) { stream(s, onPartial) }?.let { clean(fixEncoding(it)) }?.take(out * 6)?.trim()?.takeIf { it.isNotEmpty() }
+                        try { s.addQueryChunk(prompt) } catch (e: Throwable) { s.close(); throw e }
+                        withTimeoutOrNull(90_000) { stream(s, out * 6, onPartial) }?.let { clean(fixEncoding(it)) }?.take(out * 6)?.trim()?.takeIf { it.isNotEmpty() }
                     } finally { if (bgSession === s) bgSession = null; if (curSession === s) curSession = null }
                 }
             } catch (e: CancellationException) { throw e
             } catch (e: Throwable) { error = e.message; null }
             finally {
                 busy = false
-                idleJob?.cancel(); idleJob = scope.launch { delay(120_000); lock.withLock { withContext(Dispatchers.Default) { engine?.close(); engine = null } } }
+                idleJob?.cancel(); idleJob = scope.launch { delay(120_000); nativeFinishing?.await(); lock.withLock { withContext(Dispatchers.Default) { engine?.close(); engine = null } } }
             }
         }
     }
@@ -238,21 +270,45 @@ object LocalAi {
     }
 
     /** Génération en continu : les morceaux arrivent au fil de l'eau ; la session est libérée une fois terminée. */
-    private suspend fun stream(s: LlmInferenceSession, onPartial: ((String) -> Unit)?): String = suspendCancellableCoroutine { cont ->
-        val sb = StringBuilder()
-        val fut = s.generateResponseAsync(ProgressListener<String> { part, _ ->
-            if (part != null) {
-                val t = synchronized(sb) { sb.append(part); sb.toString() }
-                if (onPartial != null) { val c = clean(fixEncoding(t)); main.post { onPartial(c) } }
+    private suspend fun stream(s: LlmInferenceSession, maxChars: Int, onPartial: ((String) -> Unit)?): String {
+        val finished = CompletableDeferred<Unit>()
+        var started = false
+        try {
+            return suspendCancellableCoroutine { cont ->
+                val sb = StringBuilder()
+                val fut = s.generateResponseAsync(ProgressListener<String> { part, _ ->
+                    if (part != null) {
+                        val t = synchronized(sb) { sb.append(part); sb.toString() }
+                        if (t.length >= maxChars) try { s.cancelGenerateResponseAsync() } catch (_: Throwable) {}
+                        if (onPartial != null && cont.isActive) {
+                            val c = clean(fixEncoding(t.take(maxChars)))
+                            main.post { if (cont.isActive) onPartial(c) }
+                        }
+                    }
+                })
+                started = true
+                fut.addListener({
+                    val r = try { fut.get() } catch (e: Throwable) { null }
+                    try { s.close() } catch (_: Throwable) {}
+                    finished.complete(Unit)
+                    val all = synchronized(sb) { sb.toString() }.ifEmpty { r.orEmpty() }.take(maxChars)
+                    if (cont.isActive) {
+                        if (all.isEmpty() && r == null) cont.resumeWithException(IllegalStateException("Génération interrompue.")) else cont.resume(all)
+                    }
+                }, Runnable::run)
+                cont.invokeOnCancellation { try { s.cancelGenerateResponseAsync() } catch (_: Throwable) {} }
             }
-        })
-        fut.addListener({
-            val r = try { fut.get() } catch (e: Throwable) { null }
-            try { s.close() } catch (_: Throwable) {}
-            val all = synchronized(sb) { sb.toString() }.ifEmpty { r.orEmpty() }
-            if (cont.isActive) { if (all.isEmpty() && r == null) cont.resumeWithException(IllegalStateException("Génération interrompue.")) else cont.resume(all) }
-        }, Runnable::run)
-        cont.invokeOnCancellation { try { s.cancelGenerateResponseAsync() } catch (_: Throwable) {} }
+        } finally {
+            // Do not release the engine mutex while the native session is still closing.
+            if (started) {
+                withContext(NonCancellable) {
+                    val closed = withTimeoutOrNull(5_000) { finished.await(); true }
+                    if (closed != true) nativeFinishing = finished
+                }
+            } else {
+                try { s.close() } catch (_: Throwable) {}
+            }
+        }
     }
 
     /** Retire les jetons de fin de tour et les débuts de réplique que certains modèles répètent. */

@@ -1,10 +1,15 @@
 package fr.pepsgoal.core.cloud
 
 import fr.pepsgoal.core.JSON
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Response
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -36,7 +41,8 @@ class Tokens(val accessToken: String, val refreshToken: String)
  * avec le jeton de renouvellement (à usage unique).
  */
 class Api(var base: String, private val secrets: Secrets, private val userAgent: String = "PepsGoal-Android") {
-    private val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(25, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).build()
+    private val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(25, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).callTimeout(25, TimeUnit.SECONDS).build()
+    private val uploadHttp = http.newBuilder().callTimeout(120, TimeUnit.SECONDS).build()
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     private val refreshLock = Mutex()
     var forceOffline = false
@@ -45,9 +51,10 @@ class Api(var base: String, private val secrets: Secrets, private val userAgent:
     /** Session perdue (jeton de renouvellement refusé) : retour à l'écran de connexion. */
     var onSessionLost: (() -> Unit)? = null
 
+    private val tokenLock = Any()
     var tokens: Tokens?
-        get() = secrets.get(TOK_KEY)?.let { try { val o = JSON.parseToJsonElement(it).jsonObject; Tokens(o["accessToken"]!!.jsonPrimitive.content, o["refreshToken"]!!.jsonPrimitive.content) } catch (e: Exception) { null } }
-        set(v) { secrets.set(TOK_KEY, v?.let { buildJsonObject { put("accessToken", it.accessToken); put("refreshToken", it.refreshToken) }.toString() }) }
+        get() = synchronized(tokenLock) { secrets.get(TOK_KEY)?.let { try { val o = JSON.parseToJsonElement(it).jsonObject; Tokens(o["accessToken"]!!.jsonPrimitive.content, o["refreshToken"]!!.jsonPrimitive.content) } catch (e: Exception) { null } } }
+        set(v) { synchronized(tokenLock) { secrets.set(TOK_KEY, v?.let { buildJsonObject { put("accessToken", it.accessToken); put("refreshToken", it.refreshToken) }.toString() }) } }
 
     private fun url(path: String) = base.trimEnd('/') + path
 
@@ -56,35 +63,61 @@ class Api(var base: String, private val secrets: Secrets, private val userAgent:
         val t = tokens ?: return false
         // Un autre appel a renouvelé la session pendant l'attente du verrou : rien à faire
         if (failed != null && t.accessToken != failed) return true
-        withContext(Dispatchers.IO) {
-            try {
-                val body = buildJsonObject { put("refreshToken", t.refreshToken) }.toString().toRequestBody(jsonType)
-                http.newCall(Request.Builder().url(url("/v1/auth/refresh")).header("User-Agent", userAgent).post(body).build()).execute().use { r ->
-                    if (r.code == 401) {
-                        // Jetons remplacés entre-temps (connexion, autre renouvellement) : la session n'est pas perdue
-                        if (tokens?.refreshToken != t.refreshToken) return@use true
-                        onSessionLost?.invoke(); return@use false
+        try {
+            val body = buildJsonObject { put("refreshToken", t.refreshToken) }.toString().toRequestBody(jsonType)
+            // Persist the rotated single-use token in the response callback, before resuming the caller.
+            request(http.newCall(Request.Builder().url(url("/v1/auth/refresh")).header("User-Agent", userAgent).post(body).build())) { code, bytes ->
+                if (code == 401) {
+                    if (tokens?.refreshToken != t.refreshToken) true
+                    else { onSessionLost?.invoke(); false }
+                } else if (code !in 200..299) false
+                else {
+                    val d = JSON.parseToJsonElement(bytes.toString(Charsets.UTF_8)).jsonObject
+                    synchronized(tokenLock) {
+                        // Logout or another login must not be undone by a late refresh response.
+                        if (tokens?.refreshToken == t.refreshToken) tokens = Tokens(d["accessToken"]!!.jsonPrimitive.content, d["refreshToken"]!!.jsonPrimitive.content)
+                        tokens != null
                     }
-                    if (!r.isSuccessful) return@use false
-                    val d = JSON.parseToJsonElement(r.body!!.string()).jsonObject
-                    // Un autre appel a peut-être déjà renouvelé la session entre-temps : on garde le plus récent
-                    tokens = Tokens(d["accessToken"]!!.jsonPrimitive.content, d["refreshToken"]!!.jsonPrimitive.content)
-                    true
                 }
-            } catch (e: IOException) { false }
-        }
+            }
+        } catch (e: IOException) { false }
     }
+
+    /** Diagnostic counters, no URL, token or user data retained. */
+    val requests = AtomicLong()
+    val receivedBytes = AtomicLong()
+    val cancelledCalls = AtomicLong()
+
+    private suspend fun <T> request(call: Call, consume: (Int, ByteArray) -> T): T = suspendCancellableCoroutine { cont ->
+        requests.incrementAndGet()
+        cont.invokeOnCancellation { cancelledCalls.incrementAndGet(); call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) { if (cont.isActive) cont.resumeWithException(e) }
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val value = response.use { r ->
+                        val bytes = r.body?.bytes() ?: ByteArray(0)
+                        receivedBytes.addAndGet(bytes.size.toLong())
+                        consume(r.code, bytes)
+                    }
+                    if (cont.isActive) cont.resume(value)
+                } catch (e: Exception) { if (cont.isActive) cont.resumeWithException(e) }
+            }
+        })
+    }
+
+    private suspend fun request(call: Call): Pair<Int, ByteArray> = request(call) { code, bytes -> code to bytes }
 
     private suspend fun exec(build: (Request.Builder) -> Request.Builder, retry: Boolean = true): Pair<Int, ByteArray> {
         if (forceOffline) throw ApiError(0, "offline", "Mode hors ligne activé : repasse en ligne dans Paramètres › Données.")
         val sent = tokens?.accessToken
-        val res = withContext(Dispatchers.IO) {
-            try {
-                val rb = build(Request.Builder().header("User-Agent", userAgent))
-                sent?.let { rb.header("Authorization", "Bearer $it") }
-                http.newCall(rb.build()).execute().use { it.code to (it.body?.bytes() ?: ByteArray(0)) }
-            } catch (e: IOException) { onServerDown?.invoke(); throw ApiError(0, "offline", "Connexion impossible au serveur PepsGoal.") }
-        }
+        val res = try {
+            val rb = build(Request.Builder().header("User-Agent", userAgent))
+            sent?.let { rb.header("Authorization", "Bearer $it") }
+            val request = rb.build()
+            request((if (request.body is MultipartBody) uploadHttp else http).newCall(request))
+        } catch (e: IOException) { onServerDown?.invoke(); throw ApiError(0, "offline", "Connexion impossible au serveur PepsGoal.") }
+
         if (res.first == 502 || res.first == 504) onServerDown?.invoke()
         if (res.first == 401 && retry && sent != null) {
             if (tokens?.accessToken != sent || refresh(sent)) return exec(build, false)
@@ -137,24 +170,19 @@ class Api(var base: String, private val secrets: Secrets, private val userAgent:
     }
 
     /** Statut public du serveur, sans session. */
-    suspend fun status(): JsonObject = withContext(Dispatchers.IO) {
+    suspend fun status(): JsonObject {
         if (forceOffline) throw ApiError(0, "offline", "Mode hors ligne")
         try {
-            http.newBuilder().callTimeout(6, TimeUnit.SECONDS).build().newCall(Request.Builder().url(url("/v1/status")).header("User-Agent", userAgent).build()).execute().use { r ->
-                val o = JSON.parseToJsonElement(r.body!!.string()).jsonObject
-                if (!r.isSuccessful) throw ApiError(r.code, "down", "indisponible")
-                o
-            }
-        } catch (e: IOException) { throw ApiError(0, "offline", "Connexion impossible") } catch (e: IllegalStateException) { throw ApiError(0, "offline", "Réponse invalide") }
+            val (code, bytes) = request(http.newBuilder().callTimeout(6, TimeUnit.SECONDS).build().newCall(Request.Builder().url(url("/v1/status")).header("User-Agent", userAgent).build()))
+            return parse(code, bytes) as? JsonObject ?: throw ApiError(502, "invalid", "Réponse invalide")
+        } catch (e: IOException) { throw ApiError(0, "offline", "Connexion impossible") }
     }
 
     /** Requête directe vers un autre service (Open-Meteo, mode sans compte). */
-    suspend fun external(fullUrl: String): JsonElement = withContext(Dispatchers.IO) {
+    suspend fun external(fullUrl: String): JsonElement {
         try {
-            http.newCall(Request.Builder().url(fullUrl).header("User-Agent", "PepsGoal (+https://pepsgoal.fr)").build()).execute().use { r ->
-                if (!r.isSuccessful) throw ApiError(r.code, "external", "Service indisponible")
-                JSON.parseToJsonElement(r.body!!.string())
-            }
+            val (code, bytes) = request(http.newCall(Request.Builder().url(fullUrl).header("User-Agent", "PepsGoal (+https://pepsgoal.fr)").build()))
+            return parse(code, bytes)
         } catch (e: IOException) { throw ApiError(0, "offline", "Connexion impossible") }
     }
 
