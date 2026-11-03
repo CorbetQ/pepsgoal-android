@@ -59,7 +59,7 @@ fun ShopScreen(ui: AppState) {
     DisposableEffect(Unit) { onDispose { ui.themePreview = null } }
     val scope = rememberCoroutineScope()
     var curIcon by remember { mutableStateOf(AppIcons.current(ctx)) }
-    LaunchedEffect(Unit) { keepCurrentIcon(ui, ctx) }
+    LaunchedEffect(u.id) { keepCurrentIcon(ui, ctx); pg.reconcileThemePacks() }
     val wallet = pg.wallet(u)
     fun purchase(key: String, label: String, price: Int, season: String? = null, then: () -> Unit) {
         if (pg.owns(key, price, u)) { then(); return }
@@ -75,8 +75,27 @@ fun ShopScreen(ui: AppState) {
         item("wallet") { Hint("Chaque validation rapporte des flammes. Les dépenser ne fait jamais baisser ton niveau ni ta série." + if (pg.socialOn()) " Touche 🎁 sur un article pour l’offrir à un ami." else "") }
         item("quests") { FlameQuestsCard(ui) }
         item("tabs") {
-            val keys = listOf("bgs", "themes", "modes", "icons")
-            PTabs(listOf("Fonds" to "🏞️", "Thèmes" to "🎨", "Ambiances" to "🌗", "Icônes" to "📱"), keys.indexOf(tab).coerceAtLeast(0), { tab = keys[it]; ui.shopTab = keys[it] }, color = p.type("measure").c)
+            val keys = listOf("packs", "bgs", "themes", "modes", "icons")
+            PTabs(listOf("Packs" to "🎁", "Fonds" to "🏞️", "Thèmes" to "🎨", "Ambiances" to "🌗", "Icônes" to "📱"), keys.indexOf(tab).coerceAtLeast(0), { tab = keys[it]; ui.shopTab = keys[it] }, color = p.type("measure").c)
+        }
+        if (tab == "packs") {
+            item("pack-help") {
+                Glass {
+                    CardHead("Un style complet, en un geste", emoji = "🎁")
+                    Muted("Icône + fond + couleurs + ambiance assortis. −25 % sur les éléments manquants ; tes achats précédents sont conservés et déduits.", small = true)
+                }
+            }
+            val packs = THEME_PACKS.filter { it.eggKey == null || pg.packUnlocked(it, u) }
+                .sortedWith(compareBy<ThemePack> { if (it.eggKey != null) 0 else if (pg.packQuote(it, u).owned) 1 else 2 }
+                    .thenBy { !pg.packQuote(it, u).available })
+            packs.forEach { pack ->
+                item("pack:${pack.key}") {
+                    ThemePackCard(ui, pack, curIcon) { curIcon = AppIcons.current(ctx) }
+                }
+            }
+            item("pack-secrets") {
+                Hint("Des packs secrets se découvrent avec les surprises de PepsGoal. Une fois trouvés, ils apparaissent ici et restent dans ta collection.")
+            }
         }
         if (tab == "icons") AppIcons.ALL.chunked(2).forEachIndexed { row, pair ->
             item("ic$row") {

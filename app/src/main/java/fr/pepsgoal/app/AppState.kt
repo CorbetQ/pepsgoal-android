@@ -182,7 +182,7 @@ class AppState(val app: PepsApp) : Hooks {
     /** Essai d'une ambiance de la boutique (quelques secondes, jamais enregistré). */
     var themePreview by mutableStateOf<String?>(null)
     /** Onglet ouvert de la boutique (icons, themes, modes, bgs). */
-    var shopTab by mutableStateOf("icons")
+    var shopTab by mutableStateOf("packs")
     /** Effet visuel d'une surprise en cours (confettis, poissons…), relancé à chaque [eggTick]. */
     var eggFx by mutableStateOf<String?>(null)
     var eggTick by mutableIntStateOf(0)

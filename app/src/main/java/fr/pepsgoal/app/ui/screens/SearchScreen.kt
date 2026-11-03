@@ -97,22 +97,25 @@ fun SearchScreen(ui: AppState, initial: String) {
                 }
                 // Surprise « sco » : débloquer ne veut pas dire appliquer ; un bouton l'applique tout de suite
                 if (egg.egg == "sco") {
-                    val on = u.settings.theme == "m:sco" && u.settings.bg == "s:kopa"
-                    PButton(if (on) "Stade et Noir & Blanc appliqués" else "Appliquer le stade et Noir & Blanc", {
+                    val on = ui.themePackActive("sco")
+                    PButton(if (on) "Pack SCO appliqué" else "Appliquer le pack SCO", {
                         if ("sco" !in pg.eggsFound(u)) ui.egg("sco", egg.text, egg.fx, say = false)
-                        pg.applySco(); ui.themeTick++
-                        ui.toast("⚫⚪ Stade Raymond-Kopa et ambiance Noir & Blanc appliqués. À retrouver dans Apparence.", "palette")
+                        val error = ui.applyThemePack("sco")
+                        ui.toast(error ?: "⚫⚪ Pack SCO appliqué : icône, stade, couleurs et ambiance. À retrouver dans Boutique › Packs.", if (error == null) "palette" else "x")
                     }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
                 }
                 // Surprise « srfc » : fond « Écran géant » (OL 4 – 0 SRFC) et ambiance « Rouge & Noir », à appliquer d'un geste
                 if (egg.egg == "srfc") {
-                    val on = u.settings.theme == "m:srfc" && u.settings.bg == "s:ecran"
+                    val on = ui.themePackActive("srfc")
                     Muted("Le fond « Écran géant » et l’ambiance « Rouge & Noir » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", Modifier.padding(top = 8.dp), small = true)
-                    PButton(if (on) "Écran géant et Rouge & Noir appliqués" else "Appliquer l’écran géant et Rouge & Noir", {
+                    PButton(if (on) "Pack SRFC appliqué" else "Appliquer le pack SRFC", {
                         if ("srfc" !in pg.eggsFound(u)) ui.egg("srfc", egg.text, egg.fx, say = false)
-                        pg.applySrfc(); ui.themeTick++
-                        ui.toast("🔴⚫ Écran géant et ambiance Rouge & Noir appliqués. À retrouver dans Apparence.", "palette")
+                        val error = ui.applyThemePack("srfc")
+                        ui.toast(error ?: "🔴⚫ Pack SRFC appliqué : icône, fond, couleurs et ambiance. À retrouver dans Boutique › Packs.", if (error == null) "palette" else "x")
                     }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
+                }
+                if (egg.egg in setOf("sco", "srfc", "angers")) {
+                    PButton("Retrouver le pack dans la boutique", { ui.shopTab = "packs"; ui.push(Screen.Shop) }, Modifier.padding(top = 8.dp), icon = "star", kind = "ghost")
                 }
             }
         }

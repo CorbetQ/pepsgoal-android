@@ -77,6 +77,11 @@ fun AppearancePage(ui: AppState, u: User) {
     val dynOk = Build.VERSION.SDK_INT >= 31
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         LivePreview(ui, u)
+        Glass {
+            CardHead("Packs de thème", emoji = "🎁")
+            Muted("Retrouve tes styles complets : icône, fond, couleurs et ambiance. Les achats existants et les surprises découvertes sont reconnus.", small = true)
+            PButton("Voir mes packs", { ui.shopTab = "packs"; ui.push(Screen.Shop) }, Modifier.padding(top = 10.dp), icon = "palette")
+        }
         ThemeSection(ui, u, dynOk)
         ColorSection(ui, u, dynOk)
         BackgroundSection(ui, u)
