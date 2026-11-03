@@ -38,6 +38,6 @@ fun AppState.applyThemePack(key: String): String? {
 
 fun AppState.themePackActive(key: String, currentIcon: String = AppIcons.current(app)): Boolean {
     val pack = themePack(key) ?: return false
-    return pg.packMatches(pack) && currentIcon == pack.iconKey &&
+    return pg.packQuote(pack).owned && pg.packMatches(pack) && currentIcon == pack.iconKey &&
         !prefs.materialYou && !prefs.seasonal && !prefs.bgSeasonAuto && prefs.bgWhere == "all" && prefs.bgLight == "theme"
 }
