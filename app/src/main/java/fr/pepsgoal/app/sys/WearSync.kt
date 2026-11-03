@@ -10,6 +10,13 @@ import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.target
 import fr.pepsgoal.core.model.unit
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import com.google.android.gms.tasks.Task
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -25,7 +32,7 @@ object WearSync {
 
     private fun snapshot(ctx: Context): String {
         val pg = ctx.peps.pg; val u = pg.me()
-        val o = JSONObject().put("at", nowMs())
+        val o = JSONObject().put("date", today())
         if (u == null) return o.put("signedIn", false).toString()
         val st = pg.globalStreak(u.id); val plan = pg.todayPlan(u.id)
         val items = JSONArray()
@@ -41,13 +48,22 @@ object WearSync {
             .put("done", plan.due.count { it.done }).put("total", plan.due.size).put("items", items).toString()
     }
 
-    /** Publie la journée pour la montre (sans effet si aucune montre n'est jumelée). */
-    fun push(ctx: Context) {
+    private val lock = Mutex()
+    private var lastContent: String? = null
+    /** Stable payload: only an actual change or explicit watch refresh is sent. */
+    suspend fun push(ctx: Context, urgent: Boolean = false, force: Boolean = false) = lock.withLock {
         try {
-            val req = PutDataMapRequest.create(PATH_TODAY).apply { dataMap.putString("json", snapshot(ctx)); dataMap.putLong("at", nowMs()) }
-            Wearable.getDataClient(ctx).putDataItem(req.asPutDataRequest().setUrgent())
-        } catch (e: Exception) {}
+            val content = snapshot(ctx)
+            if (!force && content == lastContent) return@withLock
+            // Data Layer retains this item for reconnects; a disconnected watch must still receive the latest day.
+            val json = JSONObject(content).put("at", nowMs()).toString()
+            val req = PutDataMapRequest.create(PATH_TODAY).apply { dataMap.putString("json", json) }.asPutDataRequest()
+            if (urgent) req.setUrgent()
+            Wearable.getDataClient(ctx).putDataItem(req).awaitWear()
+            lastContent = content // failed transfers remain eligible for retry
+        } catch (e: CancellationException) { throw e } catch (e: Exception) {}
     }
+
 }
 
 /** Messages de la montre : valider un objectif, ajouter au cap du jour, demander la journée. */
@@ -57,12 +73,21 @@ class WearListener : WearableListenerService() {
         val id = String(e.data, Charsets.UTF_8)
         // La logique tourne sur le fil principal, comme dans l'application
         app.scope.launch {
+            if (e.path !in setOf(WearSync.MSG_VALIDATE, WearSync.MSG_CAP, WearSync.MSG_REFRESH)) return@launch
             when (e.path) {
                 WearSync.MSG_VALIDATE -> pg.goalById(id)?.let { if (it.type in setOf("routine", "abstinence", "timed", "period", "challenge", "limit")) pg.validate(it.id) }
                 WearSync.MSG_CAP -> pg.goalById(id)?.takeIf { it.type == "cap" }?.let { pg.capAdd(it, pg.capQuick(it).first(), silent = true) }
             }
-            LiveUpdates.refresh(app); WidgetUpdater.update(app)
-            WearSync.push(app)
+            app.store.flush()
+            LiveUpdates.refresh(app)
+            WidgetUpdater.update(app, urgent = e.path != WearSync.MSG_REFRESH)
+            if (e.path == WearSync.MSG_REFRESH) WearSync.push(app, force = true)
         }
     }
+}
+
+private suspend fun <T> Task<T>.awaitWear(): T = suspendCancellableCoroutine { c ->
+    addOnSuccessListener { if (c.isActive) c.resume(it) }
+    addOnFailureListener { if (c.isActive) c.resumeWithException(it) }
+    addOnCanceledListener { c.cancel() }
 }

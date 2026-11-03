@@ -7,7 +7,8 @@ import android.view.ViewTreeObserver
 
 /**
  * Suivi des images par seconde (8.5), pour le régulateur de fluidité et la page Performances : un rappel du
- * Choreographer à chaque synchronisation verticale compte les images réellement servies au fil principal. Une
+ * Choreographer à chaque synchronisation verticale estime la disponibilité du fil principal.
+ * Ce n’est ni un compteur de frames présentées ni une mesure FrameTimeline du jank. Une
  * mesure par seconde est transmise à [Perf.onSample]. Rien n'est alloué par image.
  *
  * Économe : le suivi ne tourne que lorsque l'interface dessine (écouteur de dessin de la fenêtre). Interface au repos

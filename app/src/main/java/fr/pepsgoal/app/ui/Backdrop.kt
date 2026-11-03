@@ -67,7 +67,7 @@ private fun WeatherFx(cond: String) {
     if (cond == "snow") { SnowFx(); return }
     val n = particles(if (cond == "fog") 0 else if (cond == "storm") 150 else 110)
     val drops = remember(n) { List(n) { floatArrayOf(Random.nextFloat() * 1.2f, Random.nextFloat(), 14 + Random.nextFloat() * 16, .7f + Random.nextFloat() * .6f, .25f + Random.nextFloat() * .35f) } }
-    val clock = bgPhaseState(if (cond == "fog") 40000 else 6000, fps = 24, cap = Perf.flags.bgFps * 2)
+    val clock = bgPhaseState(if (cond == "fog") 40000 else 6000, fps = 24, cap = if (fr.pepsgoal.app.sys.EnergyState.thermalStatus >= 2) Perf.flags.bgFps else Perf.flags.bgFps * 2)
     Canvas(Modifier.fillMaxSize()) {
         val t = clock.value; val d = density / 2.6f
         if (cond == "fog") {
@@ -184,7 +184,7 @@ private fun ThemeFx(kind: String) {
     val n = particles(if (kind == "stars") 60 else 34)
     val parts = remember(kind, n) { List(n) { floatArrayOf(rnd.nextFloat(), rnd.nextFloat(), .6f + rnd.nextFloat() * .9f, .35f + rnd.nextFloat() * .5f, 10 + rnd.nextFloat() * 16, rnd.nextFloat() * 6.28f, rnd.nextInt(4).toFloat()) } }
     // Horloge lue dans la phase de dessin : pas de recomposition à chaque image
-    val clock = bgPhaseState(30000, fps = 24, cap = Perf.flags.bgFps * 2)
+    val clock = bgPhaseState(30000, fps = 24, cap = if (fr.pepsgoal.app.sys.EnergyState.thermalStatus >= 2) Perf.flags.bgFps else Perf.flags.bgFps * 2)
     val cols = remember(kind) { when (kind) {
         "petals" -> listOf(0xFFFFB7D5, 0xFFFF8FC7, 0xFFFFD6E8, 0xFFFFFFFF)
         "leaves" -> listOf(0xFFE2711D, 0xFFFFB347, 0xFFB5451B, 0xFFD9A441)
@@ -239,7 +239,7 @@ private fun ThemeFx(kind: String) {
 private fun SnowFx() {
     val n = particles(46)
     val flakes = remember(n) { List(n) { floatArrayOf(Random.nextFloat(), Random.nextFloat(), 2 + Random.nextFloat() * 5, .45f + Random.nextFloat() * .5f, 9 + Random.nextFloat() * 14) } }
-    val clock = bgPhaseState(20000, fps = 24, cap = Perf.flags.bgFps * 2)
+    val clock = bgPhaseState(20000, fps = 24, cap = if (fr.pepsgoal.app.sys.EnergyState.thermalStatus >= 2) Perf.flags.bgFps else Perf.flags.bgFps * 2)
     Canvas(Modifier.fillMaxSize()) {
         val t = clock.value
         for (f in flakes) {

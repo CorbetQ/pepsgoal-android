@@ -9,6 +9,7 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 
@@ -35,6 +36,7 @@ object Today {
     fun cached(ctx: Context): Day? = parse(prefs(ctx).getString("json", null))
 
     fun save(ctx: Context, raw: String) {
+        if (prefs(ctx).getString("json", null) == raw) return
         prefs(ctx).edit().putString("json", raw).apply()
         state.value = parse(raw)
         ComplicationDataSourceUpdateRequester.create(ctx, ComponentName(ctx, StreakComplication::class.java)).requestUpdateAll()
@@ -45,9 +47,9 @@ object Today {
         state.value = cached(ctx)
         try {
             val items = Wearable.getDataClient(ctx).dataItems.await()
-            items.forEach { if (it.uri.path == PATH) DataMapItem.fromDataItem(it).dataMap.getString("json")?.let { j -> save(ctx, j) } }
-            items.release()
-        } catch (e: Exception) {}
+            try { items.forEach { if (it.uri.path == PATH) DataMapItem.fromDataItem(it).dataMap.getString("json")?.let { j -> save(ctx, j) } } }
+            finally { items.release() }
+        } catch (e: CancellationException) { throw e } catch (e: Exception) {}
     }
 
     /** Envoie une action au téléphone (valider, ajouter au cap, demander la journée). Faux si aucun téléphone n'est joignable. */
@@ -55,7 +57,7 @@ object Today {
         val nodes = Wearable.getNodeClient(ctx).connectedNodes.await()
         nodes.forEach { Wearable.getMessageClient(ctx).sendMessage(it.id, path, id.toByteArray(Charsets.UTF_8)).await() }
         nodes.isNotEmpty()
-    } catch (e: Exception) { false }
+    } catch (e: CancellationException) { throw e } catch (e: Exception) { false }
 }
 
 /** Nouvelle journée publiée par le téléphone. */
