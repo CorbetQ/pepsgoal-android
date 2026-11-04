@@ -1,0 +1,11 @@
+# Rainwindow — ciel réellement transparent v2
+
+Masterv1 réellement inspecté par designer et critique. Le cadre bois, la plante, le rebord et le jardin/bâti lointains ont de beaux volumes cartoon cohérents. La grande surface bleue dans l'ouverture reste peinte, alors que le moteur doit montrer le ciel nocturne et la météo. Les chiffres d'alpha sont une preuve complémentaire; l'erreur porte surtout sur la grande région visible de ciel fixe.
+
+## Prompt d'édition ciblée
+
+Edit the supplied Rainwindow v1 image ONLY to remove all painted sky from the window opening. Preserve the exact warm wooden frame, sill, pot, large sculpted plant leaves, distant houses, trees, garden and fantasycastle shapes, current bold cartoon style, colors and perspective. Do NOT redesign the setting or add details. The entire open SKY REGION visible through the window, from the top opening down to the exact roofline and foliage silhouettes, must become genuinely alpha0 TRANSPARENT. Remove EVERY blue sky pixel and ALL painted blue/light haze in that open region; do not leave a blue gradient behind, and do not replace blue with black, white, gray, checkerboard or fog. The sky behind plant leaves and in all visible gaps between leaves, stems, rooftops and distant treecanopies must also be transparent wherever it is sky, preserving the opaque plant itself. Keep the scenery bodies opaque and existing crisp contour antialiasing limited to1–2pixels. No colored atmosphere bleeding beyond silhouettes. The native app will provide day/night sky and weather BEHIND this illustration, so there must be no painted sun moon cloud, no fixed glass tint and no reflections of blue sky filling the opening. Keep the glass dry and empty: NO raindrops, water streaks or permanent rain; app adds these conditionally on a separate native layer. No text logos watermark or UI. Preserve portrait1024x1536 and output actual transparentPNG.
+
+## Critères de nouvelle revue
+
+Le ciel natif nocturne est visible sans tache bleue fixe dans toute l'ouverture, y compris autour de la plante et du château. Le cadre reste beau et le paysage inchangé. Gouttes absentes par temps sec, distinctes et natives par pluie. Le décor est une évocation libre sans promesse de lieu exact; aucune correction de château n'est demandée.

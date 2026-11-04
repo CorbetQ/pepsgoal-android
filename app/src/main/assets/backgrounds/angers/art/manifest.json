@@ -1,0 +1,16 @@
+{
+  "id": "angers",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "2a6ce6376b7808aff566722a73e0c2235ec02d88a818d52b6e78efc6103230f4",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Angers_-_Maine_02.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/angers.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

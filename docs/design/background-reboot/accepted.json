@@ -1,0 +1,690 @@
+{
+  "formatVersion": 1,
+  "backgrounds": {
+    "kopa": {
+      "revision": "v2",
+      "master": "/workspace/.pepsgoal/background-reboot/art/kopa/v2.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/kopa-v2-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/kopa-v2-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "nebula": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/nebula/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/nebula-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/nebula-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "deepsea": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/deepsea/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/deepsea-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/deepsea-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "mountains": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/mountains/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/mountains-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/mountains-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "citynight": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/citynight/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/citynight-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/citynight-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "mistforest": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/mistforest/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/mistforest-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/mistforest-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "dunes": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/dunes/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/dunes-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/dunes-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "sakura": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/sakura/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/sakura-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/sakura-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "stars": {
+      "revision": "native-r1",
+      "renderer": "native",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/stars-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/stars-night.png"
+      ],
+      "scope": "Native Android Canvas samples day/night inspected; theme palette preserved by contract."
+    },
+    "grid": {
+      "revision": "native-r1",
+      "renderer": "native",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/grid-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/grid-night.png"
+      ],
+      "scope": "Native Android Canvas samples day/night inspected; theme palette preserved by contract."
+    },
+    "waves": {
+      "revision": "native-r1",
+      "renderer": "native",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/waves-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/waves-night.png"
+      ],
+      "scope": "Native Android Canvas samples day/night inspected; theme palette preserved by contract."
+    },
+    "sky": {
+      "revision": "native-r1",
+      "renderer": "native",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/sky-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/sky-night.png"
+      ],
+      "scope": "Native Android Canvas samples day/night inspected; theme palette preserved by contract."
+    },
+    "planet": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/planet/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/planet-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/planet-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "lagoon": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/lagoon/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/lagoon-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/lagoon-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "blob": {
+      "revision": "native-r2",
+      "renderer": "native",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/blob-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/blob-night.png"
+      ],
+      "scope": "Revised native geometry and day/night theme palette visually inspected."
+    },
+    "aurora": {
+      "revision": "native-r2",
+      "renderer": "native",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/aurora-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/aurora-night.png"
+      ],
+      "scope": "Revised native geometry and day/night theme palette visually inspected."
+    },
+    "mesh": {
+      "revision": "native-r2",
+      "renderer": "native",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/mesh-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/samples/mesh-night.png"
+      ],
+      "scope": "Revised native geometry and day/night theme palette visually inspected."
+    },
+    "loire": {
+      "revision": "v3",
+      "master": "/workspace/.pepsgoal/background-reboot/art/loire/v3.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/loire-v3-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/loire-v3-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "tram": {
+      "revision": "v2",
+      "master": "/workspace/.pepsgoal/background-reboot/art/tram/v2.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/tram-v2-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/tram-v2-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "focusX": 0.6,
+      "productionOverscanVerdict": "accepted"
+    },
+    "coderain": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/coderain/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/coderain-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/coderain-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "magma": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/magma/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/magma-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/magma-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "vineyard": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/vineyard/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/vineyard-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/vineyard-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "bamboo": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/bamboo/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/bamboo-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/bamboo-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "savanna": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/savanna/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/savanna-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/savanna-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "autumnwood": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/autumnwood/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/autumnwood-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/autumnwood-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "borealis": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/borealis/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/borealis-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/borealis-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "canyon": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/canyon/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/canyon-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/canyon-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "eggmeadow": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/eggmeadow/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/eggmeadow-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/eggmeadow-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "fireworks": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/fireworks/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/fireworks-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/fireworks-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "flowerfield": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/flowerfield/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/flowerfield-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/flowerfield-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "icefield": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/icefield/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/icefield-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/icefield-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "jellyfish": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/jellyfish/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/jellyfish-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/jellyfish-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "lighthouse": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/lighthouse/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/lighthouse-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/lighthouse-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "nantes": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/nantes/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/nantes-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/nantes-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "pop": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/pop/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/pop-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/pop-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "rainwindow": {
+      "revision": "v2",
+      "master": "/workspace/.pepsgoal/background-reboot/art/rainwindow/v2.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/rainwindow-v2-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/rainwindow-v2-tall-night.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/rainwindow-v2-rain.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "rooftops": {
+      "revision": "v2",
+      "master": "/workspace/.pepsgoal/background-reboot/art/rooftops/v2.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/rooftops-v2-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/rooftops-v2-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "tunnel": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/tunnel/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/tunnel-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/tunnel-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "summerbeach": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/summerbeach/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/summerbeach-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/summerbeach-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "snowvillage": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/snowvillage/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/snowvillage-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/snowvillage-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "xmastree": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/xmastree/v1.png",
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/xmastree-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/xmastree-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "angers": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/angers/v1.png",
+      "focusX": 0.25,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/angers-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/angers-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "angevine": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/angevine/v1.png",
+      "focusX": 0.6,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/angevine-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/angevine-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "balloons": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/balloons/v1.png",
+      "focusX": 0.68,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/balloons-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/balloons-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "ecran": {
+      "revision": "v2",
+      "master": "/workspace/.pepsgoal/background-reboot/art/ecran/v2.png",
+      "focusX": 0.5,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/ecran-v2-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/ecran-v2-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "haunted": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/haunted/v1.png",
+      "focusX": 0.68,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/haunted-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/haunted-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "heartsky": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/heartsky/v1.png",
+      "focusX": 0.8,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/heartsky-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/heartsky-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "lanterns": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/lanterns/v1.png",
+      "focusX": 0.5,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/lanterns-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/lanterns-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "loiresummer": {
+      "revision": "v2",
+      "master": "/workspace/.pepsgoal/background-reboot/art/loiresummer/v2.png",
+      "focusX": 0.5,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/loiresummer-v2-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/loiresummer-v2-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "nighttrain": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/nighttrain/v1.png",
+      "focusX": 0.6,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/nighttrain-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/nighttrain-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "snowpeak": {
+      "revision": "v2",
+      "master": "/workspace/.pepsgoal/background-reboot/art/snowpeak/v2.png",
+      "focusX": 0.5,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/snowpeak-v2-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/snowpeak-v2-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    },
+    "valentine": {
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/background-reboot/art/valentine/v1.png",
+      "focusX": 0.8,
+      "verdict": "accepted",
+      "evidence": [
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/valentine-v1-tall-day.png",
+        "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/valentine-v1-tall-night.png"
+      ],
+      "scope": "Master and Android Canvas portrait long day/night visually inspected, including production 8 percent overscan. Not physical-device or battery validation.",
+      "productionOverscanVerdict": "accepted"
+    }
+  },
+  "validationScope": "52 backgrounds visually accepted from documented masters/native samples and Android Canvas captures. Final 45-raster portrait-long gallery reviewed with production 8 percent overscan in day/night. No blocking framing regression found. Not physical-device or battery validation.",
+  "productionOverscanReview": {
+    "verdict": "accepted",
+    "scale": 1.08,
+    "rasterCount": 45,
+    "sheetCount": 16,
+    "reviewedAtUtc": "2026-11-04T05:34:43.825598+00:00",
+    "evidence": [
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-day-0.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-day-0.png",
+        "sha256": "2d6385b38f24e8a8e6c72ff7685e4fd6968e2ef42eb1cf4b716c7b7f66c316f5",
+        "renderedAtUtc": "2026-11-03T18:39:55.190638+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-day-1.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-day-1.png",
+        "sha256": "16094d96ed8d19403566dc0644129844cb51a456c99f676fc5cb11d74df55e0c",
+        "renderedAtUtc": "2026-11-03T18:39:56.206594+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-day-2.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-day-2.png",
+        "sha256": "32c528872e878a5ca4e4e8c8f5528eccec39398f4826a6bfd182b927095b160d",
+        "renderedAtUtc": "2026-11-03T18:39:57.154554+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-day-3.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-day-3.png",
+        "sha256": "e9264b18c1a22f1bfdc2b4a1097f72515609d7586a610c1be5828ff864fcfa0b",
+        "renderedAtUtc": "2026-11-03T18:39:58.142511+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-day-4.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-day-4.png",
+        "sha256": "beb55bc7011f343eed5e62c93990f191a57275440d3c4e2c2138bbfd3903ca0e",
+        "renderedAtUtc": "2026-11-03T18:39:59.026474+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-day-5.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-day-5.png",
+        "sha256": "7ed7a117e41eff1e41c4289926e9effc0baae09d595b2c20a8abcc29c7bfaed7",
+        "renderedAtUtc": "2026-11-03T18:39:59.854438+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-day-6.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-day-6.png",
+        "sha256": "aae417c8ba72090190c4f4b6e31adbd7f4f6c90b5a03f0065c2c480d5cae3d8c",
+        "renderedAtUtc": "2026-11-03T18:40:00.678403+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-day-7.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-day-7.png",
+        "sha256": "cbc82c85bd1c9c0cc152f8bdf0236ff3fd93c985788fe142101483521a4d51a4",
+        "renderedAtUtc": "2026-11-03T18:40:01.206380+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-night-0.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-night-0.png",
+        "sha256": "f4d6563ba7c96098d2b5a21ec900c605f40c5690009cfb6dd352f1831ef53f8f",
+        "renderedAtUtc": "2026-11-03T18:40:02.026345+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-night-1.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-night-1.png",
+        "sha256": "1d6e1ee4c6c74b0ecd4fca65ff0041c4f93bded939e4078244f29d99fd0d8dec",
+        "renderedAtUtc": "2026-11-03T18:40:03.018303+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-night-2.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-night-2.png",
+        "sha256": "35a6ebed943cef7cff749b6d7ecb0c51095861a272a289311dcf5f35cc131b4e",
+        "renderedAtUtc": "2026-11-03T18:40:03.946263+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-night-3.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-night-3.png",
+        "sha256": "a3f55882bd48822c926ad47d37b29e085ea0f2289c91a205068c4f811c06701e",
+        "renderedAtUtc": "2026-11-03T18:40:04.898222+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-night-4.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-night-4.png",
+        "sha256": "7caa60703dcc449e1e8102d3c082d12bcb2cef0e1fe0a06e3386fe019a3304cb",
+        "renderedAtUtc": "2026-11-03T18:40:05.734187+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-night-5.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-night-5.png",
+        "sha256": "81a24f64632b7fedb1c10fbf2b56a4bd7092330333a0337673d57dc7c9a9cf8e",
+        "renderedAtUtc": "2026-11-03T18:40:06.510153+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-night-6.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-night-6.png",
+        "sha256": "82ff05488370c6cb5965962f5deb194d18718c047bec9d46499a49cd36e9cab9",
+        "renderedAtUtc": "2026-11-03T18:40:07.298120+00:00"
+      },
+      {
+        "path": "/workspace/.pepsgoal/background-reboot/critique/final-overscan-2026-11-03/review-night-7.png",
+        "source": "/workspace/pepsgoal-android/app/build/reports/scenes/candidates/review-night-7.png",
+        "sha256": "0c04a452bf95f91027ba8e0ed9b852b395a4ec97ef53db94b082fb7f42ff9300",
+        "renderedAtUtc": "2026-11-03T18:40:07.834097+00:00"
+      }
+    ],
+    "notes": "Balloons remains close to the right edge but its identity and main envelope are preserved. Haunted tower, Tram nose and LoireSummer castle/boat remain readable and within the accepted composition. No additional art or application changes requested."
+  }
+}

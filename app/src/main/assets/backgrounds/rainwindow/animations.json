@@ -1,0 +1,10 @@
+{
+  "cycleMs": 50000,
+  "maxFps": 12,
+  "phaseAtRest": 0.3,
+  "pauseWhenHidden": true,
+  "respectReducedMotion": true,
+  "respectPowerSave": true,
+  "overlay": "glass",
+  "overlayCount": 32
+}

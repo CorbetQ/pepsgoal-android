@@ -1,0 +1,16 @@
+{
+  "id": "summerbeach",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "f75945c1b736009c76f83c2fefb77f0e34700e91fbb80db458eb2b641794354d",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Beach"
+  ],
+  "brief": "docs/design/background-reboot/briefs/summerbeach.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

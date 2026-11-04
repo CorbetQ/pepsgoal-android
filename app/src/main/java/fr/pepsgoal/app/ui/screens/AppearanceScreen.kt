@@ -476,11 +476,19 @@ private fun EffectsSection(ui: AppState, u: User) {
             PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
         }
         PSelectMenu("Lumière de la scène", listOf("real" to "Suit l’heure réelle", "day" to "Toujours le jour", "theme" to "Suit le thème"), ui.prefs.bgLight, { ui.prefs.bgLight = it; ui.themeTick++ },
-            emojis = listOf("🕰️", "☀️", "🌗"), subs = listOf("Aube, jour, crépuscule, nuit", null, "Nuit en thème sombre"))
+            emojis = listOf("🕰️", "☀️", "🌗"), subs = listOf("Heure et soleil de la ville météo", null, "Nuit en thème sombre"))
+        val capability = backgroundStyle(ui.sceneKind()).capability
+        val city = s.weather?.name
+        Muted(when {
+            capability == fr.pepsgoal.core.SceneCapability.WINDOW -> "Vue depuis un intérieur : l’heure et la météo modifient le paysage derrière la vitre."
+            !capability.light -> "Ce fond conserve son ambiance artistique ; il ne suit pas le soleil ni la météo."
+            city != null -> "Lumière et météo : $city. Le mode de lumière choisi reste prioritaire."
+            else -> "Heure du téléphone ; choisis une ville météo pour suivre son soleil et son temps."
+        }, small = true)
         SetRow("Fond qui réagit", "La marée de braise monte avec tes validations, et des confettis tombent les journées parfaites.") {
             PSwitch(ui.prefs.bgReactive, { ui.prefs.bgReactive = it; ui.themeTick++ })
         }
-        SetRow("Fond à la météo", if (ui.pg.me()?.settings?.weather == null) "Choisis ta ville dans Paramètres › Météo : il pleuvra sur ton fond quand il pleut dehors." else "Pluie, neige, orage ou brouillard sur ton fond quand il fait ce temps-là dehors.") {
+        SetRow("Fond à la météo", if (ui.pg.me()?.settings?.weather == null) "Choisis ta ville dans Paramètres › Météo pour les décors compatibles." else "Nuages, vent et précipitations de ${s.weather?.name}, sur les décors compatibles. Sans données récentes, les effets météo s’effacent.") {
             PSwitch(ui.prefs.bgWeather, { ui.prefs.bgWeather = it; ui.themeTick++ })
         }
         Text(tr("Effet animé"), Modifier.padding(top = 8.dp, bottom = 6.dp), fontWeight = FontWeight.Bold)

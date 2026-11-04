@@ -56,11 +56,7 @@ fun AppState.sceneKind(): String {
 }
 
 /** Point focal vertical de la scène (fraction de la hauteur), calé dans le héros. */
-private fun focusOf(kind: String): Float = when {
-    kind.startsWith("s:") -> fr.pepsgoal.core.ALL_BGS.firstOrNull { it.key == kind.removePrefix("s:") }?.focus ?: .3f
-    kind == "custom" -> .5f
-    else -> .3f
-}
+private fun focusOf(kind: String): Float = backgroundStyle(kind).focusY
 
 /** Couleur dominante de la scène : teinte le bord et la marche des barres. null : aucune scène visible. */
 @Composable
@@ -134,13 +130,18 @@ fun AppBg(ui: AppState) {
         CompositionLocalProvider(LocalBgPaused provides paused) {
             if (mode == "off") Box(Modifier.fillMaxSize().decoCircles(p))
             else if (mode != "none") BoxWithConstraints(Modifier.fillMaxSize()) {
-                val h = maxHeight; val extra = h * .3f
-                val base = (heroY - (h + extra) * focusOf(kind)).coerceIn(-extra, 0.dp)
-                val basePx = with(dens) { base.toPx() }; val capPx = with(dens) { 96.dp.toPx() }
+                val h = maxHeight
+                // Painted portrait scenes keep their landmarks inside the mobile crop.
+                val illustrated = hasSceneArtwork(kind)
+                val extra = h * if (illustrated) .08f else .3f
+                val base = if (illustrated) -extra * .5f else (heroY - (h + extra) * focusOf(kind)).coerceIn(-extra, 0.dp)
+                val basePx = with(dens) { base.toPx() }
+                val extraPx = with(dens) { extra.toPx() }
+                val capPx = with(dens) { if (illustrated) extra.toPx() * .5f else 96.dp.toPx() }
                 Box(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true).height(h + extra).graphicsLayer {
                     // Parallaxe : la scène suit le défilement à 0,35, plafonnée à 96 dp (lu au dessin : aucune recomposition)
                     val sc = if (ui.screens.isNotEmpty()) Fx.pageScroll else Fx.scroll
-                    translationY = basePx - (sc * .35f).coerceIn(0f, capPx)
+                    translationY = (basePx - (sc * .35f).coerceIn(0f, capPx)).coerceIn(-extraPx, 0f)
                 }) { SceneLayer(ui, kind) }
                 // Voile dégradé de bg : calme visuel sous les listes (le contraste du texte, lui, vient des plaques)
                 val bg = p.bg
@@ -175,18 +176,14 @@ fun AppBg(ui: AppState) {
 /** Couche 1 : la scène (fondu enchaîné quand elle change : autre fond, ciel qui passe du jour au crépuscule…). */
 @Composable
 private fun SceneLayer(ui: AppState, kind: String) {
-    val ctx = LocalContext.current; val p = LocalPal.current; val pg = ui.pg; val s = pg.me()?.settings
-    val wx = Wx.cached(ctx, s?.weather)
-    val sky = if (kind == "sky") Weather.sky(wx?.data) else null
+    val p = LocalPal.current; val pg = ui.pg; val s = pg.me()?.settings
+    val environment = LocalSceneEnvironment.current
+    val sky = if (kind == "sky") environment?.sky() else null
     val snow = pg.eggWord() == "Cold" || (ui.prefs.seasonal && fr.pepsgoal.app.sys.Season.now() == "noel")
-    val stamp = ui.prefs.bgStamp
-    // Fond à la météo réelle : pluie, neige, orage ou brouillard par-dessus le fond choisi (hors thème Météo)
-    val wxCond = if (sky == null && ui.prefs.bgWeather) wx?.data?.current?.let { c -> Weather.wmo(c.code, c.isDay).cond }?.takeIf { it in setOf("rain", "snow", "storm", "fog") } else null
-    val key = listOf(kind, sky?.phase, sky?.cond, sky?.code, snow, stamp, p.dark, s?.fx ?: "", wxCond)
-    val skies = remember { mutableMapOf<List<Any?>, Weather.Sky?>() }
-    skies[key] = sky
-    Crossfade(key, animationSpec = tween(if (p.motion) 0 else 900), label = "scene") { k ->
-        Backdrop(k[0] as String, skies[k], k[4] as Boolean, k[5] as Long, k[7] as String, k[8] as String?)
+    // Only scene identity triggers a crossfade: live solar/weather updates do not retain another bitmap set.
+    Crossfade(kind, animationSpec = tween(if (p.motion) 0 else 600), label = "scene") { current ->
+        val capability = backgroundStyle(current).capability
+        val weather = if (ui.prefs.bgWeather && capability.weather && current != "sky") environment?.condition else null
+        Backdrop(current, if (current == "sky") sky else null, snow, ui.prefs.bgStamp, s?.fx ?: "", weather)
     }
-    LaunchedEffect(key) { kotlinx.coroutines.delay(1500); skies.keys.retainAll { it == key } }
 }

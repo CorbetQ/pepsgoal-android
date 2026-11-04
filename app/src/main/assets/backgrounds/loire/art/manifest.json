@@ -1,0 +1,17 @@
+{
+  "id": "loire",
+  "revision": "v3",
+  "file": "artwork.png",
+  "sha256": "d5d11a2ecc4d10163d9868f4b7267242b86f2b2e3c2bfdbdc7401a9f925fd768",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Loire_River_in_Blois_05.jpg",
+    "https://commons.wikimedia.org/wiki/File:Saumur_-_Vue_sur_la_Loire_et_le_ch%C3%A2teau.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/loire.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

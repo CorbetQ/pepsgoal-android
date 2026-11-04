@@ -1,0 +1,17 @@
+{
+  "id": "mountains",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "cf8c1236d86a9bc36fe46bf8ecab253bea384ecc66104fbe2e0c1a3f39167080",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Mountain_Reflection_on_Alpine_Lake.jpg",
+    "https://commons.wikimedia.org/wiki/File:Sunrise_near_Rifugio_Mulaz_-_Dolomites,_Italy_-_2025.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/mountains.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device or battery validation."
+}

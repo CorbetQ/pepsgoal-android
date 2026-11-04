@@ -1,0 +1,16 @@
+{
+  "id": "bamboo",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "48cd4e235a1e0abd07a2602fd9de0c948caaa03414b7aa9215935560826b1108",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Bamboo_forest"
+  ],
+  "brief": "docs/design/background-reboot/briefs/bamboo.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "icefield",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "49bf69958a5550d33f83ff3dd64de127b06482801535d7893f7d16291cdd2e87",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Iceberg_in_North_Star_Bay,_Greenland.jpg",
+    "https://commons.wikimedia.org/wiki/File:Everest,_Nuptse,_Khumbu_Glacier,_Nepal,_Himalayas.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/icefield.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

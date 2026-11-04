@@ -1,0 +1,16 @@
+{
+  "id": "xmastree",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "7fe965c90e61b92dc8de30c609801a6a927deb02b9c5d5e47987f96de4066261",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Christmas_tree"
+  ],
+  "brief": "docs/design/background-reboot/briefs/xmastree.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

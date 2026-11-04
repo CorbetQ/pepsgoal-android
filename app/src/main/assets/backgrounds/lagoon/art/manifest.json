@@ -1,0 +1,16 @@
+{
+  "id": "lagoon",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "da9a87bb1147070221843ff922a42c72269de52934e6a2ec68596f403978870d",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Bora_Bora"
+  ],
+  "brief": "docs/design/background-reboot/briefs/lagoon.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

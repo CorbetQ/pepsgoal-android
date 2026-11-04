@@ -1,0 +1,1162 @@
+{
+  "purpose": "Research-only internet references. Third-party files are cached outside production/repository.",
+  "retrievedAt": "2026-11-03",
+  "providers": [
+    "Wikimedia Commons API (search + imageinfo)",
+    "Wikipedia article HTML actual embedded images",
+    "Angers SCO official website"
+  ],
+  "backgrounds": {
+    "nebula": {
+      "key": "nebula",
+      "references": [
+        {
+          "title": "File:Orion Nebula - Hubble 2006 mosaic 18000.jpg",
+          "query": "Orion nebula NASA",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Orion_Nebula_-_Hubble_2006_mosaic_18000.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f3/Orion_Nebula_-_Hubble_2006_mosaic_18000.jpg/960px-Orion_Nebula_-_Hubble_2006_mosaic_18000.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/nebula/01.jpg",
+          "author": "NASA, ESA, M. Robberto (Space Telescope Science Institute/ESA) and the Hubble Space Telescope Orion Treasury Project Team",
+          "license": "Public domain",
+          "licenseUrl": null,
+          "description": "In one of the most detailed astronomical images ever produced, NASA/ESA's Hubble Space Telescope captured an unprecedented look at the Orion Nebula. ... This extensive study took 105 Hubble orbits to complete. All imaging instruments aboard the telescope were used simultaneously to study Orion. The Advanced Camera mosaic covers approximately the apparent angular size of the full moon.\nCoordinates\nPosition (RA):\t5 35 9.73\nPosition (Dec):\t-5° 24' 50.32\"\nField of view:\t30.03 x 30.03 arcminutes\nOrientation:\tNorth is 0.0° left of vertical\n\nColours & filter Band\tWavelength\tTelescope\nOptical B\t435 nm\tHubble Space Telescope ACS\nOptical V\t555 nm\tHubble Space Telescope ACS\nOptical H-alpha\t658 nm\tHubble Space Telescope ACS\nInfrared I\t775 nm\tHubble Space Telescope ACS\nInfrared Z\t850 nm\tHubble Space Te",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:NGC 3372a-full.jpg",
+          "query": "Carina nebula Hubble",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:NGC_3372a-full.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f8/NGC_3372a-full.jpg/960px-NGC_3372a-full.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/nebula/02.jpg",
+          "author": "NASA, ESA, N. Smith (University of California, Berkeley), and The Hubble Heritage Team (STScI/AURA); credit for CTIO Image: N. Smith (University of California, Berkeley) and NOAO/AURA/NSF",
+          "license": "Public domain",
+          "licenseUrl": null,
+          "description": "In celebration of the 17th anniversary of the launch and deployment of NASA's Hubble Space Telescope, a team of astronomers is releasing one of the largest panoramic images ever taken with Hubble's cameras. It is a 50-light-year-wide view of the central region of the Carina Nebula where a maelstrom of star birth - and death - is taking place.\nHubble's view of the nebula shows star birth in a new level of detail. The fantasy-like landscape of the nebula is sculpted by the action of outflowing winds and scorching ultraviolet radiation from the monster stars that inhabit this inferno. In the process, these stars are shredding the surrounding material that is the last vestige of the giant cloud from which the stars were born.\nThe immense nebula contains at least a dozen brilliant stars that ar",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "deepsea": {
+      "key": "deepsea",
+      "references": [
+        {
+          "title": "File:Leopard shark in kelp.jpg",
+          "query": "underwater kelp forest",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Leopard_shark_in_kelp.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1e/Leopard_shark_in_kelp.jpg/960px-Leopard_shark_in_kelp.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/deepsea/01.jpg",
+          "author": "Mfield, Matthew Field, www.photography.mattfield.com",
+          "license": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "description": "A leopard shark (Triakis semifasciata) and two blacksmith damselfish (Chromis punctipinnis), swimming in a kelp forest in the 70,000 gallon (approx. 265,000 litre) kelp tank at Scripps Aquarium in La Jolla, California, United States",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "mountains": {
+      "key": "mountains",
+      "references": [
+        {
+          "title": "File:Mountain Reflection on Alpine Lake.jpg",
+          "query": "alpine mountain lake reflection",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mountain_Reflection_on_Alpine_Lake.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/Mountain_Reflection_on_Alpine_Lake.jpg/960px-Mountain_Reflection_on_Alpine_Lake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/mountains/01.jpg",
+          "author": "Sabrina Schreiber",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "description": "Mountain lake in Lötschental reflecting the mountains in the early morning",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Sunrise near Rifugio Mulaz - Dolomites, Italy - 2025.jpg",
+          "query": "Dolomites sunrise",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sunrise_near_Rifugio_Mulaz_-_Dolomites,_Italy_-_2025.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/eb/Sunrise_near_Rifugio_Mulaz_-_Dolomites%2C_Italy_-_2025.jpg/960px-Sunrise_near_Rifugio_Mulaz_-_Dolomites%2C_Italy_-_2025.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/mountains/02.jpg",
+          "author": "Dmitry Djouce",
+          "license": "CC BY 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+          "description": "Dolomites, Italy",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "citynight": {
+      "key": "citynight",
+      "references": [
+        {
+          "title": "File:Stockholm city skyline and waterfront at night (April 2016).jpg",
+          "query": "city skyline night waterfront",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stockholm_city_skyline_and_waterfront_at_night_(April_2016).jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/Stockholm_city_skyline_and_waterfront_at_night_%28April_2016%29.jpg/960px-Stockholm_city_skyline_and_waterfront_at_night_%28April_2016%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/citynight/01.jpg",
+          "author": "Micael Widell",
+          "license": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+          "description": "500px provided description: Follow me at www.instagram.com/micaelwidell/ [#city ,#cloudy ,#rain ,#sweden ,#stockholm ,#rainy ,#gloomy]",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Skylines of the Central Business District, Singapore at dusk.jpg",
+          "query": "Singapore skyline night",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Skylines_of_the_Central_Business_District,_Singapore_at_dusk.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Skylines_of_the_Central_Business_District%2C_Singapore_at_dusk.jpg/960px-Skylines_of_the_Central_Business_District%2C_Singapore_at_dusk.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/citynight/02.jpg",
+          "author": "Basile Morin",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "description": "Skylines of the Central Business District, Singapore, at dusk, from the sky observation deck of the Marina Bay Sands skycrapper.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "tram": {
+      "key": "tram",
+      "references": [
+        {
+          "title": "File:Station Tramway Ralliement Ligne A Angers 1.jpg",
+          "query": "Angers tramway Ralliement",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Station_Tramway_Ralliement_Ligne_A_Angers_1.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a4/Station_Tramway_Ralliement_Ligne_A_Angers_1.jpg/960px-Station_Tramway_Ralliement_Ligne_A_Angers_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/tram/01.jpg",
+          "author": "Chabe01",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "description": "Station de tramway Ralliement, ligne A du tramway d'Angers.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Angers - Tramway sur le pont Confluences.jpg",
+          "query": "Angers tramway pont",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Angers_-_Tramway_sur_le_pont_Confluences.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/Angers_-_Tramway_sur_le_pont_Confluences.jpg/960px-Angers_-_Tramway_sur_le_pont_Confluences.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/tram/02.jpg",
+          "author": "Émeric",
+          "license": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "description": "Tramway d'Angers sur le pont Confluences",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "mistforest": {
+      "key": "mistforest",
+      "references": [
+        {
+          "title": "File:Path Mist Daribokgre Nokrek West Garo Oct24 A7CR 03594.jpg",
+          "query": "forest mist path",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Path_Mist_Daribokgre_Nokrek_West_Garo_Oct24_A7CR_03594.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Path_Mist_Daribokgre_Nokrek_West_Garo_Oct24_A7CR_03594.jpg/960px-Path_Mist_Daribokgre_Nokrek_West_Garo_Oct24_A7CR_03594.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/mistforest/01.jpg",
+          "author": "Timothy A. Gonsalves",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "description": "Path in morning mist through Daribokgre Community Reserve towards Nokrek National Park, West Garo Hills, Meghalaya, India",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "dunes": {
+      "key": "dunes",
+      "references": [
+        {
+          "title": "File:Utah Dunes Landscape - West Desert District.jpg",
+          "query": "Sahara dunes sunset",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Utah_Dunes_Landscape_-_West_Desert_District.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Utah_Dunes_Landscape_-_West_Desert_District.jpg/960px-Utah_Dunes_Landscape_-_West_Desert_District.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/dunes/01.jpg",
+          "author": "Bureau of Land Management - Utah/Bob Wick",
+          "license": "Public domain",
+          "licenseUrl": null,
+          "description": "Little Sahara Recreation Area",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Sand dune ridge - geograph.org.uk - 8302013.jpg",
+          "query": "sand dune ridge",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sand_dune_ridge_-_geograph.org.uk_-_8302013.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Sand_dune_ridge_-_geograph.org.uk_-_8302013.jpg/960px-Sand_dune_ridge_-_geograph.org.uk_-_8302013.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/dunes/02.jpg",
+          "author": "N Chadwick",
+          "license": "CC BY-SA 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+          "description": "Sand dune ridge",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Réf01 dunes arides éclairées; réf02 dune tempérée herbeuse, à ne pas utiliser pour la végétation du Sahara."
+    },
+    "sakura": {
+      "key": "sakura",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Sakura_and_Moss_Pink_-_桜(さくら)と芝桜(しばざくら).jpg",
+          "query": "Cherry_blossom",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Cherry_blossom",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/96/Sakura_and_Moss_Pink_-_%E6%A1%9C%28%E3%81%95%E3%81%8F%E3%82%89%29%E3%81%A8%E8%8A%9D%E6%A1%9C%28%E3%81%97%E3%81%B0%E3%81%96%E3%81%8F%E3%82%89%29.jpg/250px-Sakura_and_Moss_Pink_-_%E6%A1%9C%28%E3%81%95%E3%81%8F%E3%82%89%29%E3%81%A8%E8%8A%9D%E6%A1%9C%28%E3%81%97%E3%81%B0%E3%81%96%E3%81%8F%E3%82%89%29.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/sakura/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "magma": {
+      "key": "magma",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:001_Volcano_eruption_of_Litli-Hrútur_in_Iceland_in_2023_Photo_by_Giles_Laurent.jpg",
+          "query": "Lava",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Lava",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/001_Volcano_eruption_of_Litli-Hr%C3%BAtur_in_Iceland_in_2023_Photo_by_Giles_Laurent.jpg/500px-001_Volcano_eruption_of_Litli-Hr%C3%BAtur_in_Iceland_in_2023_Photo_by_Giles_Laurent.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/magma/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "coderain": {
+      "key": "coderain",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Digital_rain_animation_medium_letters_shine.gif",
+          "query": "Matrix_digital_rain",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Matrix_digital_rain",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Digital_rain_animation_medium_letters_shine.gif/250px-Digital_rain_animation_medium_letters_shine.gif?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/coderain/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "borealis": {
+      "key": "borealis",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Magenta_G5_aurora_over_Tuntorp,_Lysekil_Municipality_11.jpg",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Aurora",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Magenta_G5_aurora_over_Tuntorp%2C_Lysekil_Municipality_11.jpg/250px-Magenta_G5_aurora_over_Tuntorp%2C_Lysekil_Municipality_11.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/borealis/01.jpg",
+          "author": "See linked source",
+          "license": "Unverified; research only, no redistribution",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Aurora_Borealis_by_Frederic_Edwin_Church.jpg",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Aurora",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/28/Aurora_Borealis_by_Frederic_Edwin_Church.jpg/250px-Aurora_Borealis_by_Frederic_Edwin_Church.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/borealis/02.jpg",
+          "author": "See linked source",
+          "license": "Unverified; research only, no redistribution",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Réf01 phénomène rose photographié; réf02 peinture historique pour composition/valeurs, pas une photo documentaire."
+    },
+    "rainwindow": {
+      "key": "rainwindow",
+      "references": [
+        {
+          "title": "File:Raindrops blur the city skyline.png",
+          "query": "raindrops window city",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Raindrops_blur_the_city_skyline.png",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/Raindrops_blur_the_city_skyline.png/960px-Raindrops_blur_the_city_skyline.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/rainwindow/01.png",
+          "author": "Pongola",
+          "license": "CC BY 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+          "description": "Raindrops blur the city skyline, turning the glass into a canvas of fleeting reflections and quiet melancholy.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "planet": {
+      "key": "planet",
+      "references": [
+        {
+          "title": "File:Top view of the rings of Saturn by Cassini - October 10, 2013.jpg",
+          "query": "Saturn Cassini rings",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Top_view_of_the_rings_of_Saturn_by_Cassini_-_October_10,_2013.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Top_view_of_the_rings_of_Saturn_by_Cassini_-_October_10%2C_2013.jpg/960px-Top_view_of_the_rings_of_Saturn_by_Cassini_-_October_10%2C_2013.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/planet/01.jpg",
+          "author": "NASA/JPL-Caltech/SSI/Cornell",
+          "license": "Public domain",
+          "licenseUrl": null,
+          "description": "A swing high above Saturn by NASA's Cassini spacecraft revealed this stately view of the golden-hued planet and its main rings. The view is in natural color, as human eyes would have seen it. This mosaic was made from 36 images in three color filters obtained by Cassini's imaging science subsystem on Oct. 10, 2013. The observation and resulting image mosaic were planned as one of three images for Cassini's 2013 Scientist for a Day essay contest.  \nSaturn sports differently colored bands of weather in this image. For instance, a bright, narrow wave of clouds around 42 degrees north latitude appears to be some of the turbulent aftermath of a giant storm that reached its violent peak in early 2011. The mysterious six-sided weather pattern known as the hexagon is visible around Saturn's north ",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "lagoon": {
+      "key": "lagoon",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Bora_Bora_ISS006.jpg",
+          "query": "Bora_Bora",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Bora_Bora",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2a/Bora_Bora_ISS006.jpg/330px-Bora_Bora_ISS006.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/lagoon/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Vue aérienne Bora Bora, utile aux couleurs lagon/récif, pas composition finale à recopier."
+    },
+    "loire": {
+      "key": "loire",
+      "references": [
+        {
+          "title": "File:Loire River in Blois 05.jpg",
+          "query": "Loire river sunset castle",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Loire_River_in_Blois_05.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Loire_River_in_Blois_05.jpg/960px-Loire_River_in_Blois_05.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/loire/01.jpg",
+          "author": "Krzysztof Golik",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "description": "NOTE: This image is a panorama  consisting of 3 frames that were merged or stitched in Adobe Lightroom. As a result, this image necessarily underwent some form of digital manipulation. These manipulations may include blending, blurring, cloning, and color and perspective adjustments. As a result of these adjustments, the image content may be slightly different from reality at the points where multiple images were combined. This manipulation is often required due to lens, perspective, and parallax distortions.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Saumur - Vue sur la Loire et le château.jpg",
+          "query": "Château Saumur Loire river",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Saumur_-_Vue_sur_la_Loire_et_le_ch%C3%A2teau.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Saumur_-_Vue_sur_la_Loire_et_le_ch%C3%A2teau.jpg/960px-Saumur_-_Vue_sur_la_Loire_et_le_ch%C3%A2teau.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/loire/02.jpg",
+          "author": "Kev22",
+          "license": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "description": "Loire River in Saumur (Maine-et-Loire, France).",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Réf01 Blois documente le fleuve/reflets/pont; réf02 Saumur documente château/coteau/gabares. Ne pas mélanger les monuments en prétendant reproduire un lieu exact."
+    },
+    "lighthouse": {
+      "key": "lighthouse",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Phare_petit_minou_600x800.JPG",
+          "query": "Petit_Minou_Lighthouse",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Petit_Minou_Lighthouse",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8c/Phare_petit_minou_600x800.JPG/250px-Phare_petit_minou_600x800.JPG?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/lighthouse/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "vineyard": {
+      "key": "vineyard",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Vineyards_in_Burgundy_France.jpg",
+          "query": "Vineyard",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Vineyard",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e5/Vineyards_in_Burgundy_France.jpg/250px-Vineyards_in_Burgundy_France.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/vineyard/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "balloons": {
+      "key": "balloons",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:2006_Ojiya_balloon_festival_011.jpg",
+          "query": "Hot_air_balloon",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Hot_air_balloon",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/2006_Ojiya_balloon_festival_011.jpg/250px-2006_Ojiya_balloon_festival_011.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/balloons/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Montgolfière rouge réelle et nacelle. Ancien panorama ville rejeté."
+    },
+    "jellyfish": {
+      "key": "jellyfish",
+      "references": [
+        {
+          "title": "File:Jellyfish - Flickr - NOAA Ocean Exploration ^ Research.jpg",
+          "query": "jellyfish ocean",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jellyfish_-_Flickr_-_NOAA_Ocean_Exploration_%5E_Research.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Jellyfish_-_Flickr_-_NOAA_Ocean_Exploration_%5E_Research.jpg/960px-Jellyfish_-_Flickr_-_NOAA_Ocean_Exploration_%5E_Research.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/jellyfish/01.jpg",
+          "author": "NOAA Ocean Exploration & Research from USA",
+          "license": "CC BY-SA 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+          "description": "This stunningly beautiful jellyfish was seen during Dive 4 of the Deepwater Exploration of the Marianas expedition on April 24, 2016, while exploring Enigma Seamount at a depth of ~3,700 meters.\nScientists identified this hydromedusa as belonging to the genus Crossota. Note the two sets of tentacles — short and long. At the beginning of the video, you'll see that the long tentacles are even and extended outward and the bell is motionless. This suggests an ambush predation mode. Within the bell, the radial canals in red are connecting points for what looks like the gonads in bright yellow.\nWatch video\n\nLearn more about EX1605 on hte NOAA Archive",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "bamboo": {
+      "key": "bamboo",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Bambusoideae-china.JPG",
+          "query": "Bamboo_forest",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Bamboo_forest",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Bambusoideae-china.JPG/250px-Bambusoideae-china.JPG?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/bamboo/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "nighttrain": {
+      "key": "nighttrain",
+      "references": [
+        {
+          "title": "File:Jacobite on Glenfinnan Viaduct 2 20211024.jpg",
+          "query": "Glenfinnan viaduct train",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jacobite_on_Glenfinnan_Viaduct_2_20211024.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Jacobite_on_Glenfinnan_Viaduct_2_20211024.jpg/960px-Jacobite_on_Glenfinnan_Viaduct_2_20211024.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/nighttrain/01.jpg",
+          "author": "Daniel Kraft",
+          "license": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "description": "LMS Stanier Class 5 4-6-0 steam locomotive with the «Jacobite» tourist train crossing the Glenfinnan Viaduct on its course from Fort William to Mallaig, Scotland.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "rooftops": {
+      "key": "rooftops",
+      "references": [
+        {
+          "title": "File:Place Saint-Michel (Paris), numéro 3, toit.jpg",
+          "query": "Paris zinc roof chimney",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Place_Saint-Michel_(Paris),_num%C3%A9ro_3,_toit.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Place_Saint-Michel_%28Paris%29%2C_num%C3%A9ro_3%2C_toit.jpg/960px-Place_Saint-Michel_%28Paris%29%2C_num%C3%A9ro_3%2C_toit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/rooftops/01.jpg",
+          "author": "Coyau",
+          "license": "CC BY-SA 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+          "description": "3 place Saint-Michel, Paris. Balcon, étage en retrait et toit (zinc à tasseaux), lucarnes rentrantes et souches de cheminées.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "canyon": {
+      "key": "canyon",
+      "references": [
+        {
+          "title": "File:A253, Upper Antelope Canyon, Page, Arizona, USA, 2008.JPG",
+          "query": "Antelope canyon sunbeam",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:A253,_Upper_Antelope_Canyon,_Page,_Arizona,_USA,_2008.JPG",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/A253%2C_Upper_Antelope_Canyon%2C_Page%2C_Arizona%2C_USA%2C_2008.JPG/960px-A253%2C_Upper_Antelope_Canyon%2C_Page%2C_Arizona%2C_USA%2C_2008.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/canyon/01.jpg",
+          "author": "Brian W. Schaller",
+          "license": "FAL",
+          "licenseUrl": "http://artlibre.org/licence/lal/en",
+          "description": "Upper Antelope Canyon, Page, Arizona, USA with sunbeam",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Grand Canyon South Rim at Sunset.jpg",
+          "query": "Grand canyon sunset",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Grand_Canyon_South_Rim_at_Sunset.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Grand_Canyon_South_Rim_at_Sunset.jpg/960px-Grand_Canyon_South_Rim_at_Sunset.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/canyon/02.jpg",
+          "author": "Mgimelfarb",
+          "license": "CC0",
+          "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "description": "Grand Canyon South Rim at Sunset.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "savanna": {
+      "key": "savanna",
+      "references": [
+        {
+          "title": "File:Graceful Giant of the Savanna (Giraffe) 02.jpg",
+          "query": "giraffe savanna",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Graceful_Giant_of_the_Savanna_(Giraffe)_02.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/40/Graceful_Giant_of_the_Savanna_%28Giraffe%29_02.jpg/960px-Graceful_Giant_of_the_Savanna_%28Giraffe%29_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/savanna/02.jpg",
+          "author": "Ssemmanda will",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "description": "A majestic giraffe stands tall amidst the sweeping savanna of Murchison Falls National Park, its patterned coat blending harmoniously with the golden grasses. The vast landscape stretches behind it, dotted with acacia trees and whispering with the sounds of the wild. In this tranquil moment, the giraffe embodies the grace and resilience of Uganda’s untamed beauty.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "lanterns": {
+      "key": "lanterns",
+      "references": [
+        {
+          "title": "File:Red Chinese Lanterns at Night.jpg",
+          "query": "Chinese lanterns night street",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Red_Chinese_Lanterns_at_Night.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/Red_Chinese_Lanterns_at_Night.jpg/960px-Red_Chinese_Lanterns_at_Night.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/lanterns/01.jpg",
+          "author": "epSos .de",
+          "license": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "description": "This beautiful picture of red lanterns was created for this article:\n\nepsos.de/Asian-women-love-Chinese-new-year",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Pingxi Sky Lantern Festival 2014 in Taiwan.jpg",
+          "query": "sky lantern festival",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pingxi_Sky_Lantern_Festival_2014_in_Taiwan.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/Pingxi_Sky_Lantern_Festival_2014_in_Taiwan.jpg/960px-Pingxi_Sky_Lantern_Festival_2014_in_Taiwan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/lanterns/02.jpg",
+          "author": "Jirka Matousek",
+          "license": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "description": "I am sharing this photo under Creative Commons rights. If you would like to use this photo, credit me and put a link to my website or my Flickr account. Also, let me know in the photo comments where you are using the photo as I want to keep a record of my photo usage. You can visit my website at www.jirkamatousek.eu",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "icefield": {
+      "key": "icefield",
+      "references": [
+        {
+          "title": "File:Iceberg in North Star Bay, Greenland.jpg",
+          "query": "iceberg fjord Greenland",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Iceberg_in_North_Star_Bay,_Greenland.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Iceberg_in_North_Star_Bay%2C_Greenland.jpg/960px-Iceberg_in_North_Star_Bay%2C_Greenland.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/icefield/01.jpg",
+          "author": "Jeremy Harbeck",
+          "license": "Public domain",
+          "licenseUrl": null,
+          "description": "For five years, Jeremy Harbeck has worked as a support scientist for NASA’s Operation IceBridge, an airborne mission to study polar ice. The data processing that he does typically takes place in an office at NASA’s Goddard Space Flight Center in Maryland. However, to speed the process of delivering data to the Arctic sea ice forecasting community, Harbeck traveled to Greenland for the first time in spring 2015.\nHe had just arrived at Greenland’s Thule Air Base on March 20 when a mechanical issue grounded the aircraft. No science flight could happen for a few days. As teams in the United States and Greenland scrambled to locate and deliver a replacement part, researchers on the ground waited. Some of them hiked to what was locally known as “the iceberg.”\nThe unnamed berg pictured above has ",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Everest, Nuptse, Khumbu Glacier, Nepal, Himalayas.jpg",
+          "query": "glacier blue ice",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Everest,_Nuptse,_Khumbu_Glacier,_Nepal,_Himalayas.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c6/Everest%2C_Nuptse%2C_Khumbu_Glacier%2C_Nepal%2C_Himalayas.jpg/960px-Everest%2C_Nuptse%2C_Khumbu_Glacier%2C_Nepal%2C_Himalayas.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/icefield/02.jpg",
+          "author": "Vyacheslav Argenberg",
+          "license": "CC BY 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+          "description": "Mount Everest, the highest mountain in the world. Everest, Everest West Shoulder, west face of Lhotse-Nuptse massif, Khumbu Glacier and Khumbu Icefall, as viewed from the west in late afternoon sun. Mount Everest, Nepal, Himalayas.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Réf01 iceberg Groenland est principal. Réf02 glacier Himalaya ne documente pas une banquise plane."
+    },
+    "tunnel": {
+      "key": "tunnel",
+      "references": [
+        {
+          "title": "File:London MMB «U7 Docklands Light Railway (Woolwich Tunnel).jpg",
+          "query": "railway tunnel light",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:London_MMB_%C2%ABU7_Docklands_Light_Railway_(Woolwich_Tunnel).jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/London_MMB_%C2%ABU7_Docklands_Light_Railway_%28Woolwich_Tunnel%29.jpg/960px-London_MMB_%C2%ABU7_Docklands_Light_Railway_%28Woolwich_Tunnel%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/tunnel/01.jpg",
+          "author": "mattbuck (category)",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "description": "Looking out the front window of a DLR train in the Woolwich tunnel under the Thames.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "angers": {
+      "key": "angers",
+      "references": [
+        {
+          "title": "File:Angers - Maine 02.jpg",
+          "query": "Château Angers Maine river",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Angers_-_Maine_02.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Angers_-_Maine_02.jpg/960px-Angers_-_Maine_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/angers/01.jpg",
+          "author": "Fab5669",
+          "license": "CC0",
+          "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "description": "Panoramic of Maine river, from the castle of Angers (Maine-et-Loire, France)",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "nantes": {
+      "key": "nantes",
+      "references": [
+        {
+          "title": "File:Elephant de nantes.jpg",
+          "query": "Nantes machines elephant",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Elephant_de_nantes.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Elephant_de_nantes.jpg/960px-Elephant_de_nantes.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/nantes/01.jpg",
+          "author": "Fontewin",
+          "license": "CC BY 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+          "description": "Le Grand éléphant est l'une des machines de l'île de Nantes, créé par la compagnie de théâtre de rue « La Machine ».",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Référence iconographique éléphant des Machines de l’île, pas château nantais."
+    },
+    "angevine": {
+      "key": "angevine",
+      "references": [
+        {
+          "title": "File:Pontbarré05.jpg",
+          "query": "Coteaux Layon vineyard",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pontbarr%C3%A905.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Pontbarr%C3%A905.jpg/960px-Pontbarr%C3%A905.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/angevine/layon-02.jpg",
+          "author": "DEVECC",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "description": "les coteaux du Layon",
+          "review": "Visually inspected: relevant Layon landscape or real Anjou moulin cavier; schematic explicitly identified as technical cutaway, not photograph."
+        },
+        {
+          "title": "File:GD-FR-Anjou-Herpinière02.JPG",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:GD-FR-Anjou-Herpini%C3%A8re02.JPG",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/GD-FR-Anjou-Herpini%C3%A8re02.JPG/960px-GD-FR-Anjou-Herpini%C3%A8re02.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/angevine/layon-03.jpg",
+          "author": "Néfermaât",
+          "license": "CC BY-SA 2.5",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.5",
+          "description": "Moulin La Herpinière, moulin cavier, Turquant (France).",
+          "review": "Visually inspected: relevant Layon landscape or real Anjou moulin cavier; schematic explicitly identified as technical cutaway, not photograph."
+        },
+        {
+          "title": "File:GD-FR-Anjou-La Herpinière.jpg",
+          "query": "moulin cavier Anjou",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:GD-FR-Anjou-La_Herpini%C3%A8re.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/GD-FR-Anjou-La_Herpini%C3%A8re.jpg/960px-GD-FR-Anjou-La_Herpini%C3%A8re.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/angevine/layon-01.jpg",
+          "author": "Gérard Ducher (user:Néfermaât)",
+          "license": "CC BY-SA 2.5",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.5",
+          "description": "Plan du Moulin de la Herpinière, moulin cavier, France.",
+          "review": "Visually inspected: relevant Layon landscape or real Anjou moulin cavier; schematic explicitly identified as technical cutaway, not photograph."
+        }
+      ],
+      "researchNote": "Identité boutique préservée : vignes du Layon, logis de tuffeau et moulin cavier. Réf01 véritable paysage des coteaux du Layon; réf02 photo du moulin cavier de La Herpinière à Turquant (Anjou); réf03 coupe technique du même type de moulin pour proportions. Maison Adam urbaine est retirée : elle ne documente pas la campagne. Le logis de tuffeau demeure une création plausible, non un bâtiment géolocalisé."
+    },
+    "haunted": {
+      "key": "haunted",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Casa_Jean_Troianos.jpg",
+          "query": "Haunted_house",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Haunted_house",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/39/Casa_Jean_Troianos.jpg/250px-Casa_Jean_Troianos.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/haunted/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "snowvillage": {
+      "key": "snowvillage",
+      "references": [
+        {
+          "title": "File:Going am Wilden Kaiser Panorama 2011-01-29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Going_am_Wilden_Kaiser_Panorama_2011-01-29.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/Going_am_Wilden_Kaiser_Panorama_2011-01-29.jpg/960px-Going_am_Wilden_Kaiser_Panorama_2011-01-29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/snowvillage/final-01.jpg",
+          "author": "Bernie Kohl (talk · contribs)",
+          "license": "Public domain",
+          "description": "Village of Going am Wilden Kaiser. View towards North covering about 167 degrees.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Nature landscape snowing mountains village Austria (8279714859).jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Nature_landscape_snowing_mountains_village_Austria_(8279714859).jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/13/Nature_landscape_snowing_mountains_village_Austria_%288279714859%29.jpg/960px-Nature_landscape_snowing_mountains_village_Austria_%288279714859%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/snowvillage/final-02.jpg",
+          "author": "Valerii Tkachenko",
+          "license": "CC BY 2.0",
+          "description": "Nature landscape snowing mountains village Austria",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références finales Alpes autrichiennes : panorama montagne/village et neige/pins/chalets, anciens essais japonais rejetés."
+    },
+    "fireworks": {
+      "key": "fireworks",
+      "references": [
+        {
+          "title": "File:Fireworks in Kuwait City (24244363641).jpg",
+          "query": "fireworks night city",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fireworks_in_Kuwait_City_(24244363641).jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Fireworks_in_Kuwait_City_%2824244363641%29.jpg/960px-Fireworks_in_Kuwait_City_%2824244363641%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/fireworks/01.jpg",
+          "author": "www.Pixel.la Free Stock Photos",
+          "license": "CC0",
+          "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "description": "Fireworks in Kuwait City",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "snowpeak": {
+      "key": "snowpeak",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Matterhorn_from_Domhütte_-_2.jpg",
+          "query": "Matterhorn",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Matterhorn",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/Matterhorn_from_Domh%C3%BCtte_-_2.jpg/330px-Matterhorn_from_Domh%C3%BCtte_-_2.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/snowpeak/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "heartsky": {
+      "key": "heartsky",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:GoldenMedows.jpg",
+          "query": "Cumulus_cloud",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Cumulus_cloud",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/GoldenMedows.jpg/250px-GoldenMedows.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/heartsky/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Nuages cumulus réels pour volume; motifs de cœur sont création artistique."
+    },
+    "eggmeadow": {
+      "key": "eggmeadow",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Bg-easter-eggs.jpg",
+          "query": "Easter_egg",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Easter_egg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/54/Bg-easter-eggs.jpg/250px-Bg-easter-eggs.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/eggmeadow/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Référence de matière/couleurs/forme œufs. Paysage printanier à construire, avec fleurs de flowerfield si nécessaire."
+    },
+    "flowerfield": {
+      "key": "flowerfield",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:DwSixspecies.jpg",
+          "query": "Wildflower",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Wildflower",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/DwSixspecies.jpg/250px-DwSixspecies.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/flowerfield/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "summerbeach": {
+      "key": "summerbeach",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Beach_at_Fort_Lauderdale.jpg",
+          "query": "Beach",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Beach",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/Beach_at_Fort_Lauderdale.jpg/250px-Beach_at_Fort_Lauderdale.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/summerbeach/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "autumnwood": {
+      "key": "autumnwood",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Momiji_紅葉するヤマモミジ_B221212.JPG",
+          "query": "Autumn_leaf_color",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Autumn_leaf_color",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ac/Momiji_%E7%B4%85%E8%91%89%E3%81%99%E3%82%8B%E3%83%A4%E3%83%9E%E3%83%A2%E3%83%9F%E3%82%B8_B221212.JPG/250px-Momiji_%E7%B4%85%E8%91%89%E3%81%99%E3%82%8B%E3%83%A4%E3%83%9E%E3%83%A2%E3%83%9F%E3%82%B8_B221212.JPG?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/autumnwood/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Référence feuillage/couleurs d’érables rapprochée, pas composition de forêt complète."
+    },
+    "xmastree": {
+      "key": "xmastree",
+      "references": [
+        {
+          "title": "Christmas tree decorated with lights, stars and glass balls. Wrapped presents are under tree",
+          "query": "Christmas_tree",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Christmas_tree",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d5/A1_Christmas_Tree_photo.jpg/250px-A1_Christmas_Tree_photo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/xmastree/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "valentine": {
+      "key": "valentine",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Aramaki_rose_park04s2400.jpg",
+          "query": "Rose_garden",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Rose_garden",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Aramaki_rose_park04s2400.jpg/250px-Aramaki_rose_park04s2400.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/valentine/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "loiresummer": {
+      "key": "loiresummer",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:La_Loire_à_La_Bohalle_par_Cramos.JPG",
+          "query": "Loire",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Loire",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/La_Loire_%C3%A0_La_Bohalle_par_Cramos.JPG/250px-La_Loire_%C3%A0_La_Bohalle_par_Cramos.JPG?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/loiresummer/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Vue aérienne des bancs de sable de Loire; pour point de vue piéton/château utiliser aussi loire02 explicitement."
+    },
+    "kopa": {
+      "key": "kopa",
+      "references": [
+        {
+          "title": "File:Stade Jean-Bouin Angers - tribune StLeo.jpg",
+          "query": "Stade Raymond Kopa tribune",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stade_Jean-Bouin_Angers_-_tribune_StLeo.jpg",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/3/3b/Stade_Jean-Bouin_Angers_-_tribune_StLeo.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/kopa/01.jpg",
+          "author": "M. Mouchoir at French Wikipedia",
+          "license": "Public domain",
+          "licenseUrl": null,
+          "description": "La nouvelle tribune St Léonard tubulaire lors du match Angers SCO - Clermont Foot 63, le 6 février 2009 (4-2).",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "Tribune Raymond-Kopa — site officiel Angers SCO octobre2026",
+          "sourceUrl": "https://www.angers-sco.fr/",
+          "imageUrl": "https://www.angers-sco.fr/wp-content/uploads/2026/10/tribune-2-1024x576.png",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/kopa/02.png",
+          "author": "Angers SCO, photographe non indiqué",
+          "license": "Copyright, research only; no redistribution",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Réf01 tribune St-Léonard historique (2009), pas une preuve de l’architecture actuelle. Réf02 photo officielle2026 identité SCO/foule, pas une vue d’ensemble du stade."
+    },
+    "ecran": {
+      "key": "ecran",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Roazhon_Park_20190814.jpg",
+          "query": "Roazhon_Park",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Roazhon_Park",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Roazhon_Park_20190814.jpg/250px-Roazhon_Park_20190814.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/ecran/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "pop": {
+      "key": "pop",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Memphis-Milano_Movement.jpg",
+          "query": "Memphis_Group",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Memphis_Group",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Memphis-Milano_Movement.jpg/250px-Memphis-Milano_Movement.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/pop/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Référence palette et vocabulaire de formes Memphis dans mobilier; ne pas copier mobilier/personnages."
+    },
+    "sky": {
+      "key": "sky",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:GoldenMedows.jpg",
+          "query": "Cumulus_cloud",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Cumulus_cloud",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/GoldenMedows.jpg/250px-GoldenMedows.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/sky/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Nuages cumulus: volumes éclairés et ombres froides."
+    },
+    "blob": {
+      "key": "blob",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Lava_lamps_(16136876840).jpg",
+          "query": "Lava_lamp",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Lava_lamp",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/24/Lava_lamps_%2816136876840%29.jpg/330px-Lava_lamps_%2816136876840%29.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/blob/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Référence de masses organiques lumineuses en lampe, pas scène complète."
+    },
+    "aurora": {
+      "key": "aurora",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Antarctic_aurora_ESA313457.jpg",
+          "query": "Aurora",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Aurora",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/78/Antarctic_aurora_ESA313457.jpg/330px-Antarctic_aurora_ESA313457.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/aurora/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Vue d’aurore depuis orbite : référence de couleurs et courbure lumineuse seulement. Pour paysage terrestre voir borealis."
+    },
+    "waves": {
+      "key": "waves",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Porto_Covo_Outubro_2014-3.jpg",
+          "query": "Wind_wave",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Wind_wave",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/Porto_Covo_Outubro_2014-3.jpg/330px-Porto_Covo_Outubro_2014-3.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/waves/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "stars": {
+      "key": "stars",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:ESO-VLT-Laser-phot-33a-07.jpg",
+          "query": "Milky_Way",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Milky_Way",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/ESO-VLT-Laser-phot-33a-07.jpg/330px-ESO-VLT-Laser-phot-33a-07.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/stars/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références documentaires pour formes, lumière et profondeur; création originale à produire, sans reproduction servile."
+    },
+    "mesh": {
+      "key": "mesh",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Dolphin_triangle_mesh.png",
+          "query": "Low_poly",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Low_poly",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fb/Dolphin_triangle_mesh.png/250px-Dolphin_triangle_mesh.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/mesh/01.png",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Référence de construction triangulée, pas composition finale ni paysage à copier."
+    },
+    "grid": {
+      "key": "grid",
+      "references": [
+        {
+          "title": "File:Abstract Neon Grid with Spectators (55258981654).jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Abstract_Neon_Grid_with_Spectators_(55258981654).jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Abstract_Neon_Grid_with_Spectators_%2855258981654%29.jpg/960px-Abstract_Neon_Grid_with_Spectators_%2855258981654%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/grid/final-01.jpg",
+          "author": "Michael Gaylard from Horsham, UK",
+          "license": "CC BY 4.0",
+          "description": "A dark background is illuminated by a vibrant neon grid projection in shades of pink and purple. The grid is not perfectly uniform, with varying lengths of intersecting lines creating a dynamic, abstract pattern. In the foreground, the silhouettes of several people are visible, looking towards the projection. Scattered across the image are small, glittering points of light, adding a subtle bokeh effect.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        },
+        {
+          "title": "File:Neon Infinity Tunnel with Grid (55258879288).jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Neon_Infinity_Tunnel_with_Grid_(55258879288).jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/64/Neon_Infinity_Tunnel_with_Grid_%2855258879288%29.jpg/960px-Neon_Infinity_Tunnel_with_Grid_%2855258879288%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/grid/final-02.jpg",
+          "author": "Michael Gaylard from Horsham, UK",
+          "license": "CC BY 4.0",
+          "description": "A striking visual depicting a geometric tunnel formed by glowing neon lines in vibrant pink and electric blue, seen through a dark, grid-like structure. The perspective draws the viewer into the depths of the illuminated passageway.",
+          "review": "Visually inspected by research agent; subject relevance checked. See background note for limitations."
+        }
+      ],
+      "researchNote": "Références finales installation lumineuse magenta/bleu et répétition en perspective. Ancien portrait de DJ rejeté."
+    }
+  },
+  "designReferences": {
+    "design-alba": {
+      "key": "design-alba",
+      "references": [
+        {
+          "title": "https://en.wikipedia.org/wiki/File:Alba_A_Wildlife_Adventure_Cover_Art.jpg",
+          "query": "Alba:_A_Wildlife_Adventure",
+          "sourceUrl": "https://en.wikipedia.org/wiki/Alba:_A_Wildlife_Adventure",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/en/thumb/0/03/Alba_A_Wildlife_Adventure_Cover_Art.jpg/250px-Alba_A_Wildlife_Adventure_Cover_Art.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/design-alba/01.jpg",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected: actual game environment/artwork. Research-only inspiration, no characters/logo/text to reproduce."
+        }
+      ]
+    },
+    "design-short-hike": {
+      "key": "design-short-hike",
+      "references": [
+        {
+          "title": "Claire, the titular character of A Short Hike, flying over the park. The game's logo is positioned on the right side of the character.",
+          "query": "A_Short_Hike",
+          "sourceUrl": "https://en.wikipedia.org/wiki/A_Short_Hike",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/en/thumb/9/9d/A_Short_Hike.png/250px-A_Short_Hike.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/design-short-hike/01.png",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected: actual game environment/artwork. Research-only inspiration, no characters/logo/text to reproduce."
+        },
+        {
+          "title": "Claire, the titular character of A Short Hike, flying over the park",
+          "query": "A_Short_Hike",
+          "sourceUrl": "https://en.wikipedia.org/wiki/A_Short_Hike",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/A_Short_Hike_Screenshot_5.png/250px-A_Short_Hike_Screenshot_5.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/background-reboot/references/design-short-hike/02.png",
+          "author": "See linked source image page",
+          "license": "Unverified, research only; do not redistribute",
+          "licenseUrl": null,
+          "description": "Lead/reference image from actual fetched article HTML",
+          "review": "Visually inspected: actual game environment/artwork. Research-only inspiration, no characters/logo/text to reproduce."
+        }
+      ]
+    }
+  },
+  "excluded": {
+    "plain": "User theme color, no illustration",
+    "custom": "User supplied photograph, no replacement"
+  },
+  "rejected": "PDF/books/video thumbs, portrait of game developer, DJ portrait, skyline without balloons, character drawing for haunted, branches without village; excluded from final manifest."
+}

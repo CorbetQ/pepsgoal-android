@@ -1,0 +1,16 @@
+{
+  "id": "sakura",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "b1d01f109ff8f0e20d8de4bf552562d5963c2588042faad5cffcd2b9a237c228",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Cherry_blossom"
+  ],
+  "brief": "docs/design/background-reboot/briefs/sakura.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device or battery validation."
+}

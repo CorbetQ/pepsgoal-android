@@ -1,0 +1,16 @@
+{
+  "id": "planet",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "ccc1bb3be696f5d1d420cc33d9724ef7a4e2e89323193259905793c1a14748ac",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Top_view_of_the_rings_of_Saturn_by_Cassini_-_October_10,_2013.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/planet.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

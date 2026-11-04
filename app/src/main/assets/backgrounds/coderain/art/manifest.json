@@ -1,0 +1,16 @@
+{
+  "id": "coderain",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "0d64d9df24501b6d6e7f0539bfa01721ff8ed1cfa777b01ba570e3c786ac8c4b",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Matrix_digital_rain"
+  ],
+  "brief": "docs/design/background-reboot/briefs/coderain.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

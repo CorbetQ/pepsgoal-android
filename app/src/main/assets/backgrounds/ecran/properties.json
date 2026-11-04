@@ -1,0 +1,21 @@
+{
+  "id": "ecran",
+  "palette": {
+    "saturation": 1.08,
+    "contrast": 1.13
+  },
+  "lighting": {
+    "strength": 1.2,
+    "shadowStrength": 1.25,
+    "lightColor": "#DAEBF4",
+    "shadowColor": "#0D1B32"
+  },
+  "texture": {
+    "material": "water",
+    "strength": 0.55
+  },
+  "compatibility": "artistic",
+  "framing": {
+    "focusY": 0.08
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "valentine",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "142af3a22ea254466ae1ddb33f31895643b49158bed64233da3cb9d4c6d82a46",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Rose_garden"
+  ],
+  "brief": "docs/design/background-reboot/briefs/valentine.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

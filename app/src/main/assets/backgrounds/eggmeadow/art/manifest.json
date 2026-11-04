@@ -1,0 +1,16 @@
+{
+  "id": "eggmeadow",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "894964b318063c067e4e9ee73b642e401db63b382e52dacb8a73ba34a87adf89",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Easter_egg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/eggmeadow.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

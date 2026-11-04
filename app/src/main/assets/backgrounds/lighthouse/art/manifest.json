@@ -1,0 +1,16 @@
+{
+  "id": "lighthouse",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "dc632e2bab3c3ed56539932ee76452493feb66d2d867d6f26bf4b09819d934a6",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Petit_Minou_Lighthouse"
+  ],
+  "brief": "docs/design/background-reboot/briefs/lighthouse.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

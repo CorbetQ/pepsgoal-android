@@ -188,12 +188,7 @@ fun goodOutdoorDays(f: Forecast?): List<WxDay> =
  * Sombre entre le coucher et le lever du soleil : heures de la ville de la météo si elles sont connues, sinon
  * estimation selon la saison (France).
  */
-fun sunDark(w: Forecast?, now: java.time.LocalDateTime = localDateTime(nowMs())): Boolean {
-    val t = now.hour * 60 + now.minute
-    val d = w?.daily?.firstOrNull { it.day == ymd(now.toLocalDate()) }
-    val rise = d?.sunrise?.drop(11)?.take(5)?.let(::hmMinutes); val set = d?.sunset?.drop(11)?.take(5)?.let(::hmMinutes)
-    if (rise != null && set != null) return t < rise || t > set
-    val k = kotlin.math.cos((now.dayOfYear - 172) / 365f * 2 * Math.PI.toFloat())
-    val sr = ((7.25f - 1.25f * k) * 60).toInt(); val ss = ((19.75f + 2.1f * k) * 60).toInt()
-    return t < sr || t > ss
+fun sunDark(w: Forecast?, now: java.time.LocalDateTime = java.time.Instant.ofEpochMilli(nowMs()).atZone(SceneAtmosphere.zone(null, w)).toLocalDateTime()): Boolean {
+    val zone = SceneAtmosphere.zone(null, w)
+    return SceneAtmosphere.resolve(now.atZone(zone).toInstant(), forecast = w).sunDown
 }

@@ -1,0 +1,21 @@
+{
+  "id": "dunes",
+  "palette": {
+    "saturation": 1.25,
+    "contrast": 1.16
+  },
+  "lighting": {
+    "strength": 1.35,
+    "shadowStrength": 1.25,
+    "lightColor": "#FFE1A0",
+    "shadowColor": "#653452"
+  },
+  "texture": {
+    "material": "sand",
+    "strength": 0.8
+  },
+  "compatibility": "outdoor",
+  "framing": {
+    "focusY": 0.5
+  }
+}

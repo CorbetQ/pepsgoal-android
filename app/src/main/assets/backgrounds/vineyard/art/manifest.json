@@ -1,0 +1,16 @@
+{
+  "id": "vineyard",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "14864d94f4cef2b66baf0eb35cef793c9d670ebe1f81c50222a38f614021b879",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Vineyard"
+  ],
+  "brief": "docs/design/background-reboot/briefs/vineyard.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

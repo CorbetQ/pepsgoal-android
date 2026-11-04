@@ -1,0 +1,16 @@
+{
+  "id": "nighttrain",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "6b2b8d5e749ef687652a22183dd913ed6b2b679e836c54b8f949c17a1b261793",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Jacobite_on_Glenfinnan_Viaduct_2_20211024.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/nighttrain.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

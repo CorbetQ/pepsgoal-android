@@ -1,0 +1,17 @@
+{
+  "id": "tram",
+  "revision": "v2",
+  "file": "artwork.png",
+  "sha256": "defc91ecfd213298a0a887e94c8eb8b05b4eca87bf099d3a1378ca819fa1c2a2",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Station_Tramway_Ralliement_Ligne_A_Angers_1.jpg",
+    "https://commons.wikimedia.org/wiki/File:Angers_-_Tramway_sur_le_pont_Confluences.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/tram.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

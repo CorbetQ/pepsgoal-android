@@ -1,0 +1,16 @@
+{
+  "id": "jellyfish",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "34fb8407d0e4e7c005a71a3a3af0ba3d158165f79b2b9b091dd1bafca8c1c20f",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Jellyfish_-_Flickr_-_NOAA_Ocean_Exploration_%5E_Research.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/jellyfish.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

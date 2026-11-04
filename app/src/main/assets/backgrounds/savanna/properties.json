@@ -1,0 +1,21 @@
+{
+  "id": "savanna",
+  "palette": {
+    "saturation": 1.22,
+    "contrast": 1.13
+  },
+  "lighting": {
+    "strength": 1.28,
+    "shadowStrength": 1.25,
+    "lightColor": "#FFD286",
+    "shadowColor": "#56233F"
+  },
+  "texture": {
+    "material": "paper",
+    "strength": 0.8
+  },
+  "compatibility": "outdoor",
+  "framing": {
+    "focusY": 0.5
+  }
+}

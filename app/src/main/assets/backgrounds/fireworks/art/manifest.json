@@ -1,0 +1,16 @@
+{
+  "id": "fireworks",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "a64d5dfae8240c113065f1353da9b5ca70a1b723613ea471adf515fe59f5207e",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Fireworks_in_Kuwait_City_(24244363641).jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/fireworks.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "magma",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "3683296f7191f6af01decbed824d02fda9f102b4bb0e3c50e40237762b2c3c20",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Lava"
+  ],
+  "brief": "docs/design/background-reboot/briefs/magma.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

@@ -96,6 +96,8 @@ baselineProfile {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16")
     // Installation du profil de référence au premier lancement (démarrage et défilement plus fluides)
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     baselineProfile(project(":baselineprofile"))
@@ -145,4 +147,100 @@ dependencies {
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     "playImplementation"("com.google.android.play:app-update-ktx:2.1.0")
     "playImplementation"("com.google.android.play:review-ktx:2.0.2")
+}
+
+// Background authoring lives entirely in assets/backgrounds. Layer sources are compiled, never evaluated at runtime.
+val backgroundAssetsDirectory = layout.projectDirectory.dir("src/main/assets/backgrounds")
+val generatedBackgroundDirectory = layout.buildDirectory.dir("generated/backgrounds/kotlin")
+val generateBackgroundAssets by tasks.registering {
+    group = "build"
+    description = "Validate background assets and compile their vector layers and animation properties"
+    inputs.dir(backgroundAssetsDirectory)
+    outputs.dir(generatedBackgroundDirectory)
+    doLast {
+        val root = backgroundAssetsDirectory.asFile
+        val parser = groovy.json.JsonSlurper()
+        fun json(file: java.io.File) = parser.parse(file) as Map<*, *>
+        val catalog = json(root.resolve("catalog.json"))
+        require(catalog["formatVersion"] == 1) { "Unsupported background catalog format" }
+        val ids = (catalog["backgrounds"] as List<*>).map { it as String }
+        require(ids.size == ids.toSet().size) { "Duplicate background identifiers" }
+        val source = StringBuilder("// GENERATED from assets/backgrounds; edit those files instead.\npackage fr.pepsgoal.app.ui\n\n")
+        source.append(root.resolve("_shared/imports.txt").readText()).append("\n")
+        val artworkIds = ids.filter { root.resolve("$it/art/artwork.png").isFile }
+        source.append("private val BACKGROUND_ARTWORK_IDS: Set<String> = setOf(")
+            .append(artworkIds.joinToString(", ") { "\"$it\"" }).append(")\n")
+        source.append("internal fun hasSceneArtwork(key: String): Boolean = key.removePrefix(\"s:\") in BACKGROUND_ARTWORK_IDS\n")
+        source.append("private val BACKGROUND_STYLES: Map<String, BackgroundStyle> = mapOf(\n")
+        for (id in ids) {
+            require(id.matches(Regex("[a-z][a-z0-9-]*"))) { "Invalid background identifier: $id" }
+            val folder = root.resolve(id)
+            val props = json(folder.resolve("properties.json"))
+            val animation = json(folder.resolve("animations.json"))
+            require(props["id"] == id) { "Background directory/id mismatch: $id" }
+            val palette = props["palette"] as Map<*, *>
+            val lighting = props["lighting"] as Map<*, *>
+            val texture = props["texture"] as Map<*, *>
+            val framing = props["framing"] as Map<*, *>
+            fun number(map: Map<*, *>, key: String, range: ClosedFloatingPointRange<Double>): String {
+                val value = (map[key] as? Number)?.toDouble() ?: error("$id: missing numeric $key")
+                require(value.isFinite() && value in range) { "$id: invalid $key" }
+                return "${value}f"
+            }
+            fun color(key: String): String {
+                val value = lighting[key] as? String ?: error("$id: missing $key")
+                require(value.matches(Regex("#[0-9a-fA-F]{6}"))) { "$id: invalid $key" }
+                return "\"$value\""
+            }
+            val material = texture["material"] as String
+            require(material in setOf("paper", "water", "stone", "sand", "wood", "starlight")) { "$id: unknown texture" }
+            val cycle = (animation["cycleMs"] as Number).toInt()
+            val fps = (animation["maxFps"] as Number).toInt()
+            val overlay = animation["overlay"] as? String ?: "none"
+            val overlayCount = (animation["overlayCount"] as? Number)?.toInt() ?: 0
+            require(overlay in setOf("none","stellar","bubbles","embers","glyphs","aurora","glass","lanterns","snow","fireworks","hearts","petals","stadium","scoreboard")) { "$id: unknown artwork overlay" }
+            require(overlayCount in 0..40) { "$id: invalid artwork particle budget" }
+            require(cycle in 6000..180000 && fps in 1..24) { "$id: invalid animation budget" }
+            require(animation["pauseWhenHidden"] == true && animation["respectReducedMotion"] == true && animation["respectPowerSave"] == true) {
+                "$id: animation must preserve lifecycle, accessibility and energy settings"
+            }
+            val capability = when (props["compatibility"]) {
+                "outdoor" -> "OUTDOOR"
+                "window" -> "WINDOW"
+                "artistic" -> "ARTISTIC"
+                else -> error("$id: invalid compatibility")
+            }
+            source.append("    \"$id\" to BackgroundStyle(\"$id\", ")
+                .append(number(palette, "saturation", .5..1.8)).append(", ")
+                .append(number(palette, "contrast", .8..1.4)).append(", ")
+                .append(number(lighting, "strength", 0.0..2.0)).append(", ")
+                .append(number(lighting, "shadowStrength", 0.0..2.0)).append(", ")
+                .append(color("lightColor")).append(", ").append(color("shadowColor")).append(", ")
+                .append("\"$material\", ").append(number(texture, "strength", 0.0..1.5))
+                .append(", $cycle, $fps, ").append(number(animation, "phaseAtRest", 0.0..1.0)).append(", ").append(number(framing, "focusY", 0.0..1.0))
+                .append(", fr.pepsgoal.core.SceneCapability.$capability, ")
+                .append(number(framing + mapOf("focusX" to (framing["focusX"] ?: .5)), "focusX", 0.0..1.0))
+                .append(", \"$overlay\", $overlayCount),\n")
+            val layers = folder.resolve("layers")
+            require(layers.isDirectory && layers.listFiles()?.isNotEmpty() == true) { "$id: missing layers" }
+        }
+        val surface = json(root.resolve("plain/layers/surface.json"))["source"] as String
+        require(surface == "theme.bg" || surface.matches(Regex("#[0-9a-fA-F]{6}"))) { "Invalid plain background source" }
+        source.append(")\ninternal val PLAIN_BACKGROUND_SOURCE = \"$surface\"\ninternal fun backgroundStyle(key: String): BackgroundStyle = BACKGROUND_STYLES[key.removePrefix(\"s:\")] ?: BACKGROUND_STYLES.getValue(\"pop\")\n")
+        root.resolve("_shared").listFiles()!!.filter { it.name.endsWith(".layer.kts") }.sortedBy { it.name }.forEach {
+            source.append("\n// Shared asset: ${it.name}\n").append(it.readText()).append("\n")
+        }
+        for (id in ids) {
+            root.resolve("$id/layers").listFiles()!!.filter { it.name.endsWith(".layer.kts") }.sortedBy { it.name }.forEach {
+                source.append("\n// Source: assets/backgrounds/$id/layers/${it.name}\n").append(it.readText()).append("\n")
+            }
+        }
+        val destination = generatedBackgroundDirectory.get().file("fr/pepsgoal/app/ui/BackgroundAssets.generated.kt").asFile
+        destination.parentFile.mkdirs()
+        destination.writeText(source.toString())
+    }
+}
+android.sourceSets.getByName("main").java.srcDir(generatedBackgroundDirectory)
+tasks.matching { (it.name.startsWith("compile") && it.name.endsWith("Kotlin")) || it.name.startsWith("lint") }.configureEach {
+    dependsOn(generateBackgroundAssets)
 }

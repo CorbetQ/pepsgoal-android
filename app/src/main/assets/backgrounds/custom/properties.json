@@ -1,0 +1,21 @@
+{
+  "id": "custom",
+  "palette": {
+    "saturation": 1.0,
+    "contrast": 1.0
+  },
+  "lighting": {
+    "strength": 0.0,
+    "shadowStrength": 1.25,
+    "lightColor": "#FFD286",
+    "shadowColor": "#242452"
+  },
+  "texture": {
+    "material": "paper",
+    "strength": 0.0
+  },
+  "compatibility": "artistic",
+  "framing": {
+    "focusY": 0.5
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "angevine",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "100669fbabf60f7e6324b38afd703863f11d2be47062c5de8866c8878305f857",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Pontbarr%C3%A905.jpg",
+    "https://commons.wikimedia.org/wiki/File:GD-FR-Anjou-Herpini%C3%A8re02.JPG",
+    "https://commons.wikimedia.org/wiki/File:GD-FR-Anjou-La_Herpini%C3%A8re.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/angevine.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}
