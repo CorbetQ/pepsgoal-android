@@ -1,4 +1,4 @@
-# Packs de thème — 8.9.1
+# Packs de thème — 9.0.0
 
 Un pack réunit l'icône du lanceur, le fond illustré, les couleurs d'accent et
 l'ambiance. Le catalogue réutilise les ressources existantes : 63 packs publics
@@ -120,3 +120,24 @@ conserve le choix de suivi automatique téléphone/soleil et les réglages
 d’accessibilité. Comme pour les autres packs, Material You et les surcharges
 saisonnières sont désactivés pour rendre le style choisi visible. Aucun droit
 acheté n’est retiré et aucun nouvel article gratuit n’est inscrit au compte.
+
+## Boutique par catégories — 9.0.0
+
+Les cinq rayons (packs, fonds, thèmes, ambiances, icônes) utilisent la taxonomie
+partagée `ShopCategories.kt` : PepsGoal, Stades, Villes et voyages, Nature et
+paysages, Espace, Abstraits et couleurs, Saisons et fêtes, Douceurs, Symboles et
+objets. Les catégories vides sont omises après filtrage des secrets.
+
+Chaque catégorie dispose d’un titre, d’un compteur et d’un carrousel horizontal
+paresseux. Les clés stables de catégorie et d’article conservent leur identité
+pendant les recompositions. La largeur des cartes suit la largeur disponible,
+avec un aperçu de la suite du carrousel sur téléphone. La hauteur reste libre
+pour accueillir les textes et contrôles. Les offres de saison passent devant les
+autres articles de leur catégorie. Les aperçus restent statiques.
+
+Les cartes et leurs actions existantes sont réutilisées : achat, application,
+essai d’ambiance et cadeau. Les mêmes filtres protègent les éléments secrets.
+`ShopCategoriesTest` vérifie le regroupement des clubs, les grandes familles et
+la conservation de tous les articles dans le classement. Tests core et compilation
+Kotlin téléphone/Wear exécutés avec succès. Sans appareil connecté, le défilement,
+TalkBack et les grands textes restent à vérifier sur téléphone.

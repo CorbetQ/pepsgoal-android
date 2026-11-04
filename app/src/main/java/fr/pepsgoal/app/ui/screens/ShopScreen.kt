@@ -1,5 +1,8 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -89,36 +92,29 @@ fun ShopScreen(ui: AppState) {
             val packs = THEME_PACKS.filter { it.eggKey == null || pg.packUnlocked(it, u) }
                 .sortedWith(compareBy<ThemePack> { if (it.eggKey != null) 0 else if (pg.packQuote(it, u).owned) 1 else 2 }
                     .thenBy { !pg.packQuote(it, u).available })
-            packs.forEach { pack ->
-                item("pack:${pack.key}") {
-                    ThemePackCard(ui, pack, curIcon) { curIcon = AppIcons.current(ctx) }
-                }
+            shopCarousels("packs", packs, { it.key }, { it.category }) { pack ->
+                ThemePackCard(ui, pack, curIcon) { curIcon = AppIcons.current(ctx) }
             }
             item("pack-secrets") {
                 Hint("Des packs secrets se découvrent avec les surprises de PepsGoal. Une fois trouvés, ils apparaissent ici et restent dans ta collection.")
             }
         }
-        if (tab == "icons") AppIcons.ALL.filter { it.eggKey == null || pg.owns("icon:${it.key}", it.price, u) }.chunked(2).forEachIndexed { row, pair ->
-            item("ic$row") {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    pair.forEach { ic ->
-                        val owned = pg.owns("icon:${ic.key}", ic.price, u); val on = curIcon == ic.key
-                        Glass(Modifier.weight(1f), pad = 14.dp, onClick = { purchase("icon:${ic.key}", ic.label, ic.price, ic.season) { AppIcons.set(ctx, ic.key); curIcon = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") } }) {
-                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                AppIconPreview(ic, 76.dp, on)
-                                if (ic.eggKey == null) GiftBtn(ui, "icon:${ic.key}", ic.label, ic.price, Modifier.align(Alignment.TopEnd))
-                            }
-                            Text(ic.label, Modifier.fillMaxWidth().padding(top = 10.dp), fontWeight = FontWeight.ExtraBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
-                            ic.season?.let { SeasonTag(it, owned) }
-                            PriceTag(owned, on, ic.price, wallet, pg.buyable("icon:${ic.key}", ic.price, ic.season))
-                        }
-                    }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+        if (tab == "icons") shopCarousels("icons",
+            AppIcons.ALL.filter { it.eggKey == null || pg.owns("icon:${it.key}", it.price, u) },
+            { it.key }, { shopCategory(it.key, it.season) }) { ic ->
+            val owned = pg.owns("icon:${ic.key}", ic.price, u); val on = curIcon == ic.key
+            Glass(Modifier.fillMaxWidth(), pad = 14.dp, onClick = { purchase("icon:${ic.key}", ic.label, ic.price, ic.season) { AppIcons.set(ctx, ic.key); curIcon = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") } }) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    AppIconPreview(ic, 76.dp, on)
+                    if (ic.eggKey == null) GiftBtn(ui, "icon:${ic.key}", ic.label, ic.price, Modifier.align(Alignment.TopEnd))
                 }
+                Text(ic.label, Modifier.fillMaxWidth().padding(top = 10.dp), fontWeight = FontWeight.ExtraBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
+                ic.season?.let { SeasonTag(it, owned) }
+                PriceTag(owned, on, ic.price, wallet, pg.buyable("icon:${ic.key}", ic.price, ic.season))
             }
         }
-        else if (tab == "themes") SHOP_THEMES.sortedBy { t -> val ss = t.season; when { ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.forEach { t ->
-            item("th:${t.key}") {
+        if (tab == "themes") shopCarousels("themes", SHOP_THEMES.sortedBy { if (it.season != null && seasonWindow(it.season!!) != null) 0 else 1 },
+            { it.key }, { shopCategory(if (it.bg.startsWith("s:")) it.bg.removePrefix("s:") else it.key, it.season) }) { t ->
                 val owned = pg.owns("theme:${t.key}", t.price, u)
                 val on = u.settings.accentCustom == t.colors && u.settings.bg == t.bg
                 Glass(pad = 0.dp, onClick = { purchase("theme:${t.key}", t.name, t.price, t.season) { pg.applyTheme(t); ui.themeTick++; ui.toast("Thème « ${t.name} » appliqué.", "palette") } }) {
@@ -142,7 +138,6 @@ fun ShopScreen(ui: AppState) {
                         Box(Modifier.width(110.dp)) { PriceTag(owned, on, t.price, wallet, pg.buyable("theme:${t.key}", t.price, t.season)) }
                     }
                 }
-            }
         }
         // Ambiances : thèmes d'interface complets (fond, texte, verre), à essayer avant d'acheter
         if (tab == "modes") {
@@ -157,53 +152,41 @@ fun ShopScreen(ui: AppState) {
                     }
                 }
             }
-            val sorted = SHOP_MODES.sortedBy { if (it.dark) 0 else 1 }
-            sorted.chunked(2).forEachIndexed { row, pair ->
-                item("mode$row") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        pair.forEach { m -> ModeCard(ui, m, wallet, Modifier.weight(1f), onBuy = {
-                            purchase("mode:${m.key}", m.name, m.price) { ui.themePreview = null; u.settings.theme = "m:${m.key}"; pg.store.commit(); ui.themeTick++; ui.toast("Ambiance « ${m.name} » appliquée.", "palette") }
-                        }, onTry = {
-                            ui.themePreview = "m:${m.key}"; ui.toast("Essai de « ${m.name} » pendant 10 secondes.", "eye")
-                            scope.launch { kotlinx.coroutines.delay(10_000); if (ui.themePreview == "m:${m.key}") ui.themePreview = null }
-                        }) }
-                        if (pair.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
+            shopCarousels("modes", SHOP_MODES, { it.key }, { shopCategory(it.key) }) { m ->
+                ModeCard(ui, m, wallet, Modifier.fillMaxWidth(), onBuy = {
+                    purchase("mode:${m.key}", m.name, m.price) { ui.themePreview = null; u.settings.theme = "m:${m.key}"; pg.store.commit(); ui.themeTick++; ui.toast("Ambiance « ${m.name} » appliquée.", "palette") }
+                }, onTry = {
+                    ui.themePreview = "m:${m.key}"; ui.toast("Essai de « ${m.name} » pendant 10 secondes.", "eye")
+                    scope.launch { kotlinx.coroutines.delay(10_000); if (ui.themePreview == "m:${m.key}") ui.themePreview = null }
+                })
             }
             if (shopMode(u.settings.theme) != null) item("modeoff") {
                 Glass { SetRow("Revenir à un thème de base", "Clair, Sombre, OLED, Météo ou Auto, dans Paramètres › Apparence.") { PButton("Sombre", { u.settings.theme = "dark"; pg.store.commit(); ui.themeTick++ }, small = true, kind = "ghost") } }
             }
         }
-        // Arrière-plans illustrés : aperçu animé, deux par ligne ; saison en cours d'abord
-        if (tab == "bgs") SHOP_BGS.sortedBy { b -> val ss = b.season; when { b.freeNow() -> -1; ss == null -> 1; seasonWindow(ss) != null -> 0; else -> 2 } }.chunked(2).forEachIndexed { row, pair ->
-            item("bg$row") {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    pair.forEach { b ->
-                        val owned = pg.ownsBg(b, u); val on = u.settings.bg == "s:${b.key}"
-                        // Carte de fond : aperçu (rayon 18), nom ; actif = bord lime et pilule « ✓ Actif »
-                        Glass(Modifier.weight(1f), pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else null, onClick = {
-                            val apply = { pg.applyBg(b); ui.themeTick++; ui.toast("Fond « ${b.name} » appliqué.", "image") }
-                            // Scène de saison : offerte pendant sa période
-                            if (b.freeNow()) apply() else purchase("bg:${b.key}", b.name, b.price, b.season) { apply() } }) {
-                            Box(Modifier.fillMaxWidth().padding(6.dp).aspectRatio(.66f).clip(RoundedCornerShape(18.dp)).background(Brush.verticalGradient(b.sky.map(::hex)))) {
-                                SceneBg(b.key, Modifier.fillMaxSize(), still = true)
-                                if (on) Row(Modifier.align(Alignment.TopStart).padding(8.dp).background(vivid(p.type("routine").c), CircleShape).padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Pi("check", size = 14.dp, tint = fr.pepsgoal.app.ui.theme.PLUM); Text(" Actif", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM)
-                                }
-                                GiftBtn(ui, "bg:${b.key}", b.name, b.price, Modifier.align(Alignment.TopEnd).padding(6.dp), onImage = true)
-                            }
-                            Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp, top = 2.dp)) {
-                                Text(b.name, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, maxLines = 1)
-                                Muted(b.desc, small = true, maxLines = 2)
-                                if (on) Chip("Sur tout l’écran", "image", p.type("routine").c, modifier = Modifier.padding(top = 6.dp))
-                                b.season?.let { SeasonTag(it, owned) }
-                                b.freeIn?.let { FreeTag(it) }
-                                PriceTag(owned, on, if (b.freeNow()) 0 else b.price, wallet, pg.buyable("bg:${b.key}", b.price, b.season))
-                            }
-                        }
+        // Arrière-plans illustrés : les offres de saison restent prioritaires dans leur catégorie.
+        if (tab == "bgs") shopCarousels("bgs", SHOP_BGS.sortedBy { if (it.freeNow()) 0 else if (it.season != null && seasonWindow(it.season!!) != null) 1 else 2 },
+            { it.key }, { shopCategory(it.key, it.season) }) { b ->
+            val owned = pg.ownsBg(b, u); val on = u.settings.bg == "s:${b.key}"
+            // Carte de fond : aperçu (rayon 18), nom ; actif = bord lime et pilule « ✓ Actif »
+            Glass(Modifier.fillMaxWidth(), pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else null, onClick = {
+                val apply = { pg.applyBg(b); ui.themeTick++; ui.toast("Fond « ${b.name} » appliqué.", "image") }
+                // Scène de saison : offerte pendant sa période
+                if (b.freeNow()) apply() else purchase("bg:${b.key}", b.name, b.price, b.season) { apply() } }) {
+                Box(Modifier.fillMaxWidth().padding(6.dp).height(230.dp).clip(RoundedCornerShape(18.dp)).background(Brush.verticalGradient(b.sky.map(::hex)))) {
+                    SceneBg(b.key, Modifier.fillMaxSize(), still = true)
+                    if (on) Row(Modifier.align(Alignment.TopStart).padding(8.dp).background(vivid(p.type("routine").c), CircleShape).padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Pi("check", size = 14.dp, tint = fr.pepsgoal.app.ui.theme.PLUM); Text(" Actif", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = fr.pepsgoal.app.ui.theme.PLUM)
                     }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    GiftBtn(ui, "bg:${b.key}", b.name, b.price, Modifier.align(Alignment.TopEnd).padding(6.dp), onImage = true)
+                }
+                Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp, top = 2.dp)) {
+                    Text(b.name, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, maxLines = 1)
+                    Muted(b.desc, small = true, maxLines = 2)
+                    if (on) Chip("Sur tout l’écran", "image", p.type("routine").c, modifier = Modifier.padding(top = 6.dp))
+                    b.season?.let { SeasonTag(it, owned) }
+                    b.freeIn?.let { FreeTag(it) }
+                    PriceTag(owned, on, if (b.freeNow()) 0 else b.price, wallet, pg.buyable("bg:${b.key}", b.price, b.season))
                 }
             }
         }
@@ -225,7 +208,7 @@ private fun ModeCard(ui: AppState, m: ShopMode, wallet: Int, modifier: Modifier,
     Glass(modifier, pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else if (trying) p.focusEdge else null, onClick = onBuy) {
         Box(Modifier.fillMaxWidth().padding(6.dp).aspectRatio(.74f).clip(RoundedCornerShape(18.dp))) {
             ThemePreview(themeLook("m:${m.key}"), Modifier.fillMaxSize(), accent = m.accent.map(::hex))
-            MiniPlaque(if (m.dark) "Sombre" else "Clair", Modifier.align(Alignment.TopStart).padding(8.dp))
+            MiniPlaque(if (m.followsDayNight) "Jour/nuit" else "Ambiance fixe", Modifier.align(Alignment.TopStart).padding(8.dp))
             GiftBtn(ui, "mode:${m.key}", m.name, m.price, Modifier.align(Alignment.BottomEnd).padding(6.dp), onImage = true)
             if (trying) Chip("Essai", "eye", p.flame, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
         }
@@ -320,5 +303,28 @@ fun FlameQuestsCard(ui: AppState, modifier: Modifier = Modifier) {
             }
         }
         Text("Et toujours : chaque validation (8 à 40 flammes selon le type) et chaque palier de badge (25 à 400 flammes).", Modifier.padding(top = 10.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = fr.pepsgoal.app.ui.theme.PLUM)
+    }
+}
+
+/** Each row retains its scroll position under a stable department/category key. */
+private fun <T> LazyListScope.shopCarousels(
+    department: String, entries: List<T>, key: (T) -> String,
+    category: (T) -> ShopCategory, card: @Composable (T) -> Unit,
+) {
+    for (group in ShopCategory.entries) {
+        val contents = entries.filter { category(it) == group }
+        if (contents.isEmpty()) continue
+        item("$department:${group.name}") {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                CardHead(group.label) { Count(contents.size) }
+                Muted("Fais défiler horizontalement pour explorer", small = true)
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val cardWidth = (maxWidth - 24.dp).coerceAtMost(360.dp).coerceAtLeast(1.dp)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 6.dp)) {
+                        items(contents, key = key) { entry -> Box(Modifier.width(cardWidth)) { card(entry) } }
+                    }
+                }
+            }
+        }
     }
 }
