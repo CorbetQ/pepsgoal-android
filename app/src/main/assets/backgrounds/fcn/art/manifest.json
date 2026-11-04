@@ -1,0 +1,17 @@
+{
+  "id": "fcn",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "20d10d79c2f87858c6a3af40dac070d3c826eaf523d8cef9c4ed9cf2621f9bc1",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Stade_de_la_Beaujoire,_vue_de_la_tribune_pr%C3%A9sidentielle.jpg",
+    "https://commons.wikimedia.org/wiki/File:Stade_Beaujoire_-_Nantes_(FR44)_-_2022-09-18_-_1.jpg"
+  ],
+  "brief": "docs/design/football-packs-8.8/brief.md",
+  "review": "accepted",
+  "reviewScope": "Revue statique indépendante du 2026-11-04 : référence photo /workspace/.pepsgoal/football-packs-8.8/references/fcn/01.jpg, master v1 et composite natif app/build/reports/scenes/candidates/fcn-v1-tall-day.png 360x780 avec surcadrage 8 % réellement ouverts. Architecture, lumière/ombres cartoon, profondeur, absence de lettrage et cadrage acceptés. Sans interface superposée, vignette boutique, animation ni téléphone physique."
+}

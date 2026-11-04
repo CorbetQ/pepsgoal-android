@@ -41,7 +41,7 @@ class ThemePacksTest {
         assertTrue(SHOP_THEMES.all { t -> public.any { it.themeKey == t.key } })
         assertTrue(SHOP_BGS.all { b -> public.any { it.bgKey == b.key } })
         assertTrue(SHOP_MODES.all { m -> public.any { it.modeKey == m.key } })
-        assertTrue(SHOP_ICONS.filterValues { it.price > 0 }.keys.all { i -> public.any { it.iconKey == i } })
+        assertTrue(SHOP_ICONS.filterValues { it.price > 0 && it.eggKey == null }.keys.all { i -> public.any { it.iconKey == i } })
         assertTrue(SHOP_ICONS.values.all { it.price >= 0 })
         assertEquals(0, SHOP_ICONS.getValue("mono").price)
         assertEquals(150, SHOP_ICONS.getValue("galaxy").price)

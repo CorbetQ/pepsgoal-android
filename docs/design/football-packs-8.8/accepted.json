@@ -1,0 +1,22 @@
+{
+  "backgrounds": {
+    "psg": {
+      "verdict": "accepted",
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/football-packs-8.8/art/psg/v1.png",
+      "scope": "Revue statique indépendante du 2026-11-04 : référence photo /workspace/.pepsgoal/football-packs-8.8/references/psg/01.jpg, master v1 et composite natif app/build/reports/scenes/candidates/psg-v1-tall-day.png 360x780 avec surcadrage 8 % réellement ouverts. Architecture, lumière/ombres cartoon, profondeur, absence de lettrage et cadrage acceptés. Sans interface superposée, vignette boutique, animation ni téléphone physique."
+    },
+    "fcb": {
+      "verdict": "accepted",
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/football-packs-8.8/art/fcb/v1.png",
+      "scope": "Revue statique indépendante du 2026-11-04 : référence photo /workspace/.pepsgoal/football-packs-8.8/references/fcb/02.jpg, master v1 et composite natif app/build/reports/scenes/candidates/fcb-v1-tall-day.png 360x780 avec surcadrage 8 % réellement ouverts. Architecture, lumière/ombres cartoon, profondeur, absence de lettrage et cadrage acceptés. Sans interface superposée, vignette boutique, animation ni téléphone physique."
+    },
+    "fcn": {
+      "verdict": "accepted",
+      "revision": "v1",
+      "master": "/workspace/.pepsgoal/football-packs-8.8/art/fcn/v1.png",
+      "scope": "Revue statique indépendante du 2026-11-04 : référence photo /workspace/.pepsgoal/football-packs-8.8/references/fcn/01.jpg, master v1 et composite natif app/build/reports/scenes/candidates/fcn-v1-tall-day.png 360x780 avec surcadrage 8 % réellement ouverts. Architecture, lumière/ombres cartoon, profondeur, absence de lettrage et cadrage acceptés. Sans interface superposée, vignette boutique, animation ni téléphone physique."
+    }
+  }
+}

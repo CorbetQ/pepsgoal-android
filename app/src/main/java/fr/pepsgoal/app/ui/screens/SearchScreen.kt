@@ -95,26 +95,17 @@ fun SearchScreen(ui: AppState, initial: String) {
                     IconTile("sparkle", p.flame2, p.pink, 44.dp, 14.dp)
                     Text(egg.text, Modifier.weight(1f), fontWeight = FontWeight.Bold)
                 }
-                // Surprise « sco » : débloquer ne veut pas dire appliquer ; un bouton l'applique tout de suite
-                if (egg.egg == "sco") {
-                    val on = ui.themePackActive("sco")
-                    PButton(if (on) "Pack SCO appliqué" else "Appliquer le pack SCO", {
-                        if ("sco" !in pg.eggsFound(u)) ui.egg("sco", egg.text, egg.fx, say = false)
-                        val error = ui.applyThemePack("sco")
-                        ui.toast(error ?: "⚫⚪ Pack SCO appliqué : icône, stade, couleurs et ambiance. À retrouver dans Boutique › Packs.", if (error == null) "palette" else "x")
-                    }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
-                }
-                // Surprise « srfc » : fond « Écran géant » (OL 4 – 0 SRFC) et ambiance « Rouge & Noir », à appliquer d'un geste
-                if (egg.egg == "srfc") {
-                    val on = ui.themePackActive("srfc")
-                    Muted("Le fond « Écran géant » et l’ambiance « Rouge & Noir » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", Modifier.padding(top = 8.dp), small = true)
-                    PButton(if (on) "Pack SRFC appliqué" else "Appliquer le pack SRFC", {
-                        if ("srfc" !in pg.eggsFound(u)) ui.egg("srfc", egg.text, egg.fx, say = false)
-                        val error = ui.applyThemePack("srfc")
-                        ui.toast(error ?: "🔴⚫ Pack SRFC appliqué : icône, fond, couleurs et ambiance. À retrouver dans Boutique › Packs.", if (error == null) "palette" else "x")
-                    }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
-                }
-                if (egg.egg in setOf("sco", "srfc", "angers")) {
+                val pack = THEME_PACKS.firstOrNull { it.eggKey != null && it.eggKey == egg.egg }
+                if (pack != null) {
+                    val on = ui.themePackActive(pack.key)
+                    if (pack.key == "srfc") Muted("Le fond « Écran géant » et l’ambiance « Rouge & Noir » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", Modifier.padding(top = 8.dp), small = true)
+                    if (pack.discoveryCompletesPack || pg.packQuote(pack, u).owned) {
+                        PButton(if (on) "Pack appliqué" else "Appliquer le pack ${pack.name}", {
+                            if (pack.eggKey !in pg.eggsFound(u)) ui.egg(pack.eggKey, egg.text, egg.fx, say = false)
+                            val error = ui.applyThemePack(pack.key)
+                            ui.toast(error ?: "Pack ${pack.name} appliqué : icône, fond, couleurs et ambiance.", if (error == null) "palette" else "x")
+                        }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
+                    }
                     PButton("Retrouver le pack dans la boutique", { ui.shopTab = "packs"; ui.push(Screen.Shop) }, Modifier.padding(top = 8.dp), icon = "star", kind = "ghost")
                 }
             }

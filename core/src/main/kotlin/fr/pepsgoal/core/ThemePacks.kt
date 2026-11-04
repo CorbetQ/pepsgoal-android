@@ -84,6 +84,9 @@ val THEME_PACKS: List<ThemePack> = listOf(
     ThemePack("sco", "SCO · Noir & Blanc", "mono", "kopa", "sco", eggKey = "sco"),
     ThemePack("srfc", "SRFC · Rouge & Noir", "dark", "ecran", "srfc", eggKey = "srfc"),
     ThemePack("angers-secret", "Anjou secret", "angevine", "angevine", "angers", eggKey = "angers"),
+    ThemePack("psg", "PSG · Bleu & Rouge", "psg", "psg", "psg", eggKey = "psg"),
+    ThemePack("fcb", "FC Barcelone · Blaugrana", "fcb", "fcb", "fcb", eggKey = "fcb"),
+    ThemePack("fcn", "FC Nantes · Jaune & Vert", "fcn", "fcn", "fcn", eggKey = "fcn"),
 )
 
 fun themePack(key: String): ThemePack? = THEME_PACKS.firstOrNull { it.key == key }
@@ -105,7 +108,11 @@ fun ThemePack.components(): List<PackComponent> {
     ) + listOfNotNull(colourTheme?.let { PackComponent("theme:${it.key}", it.price, it.season) })
 }
 
-/** Discoveries stay exclusive; older users may have the reward even if its claim was trimmed. */
+/** A discovery grants the whole pack only when every paid component is exclusive. */
+val ThemePack.discoveryCompletesPack: Boolean get() = eggKey != null &&
+    components().all { it.price <= 0 || secretPackItem(it.key) }
+
+/** Older users may retain the reward even if its discovery claim was trimmed. */
 fun Pg.packUnlocked(pack: ThemePack, u: User? = me()): Boolean =
     pack.eggKey == null || (u != null && (pack.eggKey in eggsFound(u) || "mode:${pack.modeKey}" in u.shopOwned))
 
@@ -118,8 +125,9 @@ private fun Pg.ownsPackComponent(pack: ThemePack, item: PackComponent, u: User?)
     }
 }
 
-private fun secretPackItem(key: String): Boolean =
-    Eggs.SECRET_MODES.any { "mode:${it.key}" == key } || Eggs.SECRET_BGS.any { "bg:${it.key}" == key }
+internal fun secretPackItem(key: String): Boolean =
+    Eggs.SECRET_MODES.any { "mode:${it.key}" == key } || Eggs.SECRET_BGS.any { "bg:${it.key}" == key } ||
+        (key.startsWith("icon:") && SHOP_ICONS[key.removePrefix("icon:")]?.eggKey != null)
 
 /** An illustrated theme already includes its scene. Allocate that overlap once, even for a new buyer. */
 private fun ThemePack.componentCost(item: PackComponent): Int {
@@ -165,7 +173,7 @@ fun Pg.reconcileThemePacks(): Boolean {
     val u = me() ?: return false
     val rewardKeys = THEME_PACKS.filter { it.eggKey != null && packUnlocked(it, u) }
         .flatMap { pack -> pack.components().map { it.key } }
-        .filter { key -> Eggs.SECRET_MODES.any { "mode:${it.key}" == key } || Eggs.SECRET_BGS.any { "bg:${it.key}" == key } }
+        .filter(::secretPackItem)
     val missing = rewardKeys.filterNot { it in u.shopOwned }.distinct()
     if (missing.isEmpty()) return false
     u.shopOwned = (u.shopOwned + missing).distinct().toMutableList()

@@ -97,7 +97,7 @@ fun ShopScreen(ui: AppState) {
                 Hint("Des packs secrets se découvrent avec les surprises de PepsGoal. Une fois trouvés, ils apparaissent ici et restent dans ta collection.")
             }
         }
-        if (tab == "icons") AppIcons.ALL.chunked(2).forEachIndexed { row, pair ->
+        if (tab == "icons") AppIcons.ALL.filter { it.eggKey == null || pg.owns("icon:${it.key}", it.price, u) }.chunked(2).forEachIndexed { row, pair ->
             item("ic$row") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     pair.forEach { ic ->
@@ -105,7 +105,7 @@ fun ShopScreen(ui: AppState) {
                         Glass(Modifier.weight(1f), pad = 14.dp, onClick = { purchase("icon:${ic.key}", ic.label, ic.price, ic.season) { AppIcons.set(ctx, ic.key); curIcon = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") } }) {
                             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 AppIconPreview(ic, 76.dp, on)
-                                GiftBtn(ui, "icon:${ic.key}", ic.label, ic.price, Modifier.align(Alignment.TopEnd))
+                                if (ic.eggKey == null) GiftBtn(ui, "icon:${ic.key}", ic.label, ic.price, Modifier.align(Alignment.TopEnd))
                             }
                             Text(ic.label, Modifier.fillMaxWidth().padding(top = 10.dp), fontWeight = FontWeight.ExtraBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
                             ic.season?.let { SeasonTag(it, owned) }

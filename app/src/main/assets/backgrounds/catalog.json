@@ -54,6 +54,9 @@
     "mesh",
     "grid",
     "plain",
-    "custom"
+    "custom",
+    "psg",
+    "fcb",
+    "fcn"
   ]
 }

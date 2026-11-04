@@ -1,8 +1,8 @@
-# Packs de thème — 8.6.0
+# Packs de thème — 8.8.0
 
 Un pack réunit l'icône du lanceur, le fond illustré, les couleurs d'accent et
 l'ambiance. Le catalogue réutilise les ressources existantes : 62 packs publics
-couvrent les thèmes, fonds, ambiances et icônes payantes, plus trois packs secrets.
+couvrent les thèmes, fonds, ambiances et icônes payantes, plus six packs secrets.
 Les achats à la carte restent accessibles.
 
 ## Prix et droits existants
@@ -13,7 +13,7 @@ Les achats à la carte restent accessibles.
 - Un aperçu de fond offert pendant une saison n'est pas une acquisition permanente. Un pack acheté inclut ses droits permanents.
 - Solde, disponibilité saisonnière et prix confirmé sont revérifiés avant toute mutation. Un achat attribue tous les éléments et débite une seule fois ; il ne change pas le niveau.
 - Les achats répétés sont gratuits. Une confirmation ancienne ne peut pas entraîner un débit supérieur au prix affiché.
-- Les prix et saisons des 57 icônes ont une seule source dans `ShopIcons.kt`, partagée avec Android. Les montants existants sont conservés.
+- Les prix, saisons et droits secrets des 60 icônes ont une seule source dans `ShopIcons.kt`, partagée avec Android. Les montants existants sont conservés.
 
 Aucun nouvel identifiant `pack:` n'est enregistré. La possession d'un pack est
 déduite des clés déjà comprises par la synchronisation (`icon:`, `bg:`,
@@ -26,6 +26,18 @@ d'achat, comme ceux des autres composants, sont synchronisés.
 SCO contient Monochrome, Stade Raymond-Kopa et Noir & Blanc, avec les couleurs
 de cette ambiance. SRFC contient Nuit, Écran géant et Rouge & Noir. Ils ne
 s'achètent pas avant découverte et sont complets sans frais après leur surprise.
+
+PSG, FC Barcelone (FCB) et FC Nantes (FCN) se découvrent dans la recherche avec
+`psg`, `fcb` ou `fcn` (casse et espaces ignorés). Chaque découverte offre
+l’icône exclusive, le stade et l’ambiance avec ses couleurs, sans achat. Le bonus
+de surprise n’est attribué qu’une fois. La découverte ne change pas le thème
+actif : le bouton « Appliquer le pack » permet de choisir quand l’utiliser.
+Ces éléments restent cachés et ne peuvent être achetés ou offerts avant découverte.
+
+Les illustrations restent dans leurs dossiers `backgrounds/{psg,fcb,fcn}/`.
+Ce sont des scènes artistiques fixes : Parc de nuit, Camp Nou historique
+avant rénovation 2023 au crépuscule, Beaujoire en fin de journée. Leurs
+références, briefs et revues sont archivés dans `design/football-packs-8.8/`.
 
 Anjou secret contient l'ambiance secrète déjà offerte ; l'icône et le fond
 publics correspondants restent à compléter au tarif réduit s'ils ne sont pas
@@ -68,8 +80,8 @@ sérialisation existante et l'application des choix sans nouveau débit.
 ./gradlew :benchmark:assemble :baselineprofile:compileNonMinifiedReleaseKotlin
 ```
 
-La vérification s'exécute dans GitHub Actions sur une branche de validation,
-avant la publication sur main et le workflow Release. L'environnement local
-étant indisponible, aucune capture, test du lanceur ou revue visuelle sur appareil
-n'est revendiquée. À vérifier sur téléphone : retour du lanceur, clair/sombre,
+`FootballPacksTest` couvre aussi la recherche, les droits exclusifs, le bonus
+unique, la réconciliation, la persistance et le contraste des nouveaux packs.
+Les rendus natifs Android/Skia et les couches vectorielles des icônes sont
+inspectés localement. Ils ne remplacent pas un test du lanceur sur appareil. À vérifier sur téléphone : retour du lanceur, clair/sombre,
 texte 200 %, TalkBack, scènes, comptes synchronisés et restauration après erreur.

@@ -172,7 +172,7 @@ class SceneRenderTest {
             val a=render(key,day);val b=render(key,night)
             assertFalse("$key should change with the sun",a.sameAs(b));a.recycle();b.recycle()
         }
-        for(key in listOf("deepsea","nebula","kopa","ecran","coderain")) {
+        for(key in listOf("deepsea","nebula","kopa","ecran","coderain","psg","fcb","fcn")) {
             val a=render(key,day);val b=render(key,night)
             assertTrue("$key must retain its artistic atmosphere",a.sameAs(b));a.recycle();b.recycle()
         }

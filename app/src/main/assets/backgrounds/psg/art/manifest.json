@@ -1,0 +1,18 @@
+{
+  "id": "psg",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "9b7460a16752fbcaaf33a22795203eea5c035698dc7780c869abb7c41bfe3dcd",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:PSG-Celtic_Glasgow_Parc_des_Princes_06.jpg",
+    "https://commons.wikimedia.org/wiki/File:PSG-Celtic_Glasgow_Parc_des_Princes_29.jpg",
+    "https://commons.wikimedia.org/wiki/File:Parc_des_Princes_@_Paris_16_(32835075813).jpg"
+  ],
+  "brief": "docs/design/football-packs-8.8/brief.md",
+  "review": "accepted",
+  "reviewScope": "Revue statique indépendante du 2026-11-04 : référence photo /workspace/.pepsgoal/football-packs-8.8/references/psg/01.jpg, master v1 et composite natif app/build/reports/scenes/candidates/psg-v1-tall-day.png 360x780 avec surcadrage 8 % réellement ouverts. Architecture, lumière/ombres cartoon, profondeur, absence de lettrage et cadrage acceptés. Sans interface superposée, vignette boutique, animation ni téléphone physique."
+}

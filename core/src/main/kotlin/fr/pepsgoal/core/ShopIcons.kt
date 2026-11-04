@@ -1,7 +1,7 @@
 package fr.pepsgoal.core
 
 /** Prices and seasons shared by launcher icons and theme packs (no Android dependency). */
-data class ShopIconInfo(val price: Int, val season: String? = null)
+data class ShopIconInfo(val price: Int, val season: String? = null, val eggKey: String? = null)
 
 val SHOP_ICONS: Map<String, ShopIconInfo> = mapOf(
     "default" to ShopIconInfo(0),
@@ -61,4 +61,7 @@ val SHOP_ICONS: Map<String, ShopIconInfo> = mapOf(
     "trophee" to ShopIconInfo(250),
     "pousse" to ShopIconInfo(150),
     "vague" to ShopIconInfo(200),
+    "psg" to ShopIconInfo(1, eggKey = "psg"),
+    "fcb" to ShopIconInfo(1, eggKey = "fcb"),
+    "fcn" to ShopIconInfo(1, eggKey = "fcn"),
 )

@@ -429,7 +429,7 @@ private fun IconSection(ui: AppState) {
     var cur by remember { mutableStateOf(AppIcons.current(ctx)) }
     LaunchedEffect(Unit) { keepCurrentIcon(ui, ctx) }
     val owned = AppIcons.ALL.filter { ui.pg.owns("icon:${it.key}", it.price, u) }
-    val more = AppIcons.ALL.size - owned.size
+    val more = AppIcons.ALL.count { it.eggKey == null && !ui.pg.owns("icon:${it.key}", it.price, u) }
     val current = AppIcons.ALL.firstOrNull { it.key == cur } ?: AppIcons.ALL.first()
     Glass {
         Head("star", "Icône de l’application")

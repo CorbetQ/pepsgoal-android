@@ -17,7 +17,7 @@ val SCENE_CAPABILITIES: Map<String, SceneCapability> = buildMap {
     put("rainwindow", SceneCapability.WINDOW)
     listOf("nebula", "deepsea", "citynight", "magma", "coderain", "borealis", "planet", "jellyfish",
         "nighttrain", "lanterns", "tunnel", "haunted", "snowvillage", "fireworks", "heartsky", "xmastree",
-        "valentine", "kopa", "ecran", "grid", "stars", "waves", "aurora", "mesh", "blob", "plain", "custom")
+        "valentine", "kopa", "ecran", "psg", "fcb", "fcn", "grid", "stars", "waves", "aurora", "mesh", "blob", "plain", "custom")
         .forEach { put(it, SceneCapability.ARTISTIC) }
 }
 fun sceneCapability(key: String) = SCENE_CAPABILITIES[key.removePrefix("s:")] ?: SceneCapability.ARTISTIC
