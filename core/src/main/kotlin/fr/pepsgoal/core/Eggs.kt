@@ -62,14 +62,14 @@ object Eggs {
             "#0B0607", "#FFF2F0", "#1A0D10", listOf("#E1001A", "#6E0A14", "#2A1013"), listOf("#FF7A6B", "#FF5252", "#FF3D5A"),
             surface = "#1A0D10", surface2 = "#271317", edge = "#43202A"),
         ShopMode("psg", "Bleu & Rouge", "Bleu parisien, rouge de tribune et crème lumineux · ambiance secrète", 1, true,
-            "#07142B", "#F6F1E9", "#13233D", listOf("#0046A8", "#E5223D", "#EADFD0"), listOf("#FF4657", "#4C8DFF", "#F4EDE2"),
-            surface = "#13233D", surface2 = "#1B2D4A", edge = "#354966"),
+            "#051D49", "#FFFFFF", "#092F68", listOf("#0046A8", "#E5223D", "#FFFFFF"), listOf("#FF4657", "#FF5967", "#FF6B76"),
+            surface = "#092F68", surface2 = "#103E80", edge = "#FFFFFF"),
         ShopMode("fcb", "Blaugrana", "Bleu, grenat et or de Catalogne · ambiance secrète", 1, true,
-            "#171024", "#FFF3E1", "#2A1838", listOf("#004DAD", "#A50044", "#FFCD00"), listOf("#E85A7A", "#5085FF", "#FFCD00"),
-            surface = "#2A1838", surface2 = "#382345", edge = "#554060"),
+            "#061B40", "#FFF7D6", "#0D316B", listOf("#004DAD", "#A50044", "#FFCD00"), listOf("#F34F68", "#FA596D", "#FF6677"),
+            surface = "#0D316B", surface2 = "#15448A", edge = "#FFCD00"),
         ShopMode("fcn", "Jaune & Vert", "Jaune des Canaris et vert profond de la Beaujoire · ambiance secrète", 1, true,
-            "#071F18", "#FFF5D1", "#10392B", listOf("#FFE000", "#008B45", "#0D4636"), listOf("#FFE000", "#40C06A", "#EAF3BC"),
-            surface = "#10392B", surface2 = "#194A36", edge = "#35654C"),
+            "#052B1A", "#FFF5D1", "#07472A", listOf("#008B45", "#FFE000", "#0D4636"), listOf("#FFE000", "#FFEA3D", "#FFF060"),
+            surface = "#07472A", surface2 = "#0B5935", edge = "#4B9B63"),
     )
 
     /** Fonds secrets débloqués par une surprise (jamais vendus dans la boutique). */

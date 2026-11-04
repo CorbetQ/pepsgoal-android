@@ -211,6 +211,7 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
         if (k == "weather" && s.weather == null) ui.toast("Choisis ta ville dans Paramètres › Météo pour un ciel en direct.", "cloud")
     }
     val cur = shopMode(s.theme)
+    val allowDynamicColors = dynOk && cur?.followsDayNight != false
     Glass {
         Head("sun", "Thème", cur?.desc ?: THEME_DESC[s.theme] ?: "Apparence de toute l’interface") { Chip(themeName(s.theme), if (cur != null) "star" else null, p.flame) }
         // Thèmes de base, puis une tuile vers les ambiances de la boutique
@@ -234,13 +235,13 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
                 }
             }
         }
-        if (s.theme == "system" || shopMode(s.theme) != null) SetRow("Suivre le soleil", "Clair du lever au coucher du soleil (à l’heure de ta ville météo), sombre la nuit, au lieu du réglage du téléphone.") {
+        if (s.theme == "system" || shopMode(s.theme)?.followsDayNight == true) SetRow("Suivre le soleil", "Clair du lever au coucher du soleil (à l’heure de ta ville météo), sombre la nuit, au lieu du réglage du téléphone.") {
             PSwitch(ui.prefs.sunTheme, { ui.prefs.sunTheme = it; ui.themeTick++ })
         }
-        SetRow("Couleurs Material You", if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface." else "Nécessite Android 12 ou plus récent.") {
-            PSwitch(ui.prefs.materialYou && dynOk, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = dynOk)
+        SetRow("Couleurs Material You", if (cur?.followsDayNight == false) "Cette ambiance conserve les couleurs de ton club." else if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface." else "Nécessite Android 12 ou plus récent.") {
+            PSwitch(ui.prefs.materialYou && allowDynamicColors, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = allowDynamicColors)
         }
-        if (ui.prefs.materialYou && dynOk) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (ui.prefs.materialYou && allowDynamicColors) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             listOf(p.flame2, p.flame, p.pink, p.surface, p.bg).forEach { Box(Modifier.size(22.dp).clip(CircleShape).background(it).border(2.dp, p.edge, CircleShape)) }
             Muted(if (cur != null) "Propre à cet appareil · l’ambiance garde son fond et son texte" else "Propre à cet appareil", Modifier.padding(start = 4.dp), small = true)
         }

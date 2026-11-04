@@ -1,8 +1,10 @@
 package fr.pepsgoal.core
 
+val ShopMode.followsDayNight: Boolean get() = key !in setOf("sco", "srfc", "psg", "fcb", "fcn")
+
 /** Resolve both daylight variants without changing the owned ambiance key or its price. */
 fun ShopMode.forDark(targetDark: Boolean): ShopMode {
-    if (targetDark == dark) return this
+    if (!followsDayNight || targetDark == dark) return this
     fun tint(hex: String, white: Boolean, amount: Double): String {
         val rgb = hex.removePrefix("#").chunked(2).map { it.toInt(16) }
         return "#" + rgb.joinToString("") { "%02X".format((it + ((if (white) 255 else 0) - it) * amount).toInt()) }

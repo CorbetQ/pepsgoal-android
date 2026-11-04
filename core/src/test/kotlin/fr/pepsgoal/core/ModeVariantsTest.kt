@@ -3,7 +3,7 @@ package fr.pepsgoal.core
 import kotlin.test.*
 class ModeVariantsTest {
     @Test fun everyAmbianceSupportsBothVariantsWithoutChangingEntitlements() {
-        for (mode in SHOP_MODES + Eggs.SECRET_MODES) for (dark in listOf(false, true)) {
+        for (mode in (SHOP_MODES + Eggs.SECRET_MODES).filter { it.followsDayNight }) for (dark in listOf(false, true)) {
             val result = mode.forDark(dark)
             assertEquals(dark, result.dark)
             assertEquals(mode.key, result.key)
@@ -13,6 +13,17 @@ class ModeVariantsTest {
             assertNotEquals(mode.forDark(false).bg, mode.forDark(true).bg)
         }
     }
+    @Test fun clubAmbiancesKeepTheirBrandPaletteAcrossDayAndNight() {
+        for (key in listOf("sco", "srfc", "psg", "fcb", "fcn")) {
+            val mode = requireNotNull(shopMode("m:$key"))
+            assertSame(mode, mode.forDark(false))
+            assertSame(mode, mode.forDark(true))
+        }
+        assertEquals("#FFFFFF", shopMode("m:psg")!!.edge)
+        assertEquals("#FFCD00", shopMode("m:fcb")!!.edge)
+        assertEquals("#FFE000", shopMode("m:fcn")!!.accent.first())
+    }
+
     @Test fun existingClubDiscoveriesRestoreTheNewExclusiveIcons() {
         for (key in listOf("sco", "srfc")) {
             val user = fr.pepsgoal.core.model.User("me", "test", "Test").apply { shopOwned.add("mode:$key") }

@@ -1,4 +1,4 @@
-# Packs de thème — 8.8.5
+# Packs de thème — 8.9.0
 
 Un pack réunit l'icône du lanceur, le fond illustré, les couleurs d'accent et
 l'ambiance. Le catalogue réutilise les ressources existantes : 62 packs publics
@@ -88,7 +88,7 @@ texte 200 %, TalkBack, scènes, comptes synchronisés et restauration après err
 
 ## Variantes jour/nuit — 8.8.5
 
-Toutes les ambiances, publiques et secrètes, possèdent une déclinaison claire et
+Les ambiances hors clubs, publiques et secrètes, possèdent une déclinaison claire et
 sombre sous le même identifiant acheté. Le téléphone décide du mode, ou le soleil
 de la ville météo lorsque « Suivre le soleil » est activé. Ce réglage reste
 accessible avec une ambiance choisie. Aucun achat supplémentaire nécessaire.
@@ -97,3 +97,16 @@ Les fonds artistiques de stade conservent leur éclairage peint.
 Les icônes SCO et SRFC reprennent les tracés de la flamme originale et des bandes
 noir/blanc ou rouge/noir. La réconciliation les attribue aux anciens déblocages
 sans rejouer le bonus de surprise ni retirer les icônes déjà possédées.
+
+## Couleurs fixes des clubs
+
+Exception au suivi jour/nuit : SCO, SRFC, PSG, FCB et FCN conservent leur
+ambiance, indépendamment du téléphone, du soleil et de Material You. Les autres
+ambiances gardent leurs variantes. Les réglages d’accessibilité restent prioritaires.
+
+- FCN : actions jaunes et surfaces vertes.
+- PSG : actions rouges, surfaces bleues et contours blancs.
+- FCB : actions rouges, surfaces bleues et contours jaunes.
+
+La sélection de ces ambiances utilise directement leur palette actuelle, y compris
+lorsqu’un ancien pack avait enregistré une palette différente.
