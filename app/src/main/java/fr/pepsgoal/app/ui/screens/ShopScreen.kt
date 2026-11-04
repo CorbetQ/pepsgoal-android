@@ -37,6 +37,7 @@ fun AppIconPreview(ic: AppIcons.Icon, size: Dp = 54.dp, selected: Boolean = fals
     val p = LocalPal.current
     Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(Brush.linearGradient(ic.bg.map { Color(it) }))
         .border(if (selected) 3.dp else 2.dp, if (selected) p.focusEdge else p.edge, RoundedCornerShape(size * .3f)), contentAlignment = Alignment.Center) {
+        ic.backgroundDrawable?.let { Image(painterResource(it), null, Modifier.requiredSize(size * 1.6f)) }
         // Le premier plan d'une icône adaptative fait 108 dp pour 72 dp visibles : on l'agrandit d'autant
         Image(painterResource(ic.fg), null, Modifier.requiredSize(size * 1.6f), colorFilter = if (ic.key == "mono") ColorFilter.tint(Color.White) else null)
     }

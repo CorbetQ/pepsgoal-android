@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.ui
 
+import android.graphics.LinearGradient
+import android.graphics.Shader
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -51,17 +53,36 @@ class FootballIconsTest {
                 val layers = if (mono) listOf("monochrome") else listOf("background", "foreground")
                 for (layer in layers) {
                     val vector = read(File("src/main/res/drawable/ic_launcher_${layer}_$key.xml"))
-                    val paths = vector.getElementsByTagName("path")
-                    assertTrue(paths.length > 0)
-                    for (i in 0 until paths.length) {
-                        val element = paths.item(i) as Element
-                        val path = requireNotNull(PathParser.createPathFromPathData(element.getAttributeNS(android, "pathData")))
-                        if (element.getAttributeNS(android, "fillType") == "evenOdd") path.fillType = Path.FillType.EVEN_ODD
-                        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            color = Color.parseColor(element.getAttributeNS(android, "fillColor"))
+                    fun draw(element: Element) {
+                        fun number(name: String, fallback: Float = 0f) = element.getAttributeNS(android, name).toFloatOrNull() ?: fallback
+                        if (element.tagName == "group") {
+                            canvas.save()
+                            canvas.translate(number("translateX"), number("translateY"))
+                            canvas.scale(number("scaleX", 1f), number("scaleY", 1f))
                         }
-                        canvas.drawPath(path, paint)
+                        if (element.tagName == "path") {
+                            val path = requireNotNull(PathParser.createPathFromPathData(element.getAttributeNS(android, "pathData")))
+                            if (element.getAttributeNS(android, "fillType") == "evenOdd") path.fillType = Path.FillType.EVEN_ODD
+                            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                            val gradients = element.getElementsByTagName("gradient")
+                            if (gradients.length > 0) {
+                                val gradient = gradients.item(0) as Element
+                                val stops = gradient.getElementsByTagName("item")
+                                val colors = IntArray(stops.length) { Color.parseColor((stops.item(it) as Element).getAttributeNS(android, "color")) }
+                                val offsets = FloatArray(stops.length) { (stops.item(it) as Element).getAttributeNS(android, "offset").toFloat() }
+                                fun coordinate(name: String) = gradient.getAttributeNS(android, name).toFloat()
+                                paint.shader = LinearGradient(coordinate("startX"), coordinate("startY"), coordinate("endX"), coordinate("endY"), colors, offsets, Shader.TileMode.CLAMP)
+                            } else paint.color = Color.parseColor(element.getAttributeNS(android, "fillColor"))
+                            paint.alpha = (number("fillAlpha", 1f) * 255).toInt()
+                            canvas.drawPath(path, paint)
+                        }
+                        for (i in 0 until element.childNodes.length) {
+                            val child = element.childNodes.item(i)
+                            if (child is Element && child.tagName in listOf("group", "path")) draw(child)
+                        }
+                        if (element.tagName == "group") canvas.restore()
                     }
+                    draw(vector.documentElement)
                 }
                 File(output, "$key-${if (mono) "mono" else "color"}.png").outputStream().use {
                     assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))

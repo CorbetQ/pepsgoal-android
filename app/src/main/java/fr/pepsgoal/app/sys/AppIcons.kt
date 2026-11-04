@@ -12,6 +12,12 @@ object AppIcons {
     class Icon(val key: String, val label: String, val alias: String, val bg: List<Long>, val fg: Int) {
         val price: Int get() = fr.pepsgoal.core.SHOP_ICONS.getValue(key).price
         val season: String? get() = fr.pepsgoal.core.SHOP_ICONS.getValue(key).season
+        val backgroundDrawable: Int? get() = when (key) {
+            "psg" -> R.drawable.ic_launcher_background_psg
+            "fcb" -> R.drawable.ic_launcher_background_fcb
+            "fcn" -> R.drawable.ic_launcher_background_fcn
+            else -> null
+        }
         val eggKey: String? get() = fr.pepsgoal.core.SHOP_ICONS.getValue(key).eggKey
     }
     val ALL = listOf(
