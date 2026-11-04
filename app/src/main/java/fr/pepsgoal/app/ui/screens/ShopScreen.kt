@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,7 +105,7 @@ fun ShopScreen(ui: AppState) {
             AppIcons.ALL.filter { it.eggKey == null || pg.owns("icon:${it.key}", it.price, u) },
             { it.key }, { shopCategory(it.key, it.season) }) { ic ->
             val owned = pg.owns("icon:${ic.key}", ic.price, u); val on = curIcon == ic.key
-            Glass(Modifier.fillMaxWidth(), pad = 14.dp, onClick = { purchase("icon:${ic.key}", ic.label, ic.price, ic.season) { AppIcons.set(ctx, ic.key); curIcon = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") } }) {
+            Glass(Modifier.fillMaxWidth().heightIn(min = LocalShopCardHeight.current), pad = 14.dp, onClick = { purchase("icon:${ic.key}", ic.label, ic.price, ic.season) { AppIcons.set(ctx, ic.key); curIcon = ic.key; ui.toast("Icône « ${ic.label} » activée.", "palette") } }) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     AppIconPreview(ic, 76.dp, on)
                     if (ic.eggKey == null) GiftBtn(ui, "icon:${ic.key}", ic.label, ic.price, Modifier.align(Alignment.TopEnd))
@@ -117,7 +119,7 @@ fun ShopScreen(ui: AppState) {
             { it.key }, { shopCategory(if (it.bg.startsWith("s:")) it.bg.removePrefix("s:") else it.key, it.season) }) { t ->
                 val owned = pg.owns("theme:${t.key}", t.price, u)
                 val on = u.settings.accentCustom == t.colors && u.settings.bg == t.bg
-                Glass(pad = 0.dp, onClick = { purchase("theme:${t.key}", t.name, t.price, t.season) { pg.applyTheme(t); ui.themeTick++; ui.toast("Thème « ${t.name} » appliqué.", "palette") } }) {
+                Glass(Modifier.heightIn(min = LocalShopCardHeight.current), pad = 0.dp, onClick = { purchase("theme:${t.key}", t.name, t.price, t.season) { pg.applyTheme(t); ui.themeTick++; ui.toast("Thème « ${t.name} » appliqué.", "palette") } }) {
                     // Aperçu : dégradé des trois couleurs et motif de l'arrière-plan
                     // Thème spécial avec paysage illustré : l'aperçu montre la scène elle-même
                     val scene = t.bg.startsWith("s:")
@@ -169,7 +171,7 @@ fun ShopScreen(ui: AppState) {
             { it.key }, { shopCategory(it.key, it.season) }) { b ->
             val owned = pg.ownsBg(b, u); val on = u.settings.bg == "s:${b.key}"
             // Carte de fond : aperçu (rayon 18), nom ; actif = bord lime et pilule « ✓ Actif »
-            Glass(Modifier.fillMaxWidth(), pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else null, onClick = {
+            Glass(Modifier.fillMaxWidth().heightIn(min = LocalShopCardHeight.current), pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else null, onClick = {
                 val apply = { pg.applyBg(b); ui.themeTick++; ui.toast("Fond « ${b.name} » appliqué.", "image") }
                 // Scène de saison : offerte pendant sa période
                 if (b.freeNow()) apply() else purchase("bg:${b.key}", b.name, b.price, b.season) { apply() } }) {
@@ -205,7 +207,7 @@ fun ShopScreen(ui: AppState) {
 private fun ModeCard(ui: AppState, m: ShopMode, wallet: Int, modifier: Modifier, onBuy: () -> Unit, onTry: () -> Unit) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me() ?: return
     val owned = pg.owns("mode:${m.key}", m.price, u); val on = u.settings.theme == "m:${m.key}"; val trying = ui.themePreview == "m:${m.key}"
-    Glass(modifier, pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else if (trying) p.focusEdge else null, onClick = onBuy) {
+    Glass(modifier.heightIn(min = LocalShopCardHeight.current), pad = 0.dp, border = if (on) vivid(p.type("routine").c).step() else if (trying) p.focusEdge else null, onClick = onBuy) {
         Box(Modifier.fillMaxWidth().padding(6.dp).aspectRatio(.74f).clip(RoundedCornerShape(18.dp))) {
             ThemePreview(themeLook("m:${m.key}"), Modifier.fillMaxSize(), accent = m.accent.map(::hex))
             MiniPlaque(if (m.followsDayNight) "Jour/nuit" else "Ambiance fixe", Modifier.align(Alignment.TopStart).padding(8.dp))
@@ -306,6 +308,8 @@ fun FlameQuestsCard(ui: AppState, modifier: Modifier = Modifier) {
     }
 }
 
+internal val LocalShopCardHeight = compositionLocalOf { 0.dp }
+
 /** Each row retains its scroll position under a stable department/category key. */
 private fun <T> LazyListScope.shopCarousels(
     department: String, entries: List<T>, key: (T) -> String,
@@ -315,13 +319,23 @@ private fun <T> LazyListScope.shopCarousels(
         val contents = entries.filter { category(it) == group }
         if (contents.isEmpty()) continue
         item("$department:${group.name}") {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                CardHead(group.label) { Count(contents.size) }
-                Muted("Fais défiler horizontalement pour explorer", small = true)
-                BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    val cardWidth = (maxWidth - 24.dp).coerceAtMost(360.dp).coerceAtLeast(1.dp)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 6.dp)) {
-                        items(contents, key = key) { entry -> Box(Modifier.width(cardWidth)) { card(entry) } }
+            Glass(pad = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CardHead(group.label) { Count(contents.size) }
+                    Muted("Fais défiler horizontalement pour explorer", small = true)
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val cardWidth = (maxWidth - 24.dp).coerceAtMost(360.dp).coerceAtLeast(1.dp)
+                        val density = LocalDensity.current
+                        // Share the largest measured card without composing off-screen articles.
+                    var tallest by remember(cardWidth, density.density, density.fontScale, contents.map(key)) { mutableIntStateOf(0) }
+                        val minimumHeight = with(density) { tallest.toDp() }
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 6.dp)) {
+                            items(contents, key = key) { entry ->
+                                Box(Modifier.width(cardWidth).onSizeChanged { if (it.height > tallest) tallest = it.height }) {
+                                    CompositionLocalProvider(LocalShopCardHeight provides minimumHeight) { card(entry) }
+                                }
+                            }
+                        }
                     }
                 }
             }

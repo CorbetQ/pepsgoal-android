@@ -45,7 +45,7 @@ fun ThemePackCard(ui: AppState, pack: ThemePack, currentIcon: String, onApplied:
         }
     }
 
-    Glass(pad = 0.dp, border = if (active) p.focusEdge else null) {
+    Glass(Modifier.heightIn(min = LocalShopCardHeight.current), pad = 0.dp, border = if (active) p.focusEdge else null) {
         Box(Modifier.fillMaxWidth().padding(6.dp).height(156.dp).clip(RoundedCornerShape(18.dp))) {
             SceneBg(pack.bgKey, Modifier.fillMaxSize(), still = true)
             Box(Modifier.align(Alignment.TopStart).padding(10.dp)) { Plaque { AppIconPreview(icon, 48.dp) } }

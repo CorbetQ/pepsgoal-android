@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.ui.sheets
 
+import fr.pepsgoal.app.BuildConfig.VERSION_NAME as APP_VERSION
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -131,7 +133,7 @@ fun NotesSheet(ui: AppState) {
             .padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(date, Modifier.weight(1f), fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold)
-                if (vers.any { it.first == APP_VERSION }) Chip("Actuelle", color = p.flame)
+                if (vers.any { it.first == APP_VERSION.removeSuffix("-debug") }) Chip("Actuelle", color = p.flame)
                 Muted(if (vers.size > 1) "${vers.last().first} → ${vers.first().first}" else vers.first().first, small = true)
                 Pi(if (on) "chevronup" else "down", size = 18.dp, tint = p.ink3)
             }

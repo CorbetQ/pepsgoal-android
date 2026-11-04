@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.sys
 
+import fr.pepsgoal.app.BuildConfig.VERSION_NAME as APP_VERSION
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
