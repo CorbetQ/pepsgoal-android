@@ -62,13 +62,13 @@ object Eggs {
             "#0B0607", "#FFF2F0", "#1A0D10", listOf("#E1001A", "#6E0A14", "#2A1013"), listOf("#FF7A6B", "#FF5252", "#FF3D5A"),
             surface = "#1A0D10", surface2 = "#271317", edge = "#43202A"),
         ShopMode("psg", "Bleu & Rouge", "Bleu parisien, rouge de tribune et crème lumineux · ambiance secrète", 1, true,
-            "#07142B", "#F6F1E9", "#13233D", listOf("#173E7B", "#B52C48", "#EADFD0"), listOf("#FF879C", "#91BAFF", "#F4EDE2"),
+            "#07142B", "#F6F1E9", "#13233D", listOf("#0046A8", "#E5223D", "#EADFD0"), listOf("#FF4657", "#4C8DFF", "#F4EDE2"),
             surface = "#13233D", surface2 = "#1B2D4A", edge = "#354966"),
         ShopMode("fcb", "Blaugrana", "Bleu, grenat et or de Catalogne · ambiance secrète", 1, true,
-            "#171024", "#FFF3E1", "#2A1838", listOf("#2D5A91", "#9A244C", "#E3BC60"), listOf("#FF91A7", "#91BFFF", "#FFD36D"),
+            "#171024", "#FFF3E1", "#2A1838", listOf("#004DAD", "#A50044", "#FFCD00"), listOf("#E85A7A", "#5085FF", "#FFCD00"),
             surface = "#2A1838", surface2 = "#382345", edge = "#554060"),
         ShopMode("fcn", "Jaune & Vert", "Jaune des Canaris et vert profond de la Beaujoire · ambiance secrète", 1, true,
-            "#071F18", "#FFF5D1", "#10392B", listOf("#E7C840", "#3E8D53", "#0D4636"), listOf("#FFE266", "#9BDEA4", "#EAF3BC"),
+            "#071F18", "#FFF5D1", "#10392B", listOf("#FFE000", "#008B45", "#0D4636"), listOf("#FFE000", "#40C06A", "#EAF3BC"),
             surface = "#10392B", surface2 = "#194A36", edge = "#35654C"),
     )
 
@@ -76,7 +76,7 @@ object Eggs {
     val SECRET_BGS = listOf(
         ShopBg("kopa", "Stade Raymond-Kopa", "Tribunes, pelouse et projecteurs, un soir de match à Angers · fond secret", 1,
             listOf("#0B0E1A", "#1C2440", "#2F7A3E"), dark = true),
-        ShopBg("ecran", "Écran géant", "Un soir de pluie, un écran géant et un score sans appel : OL 4 – 0 SRFC · fond secret", 1,
+        ShopBg("ecran", "Roazhon Park", "Un soir de pluie, un écran géant et un score sans appel : OL 4 – 0 SRFC · fond secret", 1,
             listOf("#0A0709", "#22131A", "#21512C"), dark = true),
         ShopBg("psg", "Parc des Princes", "Une nuit de match bleue et rouge au Parc · fond secret", 1,
             listOf("#0B1532", "#343052", "#27634C"), dark = true),
@@ -200,7 +200,7 @@ fun Pg.applySco() {
     store.commit()
 }
 
-/** Applique tout de suite le fond « Écran géant », l'ambiance « Rouge & Noir » et ses couleurs (surprise « srfc »). */
+/** Applique tout de suite le fond « Roazhon Park », l'ambiance « Rouge & Noir » et ses couleurs (surprise « srfc »). */
 fun Pg.applySrfc() {
     val u = me() ?: return
     val m = Eggs.SECRET_MODES.first { it.key == "srfc" }

@@ -61,6 +61,8 @@ val SHOP_ICONS: Map<String, ShopIconInfo> = mapOf(
     "trophee" to ShopIconInfo(250),
     "pousse" to ShopIconInfo(150),
     "vague" to ShopIconInfo(200),
+    "sco" to ShopIconInfo(1, eggKey = "sco"),
+    "srfc" to ShopIconInfo(1, eggKey = "srfc"),
     "psg" to ShopIconInfo(1, eggKey = "psg"),
     "fcb" to ShopIconInfo(1, eggKey = "fcb"),
     "fcn" to ShopIconInfo(1, eggKey = "fcn"),

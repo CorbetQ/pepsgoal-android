@@ -13,6 +13,8 @@ object AppIcons {
         val price: Int get() = fr.pepsgoal.core.SHOP_ICONS.getValue(key).price
         val season: String? get() = fr.pepsgoal.core.SHOP_ICONS.getValue(key).season
         val backgroundDrawable: Int? get() = when (key) {
+            "sco" -> R.drawable.ic_launcher_background_sco
+            "srfc" -> R.drawable.ic_launcher_background_srfc
             "psg" -> R.drawable.ic_launcher_background_psg
             "fcb" -> R.drawable.ic_launcher_background_fcb
             "fcn" -> R.drawable.ic_launcher_background_fcn
@@ -78,6 +80,8 @@ object AppIcons {
         Icon("trophee", "Trophée", "IconTrophee", listOf(0xFF5A2EA8, 0xFF2A1A5E), R.drawable.ic_launcher_foreground_trophee),
         Icon("pousse", "Pousse", "IconPousse", listOf(0xFFE8F5D8, 0xFFBFE0A6), R.drawable.ic_launcher_foreground_pousse),
         Icon("vague", "Vague", "IconVague", listOf(0xFFF6E8C8, 0xFFE8D2A0), R.drawable.ic_launcher_foreground_vague),
+        Icon("sco", "SCO · Noir & Blanc", "IconSco", listOf(0xFF161116, 0xFF161116), R.drawable.ic_launcher_foreground_sco),
+        Icon("srfc", "SRFC · Rouge & Noir", "IconSrfc", listOf(0xFF161116, 0xFF161116), R.drawable.ic_launcher_foreground_srfc),
         Icon("psg", "Paris · Bleu & Rouge", "IconPsg", listOf(0xFF173E7B, 0xFF07142B), R.drawable.ic_launcher_foreground_psg),
         Icon("fcb", "Barcelone · Blaugrana", "IconFcb", listOf(0xFF9A244C, 0xFF171024), R.drawable.ic_launcher_foreground_fcb),
         Icon("fcn", "Nantes · Canaris", "IconFcn", listOf(0xFF194A36, 0xFF071F18), R.drawable.ic_launcher_foreground_fcn),

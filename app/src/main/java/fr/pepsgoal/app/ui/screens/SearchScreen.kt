@@ -98,7 +98,7 @@ fun SearchScreen(ui: AppState, initial: String) {
                 val pack = THEME_PACKS.firstOrNull { it.eggKey != null && it.eggKey == egg.egg }
                 if (pack != null) {
                     val on = ui.themePackActive(pack.key)
-                    if (pack.key == "srfc") Muted("Le fond « Écran géant » et l’ambiance « Rouge & Noir » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", Modifier.padding(top = 8.dp), small = true)
+                    if (pack.key == "srfc") Muted("Le fond « Roazhon Park » et l’ambiance « Rouge & Noir » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", Modifier.padding(top = 8.dp), small = true)
                     if (pack.discoveryCompletesPack || pg.packQuote(pack, u).owned) {
                         PButton(if (on) "Pack appliqué" else "Appliquer le pack ${pack.name}", {
                             if (pack.eggKey !in pg.eggsFound(u)) ui.egg(pack.eggKey, egg.text, egg.fx, say = false)

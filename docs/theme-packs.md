@@ -1,4 +1,4 @@
-# Packs de thème — 8.8.0
+# Packs de thème — 8.8.5
 
 Un pack réunit l'icône du lanceur, le fond illustré, les couleurs d'accent et
 l'ambiance. Le catalogue réutilise les ressources existantes : 62 packs publics
@@ -13,7 +13,7 @@ Les achats à la carte restent accessibles.
 - Un aperçu de fond offert pendant une saison n'est pas une acquisition permanente. Un pack acheté inclut ses droits permanents.
 - Solde, disponibilité saisonnière et prix confirmé sont revérifiés avant toute mutation. Un achat attribue tous les éléments et débite une seule fois ; il ne change pas le niveau.
 - Les achats répétés sont gratuits. Une confirmation ancienne ne peut pas entraîner un débit supérieur au prix affiché.
-- Les prix, saisons et droits secrets des 60 icônes ont une seule source dans `ShopIcons.kt`, partagée avec Android. Les montants existants sont conservés.
+- Les prix, saisons et droits secrets des 62 icônes ont une seule source dans `ShopIcons.kt`, partagée avec Android. Les montants existants sont conservés.
 
 Aucun nouvel identifiant `pack:` n'est enregistré. La possession d'un pack est
 déduite des clés déjà comprises par la synchronisation (`icon:`, `bg:`,
@@ -23,8 +23,8 @@ d'achat, comme ceux des autres composants, sont synchronisés.
 
 ## Secrets et compatibilité
 
-SCO contient Monochrome, Stade Raymond-Kopa et Noir & Blanc, avec les couleurs
-de cette ambiance. SRFC contient Nuit, Écran géant et Rouge & Noir. Ils ne
+SCO contient l’icône SCO, Stade Raymond-Kopa et Noir & Blanc, avec les couleurs
+de cette ambiance. SRFC contient l’icône SRFC, Roazhon Park et Rouge & Noir. Ils ne
 s'achètent pas avant découverte et sont complets sans frais après leur surprise.
 
 PSG, FC Barcelone (FCB) et FC Nantes (FCN) se découvrent dans la recherche avec
@@ -85,3 +85,15 @@ unique, la réconciliation, la persistance et le contraste des nouveaux packs.
 Les rendus natifs Android/Skia et les couches vectorielles des icônes sont
 inspectés localement. Ils ne remplacent pas un test du lanceur sur appareil. À vérifier sur téléphone : retour du lanceur, clair/sombre,
 texte 200 %, TalkBack, scènes, comptes synchronisés et restauration après erreur.
+
+## Variantes jour/nuit — 8.8.5
+
+Toutes les ambiances, publiques et secrètes, possèdent une déclinaison claire et
+sombre sous le même identifiant acheté. Le téléphone décide du mode, ou le soleil
+de la ville météo lorsque « Suivre le soleil » est activé. Ce réglage reste
+accessible avec une ambiance choisie. Aucun achat supplémentaire nécessaire.
+Les fonds artistiques de stade conservent leur éclairage peint.
+
+Les icônes SCO et SRFC reprennent les tracés de la flamme originale et des bandes
+noir/blanc ou rouge/noir. La réconciliation les attribue aux anciens déblocages
+sans rejouer le bonus de surprise ni retirer les icônes déjà possédées.

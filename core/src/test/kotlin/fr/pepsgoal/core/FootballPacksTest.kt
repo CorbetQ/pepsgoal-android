@@ -130,6 +130,15 @@ class FootballPacksTest {
         }
     }
 
+    @Test fun everyAmbianceVariantKeepsReadableText() {
+        for (mode in SHOP_MODES + Eggs.SECRET_MODES) for (dark in listOf(false, true)) {
+            val variant = mode.forDark(dark)
+            for (surface in listOfNotNull(variant.bg, variant.surface, variant.surface2)) {
+                assertTrue(contrast(variant.ink, surface) >= 4.5, "${mode.key} dark=$dark on $surface")
+            }
+        }
+    }
+
     private fun contrast(foreground: String, background: String): Double {
         fun luminance(hex: String): Double {
             val rgb = hex.removePrefix("#").chunked(2).map { it.toInt(16) / 255.0 }

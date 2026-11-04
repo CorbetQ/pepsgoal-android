@@ -32,7 +32,7 @@ class FootballIconsTest {
         val manifest = read(File("src/main/AndroidManifest.xml"))
         val aliases = manifest.getElementsByTagName("activity-alias")
         val output = File("build/reports/football-icons").apply { mkdirs() }
-        for ((key, alias) in listOf("psg" to ".IconPsg", "fcb" to ".IconFcb", "fcn" to ".IconFcn")) {
+        for ((key, alias) in listOf("sco" to ".IconSco", "srfc" to ".IconSrfc", "psg" to ".IconPsg", "fcb" to ".IconFcb", "fcn" to ".IconFcn")) {
             assertEquals(key, SHOP_ICONS.getValue(key).eggKey)
             val entry = (0 until aliases.length).map { aliases.item(it) as Element }
                 .single { it.getAttributeNS(android, "name") == alias }

@@ -110,7 +110,7 @@ fun PepsRoot(ui: AppState) {
         ui.prefs.contrast, ui.prefs.cvd, ui.prefs.mono, ui.prefs.motion || sysNoAnim, ui.prefs.transp, atmosphere.sunDown,
         ui.prefs.easy, rememberTalkBack(), ui.prefs.oneHand,
         if (ui.prefs.seasonal) fr.pepsgoal.app.sys.Season.now()?.let { fr.pepsgoal.app.sys.Season.COLORS[it] } else null,
-        if (ui.prefs.sunTheme && theme == "system") atmosphere.sunDown else null)
+        if (ui.prefs.sunTheme && (theme == "system" || fr.pepsgoal.core.shopMode(theme) != null)) atmosphere.sunDown else null)
     // Taille du texte et densité propres à l'application (en plus des réglages d'Android)
     val d0 = LocalDensity.current
     val zoom = when (ui.prefs.density) { "compact" -> .9f; "large" -> 1.1f; else -> 1f }

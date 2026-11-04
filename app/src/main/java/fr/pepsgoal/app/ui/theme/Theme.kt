@@ -6,6 +6,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import fr.pepsgoal.core.forDark
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -209,8 +210,8 @@ fun PepsTheme(input: ThemeInput, content: @Composable () -> Unit) {
     val sysDark = isSystemInDarkTheme()
     val transp = input.transp || input.easy; val motion = input.motion || input.easy
     // Ambiance achetée (« m:<clé> ») : thème d'interface complet, clair ou sombre
-    val mode = fr.pepsgoal.core.shopMode(input.theme)
-    val dark = if (mode != null) mode.dark else when (input.theme) { "light" -> false; "dark", "oled" -> true; "weather" -> input.skyDark; else -> input.sunDark ?: sysDark }
+    val mode = fr.pepsgoal.core.shopMode(input.theme)?.forDark(input.sunDark ?: sysDark)
+    val dark = if (mode != null) input.sunDark ?: sysDark else when (input.theme) { "light" -> false; "dark", "oled" -> true; "weather" -> input.skyDark; else -> input.sunDark ?: sysDark }
     val oled = input.theme == "oled"
     val ctx = LocalContext.current
     val dyn: ColorScheme? = if (input.materialYou && Build.VERSION.SDK_INT >= 31) (if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)) else null
