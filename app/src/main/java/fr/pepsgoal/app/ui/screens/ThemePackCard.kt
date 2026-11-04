@@ -50,14 +50,14 @@ fun ThemePackCard(ui: AppState, pack: ThemePack, currentIcon: String, onApplied:
             SceneBg(pack.bgKey, Modifier.fillMaxSize(), still = true)
             Box(Modifier.align(Alignment.TopStart).padding(10.dp)) { Plaque { AppIconPreview(icon, 48.dp) } }
             Box(Modifier.align(Alignment.BottomEnd).padding(10.dp).size(78.dp, 96.dp).clip(RoundedCornerShape(14.dp))) {
-                ThemePreview(themeLook("m:${pack.modeKey}"), Modifier.fillMaxSize(), accent = pack.colors.map(::hex))
+                ThemePreview(themeLook(pack.themeSetting), Modifier.fillMaxSize(), accent = pack.colors.map(::hex))
             }
-            MiniPlaque(if (pack.eggKey != null) "Secret découvert" else "Pack assorti", Modifier.align(Alignment.TopEnd).padding(10.dp))
+            MiniPlaque(if (pack.isDefault) "Gratuit · style original" else if (pack.eggKey != null) "Secret découvert" else "Pack assorti", Modifier.align(Alignment.TopEnd).padding(10.dp))
         }
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(pack.name, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
             Muted("Icône : ${icon.label} · Fond : ${pack.background.name}", small = true)
-            Muted("Couleurs : ${pack.colourTheme?.name ?: "assorties"} · Ambiance : ${pack.mode.name}", small = true)
+            Muted("Couleurs : ${pack.colourTheme?.name ?: if (pack.isDefault) "Braise" else "assorties"} · Ambiance : ${pack.mode.name}", small = true)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 pack.colors.forEach { color -> Box(Modifier.size(22.dp).clip(CircleShape).background(hex(color))) }
             }

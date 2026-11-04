@@ -19,6 +19,7 @@ data class ThemePack(
 )
 
 val THEME_PACKS: List<ThemePack> = listOf(
+    ThemePack("pepsgoal", "PepsGoal", "default", "pop", "system"),
     ThemePack("synthwave", "Synthwave", "neon", "citynight", "neon", themeKey = "synthwave"),
     ThemePack("galaxy", "Galaxie", "galaxy", "nebula", "cosmos", themeKey = "galaxy"),
     ThemePack("lava", "Lave", "lave", "magma", "basalt", themeKey = "lava"),
@@ -91,8 +92,15 @@ val THEME_PACKS: List<ThemePack> = listOf(
 
 fun themePack(key: String): ThemePack? = THEME_PACKS.firstOrNull { it.key == key }
 
-val ThemePack.mode: ShopMode get() = (SHOP_MODES + Eggs.SECRET_MODES).first { it.key == modeKey }
-val ThemePack.background: ShopBg get() = ALL_BGS.first { it.key == bgKey }
+val ThemePack.isDefault: Boolean get() = key == "pepsgoal"
+val ThemePack.themeSetting: String get() = if (isDefault) "system" else "m:$modeKey"
+val ThemePack.backgroundSetting: String get() = if (isDefault) "pop" else "s:$bgKey"
+private val DEFAULT_PACK_MODE = ShopMode("system", "Auto", "Ambiance PepsGoal automatique", 0, false,
+    "#FFF7F0", "#2A1420", "#FFFFFF", listOf("#FFE2CC", "#FFD6E8"), ACCENTS[0].c)
+private val DEFAULT_PACK_BACKGROUND = ShopBg("pop", "Collines braise", "Le paysage PepsGoal d’origine", 0, ACCENTS[0].c)
+
+val ThemePack.mode: ShopMode get() = if (isDefault) DEFAULT_PACK_MODE else (SHOP_MODES + Eggs.SECRET_MODES).first { it.key == modeKey }
+val ThemePack.background: ShopBg get() = if (isDefault) DEFAULT_PACK_BACKGROUND else ALL_BGS.first { it.key == bgKey }
 val ThemePack.colourTheme: ShopTheme? get() = themeKey?.let { key -> SHOP_THEMES.first { it.key == key } }
 val ThemePack.colors: List<String> get() = colourTheme?.colors ?: mode.accent
 val ThemePack.fx: String get() = colourTheme?.fx.orEmpty()
@@ -201,8 +209,8 @@ fun Pg.buyPack(key: String, maximumPrice: Int? = null, date: LocalDate = todayDa
 }
 
 fun Pg.packMatches(pack: ThemePack, u: User? = me()): Boolean = u != null &&
-    u.settings.theme == "m:${pack.modeKey}" && u.settings.bg == "s:${pack.bgKey}" &&
-    u.settings.accentCustom == pack.colors && u.settings.fx == pack.fx
+    u.settings.theme == pack.themeSetting && u.settings.bg == pack.backgroundSetting &&
+    (if (pack.isDefault) u.settings.accent == 0 && u.settings.accentCustom == null else u.settings.accentCustom == pack.colors) && u.settings.fx == pack.fx
 
 /** Core settings only; Android applies the validated launcher icon and device overrides together. */
 fun Pg.applyPack(key: String): String? {
@@ -210,9 +218,10 @@ fun Pg.applyPack(key: String): String? {
     val pack = themePack(key) ?: return "Ce pack n’existe pas."
     if (!packQuote(pack, u).owned) return "Tu dois posséder tous les éléments de ce pack avant de l’appliquer."
     u.shopOwned = (u.shopOwned + pack.components().filter { it.price > 0 }.map { it.key }).distinct().toMutableList()
-    u.settings.theme = "m:${pack.modeKey}"
-    u.settings.bg = "s:${pack.bgKey}"
-    u.settings.accentCustom = pack.colors
+    u.settings.theme = pack.themeSetting
+    u.settings.bg = pack.backgroundSetting
+    u.settings.accentCustom = if (pack.isDefault) null else pack.colors
+    if (pack.isDefault) u.settings.accent = 0
     u.settings.fx = pack.fx
     store.commit()
     return null

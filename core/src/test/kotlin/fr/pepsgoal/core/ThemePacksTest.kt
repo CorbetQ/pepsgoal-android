@@ -36,6 +36,31 @@ class ThemePacksTest {
         }
     }
 
+    @Test fun defaultPackRestoresOriginalSettingsForFreeWithoutRemovingPurchases() {
+        val f = Fixture(); val p = pack("pepsgoal")
+        f.user.settings.theme = "m:fcb"
+        f.user.settings.bg = "s:fcb"
+        f.user.settings.accent = 3
+        f.user.settings.accentCustom = pack("fcb").colors
+        f.user.settings.fx = "snow"
+        f.user.shopOwned.add("mode:fcb")
+        val bonus = f.user.shopBonus
+        assertTrue(f.pg.packQuote(p).owned)
+        assertEquals(0, f.pg.packQuote(p).price)
+        assertNull(f.pg.applyPack(p.key))
+        assertEquals("system", f.user.settings.theme)
+        assertEquals("pop", f.user.settings.bg)
+        assertEquals(0, f.user.settings.accent)
+        assertNull(f.user.settings.accentCustom)
+        assertEquals("", f.user.settings.fx)
+        assertTrue(f.pg.packMatches(p))
+        assertTrue("mode:fcb" in f.user.shopOwned)
+        assertEquals(bonus, f.user.shopBonus)
+        assertEquals(0, f.user.shopSpent)
+        assertNull(f.pg.applyPack(p.key))
+        assertTrue(f.pg.packMatches(p))
+    }
+
     @Test fun existingCatalogsAreGroupedWithoutRemovingIndividualItems() {
         val public = THEME_PACKS.filter { it.eggKey == null }
         assertTrue(SHOP_THEMES.all { t -> public.any { it.themeKey == t.key } })

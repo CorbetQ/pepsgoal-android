@@ -1,7 +1,7 @@
-# Packs de thème — 8.9.0
+# Packs de thème — 8.9.1
 
 Un pack réunit l'icône du lanceur, le fond illustré, les couleurs d'accent et
-l'ambiance. Le catalogue réutilise les ressources existantes : 62 packs publics
+l'ambiance. Le catalogue réutilise les ressources existantes : 63 packs publics
 couvrent les thèmes, fonds, ambiances et icônes payantes, plus six packs secrets.
 Les achats à la carte restent accessibles.
 
@@ -110,3 +110,13 @@ ambiances gardent leurs variantes. Les réglages d’accessibilité restent prio
 
 La sélection de ces ambiances utilise directement leur palette actuelle, y compris
 lorsqu’un ancien pack avait enregistré une palette différente.
+
+## Pack PepsGoal gratuit
+
+Le pack PepsGoal réunit l’icône Braise, les collines braise, la palette Braise
+et l’ambiance Auto native. Il est disponible à tous sans achat. Son application
+rétablit `system`, `pop`, l’accent Braise natif et aucun effet additionnel. Elle
+conserve le choix de suivi automatique téléphone/soleil et les réglages
+d’accessibilité. Comme pour les autres packs, Material You et les surcharges
+saisonnières sont désactivés pour rendre le style choisi visible. Aucun droit
+acheté n’est retiré et aucun nouvel article gratuit n’est inscrit au compte.
