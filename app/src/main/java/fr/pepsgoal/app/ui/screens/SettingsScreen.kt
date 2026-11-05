@@ -314,7 +314,7 @@ private fun RemindersSettings(ui: AppState, u: User) {
             androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { unr = Poller.unrestricted(ctx); t2++; onPauseOrDispose {} }
             val log = remember(t2) { ui.prefs.pollLog }
             SetGroup("Application fermée", note = "Les relèves en arrière-plan apportent messages, publications et notifications sans ouvrir PepsGoal.") {
-                SetToggle("Notifications instantanées", "PepsGoal reste connecté en arrière-plan (petite notification discrète) pour relever les nouveautés chaque minute.", "bolt", cBg,
+                SetToggle("Connexion en direct", "Relève périodique en arrière-plan : messages, publications et notifications arrivent sans ouvrir PepsGoal, au rythme choisi ci-dessous (petite notification discrète en journée). Ce n’est pas un canal permanent : la nuit et au calme, les relèves s’espacent.", "bolt", cBg,
                     instant, { instant = it; ui.prefs.instantNotifs = it; Poller.startLink(ctx); ui.toast(if (it) "Connexion en direct activée." else "Connexion en direct désactivée.", "bell") })
                 // Réactivité des relèves : Rapide (comportement historique), Équilibré (défaut) ou Économe
                 SetBlock {

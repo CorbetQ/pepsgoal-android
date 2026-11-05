@@ -20,6 +20,7 @@ import fr.pepsgoal.app.sys.Reminders
 import fr.pepsgoal.app.sys.SyncWorker
 import fr.pepsgoal.app.sys.WidgetUpdater
 import fr.pepsgoal.core.Pg
+import fr.pepsgoal.core.ScreenPollPolicy
 import fr.pepsgoal.core.Store
 import fr.pepsgoal.core.cloud.Api
 import fr.pepsgoal.core.cloud.Cloud
@@ -45,6 +46,8 @@ class PepsApp : Application() {
     val scope = MainScope()
     /** L'application est-elle visible à l'écran ? (sinon : notifications système) */
     var foreground = false
+    /** Dernière interaction tactile (horloge de démarrage), pour la boucle d'écran adaptative. */
+    @Volatile var lastTouch = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -107,9 +110,21 @@ class PepsApp : Application() {
         scope.launch {
             ProcessLifecycleOwner.get().lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
+                    // Feed et commentaires : 20 s tant que des nouveautés arrivent, puis ×1,5 par cycle sans changement
+                    // jusqu'à 60 s ; une interaction ramène à 20 s. Ailleurs : 60 s.
+                    var wait = ScreenPollPolicy.FAST; var at = android.os.SystemClock.elapsedRealtime()
                     while (true) {
-                        delay(if (ui.tab == "feed" || ui.screens.lastOrNull() is Screen.Comments) 20_000L else Poller.EVERY_MS)
+                        val social = ui.tab == "feed" || ui.screens.lastOrNull() is Screen.Comments
+                        val target = if (social) wait else Poller.EVERY_MS
+                        var slept = 0L
+                        while (slept < target) {
+                            delay(minOf(5_000L, target - slept)); slept += 5_000L
+                            if (social && lastTouch > at && slept >= ScreenPollPolicy.FAST) break
+                        }
+                        val touched = lastTouch > at
+                        at = android.os.SystemClock.elapsedRealtime()
                         Poller.run(this@PepsApp, "écran")
+                        wait = if (touched) ScreenPollPolicy.FAST else ScreenPollPolicy.next(wait, cloud.pollStatus == "nouveautés relevées")
                     }
                 }
                 launch { while (true) { delay(1000); pg.timerTick(); if (pg.badgeCheckPending) pg.checkBadges() } }

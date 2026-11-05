@@ -40,4 +40,8 @@ object EnergyState {
         val scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
         return level >= 0 && scale > 0 && level * 100 / scale <= 15 && battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) == 0
     }
+
+    /** Appareil branché (charge) : la relève du service n'a pas besoin de verrou de réveil. */
+    fun charging(ctx: Context): Boolean =
+        (ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0
 }

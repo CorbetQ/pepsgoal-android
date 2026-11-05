@@ -38,7 +38,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 object Poller {
     const val EVERY_MS = 60_000L
     @Volatile private var lastRun = 0L
-    private var lastHealth = 0L
 
     /** Contexte de décision : dernier événement utile, heure, réseau facturé, économiseur d'énergie, batterie, niveau choisi. */
     fun context(app: PepsApp): PollContext {
@@ -64,7 +63,11 @@ object Poller {
         val a = ctx.getSystemService(AlarmManager::class.java); val p = pi(ctx)
         if (!app.store.acct || app.cloud.forceOffline) { a.cancel(p); return }
         // Avec la connexion en direct, le service relève lui-même : l'alarme n'est plus qu'un filet de sécurité
-        val d = delayMs ?: if (app.prefs.pollTest > 0) 30_000L else if (app.prefs.instantNotifs) PollPolicy.alarmDelayMs(nextDelay(app), LinkService.alive) else nextDelay(app)
+        val d = delayMs ?: if (app.prefs.pollTest > 0) 30_000L else if (app.prefs.instantNotifs) {
+            // Service arrêté pour la nuit : l'alarme réveille au plus tard à 7 h pour le relancer
+            val base = PollPolicy.alarmDelayMs(nextDelay(app), LinkService.alive)
+            if (!LinkService.alive) minOf(base, untilMorning() + 1_000L) else base
+        } else nextDelay(app)
         val t = SystemClock.elapsedRealtime() + d
         // Alarme inexacte : Android la regroupe avec les autres réveils (bien moins coûteux qu'une alarme exacte chaque minute)
         try { a.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p) } catch (e: Exception) { a.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p) }
@@ -87,11 +90,18 @@ object Poller {
         BgStats.add("poll.src.$src")
         val t0 = SystemClock.elapsedRealtime(); val rx0 = BgStats.rxPackets()
         val req0 = app.cloud.api.requests.get(); val bytes0 = app.cloud.api.receivedBytes.get()
-        var wl: PowerManager.WakeLock? = null
+        var wl: PowerManager.WakeLock? = null; var wlAt = 0L
+        // Verrou de réveil libéré dès la fin des requêtes : l'écriture locale et le reste se font sans lui
+        fun releaseWakeLock() {
+            wl?.let { if (it.isHeld) { it.release(); val held = SystemClock.elapsedRealtime() - wlAt; BgStats.add("wl.ms", held); BgStats.max("wl.ms", held) } }
+            wl = null
+        }
         try {
-            if (!app.foreground) {
-                wl = app.getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pepsgoal:poll")
-                wl.acquire(40_000)
+            val pm = app.getSystemService(PowerManager::class.java)
+            // Seulement quand rien d'autre ne tient le processeur : alarme, ou service écran éteint sur batterie (WorkManager a le sien)
+            if (!app.foreground && PollPolicy.needsWakeLock(src, pm.isInteractive, EnergyState.charging(app))) {
+                wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pepsgoal:poll").also { it.acquire(PollPolicy.WAKE_LOCK_MS) }
+                wlAt = SystemClock.elapsedRealtime(); BgStats.add("wl.count")
             }
             val ok = withTimeoutOrNull(30_000) {
                 app.cloud.navOnline = app.networkUp()
@@ -100,9 +110,8 @@ object Poller {
                 // La cadence n'est relancée que par un événement utile (CloudEvents), pas par un simple changement de JSON
                 val fg = app.foreground
                 if (withContext(NetSource(src)) { app.cloud.poll(if (fg) 15_000 else 40_000, foreground = fg) }) WidgetUpdater.update(app)
-                if (!app.foreground) try { SmartReminders.check(app) } catch (e: CancellationException) { throw e } catch (e: Exception) {}
-                // Santé Connect : relu au plus tous les quarts d'heure
-                if (System.currentTimeMillis() - lastHealth > 15 * 60_000L) { lastHealth = System.currentTimeMillis(); try { Health.sync(app) } catch (e: CancellationException) { throw e } catch (e: Exception) {} }
+                // Santé Connect et rappels intelligents ne passent plus par la relève réseau : travail local, alarmes et ouverture
+                releaseWakeLock()
                 app.store.flush()
                 true
             }
@@ -121,15 +130,35 @@ object Poller {
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
             app.cloud.pollStatus = "erreur : ${e::class.simpleName}"
-        } finally { wl?.let { if (it.isHeld) it.release() }; lock.unlock() }
+        } finally { releaseWakeLock(); lock.unlock() }
     }
 
-    /** (Re)lance le service de connexion en direct si le compte et le réglage le permettent (sinon l'arrête). */
+    /** Le compte a-t-il une vie sociale (amis, conversations, groupes, ou notifications du serveur depuis 7 jours) ? */
+    fun hasSocial(app: PepsApp): Boolean {
+        val db = app.store.db; val since = System.currentTimeMillis() - 7 * 86_400_000L
+        return db.friendships.isNotEmpty() || db.chats.isNotEmpty() || db.messages.isNotEmpty() || db.notifs.any { it.srv && it.at > since }
+    }
+
+    /** Le service de connexion en direct doit-il tourner maintenant ? (jour, cadence < 30 min, compte social, réglage actif) */
+    fun shouldRunService(app: PepsApp): Boolean = app.store.acct && !app.cloud.forceOffline &&
+        PollPolicy.shouldRunService(java.time.LocalTime.now().hour, interval(app), hasSocial(app), app.prefs.instantNotifs)
+
+    /** (Re)lance le service de connexion en direct si le compte, le réglage et le moment le permettent (sinon l'arrête). */
     fun startLink(ctx: Context) {
         val app = ctx.peps
         val i = Intent(ctx, LinkService::class.java)
-        if (!app.store.acct || !app.prefs.instantNotifs || app.cloud.forceOffline) { ctx.stopService(i); return }
+        // La nuit, au calme ou sans vie sociale : pas de service, l'alarme et le worker relèvent
+        if (!shouldRunService(app)) { if (LinkService.alive) ctx.stopService(i); return }
+        if (LinkService.alive) return
         try { ContextCompat.startForegroundService(ctx, i) } catch (e: Exception) { /* démarrage refusé hors premier plan : l'alarme prend le relais */ }
+    }
+
+    /** Millisecondes jusqu'à 7 h (relance du service de connexion en direct le matin). */
+    private fun untilMorning(): Long {
+        val now = java.time.ZonedDateTime.now()
+        var t = now.withHour(7).withMinute(0).withSecond(0).withNano(0)
+        if (!t.isAfter(now)) t = t.plusDays(1)
+        return java.time.Duration.between(now, t).toMillis()
     }
 
     /** L'application est-elle exemptée de l'optimisation de batterie (réveils plus réguliers en veille) ? */
@@ -177,7 +206,7 @@ class LinkService : Service() {
         try {
             ServiceCompat.startForeground(this, Notifier.LINK_ID, Notifier.link(this), if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0)
         } catch (e: Exception) { stopSelf(); return START_NOT_STICKY }
-        if (!app.store.acct || !app.prefs.instantNotifs || app.cloud.forceOffline) { stopSelf(); return START_NOT_STICKY }
+        if (!Poller.shouldRunService(app)) { BgStats.add("fgs.policy"); stopSelf(); return START_NOT_STICKY }
         if (!alive) { alive = true; startedAt = SystemClock.elapsedRealtime(); BgStats.add("fgs.start") }
         if (job?.isActive != true) job = app.scope.launch {
             while (isActive) {
@@ -187,6 +216,8 @@ class LinkService : Service() {
                 delay((due - now).coerceAtLeast(15_000L))
                 if (!app.foreground) Poller.run(app, "service")
                 accountTime()
+                // Nuit, cadence lente ou compte devenu calme : le service s'arrête, l'alarme de secours prend le relais
+                if (!Poller.shouldRunService(app)) { stopSelf(); break }
             }
         }
         return START_STICKY
@@ -195,6 +226,8 @@ class LinkService : Service() {
     override fun onDestroy() {
         job?.cancel()
         if (alive) { accountTime(); alive = false; BgStats.add("fgs.stop") }
+        // L'alarme reprend à l'intervalle courant (ou à 7 h) maintenant que le service ne relève plus
+        Poller.schedule(this)
         super.onDestroy()
     }
 

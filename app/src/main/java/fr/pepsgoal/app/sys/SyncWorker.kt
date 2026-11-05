@@ -13,11 +13,11 @@ import java.util.concurrent.TimeUnit
 /** Local deadlines run offline; transfers have their own network-constrained work. */
 class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result = try {
+        val app = applicationContext.peps
+        withContext(Dispatchers.Main) { BgStats.add("wake.sync"); app.pg.timerTick(); app.pg.checkReminders() }
+        // Santé Connect hors du fil principal (seule la validation repasse dessus), et seulement s'il existe des liens
+        if (Health.links(app).isNotEmpty()) Health.sync(app)
         withContext(Dispatchers.Main) {
-            val app = applicationContext.peps
-            BgStats.add("wake.sync")
-            app.pg.timerTick(); app.pg.checkReminders()
-            Health.sync(app)
             LiveUpdates.refresh(app); WidgetUpdater.update(app); Reminders.reschedule(app)
             app.store.flush()
         }

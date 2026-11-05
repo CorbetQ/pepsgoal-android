@@ -31,6 +31,12 @@ class MainActivity : ComponentActivity() {
 
     private val askNotif = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> peps.pg.me()?.let { it.settings.browser = ok; peps.store.commit() } }
 
+    /** Interaction (défilement, tape) : la boucle d'écran du feed repasse à 20 s. Aucun travail ici, un horodatage. */
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        peps.lastTouch = android.os.SystemClock.elapsedRealtime()
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()

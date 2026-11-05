@@ -10,6 +10,8 @@ import androidx.health.connect.client.time.TimeRangeFilter
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.core.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
@@ -150,7 +152,10 @@ object Health {
 
     /** Vérifie les liens (au plus toutes les 10 minutes) et valide les objectifs dont le seuil est atteint. */
     private val syncLock = Mutex()
-    suspend fun sync(ctx: Context, force: Boolean = false): Int = syncLock.withLock { syncLocked(ctx, force) }
+    suspend fun sync(ctx: Context, force: Boolean = false): Int = syncLock.withLock {
+        // État de l'application sur le fil principal ; lectures Health Connect (IPC) hors du fil principal (voir read)
+        withContext(Dispatchers.Main.immediate) { syncLocked(ctx, force) }
+    }
 
     private suspend fun syncLocked(ctx: Context, force: Boolean): Int {
         val app = ctx.peps; val pg = app.pg; val u = pg.me() ?: return 0
@@ -162,7 +167,7 @@ object Health {
         suspend fun read(key: String): Double? {
             if (!values.containsKey(key)) {
                 val t0 = android.os.SystemClock.elapsedRealtime()
-                values[key] = value(ctx, key, date)
+                values[key] = withContext(Dispatchers.Default) { value(ctx, key, date) }
                 BgStats.add("health.reads"); BgStats.add("health.ms", android.os.SystemClock.elapsedRealtime() - t0)
             }
             return values[key]

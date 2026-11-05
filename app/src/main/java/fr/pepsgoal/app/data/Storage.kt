@@ -104,7 +104,7 @@ class DevicePrefs(context: Context) : fr.pepsgoal.core.PollState {
     var notifiedIds: Set<String> get() = p.getStringSet("notified", emptySet()) ?: emptySet(); set(v) = p.edit().putStringSet("notified", v.toList().takeLast(400).toSet()).apply()
     /** Dernière relève réussie des notifications du serveur en arrière-plan (ms). */
     var lastPoll get() = p.getLong("lastPoll", 0L); set(v) = p.edit().putLong("lastPoll", v).apply()
-    /** Service de connexion en direct (notifications instantanées application fermée). */
+    /** Connexion en direct : relève périodique application fermée (service de premier plan en journée, alarme sinon). */
     var instantNotifs get() = p.getBoolean("instantNotifs", true); set(v) = p.edit().putBoolean("instantNotifs", v).apply()
     /** Réactivité des relèves application fermée : 0 Rapide, 1 Équilibré (défaut, valeur absente), 2 Économe. */
     var pollLevel get() = p.getInt("pollLevel", fr.pepsgoal.core.PollPolicy.BALANCED); set(v) = p.edit().putInt("pollLevel", v).apply()

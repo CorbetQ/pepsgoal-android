@@ -11,12 +11,17 @@ import fr.pepsgoal.core.model.Goal
  * rappel « dernière chance » arrive avant ton heure habituelle de fin de journée.
  */
 object SmartReminders {
-    /** Minute de la journée où l'objectif est habituellement validé (médiane), ou null si pas assez d'historique. */
-    fun usualMinute(ctx: Context, g: Goal): Int? {
-        val pg = ctx.peps.pg; val since = nowMs() - 30L * 86_400_000
-        val mins = pg.userCheckins(pg.meId()).filter { it.goalId == g.id && pg.isWin(it) && it.at > since }.map { localDateTime(it.at).let { t -> t.hour * 60 + t.minute } }.sorted()
-        return if (mins.size < 4) null else mins[mins.size / 2]
+    /** Heures habituelles du jour, recalculées seulement quand les validations changent (une validation, une annulation). */
+    private val cache = KeyedCache<List<Any>, SmartTimes>()
+
+    private fun times(ctx: Context): SmartTimes {
+        val pg = ctx.peps.pg; val list = pg.db.checkins
+        val key = listOf(today(), pg.meId(), list.size, System.identityHashCode(list), list.lastOrNull()?.id ?: "", list.lastOrNull()?.at ?: 0L)
+        return cache.get(key) { SmartTimes.compute(list.toList(), pg.meId(), { pg.isWin(it) }, nowMs()) }
     }
+
+    /** Minute de la journée où l'objectif est habituellement validé (médiane), ou null si pas assez d'historique. */
+    fun usualMinute(ctx: Context, g: Goal): Int? = times(ctx).usual[g.id]
 
     /** Heure du rappel (ms aujourd'hui) pour chaque objectif restant : 20 minutes avant l'heure habituelle. */
     fun plan(ctx: Context): List<Pair<Goal, Long>> {
@@ -31,8 +36,7 @@ object SmartReminders {
         val app = ctx.peps; val pg = app.pg; val u = pg.me() ?: return null
         if (!app.prefs.smartReminders || pg.isRest()) return null
         val st = pg.globalStreak(u.id); if (st.lit || st.n == 0) return null
-        val since = nowMs() - 21L * 86_400_000
-        val last = pg.userCheckins(u.id).filter { pg.isWin(it) && it.at > since }.groupBy { it.date }.values.map { l -> l.maxOf { localDateTime(it.at).let { t -> t.hour * 60 + t.minute } } }.sorted()
+        val last = times(ctx).lastOfDay
         val m = if (last.size >= 5) last[last.size / 2] - 30 else 21 * 60 + 30
         return startOfDayMs(todayDate()) + m.coerceIn(20 * 60, 22 * 60 + 45) * 60_000L
     }
