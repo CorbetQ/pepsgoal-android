@@ -62,7 +62,11 @@ object Health {
         val p = l.split('|'); if (p.size < 3) return@mapNotNull null
         Link(p[0], p[1], p[2].toDoubleOrNull() ?: return@mapNotNull null, p.getOrNull(3) ?: metric(p[1])?.op ?: ">=")
     }
-    fun saveLinks(ctx: Context, l: List<Link>) { ctx.peps.prefs.healthLinks = l.joinToString("\n") { "${it.goalId}|${it.metric}|${it.threshold}|${it.op}" } }
+    fun saveLinks(ctx: Context, l: List<Link>) {
+        ctx.peps.prefs.healthLinks = l.joinToString("\n") { "${it.goalId}|${it.metric}|${it.threshold}|${it.op}" }
+        // Période du travail local : 30 min avec un lien Santé, 60 min sinon
+        try { SyncWorker.schedule(ctx) } catch (e: Exception) {}
+    }
 
     /* ------------------------------------------------------------------ format */
 

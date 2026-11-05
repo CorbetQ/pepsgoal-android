@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.sheets
 
+import androidx.lifecycle.repeatOnLifecycle
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -173,7 +174,9 @@ fun ProofStory(proofs: List<Proof>) {
                 }
             } else {
                 var i by remember { mutableIntStateOf(0) }
-                LaunchedEffect(Unit) { while (true) { delay(1400); i = (i + 1) % photos.size } }
+                // Diaporama lié au cycle de vie : arrêté avec l'activité
+                val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+                LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) { while (true) { delay(1400); i = (i + 1) % photos.size } } }
                 ProofImage(photos[i], Modifier.fillMaxSize())
                 MiniPlaque("${fmtDate(photos[i].date)} · ${i + 1}/${photos.size}", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(24.dp))
             }

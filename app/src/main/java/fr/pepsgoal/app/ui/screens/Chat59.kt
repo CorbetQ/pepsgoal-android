@@ -79,7 +79,8 @@ fun StickerView(id: String, fallback: String, sz: Dp, still: Boolean = false) {
     val p = LocalPal.current
     val def = (STICKERS.firstOrNull { it.id == id } ?: SEASON_STICKERS.firstOrNull { it.id == id }) ?: run { Emoji(fallback.ifEmpty { "🔥" }, sz * .7f); return }
     val anim = !still && !p.motion
-    val t by if (anim) rememberInfiniteTransition(label = "stk").animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "stkT") else remember { mutableFloatStateOf(.25f) }
+    // Même boucle de 1,6 s, plafonnée à 30 images/s (autocollants visibles en continu dans les conversations)
+    val t by if (anim) slowPhaseState(1600, 30, followBgPause = false) else remember { mutableFloatStateOf(.25f) }
     val s = sin(t * 2 * PI.toFloat())
     Box(Modifier.size(sz), contentAlignment = Alignment.Center) {
         // Disque plein derrière la flamme (aucun halo)

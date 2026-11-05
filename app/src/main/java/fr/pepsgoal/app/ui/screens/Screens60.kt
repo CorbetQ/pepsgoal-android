@@ -100,7 +100,8 @@ fun GiftCard(ui: AppState, m: Message, b: JsonObject, mine: Boolean) {
     val p = LocalPal.current; val pg = ui.pg
     val n = b.int("n").coerceIn(0, GIFT_MAX)
     var opened by remember(m.id, ui.rev) { mutableStateOf(pg.giftOpened(m.id)) }
-    val wiggle = if (!mine && !opened && !p.motion) rememberInfiniteTransition(label = "gift").animateFloat(-6f, 6f, infiniteRepeatable(tween(500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "giftW").value else 0f
+    // Balancement identique (aller-retour de 2 × 500 ms, même courbe), plafonné à 30 images/s
+    val wiggle = if (!mine && !opened && !p.motion) giftWiggle(slowPhaseState(1000, 30, followBgPause = false).value, 6f) else 0f
     // Carte cadeau : aplat or à marche, ruban néon, encre prune
     val gold = vivid(p.gold)
     Column(Modifier.widthIn(min = 200.dp, max = 260.dp).chunk(gold, gold.step(), 24.dp, 4.dp, 0.dp).clip(RoundedCornerShape(24.dp))
@@ -336,4 +337,10 @@ fun BreathSheet(ui: AppState) {
         }
     }
     PButton(if (running) "Arrêter" else "Commencer", { running = !running; if (!running) phase = "Prêt ?" }, Modifier.fillMaxWidth(), icon = if (running) "pause" else "play", kind = "primary")
+}
+
+/** Balancement d'un cadeau : phase 0..1 d'un aller-retour, courbe FastOutSlowIn à l'aller comme au retour, de −[amp] à +[amp]. */
+internal fun giftWiggle(phase: Float, amp: Float): Float {
+    val tri = if (phase < .5f) phase * 2f else 2f - phase * 2f
+    return -amp + 2f * amp * androidx.compose.animation.core.FastOutSlowInEasing.transform(tri)
 }

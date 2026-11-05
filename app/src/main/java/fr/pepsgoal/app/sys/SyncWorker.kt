@@ -3,6 +3,7 @@ package fr.pepsgoal.app.sys
 import android.content.Context
 import androidx.work.*
 import fr.pepsgoal.app.peps
+import fr.pepsgoal.core.LocalWorkPolicy
 import fr.pepsgoal.core.NetSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +27,13 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
 
     companion object {
         /** Version de la configuration des travaux : à changer quand les contraintes changent (ré-enfilage UPDATE). */
-        private const val CONFIG = "2"
+        private const val CONFIG = "3"
+
+        /**
+         * Période du travail local : filet de sécurité des échéances (déjà portées par l'alarme des rappels), 30 min s'il
+         * existe un lien Santé (validation automatique), 60 min sinon.
+         */
+        fun periodMinutes(hasHealthLinks: Boolean) = LocalWorkPolicy.periodMinutes(hasHealthLinks)
 
         /**
          * Appelé à chaque changement de connexion ou de session et au démarrage : une configuration identique n'est pas
@@ -34,11 +41,12 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
          */
         fun schedule(ctx: Context) {
             val wm = WorkManager.getInstance(ctx); val app = ctx.peps
-            val localMin = 15L
+            val localMin = periodMinutes(Health.links(app).isNotEmpty())
             val net = app.store.acct && !app.cloud.forceOffline
             val sig = "$CONFIG|$localMin|$net"
             val policy = if (app.prefs.workConfig == sig) ExistingPeriodicWorkPolicy.KEEP else ExistingPeriodicWorkPolicy.UPDATE
-            val local = PeriodicWorkRequestBuilder<SyncWorker>(localMin, TimeUnit.MINUTES, 5, TimeUnit.MINUTES).build()
+            val local = PeriodicWorkRequestBuilder<SyncWorker>(localMin, TimeUnit.MINUTES, 15, TimeUnit.MINUTES)
+                .setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).build()).build()
             wm.enqueueUniquePeriodicWork("pepsgoal-sync", policy, local)
             if (!net) {
                 wm.cancelUniqueWork("pepsgoal-network-sync")

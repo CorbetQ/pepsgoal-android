@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.screens
 
+import androidx.lifecycle.repeatOnLifecycle
 import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -150,13 +151,16 @@ fun PetView(ui: AppState, size: Dp, onTap: (() -> Unit)? = null) {
     val jump = remember { Animatable(0f) }; val scope = rememberCoroutineScope()
     var wink by remember { mutableStateOf(false) }
     // Clin d'œil de temps en temps ; petit bond de joie quand il est fier ou content
-    if (live && pet.stage.key != "egg") LaunchedEffect(pet.mood) {
+    // Lié au cycle de vie : rien ne tourne quand l'activité est arrêtée (écran éteint, application en arrière-plan)
+    if (live && pet.stage.key != "egg") { val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+      LaunchedEffect(pet.mood, lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
         var n = 0
         while (true) {
             kotlinx.coroutines.delay(3800L + (n % 3) * 1100L); n++
             if (pet.mood in setOf("proud", "happy") && n % 2 == 0) { jump.snapTo(.6f); jump.animateTo(0f, spring(dampingRatio = .35f, stiffness = 420f)) }
             else if (pet.mood != "tired") { wink = true; kotlinx.coroutines.delay(180); wink = false }
         }
+      } }
     }
     val cols = LocalFlame.current ?: listOf(p.pink, p.flame, p.flame2)
     Canvas(Modifier.size(size).graphicsLayer {

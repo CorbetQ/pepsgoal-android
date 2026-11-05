@@ -109,7 +109,8 @@ object Poller {
                 app.cloud.feedEveryCycle = app.prefs.pollLevel == PollPolicy.FAST
                 // La cadence n'est relancée que par un événement utile (CloudEvents), pas par un simple changement de JSON
                 val fg = app.foreground
-                if (withContext(NetSource(src)) { app.cloud.poll(if (fg) 15_000 else 40_000, foreground = fg) }) WidgetUpdater.update(app)
+                withContext(NetSource(src)) { app.cloud.poll(if (fg) 15_000 else 40_000, foreground = fg) }
+                // Widgets et montre ne dépendent que des objectifs : pas de mise à jour sur relève sociale (changements métier seulement).
                 // Santé Connect et rappels intelligents ne passent plus par la relève réseau : travail local, alarmes et ouverture
                 releaseWakeLock()
                 app.store.flush()
