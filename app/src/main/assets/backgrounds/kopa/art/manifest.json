@@ -1,0 +1,17 @@
+{
+  "id": "kopa",
+  "revision": "v2",
+  "file": "artwork.png",
+  "sha256": "1e684f3c5723ca0a72a6fa53de3b7a42f26e7c06427714ee69a34053a2bd4b14",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Stade_Jean-Bouin_Angers_-_tribune_StLeo.jpg",
+    "https://www.angers-sco.fr/"
+  ],
+  "brief": "docs/design/background-reboot/briefs/kopa.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device or battery validation."
+}

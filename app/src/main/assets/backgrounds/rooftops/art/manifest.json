@@ -1,0 +1,16 @@
+{
+  "id": "rooftops",
+  "revision": "v2",
+  "file": "artwork.png",
+  "sha256": "9f7d17bbd6aa262b060373f5010e3603b25075fc72a5039fa5b4a7ff075ce593",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Place_Saint-Michel_(Paris),_num%C3%A9ro_3,_toit.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/rooftops.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

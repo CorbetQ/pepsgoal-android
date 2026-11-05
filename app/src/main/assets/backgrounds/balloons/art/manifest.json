@@ -1,0 +1,16 @@
+{
+  "id": "balloons",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "dd9c9491237cc31a46f597160174513f8a2f787fd12a7f374155d3b9d4a65ff3",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Hot_air_balloon"
+  ],
+  "brief": "docs/design/background-reboot/briefs/balloons.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

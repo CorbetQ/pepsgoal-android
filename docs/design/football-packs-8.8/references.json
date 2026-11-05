@@ -1,0 +1,122 @@
+{
+  "formatVersion": 1,
+  "researchedAt": "2026-11-04",
+  "method": "Actual internet search via Wikimedia Commons API, image downloads, individual visual inspection of every retained image.",
+  "rights": "Third-party references are research-only, cached outside repository and production. Production must be original illustration, not redistribution of reference photos.",
+  "backgrounds": {
+    "psg": {
+      "key": "psg",
+      "references": [
+        {
+          "title": "File:PSG-Celtic Glasgow Parc des Princes 06.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:PSG-Celtic_Glasgow_Parc_des_Princes_06.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/PSG-Celtic_Glasgow_Parc_des_Princes_06.jpg/960px-PSG-Celtic_Glasgow_Parc_des_Princes_06.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/football-packs-8.8/references/psg/01.jpg",
+          "author": "Zakarie Faibis",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "date": "2020-07-21 18:28:54",
+          "description": "PSG-Celtic Glasgow match amical 21-07-2020 Parc des Princes",
+          "review": "Individually visually inspected: correct stadium and useful architecture/color reference; limitations documented in observations."
+        },
+        {
+          "title": "File:PSG-Celtic Glasgow Parc des Princes 29.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:PSG-Celtic_Glasgow_Parc_des_Princes_29.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/PSG-Celtic_Glasgow_Parc_des_Princes_29.jpg/960px-PSG-Celtic_Glasgow_Parc_des_Princes_29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/football-packs-8.8/references/psg/02.jpg",
+          "author": "Zakarie Faibis",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "date": "2020-07-21 20:36:43",
+          "description": "PSG-Celtic Glasgow match amical 21-07-2020 Parc des Princes",
+          "review": "Individually visually inspected: correct stadium and useful architecture/color reference; limitations documented in observations."
+        },
+        {
+          "title": "File:Parc des Princes @ Paris 16 (32835075813).jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Parc_des_Princes_@_Paris_16_(32835075813).jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e2/Parc_des_Princes_%40_Paris_16_%2832835075813%29.jpg/960px-Parc_des_Princes_%40_Paris_16_%2832835075813%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/football-packs-8.8/references/psg/03.jpg",
+          "author": "Guilhem Vellut from Paris, France",
+          "license": "CC BY 2.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+          "date": "2017-03-25 09:13",
+          "description": "Parc des Princes @ Paris 16",
+          "review": "Individually visually inspected: correct stadium and useful architecture/color reference; limitations documented in observations."
+        }
+      ],
+      "club": "Paris Saint-Germain",
+      "stadium": "Parc des Princes, Paris",
+      "era": "Architecture du stade1972, vues intérieures2020 et extérieur2017. Couleurs/ameublement peuvent avoir évolué depuis.",
+      "observations": "Enceinte compacte, toiture continue en couronne avec projecteurs intégrés; gradins bleu nuit/rouge/blanc; poteaux/contreforts extérieurs en béton. Réf03 vue de rue utile seulement pour contreforts, pas un panorama du stade. Réf01/02 source principale pour intérieur.",
+      "identity": "Bleu marine, rouge, blanc. Ne pas confondre avec Stade de France ou autre stade parisien."
+    },
+    "fcb": {
+      "key": "fcb",
+      "references": [
+        {
+          "title": "File:CampNouPanorama.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:CampNouPanorama.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4f/CampNouPanorama.jpg/960px-CampNouPanorama.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/football-packs-8.8/references/fcb/01.jpg",
+          "author": "JonasBlaps",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "date": "2017-07-20",
+          "description": "A Panoramic view of the Nom Camp",
+          "review": "Individually visually inspected: correct stadium and useful architecture/color reference; limitations documented in observations."
+        },
+        {
+          "title": "File:Barcelona vs Inter 2019 2.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Barcelona_vs_Inter_2019_2.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Barcelona_vs_Inter_2019_2.jpg/960px-Barcelona_vs_Inter_2019_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/football-packs-8.8/references/fcb/02.jpg",
+          "author": "kallerna",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "date": "2019-10-02 23:06:47",
+          "description": "Barcelona vs. Inter @ Camp Nou",
+          "review": "Individually visually inspected: correct stadium and useful architecture/color reference; limitations documented in observations."
+        }
+      ],
+      "club": "FC Barcelone",
+      "stadium": "Camp Nou, Barcelone",
+      "era": "Camp Nou historique photographié2017 et2019, AVANT la rénovation engagée2023. La création évoque volontairement cette époque et ne représente pas le Spotify Camp Nou rénové de2026.",
+      "observations": "Immense cuve ouverte, gradins superposés en trois niveaux et très forte hauteur du côté opposé, sièges bleu/grenat; éclairage en rive haute et couverture limitée à la tribune principale. Réf01 panorama extrêmement large et bas: utile détail des niveaux/couverture, réf02 meilleur cadrage de l’ensemble terrain/cuve.",
+      "identity": "Bleu et grenat, accents or. FCB signifie FC Barcelone dans cette tâche, jamais Bayern."
+    },
+    "fcn": {
+      "key": "fcn",
+      "references": [
+        {
+          "title": "File:Stade de la Beaujoire, vue de la tribune présidentielle.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stade_de_la_Beaujoire,_vue_de_la_tribune_pr%C3%A9sidentielle.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Stade_de_la_Beaujoire%2C_vue_de_la_tribune_pr%C3%A9sidentielle.jpg/960px-Stade_de_la_Beaujoire%2C_vue_de_la_tribune_pr%C3%A9sidentielle.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/football-packs-8.8/references/fcn/01.jpg",
+          "author": "Sylvain258",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "date": "2016-08-09 13:05:07",
+          "description": "Stade la Beaujoire vue depuis la tribune présidentielle",
+          "review": "Individually visually inspected: correct stadium and useful architecture/color reference; limitations documented in observations."
+        },
+        {
+          "title": "File:Stade Beaujoire - Nantes (FR44) - 2022-09-18 - 1.jpg",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stade_Beaujoire_-_Nantes_(FR44)_-_2022-09-18_-_1.jpg",
+          "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6a/Stade_Beaujoire_-_Nantes_%28FR44%29_-_2022-09-18_-_1.jpg/960px-Stade_Beaujoire_-_Nantes_%28FR44%29_-_2022-09-18_-_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+          "localPath": "/workspace/.pepsgoal/football-packs-8.8/references/fcn/02.jpg",
+          "author": "Chabe01",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+          "date": "2022-09-18 16:24:02",
+          "description": "Stade de la Beaujoire, Nantes.",
+          "review": "Individually visually inspected: correct stadium and useful architecture/color reference; limitations documented in observations."
+        }
+      ],
+      "club": "FC Nantes",
+      "stadium": "Stade de la Beaujoire — Louis-Fonteneau, Nantes",
+      "era": "Photographies2016 intérieure et2022 extérieure. Architecture historique de la Beaujoire, pas projet hypothétique de nouveau stade.",
+      "observations": "Enceinte ouverte au ciel, toit ondulé en grandes courbes, gradins vert/jaune; vue intérieure panoramique01 montre l’ensemble de la cuve; extérieur02 montre côtes de toiture et nervures béton.",
+      "identity": "Jaune et vert. La forme de toiture doit différencier Beaujoire du Parc des Princes."
+    }
+  }
+}

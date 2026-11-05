@@ -1,6 +1,8 @@
 package fr.pepsgoal.core
 
 import fr.pepsgoal.core.model.Db
+import fr.pepsgoal.core.model.snapshot
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -18,7 +20,13 @@ interface DbFiles {
     fun delete(name: String)
 }
 
-class Store(private val files: DbFiles) {
+class Store(private val files: DbFiles, writeScope: CoroutineScope? = null) {
+    private val writer = writeScope?.let { DbWriter(files, it) }
+    // Owner-thread cache: reads cannot race pending account writes/deletions.
+    private val snapshots = mutableMapOf<String, Db?>()
+    val persistenceError get() = writer?.error
+    val diskWrites get() = writer?.writes?.get() ?: 0L
+    val diskBytes get() = writer?.bytes?.get() ?: 0L
     var db: Db = Db()
         private set
     /** Compte du serveur connecté (sinon : profil sans compte, entièrement local). */
@@ -36,6 +44,7 @@ class Store(private val files: DbFiles) {
     private val fileName get() = if (acct) ACCOUNT else LOCAL
 
     fun load(name: String): Db? {
+        if (snapshots.containsKey(name)) return snapshots[name]?.snapshot()
         val raw = files.read(name) ?: return null
         return try { JSON.decodeFromString(Db.serializer(), raw) } catch (e: Exception) {
             files.write("$name.corrompu.${nowMs()}", raw)
@@ -48,7 +57,7 @@ class Store(private val files: DbFiles) {
 
     /** Enregistre la base et prévient l'interface. `sync` : planifie une synchronisation (compte). */
     fun commit(sync: Boolean = true) {
-        if (!db.sandbox) files.write(fileName, JSON.encodeToString(Db.serializer(), db))
+        if (!db.sandbox) save(fileName, db)
         changed()
         if (acct && sync) onSaved?.invoke()
     }
@@ -59,9 +68,24 @@ class Store(private val files: DbFiles) {
     fun changed() { rev++; onChange?.invoke() }
 
     fun readLocal(): Db? = load(LOCAL)
-    fun writeLocal(d: Db) = files.write(LOCAL, JSON.encodeToString(Db.serializer(), d))
+    private fun save(name: String, value: Db) {
+        if (writer == null) files.write(name, JSON.encodeToString(Db.serializer(), value))
+        else {
+            val snapshot = value.snapshot()
+            snapshots[name] = snapshot
+            writer.save(name, snapshot)
+        }
+    }
+
+    /** Wait for all preceding saves before completing a background operation. */
+    suspend fun flush() { writer?.flush() }
+
+    fun writeLocal(d: Db) = save(LOCAL, d)
     fun readAccount(): Db? = load(ACCOUNT)
-    fun deleteAccount() = files.delete(ACCOUNT)
+    fun deleteAccount() {
+        if (writer == null) files.delete(ACCOUNT)
+        else { snapshots[ACCOUNT] = null; writer.delete(ACCOUNT) }
+    }
 
     companion object {
         const val LOCAL = "pepsgoal.v1.json"

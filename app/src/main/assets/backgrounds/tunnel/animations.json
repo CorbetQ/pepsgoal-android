@@ -1,0 +1,8 @@
+{
+  "cycleMs": 20000,
+  "maxFps": 15,
+  "phaseAtRest": 0.3,
+  "pauseWhenHidden": true,
+  "respectReducedMotion": true,
+  "respectPowerSave": true
+}

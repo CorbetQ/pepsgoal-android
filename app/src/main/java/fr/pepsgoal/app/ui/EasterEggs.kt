@@ -115,5 +115,6 @@ fun EggsCard(ui: AppState, u: User) {
                 if (ok) Box(Modifier.size(22.dp).clip(CircleShape).background(p.flame), contentAlignment = Alignment.Center) { Pi("check", size = 14.dp, tint = fr.pepsgoal.app.ui.theme.PLUM) }
             }
         }
+        PButton("Voir les packs découverts", { ui.shopTab = "packs"; ui.push(fr.pepsgoal.app.Screen.Shop) }, Modifier.padding(top = 8.dp), icon = "palette", kind = "ghost")
     }
 }

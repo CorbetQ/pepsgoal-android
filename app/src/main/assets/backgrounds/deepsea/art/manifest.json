@@ -1,0 +1,16 @@
+{
+  "id": "deepsea",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "11b41d191a63a3953e4143f4090e225989d69a0303cba37446768c1697d0dcd3",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Leopard_shark_in_kelp.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/deepsea.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device or battery validation."
+}

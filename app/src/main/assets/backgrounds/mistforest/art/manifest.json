@@ -1,0 +1,16 @@
+{
+  "id": "mistforest",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "631cb9a8b109e82efd9c27de924af17ca2f4196dd7d56c60e3bfa1e240377c94",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Path_Mist_Daribokgre_Nokrek_West_Garo_Oct24_A7CR_03594.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/mistforest.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device or battery validation."
+}

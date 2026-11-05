@@ -1,0 +1,10 @@
+{
+  "cycleMs": 30000,
+  "maxFps": 10,
+  "phaseAtRest": 0.3,
+  "pauseWhenHidden": true,
+  "respectReducedMotion": true,
+  "respectPowerSave": true,
+  "overlay": "snow",
+  "overlayCount": 12
+}

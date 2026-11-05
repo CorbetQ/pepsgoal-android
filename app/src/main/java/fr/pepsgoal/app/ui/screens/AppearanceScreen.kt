@@ -77,6 +77,11 @@ fun AppearancePage(ui: AppState, u: User) {
     val dynOk = Build.VERSION.SDK_INT >= 31
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         LivePreview(ui, u)
+        Glass {
+            CardHead("Packs de thème", emoji = "🎁")
+            Muted("Retrouve tes styles complets : icône, fond, couleurs et ambiance. Les achats existants et les surprises découvertes sont reconnus.", small = true)
+            PButton("Voir mes packs", { ui.shopTab = "packs"; ui.push(Screen.Shop) }, Modifier.padding(top = 10.dp), icon = "palette")
+        }
         ThemeSection(ui, u, dynOk)
         ColorSection(ui, u, dynOk)
         BackgroundSection(ui, u)
@@ -206,6 +211,7 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
         if (k == "weather" && s.weather == null) ui.toast("Choisis ta ville dans Paramètres › Météo pour un ciel en direct.", "cloud")
     }
     val cur = shopMode(s.theme)
+    val allowDynamicColors = dynOk && cur?.followsDayNight != false
     Glass {
         Head("sun", "Thème", cur?.desc ?: THEME_DESC[s.theme] ?: "Apparence de toute l’interface") { Chip(themeName(s.theme), if (cur != null) "star" else null, p.flame) }
         // Thèmes de base, puis une tuile vers les ambiances de la boutique
@@ -224,18 +230,18 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
             Box(Modifier.padding(top = 4.dp, bottom = 8.dp)) { Eyebrow("Mes ambiances") }
             owned.chunked(3).forEach { row ->
                 Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { m -> ThemeCard("m:${m.key}", m.name, s.theme == "m:${m.key}", { pick("m:${m.key}") }, Modifier.weight(1f), height = 104.dp, badge = if (m in Eggs.SECRET_MODES) "Secrète" else if (m.dark) "Sombre" else "Clair") }
+                    row.forEach { m -> ThemeCard("m:${m.key}", m.name, s.theme == "m:${m.key}", { pick("m:${m.key}") }, Modifier.weight(1f), height = 104.dp, badge = if (m in Eggs.SECRET_MODES) "Secrète" else "Jour/nuit") }
                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
-        if (s.theme == "system") SetRow("Suivre le soleil", "Clair du lever au coucher du soleil (à l’heure de ta ville météo), sombre la nuit, au lieu du réglage du téléphone.") {
+        if (s.theme == "system" || shopMode(s.theme)?.followsDayNight == true) SetRow("Suivre le soleil", "Clair du lever au coucher du soleil (à l’heure de ta ville météo), sombre la nuit, au lieu du réglage du téléphone.") {
             PSwitch(ui.prefs.sunTheme, { ui.prefs.sunTheme = it; ui.themeTick++ })
         }
-        SetRow("Couleurs Material You", if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface." else "Nécessite Android 12 ou plus récent.") {
-            PSwitch(ui.prefs.materialYou && dynOk, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = dynOk)
+        SetRow("Couleurs Material You", if (cur?.followsDayNight == false) "Cette ambiance conserve les couleurs de ton club." else if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface." else "Nécessite Android 12 ou plus récent.") {
+            PSwitch(ui.prefs.materialYou && allowDynamicColors, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = allowDynamicColors)
         }
-        if (ui.prefs.materialYou && dynOk) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (ui.prefs.materialYou && allowDynamicColors) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             listOf(p.flame2, p.flame, p.pink, p.surface, p.bg).forEach { Box(Modifier.size(22.dp).clip(CircleShape).background(it).border(2.dp, p.edge, CircleShape)) }
             Muted(if (cur != null) "Propre à cet appareil · l’ambiance garde son fond et son texte" else "Propre à cet appareil", Modifier.padding(start = 4.dp), small = true)
         }
@@ -424,7 +430,7 @@ private fun IconSection(ui: AppState) {
     var cur by remember { mutableStateOf(AppIcons.current(ctx)) }
     LaunchedEffect(Unit) { keepCurrentIcon(ui, ctx) }
     val owned = AppIcons.ALL.filter { ui.pg.owns("icon:${it.key}", it.price, u) }
-    val more = AppIcons.ALL.size - owned.size
+    val more = AppIcons.ALL.count { it.eggKey == null && !ui.pg.owns("icon:${it.key}", it.price, u) }
     val current = AppIcons.ALL.firstOrNull { it.key == cur } ?: AppIcons.ALL.first()
     Glass {
         Head("star", "Icône de l’application")
@@ -471,11 +477,19 @@ private fun EffectsSection(ui: AppState, u: User) {
             PSwitch(ui.prefs.seasonal, { ui.prefs.seasonal = it; ui.themeTick++ })
         }
         PSelectMenu("Lumière de la scène", listOf("real" to "Suit l’heure réelle", "day" to "Toujours le jour", "theme" to "Suit le thème"), ui.prefs.bgLight, { ui.prefs.bgLight = it; ui.themeTick++ },
-            emojis = listOf("🕰️", "☀️", "🌗"), subs = listOf("Aube, jour, crépuscule, nuit", null, "Nuit en thème sombre"))
+            emojis = listOf("🕰️", "☀️", "🌗"), subs = listOf("Heure et soleil de la ville météo", null, "Nuit en thème sombre"))
+        val capability = backgroundStyle(ui.sceneKind()).capability
+        val city = s.weather?.name
+        Muted(when {
+            capability == fr.pepsgoal.core.SceneCapability.WINDOW -> "Vue depuis un intérieur : l’heure et la météo modifient le paysage derrière la vitre."
+            !capability.light -> "Ce fond conserve son ambiance artistique ; il ne suit pas le soleil ni la météo."
+            city != null -> "Lumière et météo : $city. Le mode de lumière choisi reste prioritaire."
+            else -> "Heure du téléphone ; choisis une ville météo pour suivre son soleil et son temps."
+        }, small = true)
         SetRow("Fond qui réagit", "La marée de braise monte avec tes validations, et des confettis tombent les journées parfaites.") {
             PSwitch(ui.prefs.bgReactive, { ui.prefs.bgReactive = it; ui.themeTick++ })
         }
-        SetRow("Fond à la météo", if (ui.pg.me()?.settings?.weather == null) "Choisis ta ville dans Paramètres › Météo : il pleuvra sur ton fond quand il pleut dehors." else "Pluie, neige, orage ou brouillard sur ton fond quand il fait ce temps-là dehors.") {
+        SetRow("Fond à la météo", if (ui.pg.me()?.settings?.weather == null) "Choisis ta ville dans Paramètres › Météo pour les décors compatibles." else "Nuages, vent et précipitations de ${s.weather?.name}, sur les décors compatibles. Sans données récentes, les effets météo s’effacent.") {
             PSwitch(ui.prefs.bgWeather, { ui.prefs.bgWeather = it; ui.themeTick++ })
         }
         Text(tr("Effet animé"), Modifier.padding(top = 8.dp, bottom = 6.dp), fontWeight = FontWeight.Bold)

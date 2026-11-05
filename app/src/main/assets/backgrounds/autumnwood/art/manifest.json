@@ -1,0 +1,16 @@
+{
+  "id": "autumnwood",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "21f64ffbeb7b6fce69ea9e14d9e3f3166dd7b2d09c4382995ff61e4cd960d326",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Autumn_leaf_color"
+  ],
+  "brief": "docs/design/background-reboot/briefs/autumnwood.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

@@ -1,0 +1,21 @@
+{
+  "id": "mistforest",
+  "palette": {
+    "saturation": 1.25,
+    "contrast": 1.16
+  },
+  "lighting": {
+    "strength": 1.4,
+    "shadowStrength": 1.25,
+    "lightColor": "#F2F8B2",
+    "shadowColor": "#143D39"
+  },
+  "texture": {
+    "material": "wood",
+    "strength": 0.8
+  },
+  "compatibility": "outdoor",
+  "framing": {
+    "focusY": 0.3
+  }
+}

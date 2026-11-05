@@ -15,6 +15,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.withContext
@@ -74,14 +77,21 @@ internal fun OffscreenCanvas(id: String, phase: State<Float>, modifier: Modifier
     val dens = LocalDensity.current.density
     var px by remember { mutableStateOf(IntSize.Zero) }
     val shown = remember { mutableStateOf<ImageBitmap?>(null) }
-    if (px.width > 0 && px.height > 0) LaunchedEffect(id, px, scale) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val latestPaint = rememberUpdatedState(paint)
+    val latestId = rememberUpdatedState(id)
+    val latestPhase = rememberUpdatedState(phase)
+    if (px.width > 0 && px.height > 0) LaunchedEffect(px, scale, dens, lifecycle) {
         val w = (px.width * scale).roundToInt().coerceAtLeast(1); val h = (px.height * scale).roundToInt().coerceAtLeast(1)
         val bufs = withContext(Dispatchers.Default) { Array(3) { ImageBitmap(w, h) } }
         var i = 0
-        snapshotFlow { phase.value }.conflate().collect { t ->
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+          snapshotFlow { latestPhase.value.value to latestId.value }.conflate().collect { (t, _) ->
+            val painter = latestPaint.value
             val b = bufs[i % 3]
-            withContext(Dispatchers.Default) { renderInto(b, dens * scale) { paint(t) } }
+            withContext(Dispatchers.Default) { renderInto(b, dens * scale) { painter(t) } }
             shown.value = b; i++
+          }
         }
     }
     Canvas(modifier.onSizeChanged { px = it }) {

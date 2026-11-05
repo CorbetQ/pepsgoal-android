@@ -1,0 +1,22 @@
+# Camp Nou historique — FC Barcelone
+
+## Références inspectées
+
+- https://commons.wikimedia.org/wiki/File:CampNouPanorama.jpg
+- https://commons.wikimedia.org/wiki/File:Barcelona_vs_Inter_2019_2.jpg
+
+FCB01 panorama2017 et02 match2019 réellement inspectés : cuve immense, très profonde, trois niveaux de gradins continus, ciel ouvert et bande de projecteurs. Architecturalement avant travaux2023; aucune prétention au stade2026.
+
+## Composition
+
+Point de vue plus élevé depuis un virage, garde-corps et quelques sièges proches en bas, terrain en plongée au centre bas, trois étages courbes et raides au milieu, large ciel de crépuscule abricot calme.
+
+## Signes d’identité
+
+CampNouhistorique ouvert à trois étages très profonds, sans futur toit couvrant; identité blaugrana par masses bleu royal/grenat, pas texte dans sièges.
+
+## Prompt
+
+Create an ORIGINAL premium mobileapp background in the EXACT clean BOLD CARTOON language of the PepsGoal8.7 Kopa2/Loire3 collection. Portrait1024x1536, fullframe, complete OPAQUE PNG, no transparency. Large intentional color masses, slightly rounded designed silhouettes, two or three distinct shading values per material. Beautiful real volume from lit faces, localcolor and cool plum-blue shadowfaces, contact and castshadows, thick structural roofs and believable perspective. At least THREE distinct depthplanes. No photorealism, no semirealistic filmstill, no detailed3D architecturalminiature, no glossyplastictoy look, no grain or tiny repeated grass/seat dots. Group crowd into irregular chunky color masses with no detailed faces. Only a few broad materialmarks. Use supplied factual referencephotos to understand the place, transform into a new original cartoon composition. NEVER copy or trace thephoto. ABSOLUTELY NO text, letters, glyphs, digits, scores, logos, emblems, sponsors, signage, watermarks or UI anywhere, including seatpatterns and banners. Omit electronic scoreboards entirely. Colored seatbands are abstract blocks, never words. Framing must survive center-crop to tall9:19.5phone PLUS8percentoverscan: all important recognizable stadiumfeatures and the middle-distance goal inside x20to80percent of masterwidth, preferably x25to75percent. Calm centralupper area x25to75percent andy8to43percent for opaqueUIcards. Decorative seats, railing and textiles may bleed offedge but identity cannot depend on the cropedges. Stadium is a selfcontained ARTISTIC matchscene with its own fixed lighting, no realworld weather dependence. No painted falling rain or permanentparticles.
+
+SUBJECT: FC BARCELONA, the HISTORIC CAMP NOU as documented in2017/2019 BEFORE the2023 reconstruction, not an imagined futurestadium. A viewpoint notably HIGHER than the PSG scene, from the edge of a cornerstand looking down into a huge deep open bowl. A few close rounded royalblue and garnet seats, thick stairrail and a folded blaugrana scarf at bottomside give scale without writing. Large correctly proportioned rectangular footballpitch in perspective in lowercentral area; its centralcircle, near goal and tierbreaks survive the tallcrop. THREE clearly separated steep continuous tiers of seats climb high around the field, with monumental openbowl scale and simple aislecuts. Alternate broad royalblue and deepgarnet masses, small warmgold accents, NEVER any words, letters or seatmottos. Uppertiers OPEN TO THE SKY, no continuous fullcoverroof, no future circularroof, no invented closedcanopy. Simple band of bright coolwhite floodlights along portions of the upperrim. Calm apricot-to-indigo artistic twilight sky in uppercentral area, creamwhite light on stair edges and coolplum shadows under tiers. Strong atmospheric depth: foreground seats richcontrast, middlepitch vibrantgreen, distant tiers cooler and lesscontrasty. Chunky clean cartoon geometry, not countless tiny spectators. This is a new original memory-inspired matchscene, no claim to2026 architecture.

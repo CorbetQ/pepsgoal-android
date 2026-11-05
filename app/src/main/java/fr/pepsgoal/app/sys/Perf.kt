@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.pepsgoal.core.FpsGovernor
+import fr.pepsgoal.core.EnergyPolicy
 import fr.pepsgoal.core.Quality
 import fr.pepsgoal.core.QualitySteps
 
@@ -76,6 +77,9 @@ object Perf {
     /** Instant (ms, horloge de démarrage) avant lequel les mesures ne comptent pas (démarrage, retour au premier plan). */
     var warmUntil = 0L
     private val gov = FpsGovernor()
+    private var thermalLevel = 0
+    private fun effective() { flags = ceiling.with(QualitySteps.apply(ceiling.q(), maxOf(regLevel, thermalLevel))) }
+    fun setThermalStatus(status: Int) { thermalLevel = EnergyPolicy.renderLevel(status); effective() }
     /** Mode choisi (« auto » : celui recommandé par l'analyse). */
     var mode by mutableStateOf("auto"); private set
     /** Niveau recommandé par la dernière analyse : quality, balanced ou saver. */
@@ -117,7 +121,7 @@ object Perf {
     fun setAutoReg(ctx: Context, on: Boolean) {
         autoReg = on
         sp(ctx).edit().putBoolean("autoReg", on).apply()
-        gov.reset(); regLevel = 0; flags = ceiling
+        gov.reset(); regLevel = 0; effective()
         FpsMonitor.want(FpsMonitor.REG, on)
     }
 
@@ -131,11 +135,11 @@ object Perf {
         histTick++
         if (!autoReg || benchRunning || now < warmUntil) return
         val l = gov.feed(now, FpsGovernor.ratio(fps, hz))
-        if (l != regLevel) { regLevel = l; flags = ceiling.with(QualitySteps.apply(ceiling.q(), l)) }
+        if (l != regLevel) { regLevel = l; effective() }
     }
 
     /** Libellé de l'état du régulateur. */
-    fun regState(): String = if (regLevel > 0) "Qualité réduite temporairement" else "Qualité normale"
+    fun regState(): String = if (thermalLevel > 0) "Protection thermique" else if (regLevel > 0) "Qualité réduite temporairement" else "Qualité normale"
 
     private fun apply() {
         val base = PRESETS[if (mode == "auto") recommended else mode] ?: Flags()
@@ -148,7 +152,7 @@ object Perf {
         }
         // Nouveau plafond : le régulateur repart de la qualité normale sous ce plafond
         ceiling = f; gov.reset(); regLevel = 0
-        flags = f
+        effective()
     }
 
     /** Estimation sans test : mémoire, cœurs du processeur et version d'Android. */

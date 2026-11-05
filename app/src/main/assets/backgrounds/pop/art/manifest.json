@@ -1,0 +1,16 @@
+{
+  "id": "pop",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "9385f0cb06e3ca9b48822fe15f08f0014364dde49fe6e1fa277570f5987f917c",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Memphis_Group"
+  ],
+  "brief": "docs/design/background-reboot/briefs/pop.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

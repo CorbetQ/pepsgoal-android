@@ -185,6 +185,7 @@ fun Pg.owns(key: String, price: Int, u: User? = me()): Boolean = price <= 0 || (
 /** Achète un article. Renvoie un message d'erreur, ou null si l'achat a réussi. */
 fun Pg.buy(key: String, price: Int): String? {
     val u = me() ?: return "Connecte-toi pour acheter."
+    if (secretPackItem(key) && key !in u.shopOwned) return "Cet élément se débloque en découvrant sa surprise."
     if (owns(key, price, u)) return null
     (SHOP_THEMES.firstOrNull { "theme:${it.key}" == key }?.season ?: SHOP_BGS.firstOrNull { "bg:${it.key}" == key }?.season)
         ?.let { if (seasonWindow(it) == null) return "Édition limitée : elle revient pendant sa saison." }

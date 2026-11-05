@@ -18,7 +18,7 @@ fun shopCatalog(): List<ShopItem> =
     SHOP_THEMES.map { ShopItem("theme:${it.key}", it.name, "theme", it.price, it.season, it.desc) } +
     SHOP_MODES.map { ShopItem("mode:${it.key}", it.name, "mode", it.price, desc = it.desc) } +
     SHOP_BGS.map { ShopItem("bg:${it.key}", it.name, "bg", it.price, it.season, it.desc) } +
-    shopExtraPrices.filter { it.value > 0 }.map { (k, v) -> ShopItem(k, shopExtraNames[k] ?: k.substringAfter(':'), "icon", v) }
+    shopExtraPrices.filter { it.value > 0 && !secretPackItem(it.key) }.map { (k, v) -> ShopItem(k, shopExtraNames[k] ?: k.substringAfter(':'), "icon", v) }
 
 fun shopItem(key: String): ShopItem? = shopCatalog().firstOrNull { it.key == key }
 

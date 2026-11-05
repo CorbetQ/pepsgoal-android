@@ -1,0 +1,17 @@
+{
+  "id": "lanterns",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "146fd128dbf478e5ea149a8cf6e90b6a387c7b545575b4331ef97b67a10700c7",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Red_Chinese_Lanterns_at_Night.jpg",
+    "https://commons.wikimedia.org/wiki/File:Pingxi_Sky_Lantern_Festival_2014_in_Taiwan.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/lanterns.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

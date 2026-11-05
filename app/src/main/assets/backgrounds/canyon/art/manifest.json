@@ -1,0 +1,17 @@
+{
+  "id": "canyon",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "13a01ee0bb23068accc3037364fea9e9ffdbb493fd089f0400898810afabfd56",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:A253,_Upper_Antelope_Canyon,_Page,_Arizona,_USA,_2008.JPG",
+    "https://commons.wikimedia.org/wiki/File:Grand_Canyon_South_Rim_at_Sunset.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/canyon.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

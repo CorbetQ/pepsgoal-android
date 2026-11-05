@@ -1,0 +1,21 @@
+{
+  "id": "rainwindow",
+  "palette": {
+    "saturation": 1.25,
+    "contrast": 1.15
+  },
+  "lighting": {
+    "strength": 1.4,
+    "shadowStrength": 1.25,
+    "lightColor": "#FFC490",
+    "shadowColor": "#15203D"
+  },
+  "texture": {
+    "material": "water",
+    "strength": 0.8
+  },
+  "compatibility": "window",
+  "framing": {
+    "focusY": 0.44
+  }
+}

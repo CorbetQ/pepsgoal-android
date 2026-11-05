@@ -1,0 +1,22 @@
+{
+  "id": "angers",
+  "palette": {
+    "saturation": 1.22,
+    "contrast": 1.13
+  },
+  "lighting": {
+    "strength": 1.28,
+    "shadowStrength": 1.25,
+    "lightColor": "#FFD286",
+    "shadowColor": "#242452"
+  },
+  "texture": {
+    "material": "water",
+    "strength": 0.8
+  },
+  "compatibility": "outdoor",
+  "framing": {
+    "focusY": 0.3,
+    "focusX": 0.25
+  }
+}

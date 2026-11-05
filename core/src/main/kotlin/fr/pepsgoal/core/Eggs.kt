@@ -26,6 +26,9 @@ object Eggs {
         Egg("sco", "Noir & Blanc", "Trois lettres qui font chanter un stade angevin, dans la recherche", "⚽"),
         Egg("sixseven", "Six Seven", "Tiens ta série jusqu’à un nombre que tout le monde mime", "🤲"),
         Egg("srfc", "Direction la ligue 2", "Quatre lettres bretonnes, dans la recherche", "🔴"),
+        Egg("psg", "Paris sous les projecteurs", "Trois lettres font vibrer le Parc, dans la recherche", "🔵"),
+        Egg("fcb", "Passion blaugrana", "Trois lettres catalanes, dans la recherche", "🔴"),
+        Egg("fcn", "Le chant des Canaris", "Trois lettres jaunes et vertes, dans la recherche", "🟡"),
         Egg("feur", "Feur", "Termine une publication par une question… et attends la réponse du compte officiel", "🫢"),
     )
 
@@ -45,7 +48,7 @@ object Eggs {
      */
     fun sixSeven(streak: Int): Boolean = streak >= SIX_SEVEN
 
-    /** Ambiances secrètes débloquées par les surprises « angers » et « sco » (jamais vendues dans la boutique). */
+    /** Ambiances secrètes débloquées par les surprises (jamais vendues dans la boutique). */
     val SECRET_MODES = listOf(
         ShopMode("angers", "Douceur angevine", "Tuffeau, ardoise et Loire · ambiance secrète", 1, false,
             "#F1ECE1", "#222932", "#FFFCF5", listOf("#CDBF9F", "#5E7A8C", "#E9873A"), listOf("#F2A65A", "#E9873A", "#3E6E8E")),
@@ -58,14 +61,29 @@ object Eggs {
         ShopMode("srfc", "Rouge & Noir", "Rouge vif et noir profond, ambiance de tribune bretonne · ambiance secrète", 1, true,
             "#0B0607", "#FFF2F0", "#1A0D10", listOf("#E1001A", "#6E0A14", "#2A1013"), listOf("#FF7A6B", "#FF5252", "#FF3D5A"),
             surface = "#1A0D10", surface2 = "#271317", edge = "#43202A"),
+        ShopMode("psg", "Bleu & Rouge", "Bleu parisien, rouge de tribune et crème lumineux · ambiance secrète", 1, true,
+            "#051D49", "#FFFFFF", "#092F68", listOf("#0046A8", "#E5223D", "#FFFFFF"), listOf("#FF4657", "#FF5967", "#FF6B76"),
+            surface = "#092F68", surface2 = "#103E80", edge = "#FFFFFF"),
+        ShopMode("fcb", "Blaugrana", "Bleu, grenat et or de Catalogne · ambiance secrète", 1, true,
+            "#061B40", "#FFF7D6", "#0D316B", listOf("#004DAD", "#A50044", "#FFCD00"), listOf("#F34F68", "#FA596D", "#FF6677"),
+            surface = "#0D316B", surface2 = "#15448A", edge = "#FFCD00"),
+        ShopMode("fcn", "Jaune & Vert", "Jaune des Canaris et vert profond de la Beaujoire · ambiance secrète", 1, true,
+            "#052B1A", "#FFF5D1", "#07472A", listOf("#008B45", "#FFE000", "#0D4636"), listOf("#FFE000", "#FFEA3D", "#FFF060"),
+            surface = "#07472A", surface2 = "#0B5935", edge = "#4B9B63"),
     )
 
     /** Fonds secrets débloqués par une surprise (jamais vendus dans la boutique). */
     val SECRET_BGS = listOf(
         ShopBg("kopa", "Stade Raymond-Kopa", "Tribunes, pelouse et projecteurs, un soir de match à Angers · fond secret", 1,
             listOf("#0B0E1A", "#1C2440", "#2F7A3E"), dark = true),
-        ShopBg("ecran", "Écran géant", "Un soir de pluie, un écran géant et un score sans appel : OL 4 – 0 SRFC · fond secret", 1,
+        ShopBg("ecran", "Roazhon Park", "Un soir de pluie, un écran géant et un score sans appel : OL 4 – 0 SRFC · fond secret", 1,
             listOf("#0A0709", "#22131A", "#21512C"), dark = true),
+        ShopBg("psg", "Parc des Princes", "Une nuit de match bleue et rouge au Parc · fond secret", 1,
+            listOf("#0B1532", "#343052", "#27634C"), dark = true),
+        ShopBg("fcb", "Camp Nou · Blaugrana", "Le Camp Nou historique à ciel ouvert, au crépuscule · fond secret", 1,
+            listOf("#35305D", "#D48588", "#326B4F"), dark = true),
+        ShopBg("fcn", "La Beaujoire", "Toiture ondulée, tribunes jaunes et vertes et lumière de fin de journée · fond secret", 1,
+            listOf("#466C8B", "#EED19B", "#417F4D"), dark = true),
     )
 
     /** Réponse de la recherche : texte, surprise trouvée, et effet visuel (« confetti », « fish »…). */
@@ -91,6 +109,12 @@ object Eggs {
                 Hit("Allez le SCO ! ⚫⚪ Le fond « Stade Raymond-Kopa » et l’ambiance « Noir & Blanc » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", "sco", "confetti")
             q == "srfc" ->
                 Hit("Direction la ligue 2", "srfc", "confetti")
+            q in setOf("psg", "paris saint-germain", "paris saint germain", "paris-saint-germain") ->
+                Hit("Paris s’illumine ! Le pack PSG · Bleu & Rouge est à toi : icône, Parc des Princes, couleurs et ambiance.", "psg", "confetti")
+            q in setOf("fcb", "barça", "barca", "fc barcelone", "fc barcelona") ->
+                Hit("Passion blaugrana ! Le pack FC Barcelone est à toi : icône, Camp Nou, couleurs et ambiance.", "fcb", "confetti")
+            q in setOf("fcn", "fc nantes", "football club de nantes", "allez nantes") ->
+                Hit("Allez les Canaris ! Le pack FC Nantes · Jaune & Vert est à toi : icône, Beaujoire, couleurs et ambiance.", "fcn", "confetti")
             q == "pepsgoal" -> Hit("Oui, c’est moi ! Merci d’avoir pensé à me chercher 🔥", null)
             else -> null
         }
@@ -158,9 +182,9 @@ fun Pg.findEgg(key: String): Boolean {
     if (Eggs.ALL.none { it.key == key } || "egg:$key" in u.shopClaimed) return false
     u.shopClaimed = trimClaimed(u.shopClaimed + "egg:$key")
     u.shopBonus += Eggs.BONUS
-    if (key == "angers" && "mode:angers" !in u.shopOwned) u.shopOwned = (u.shopOwned + "mode:angers").toMutableList()
-    if (key == "sco") u.shopOwned = (u.shopOwned + listOf("mode:sco", "bg:kopa").filter { it !in u.shopOwned }).toMutableList()
-    if (key == "srfc") u.shopOwned = (u.shopOwned + listOf("mode:srfc", "bg:ecran").filter { it !in u.shopOwned }).toMutableList()
+    val rewards = THEME_PACKS.filter { it.eggKey == key }.flatMap { it.components() }
+        .map { it.key }.filter(::secretPackItem)
+    u.shopOwned = (u.shopOwned + rewards).distinct().toMutableList()
     val e = Eggs.ALL.first { it.key == key }
     notify(u.id, "Surprise trouvée : « ${e.name} » ${e.emoji} +${Eggs.BONUS} flammes.", "badge")
     store.commit()
@@ -176,7 +200,7 @@ fun Pg.applySco() {
     store.commit()
 }
 
-/** Applique tout de suite le fond « Écran géant », l'ambiance « Rouge & Noir » et ses couleurs (surprise « srfc »). */
+/** Applique tout de suite le fond « Roazhon Park », l'ambiance « Rouge & Noir » et ses couleurs (surprise « srfc »). */
 fun Pg.applySrfc() {
     val u = me() ?: return
     val m = Eggs.SECRET_MODES.first { it.key == "srfc" }

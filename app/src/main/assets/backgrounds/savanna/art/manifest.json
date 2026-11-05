@@ -1,0 +1,16 @@
+{
+  "id": "savanna",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "0951e48461fee6aebb333aeba7d731ad907d69b79cd5a67ad46aac368fd6c1fb",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Graceful_Giant_of_the_Savanna_(Giraffe)_02.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/savanna.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device validation."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "nantes",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "96264b18b6270d2ba7265808e84a654f2019e875459765a611c08f0792d474bf",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Elephant_de_nantes.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/nantes.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

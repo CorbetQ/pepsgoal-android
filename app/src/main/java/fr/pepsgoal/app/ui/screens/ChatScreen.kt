@@ -79,6 +79,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.layout.onSizeChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 
@@ -98,16 +102,26 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     if (if (g != null) !g.members.contains(u.id) else x == null) { LaunchedEffect(Unit) { ui.back() }; return }
     val key = if (g != null) "g:${g.id}" else "u:${x!!.id}"
 
-    // Chargement, déchiffrement, lecture : à l'ouverture puis toutes les 6 secondes
-    DisposableEffect(key) { ChatState.key = key; Notifier.clearChat(ctx, key); onDispose { if (ChatState.key == key) ChatState.key = null; Voice.release() } }
-    LaunchedEffect(key) {
-        while (true) {
-            try { if (g != null) ui.cloud.openGroup(g.id) else ui.cloud.openChat(x!!.id) } catch (e: Exception) {}
-            delay(6000)
+    // Do not receive or mark messages read while the activity is stopped.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(key) { onDispose { Voice.release() } }
+    LaunchedEffect(key, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            ChatState.key = key; Notifier.clearChat(ctx, key)
+            var first = true
+            try {
+                while (true) {
+                    try { ui.cloud.refreshOpenConversation(x?.id, g?.id, force = first); first = false }
+                    catch (e: CancellationException) { throw e } catch (e: Exception) {}
+                    // Preserve six-second new-message detection using the existing lightweight summaries.
+                    delay(6000)
+                }
+            } finally { if (ChatState.key == key) ChatState.key = null }
         }
     }
     val all = if (g != null) Social.groupConvo(ui, g.id) else Social.convo(ui, u.id, x!!.id)
     LaunchedEffect(all.size, ui.rev) {
+        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
         var ch = false
         all.forEach { m -> if (g != null) { if (Social.isUnread(ui, m)) { m.readBy.add(u.id); ch = true } } else if (m.to == u.id && !m.read) { m.read = true; ch = true } }
         if (ch) pg.store.rawSave()

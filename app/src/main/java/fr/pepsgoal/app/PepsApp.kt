@@ -6,6 +6,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import fr.pepsgoal.app.data.DevicePrefs
@@ -51,19 +53,23 @@ class PepsApp : Application() {
         // Langue de l'interface (Paramètres › Apparence) : français, anglais, ou celle du téléphone
         fr.pepsgoal.app.ui.I18n.apply(this, prefs.raw.getString("lang", "auto") ?: "auto")
         fr.pepsgoal.app.sys.Perf.load(this)
+        fr.pepsgoal.app.sys.EnergyState.start(this)
         // Prix des icônes, pour rendre les flammes après la baisse des prix de la boutique
         fr.pepsgoal.core.shopExtraPrices = fr.pepsgoal.app.sys.AppIcons.ALL.associate { "icon:${it.key}" to it.price }
         fr.pepsgoal.core.shopExtraNames = fr.pepsgoal.app.sys.AppIcons.ALL.associate { "icon:${it.key}" to it.label }
         fr.pepsgoal.app.ui.FluentEmoji.load(this)
         secrets = KeystoreSecrets(this)
-        store = Store(FileDb(this))
+        store = Store(FileDb(this), scope)
         pg = Pg(store)
         cloud = Cloud(store, pg, Api(BuildConfig.API_URL, secrets, "PepsGoal-Android/${BuildConfig.VERSION_NAME}"), secrets, scope)
         ui = AppState(this)
         pg.hooks = ui
         cloud.events = object : CloudEvents {
-            override fun onlineChanged(online: Boolean) = ui.onlineChanged(online)
-            override fun sessionChanged() { ui.sessionChanged(); Poller.schedule(this@PepsApp); Poller.startLink(this@PepsApp) }
+            override fun onlineChanged(online: Boolean) {
+                ui.onlineChanged(online)
+                scope.launch { Poller.schedule(this@PepsApp); Poller.startLink(this@PepsApp); SyncWorker.schedule(this@PepsApp) }
+            }
+            override fun sessionChanged() { ui.sessionChanged(); Poller.schedule(this@PepsApp); Poller.startLink(this@PepsApp); SyncWorker.schedule(this@PepsApp) }
             override fun serverNotifications(fresh: List<Notif>) {
                 if (foreground) return
                 // Encouragements sur une même publication : une seule notification « Léa et 3 autres t'encouragent »
@@ -78,6 +84,7 @@ class PepsApp : Application() {
         store.onChange = { ui.bump() }
         store.onSaved = { cloud.scheduleSync() }
         Notifier.channels(this)
+        cloud.setForeground(false)
         cloud.boot()
         watchNetwork()
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
@@ -93,16 +100,23 @@ class PepsApp : Application() {
             try { fr.pepsgoal.app.sys.GeoReminders.register(this@PepsApp) } catch (e: Exception) {}
             try { fr.pepsgoal.app.sys.AutoBackup.schedule(this@PepsApp) } catch (e: Exception) {}
         }
-        // Notifications du serveur (messages, publications, amis…) relevées toutes les minutes à l'écran
-        // Relève au premier plan : toutes les 20 s quand le feed (ou les commentaires d'une publication) est à l'écran, sinon chaque minute
-        scope.launch { while (true) { delay(if (foreground && (ui.tab == "feed" || ui.screens.lastOrNull() is Screen.Comments)) 20_000L else Poller.EVERY_MS); if (foreground && cloud.poll()) Poller.lastNews = System.currentTimeMillis() } }
-        // Rappels, évaluations et minuteur : vérifiés régulièrement à l'écran ; en arrière-plan, les alarmes prennent le relais
-        // (pas de réveil du processeur chaque seconde quand l'application est fermée)
-        scope.launch { while (true) { delay(1000); if (foreground) { pg.timerTick(); if (pg.badgeCheckPending) pg.checkBadges() } } }
-        scope.launch { delay(1200); pg.checkReminders(); while (true) { delay(30_000); if (foreground) { pg.checkReminders(); LiveUpdates.refresh(this@PepsApp) } } }
+        // These loops exist only while the process is visible; alarms/workers own background work.
+        scope.launch {
+            ProcessLifecycleOwner.get().lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    while (true) {
+                        delay(if (ui.tab == "feed" || ui.screens.lastOrNull() is Screen.Comments) 20_000L else Poller.EVERY_MS)
+                        Poller.run(this@PepsApp, "écran")
+                    }
+                }
+                launch { while (true) { delay(1000); pg.timerTick(); if (pg.badgeCheckPending) pg.checkBadges() } }
+                launch { while (true) { delay(30_000); pg.checkReminders(); LiveUpdates.refresh(this@PepsApp) } }
+            }
+        }
     }
 
     private fun onForeground() {
+        cloud.setForeground(true)
         cloud.pingSoon()
         if (store.acct) { cloud.scheduleSync(300); cloud.scheduleSocial(600) }
         pg.checkReminders()
@@ -114,6 +128,9 @@ class PepsApp : Application() {
     }
 
     private fun onBackground() {
+        cloud.setForeground(false)
+        fr.pepsgoal.app.ai.LocalAi.stopBackgroundGeneration()
+        scope.launch { try { store.flush() } catch (e: Exception) { ui.toast("L’enregistrement local a échoué. Vérifie l’espace disponible.", "alert") } }
         Reminders.reschedule(this)
         fr.pepsgoal.app.sys.AssistantShortcuts.sync(this)
         LiveUpdates.refresh(this)

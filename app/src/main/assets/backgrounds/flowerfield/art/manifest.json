@@ -1,0 +1,16 @@
+{
+  "id": "flowerfield",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "09cb015bd597b8e688c8af3a72f53aa4a7b9f422d796050e2698b71598c70538",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Wildflower"
+  ],
+  "brief": "docs/design/background-reboot/briefs/flowerfield.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "heartsky",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "2e501e3a954d8bb0cc77088b59c04d076bcfa085c1062cfe3c9646f9eab96a99",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Cumulus_cloud"
+  ],
+  "brief": "docs/design/background-reboot/briefs/heartsky.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

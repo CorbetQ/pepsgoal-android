@@ -1,0 +1,17 @@
+{
+  "id": "dunes",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "8b596093d97bcf2e68e50c3f6f79e759fb2d000f653a887c6bab0bd4830a8d93",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Utah_Dunes_Landscape_-_West_Desert_District.jpg",
+    "https://commons.wikimedia.org/wiki/File:Sand_dune_ridge_-_geograph.org.uk_-_8302013.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/dunes.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device or battery validation."
+}

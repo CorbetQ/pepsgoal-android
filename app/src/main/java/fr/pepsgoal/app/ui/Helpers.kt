@@ -18,7 +18,8 @@ object Wx {
     private var mem: WxCache? = null
     var error: String? = null
     private var failAt = 0L
-    private var loading = false
+    private val requestLock = kotlinx.coroutines.sync.Mutex()
+    private var failKey: String? = null
 
     fun cached(ctx: Context, p: Place?): WxCache? {
         if (p == null) return null
@@ -30,17 +31,22 @@ object Wx {
 
     suspend fun ensure(ctx: Context, ui: AppState, force: Boolean) {
         val p = ui.pg.me()?.settings?.weather ?: return
-        if (loading) return
+        val key = "${p.lat},${p.lon}"
+        if (requestLock.isLocked) return
         val c = cached(ctx, p)
-        if (!force && c != null && nowMs() - c.at < 15 * 60_000) return
-        if (!ui.pg.store.online || (!force && nowMs() - failAt < 60_000)) return
-        loading = true
+        if (!force && c != null && nowMs() - c.at in 0 until 15 * 60_000) return
+        if (!ui.pg.store.online || (!force && failKey == key && nowMs() - failAt in 0 until 60_000)) return
+        if (!requestLock.tryLock()) return
         try {
             val d = ui.cloud.forecast(p.lat, p.lon)
+            // A city switch during the request must not publish the previous city's observation.
+            val selected = ui.pg.me()?.settings?.weather
+            if (selected == null || selected.lat != p.lat || selected.lon != p.lon) return
             val w = WxCache("${p.lat},${p.lon}", d, nowMs()); mem = w; error = null; failAt = 0
             ctx.getSharedPreferences("pepsgoal.device", Context.MODE_PRIVATE).edit().putString("wx", JSON.encodeToString(WxCache.serializer(), w)).apply()
-        } catch (e: Exception) { error = e.message ?: "Météo indisponible"; failAt = nowMs() }
-        finally { loading = false; ui.bump() }
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { error = e.message ?: "Météo indisponible"; failAt = nowMs(); failKey = key }
+        finally { requestLock.unlock(); ui.bump() }
     }
 
     fun clear(ctx: Context) { mem = null; ctx.getSharedPreferences("pepsgoal.device", Context.MODE_PRIVATE).edit().remove("wx").apply() }

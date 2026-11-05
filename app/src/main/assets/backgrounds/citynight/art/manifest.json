@@ -1,0 +1,17 @@
+{
+  "id": "citynight",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "d7dcb5c0771c60cf35795b6e268068eeaf6d79d85e36d5c0b0b293ce0520676d",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Stockholm_city_skyline_and_waterfront_at_night_(April_2016).jpg",
+    "https://commons.wikimedia.org/wiki/File:Skylines_of_the_Central_Business_District,_Singapore_at_dusk.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/citynight.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device or battery validation."
+}

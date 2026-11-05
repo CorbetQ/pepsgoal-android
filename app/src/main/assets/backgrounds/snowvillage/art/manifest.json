@@ -1,0 +1,17 @@
+{
+  "id": "snowvillage",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "baf631fb5854f9ad956007fae286cc5585d79cb6f7248071f2f5ef1426bfe749",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Going_am_Wilden_Kaiser_Panorama_2011-01-29.jpg",
+    "https://commons.wikimedia.org/wiki/File:Nature_landscape_snowing_mountains_village_Austria_(8279714859).jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/snowvillage.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

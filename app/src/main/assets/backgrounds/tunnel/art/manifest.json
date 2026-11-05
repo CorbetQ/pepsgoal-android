@@ -1,0 +1,16 @@
+{
+  "id": "tunnel",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "d98ad3a1b91206817e264c9094365ecf18841e1c39bfaacb33529d8d911d1244",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:London_MMB_%C2%ABU7_Docklands_Light_Railway_(Woolwich_Tunnel).jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/tunnel.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

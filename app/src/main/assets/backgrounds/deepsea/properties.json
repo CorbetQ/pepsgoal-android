@@ -1,0 +1,21 @@
+{
+  "id": "deepsea",
+  "palette": {
+    "saturation": 1.28,
+    "contrast": 1.14
+  },
+  "lighting": {
+    "strength": 1.35,
+    "shadowStrength": 1.25,
+    "lightColor": "#79E4FF",
+    "shadowColor": "#061D4A"
+  },
+  "texture": {
+    "material": "water",
+    "strength": 0.8
+  },
+  "compatibility": "artistic",
+  "framing": {
+    "focusY": 0.3
+  }
+}

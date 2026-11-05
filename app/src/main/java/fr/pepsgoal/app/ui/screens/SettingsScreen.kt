@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.ui.screens
 
+import fr.pepsgoal.app.BuildConfig.VERSION_NAME as APP_VERSION
+
 import androidx.compose.ui.platform.testTag
 import android.Manifest
 import android.content.Intent
@@ -904,7 +906,7 @@ fun setSummary(ui: AppState, k: String): String? {
         "perf" -> fr.pepsgoal.app.sys.Perf.MODES.firstOrNull { it.first == fr.pepsgoal.app.sys.Perf.mode }?.second?.let { m -> if (fr.pepsgoal.app.sys.Perf.mode == "auto") "Auto · ${fr.pepsgoal.app.sys.Perf.MODES.first { it.first == fr.pepsgoal.app.sys.Perf.recommended }.second}" else m }
         "a11y" -> listOfNotNull(if (pr.easy) "Lecture facile" else null, if (pr.textScale != 1f) "texte ${Math.round(pr.textScale * 100)} %" else null, if (pr.oneHand) "une main" else null,
             if (pr.contrast) "contraste" else null, if (pr.motion) "animations réduites" else null).joinToString(" · ").replaceFirstChar { it.uppercase() }.ifEmpty { null }
-        "help" -> "Version ${fr.pepsgoal.core.APP_VERSION}"
+        "help" -> "Version ${APP_VERSION}"
         "places" -> if (u.places.isEmpty()) null else u.places.take(4).joinToString(" · ") { "${it.icon} ${it.name}" }
         else -> null
     }

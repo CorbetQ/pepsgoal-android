@@ -1,0 +1,16 @@
+{
+  "id": "loiresummer",
+  "revision": "v2",
+  "file": "artwork.png",
+  "sha256": "bcee7e8bd473d85236a8c013594683879a828dc215ef943e0eec3cf2cfb04129",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Loire"
+  ],
+  "brief": "docs/design/background-reboot/briefs/loiresummer.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

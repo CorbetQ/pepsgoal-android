@@ -652,5 +652,45 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+        <activity-alias android:name=".IconSco" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_sco" android:roundIcon="@mipmap/ic_launcher_sco">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconSrfc" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_srfc" android:roundIcon="@mipmap/ic_launcher_srfc">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconPsg" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_psg" android:roundIcon="@mipmap/ic_launcher_psg">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconFcb" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_fcb" android:roundIcon="@mipmap/ic_launcher_fcb">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".IconFcn" android:exported="true" android:enabled="false" android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_fcn" android:roundIcon="@mipmap/ic_launcher_fcn">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
     </application>
 </manifest>

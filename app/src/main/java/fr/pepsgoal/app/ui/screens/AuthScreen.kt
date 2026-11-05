@@ -1,5 +1,7 @@
 package fr.pepsgoal.app.ui.screens
 
+import fr.pepsgoal.app.BuildConfig.VERSION_NAME as APP_VERSION
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.rememberScrollState
@@ -25,7 +27,6 @@ import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.ui.*
 import fr.pepsgoal.app.ui.theme.LocalPal
 import fr.pepsgoal.app.ui.theme.Unbounded
-import fr.pepsgoal.core.APP_VERSION
 import fr.pepsgoal.core.Demo
 import fr.pepsgoal.core.cloud.ApiError
 import fr.pepsgoal.core.model.Db

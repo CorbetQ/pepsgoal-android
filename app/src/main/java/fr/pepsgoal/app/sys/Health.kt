@@ -9,6 +9,9 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.core.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -128,7 +131,7 @@ object Health {
                     .records.maxByOrNull { it.time }?.weight?.inKilograms
                 else -> null
             }?.takeIf { key !in setOf("steps", "distance", "run", "bike", "exercise", "calories", "floors", "water") || it > 0 || d == LocalDate.now() }
-        } catch (e: Exception) { null }
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
     }
 
     /** Valeurs des [days] derniers jours (le plus ancien en premier). */
@@ -146,19 +149,27 @@ object Health {
     fun reached(l: Link, v: Double) = if (l.op == "<=") v <= l.threshold else v >= l.threshold
 
     /** Vérifie les liens (au plus toutes les 10 minutes) et valide les objectifs dont le seuil est atteint. */
-    suspend fun sync(ctx: Context, force: Boolean = false): Int {
+    private val syncLock = Mutex()
+    suspend fun sync(ctx: Context, force: Boolean = false): Int = syncLock.withLock { syncLocked(ctx, force) }
+
+    private suspend fun syncLocked(ctx: Context, force: Boolean): Int {
         val app = ctx.peps; val pg = app.pg; val u = pg.me() ?: return 0
         val links = links(ctx); if (links.isEmpty() || !available(ctx)) return 0
         val stamp = app.prefs.healthLast.toLongOrNull() ?: 0L
         if (!force && nowMs() - stamp < 10 * 60_000) return 0
-        app.prefs.healthLast = nowMs().toString()
+        val date = LocalDate.now()
+        val values = mutableMapOf<String, Double?>()
+        suspend fun read(key: String): Double? {
+            if (!values.containsKey(key)) values[key] = value(ctx, key, date)
+            return values[key]
+        }
         val due = pg.todayPlan(u.id).due.associate { it.g.id to it.done }
         var n = 0
         for (l in links) {
             // Cap quotidien : la mesure du jour devient la quantité du jour (sans jamais faire baisser une saisie à la main)
             val cg = pg.goalById(l.goalId)
             if (cg?.type == "cap") {
-                val v = value(ctx, l.metric) ?: continue
+                val v = read(l.metric) ?: continue
                 val was = due[cg.id] == true
                 if (v > pg.capDay(cg) + 1e-6) pg.capSet(cg, v)
                 if (!was && pg.hasCheck(cg.id, today())) {
@@ -168,7 +179,7 @@ object Health {
                 continue
             }
             if (due[l.goalId] != false) continue // pas prévu aujourd'hui, ou déjà validé
-            val v = value(ctx, l.metric) ?: continue
+            val v = read(l.metric) ?: continue
             // Une valeur nulle ne valide jamais un seuil « au plus » (absence de données)
             if (l.op == "<=" && v <= 0) continue
             if (!reached(l, v)) continue
@@ -181,6 +192,7 @@ object Health {
                 else app.ui.toast("« ${g.title} » validé grâce à Santé (${format(l.metric, v)}).", "check")
             }
         }
+        app.prefs.healthLast = nowMs().toString()
         if (n > 0) { LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx) }
         return n
     }

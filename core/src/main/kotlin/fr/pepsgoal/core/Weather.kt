@@ -56,14 +56,7 @@ object Weather {
     class Sky(val phase: String, val cond: String, val prog: Float, val clouds: Float, val code: Int)
 
     /** Phase du ciel (nuit, aube, jour, crépuscule) selon l'heure, le lever et le coucher du soleil de la ville. */
-    fun sky(w: Forecast?): Sky {
-        var nowStr = "${today()}T${nowHM()}"; var rise = "${today()}T07:15"; var set = "${today()}T19:30"; var cond = "clear"
-        if (w != null) { nowStr = w.current.time ?: nowStr; rise = w.daily.firstOrNull()?.sunrise ?: rise; set = w.daily.firstOrNull()?.sunset ?: set; cond = wmo(w.current.code).cond }
-        val m = { s: String -> hmMinutes(s.drop(11).take(5)) }
-        val t = m(nowStr); val r = m(rise); val s = m(set)
-        val phase = if (t < r - 40 || t > s + 40) "night" else if (Math.abs(t - r) <= 40) "dawn" else if (Math.abs(t - s) <= 40) "dusk" else "day"
-        val prog = ((t - r).toFloat() / maxOf(1, s - r)).coerceIn(0f, 1f)
-        return Sky(phase, cond, prog, (w?.current?.clouds ?: 10.0).toFloat(), w?.current?.code ?: 0)
-    }
-    fun skyDark(w: Forecast?) = sky(w).phase in setOf("night", "dusk")
+    fun sky(w: Forecast?, now: java.time.Instant = java.time.Instant.now()): Sky =
+        SceneAtmosphere.resolve(now, forecast = w).sky()
+    fun skyDark(w: Forecast?) = SceneAtmosphere.resolve(java.time.Instant.now(), forecast = w).sunDown
 }

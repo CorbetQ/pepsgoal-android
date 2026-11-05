@@ -1,0 +1,16 @@
+{
+  "id": "ecran",
+  "revision": "v2",
+  "file": "artwork.png",
+  "sha256": "77004c3bb879347d5a2d3504b87a6acd37ca0fd41fe3f28a549f71459962538c",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Roazhon_Park"
+  ],
+  "brief": "docs/design/background-reboot/briefs/ecran.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

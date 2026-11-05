@@ -100,15 +100,17 @@ suspend fun Cloud.clearStatus() {
 suspend fun Cloud.deleteStory(id: String) { db.stories.removeAll { it.id == id }; store.rawSave(); api.delete("/v1/stories/$id") }
 
 /* ---------- messagerie ---------- */
-suspend fun Cloud.openChat(peer: String) {
-    loadConversation(peer, false); store.rawSave()
-    try { e2e.openConv(Conv(peer = peer)) } catch (e: Exception) {}
-    e2e.decryptAll(); store.changed()
+suspend fun Cloud.openChat(peer: String): Boolean {
+    val changed = loadConversation(peer, false)
+    if (changed) store.rawSave()
+    if (e2e.decryptAll()) store.changed()
+    return changed
 }
-suspend fun Cloud.openGroup(gid: String) {
-    loadGroup(gid, false); store.rawSave()
-    try { e2e.openConv(Conv(group = gid)) } catch (e: Exception) {}
-    e2e.decryptAll(); store.changed()
+suspend fun Cloud.openGroup(gid: String): Boolean {
+    val changed = loadGroup(gid, false)
+    if (changed) store.rawSave()
+    if (e2e.decryptAll()) store.changed()
+    return changed
 }
 suspend fun Cloud.createGroup(name: String, emoji: String, members: List<String>): String {
     val r = api.post("/v1/groups", buildJsonObject { put("name", name); put("emoji", emoji); put("members", ids(members)) })

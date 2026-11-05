@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PepsGoal · Revue des fonds</title>
+<style>
+:root{color-scheme:light;--ink:#2a1420;--paper:#fff1e7}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+header{max-width:1200px;margin:auto;padding:32px 24px 12px}h1{font-size:clamp(26px,4vw,42px);line-height:1.15;margin:0 0 12px}
+p{max-width:850px}nav{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:20px 0}
+button,input{font:inherit;color:var(--ink);border:2px solid var(--ink);border-radius:14px;min-height:48px;padding:8px 16px;background:#fff9f3}
+button{cursor:pointer;box-shadow:0 4px 0 var(--ink);margin-bottom:4px}button[aria-pressed=true]{background:#ffbc8d}button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+input{flex:1;min-width:200px}a{color:var(--ink)}
+main{max-width:1500px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;padding:20px 24px 40px}
+article{background:#fff9f3;border:2px solid var(--ink);border-radius:20px;overflow:hidden;box-shadow:0 5px 0 var(--ink)}
+article[hidden]{display:none}h2{font-size:18px;line-height:1.25;margin:0;padding:14px 14px 4px}small{display:block;padding:0 14px 12px}
+article a{display:block}img{display:block;width:100%;height:auto;aspect-ratio:6/13;object-fit:contain;background:#21192f}
+footer{max-width:1200px;margin:auto;padding:12px 24px 32px}
+</style>
+<header>
+<h1>Les mondes de PepsGoal</h1>
+<p>Galerie de revue au format téléphone 9:19,5. Ces images sont produites par le moteur Android Canvas ; elles ne remplacent pas une vérification sur appareil avec l’interface et ses réglages.</p>
+<nav aria-label="Ambiance">
+<button data-state="day" aria-pressed="true">Jour</button>
+<button data-state="night" aria-pressed="false">Nuit</button>
+<button data-state="dusk" aria-pressed="false">Crépuscule</button>
+<input id="filter" type="search" aria-label="Rechercher un fond" placeholder="Rechercher un fond…">
+</nav>
+<p>Planches complètes : <a href="dawn.png">aube</a> · <a href="rain.png">pluie</a> · <a href="snow.png">neige</a> · <a href="fog.png">brouillard</a> · <a href="storm.png">orage</a>.</p>
+</header>
+<main><!-- CARDS --></main>
+<footer>Les ambiances artistiques gardent leur propre éclairage. Les six abstraits utilisent la palette du thème. Les photographies de recherche ne sont pas des assets de l’application.</footer>
+<script>
+document.querySelectorAll('button[data-state]').forEach(button=>button.addEventListener('click',()=>{
+  document.querySelectorAll('button[data-state]').forEach(other=>other.setAttribute('aria-pressed',String(other===button)));
+  document.querySelectorAll('article').forEach(card=>{
+    const path='samples/'+card.dataset.key+'-'+button.dataset.state+'.png';
+    card.querySelector('img').src=path;card.querySelector('a').href=path;
+  });
+}));
+document.getElementById('filter').addEventListener('input',event=>{
+  const term=event.target.value.toLocaleLowerCase('fr');
+  document.querySelectorAll('article').forEach(card=>card.hidden=!card.textContent.toLocaleLowerCase('fr').includes(term));
+});
+</script>
+</html>

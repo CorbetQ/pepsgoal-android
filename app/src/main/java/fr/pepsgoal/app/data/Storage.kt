@@ -7,6 +7,7 @@ import android.util.Base64
 import fr.pepsgoal.core.DbFiles
 import fr.pepsgoal.core.cloud.Secrets
 import java.io.File
+import android.util.AtomicFile
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -16,13 +17,14 @@ import javax.crypto.spec.GCMParameterSpec
 /** Bases de l'appareil dans le stockage privé de l'application, écrites de façon atomique. */
 class FileDb(context: Context) : DbFiles {
     private val dir = File(context.filesDir, "db").apply { mkdirs() }
-    override fun read(name: String): String? = File(dir, name).takeIf { it.exists() }?.readText()
+    override fun read(name: String): String? = try { AtomicFile(File(dir, name)).openRead().bufferedReader().use { it.readText() } } catch (e: java.io.FileNotFoundException) { null }
     override fun write(name: String, content: String) {
-        val tmp = File(dir, "$name.tmp")
-        tmp.writeText(content)
-        if (!tmp.renameTo(File(dir, name))) { File(dir, name).writeText(content); tmp.delete() }
+        val file = AtomicFile(File(dir, name))
+        val stream = file.startWrite()
+        try { stream.write(content.toByteArray(Charsets.UTF_8)); file.finishWrite(stream) }
+        catch (e: Exception) { file.failWrite(stream); throw e }
     }
-    override fun delete(name: String) { File(dir, name).delete() }
+    override fun delete(name: String) { AtomicFile(File(dir, name)).delete() }
 }
 
 /**

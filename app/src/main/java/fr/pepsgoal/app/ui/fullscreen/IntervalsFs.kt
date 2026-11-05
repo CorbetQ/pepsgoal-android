@@ -41,8 +41,13 @@ fun IntervalsFs(ui: AppState, goalId: String) {
     var round by remember { mutableIntStateOf(1) }
     var left by remember { mutableLongStateOf(0L) }; var span by remember { mutableLongStateOf(1L) }
     var paused by remember { mutableStateOf(false) }
+    var keepAwake by remember { mutableStateOf(ui.prefs.raw.getBoolean("ivKeepAwake", true)) }
     val view = LocalView.current
-    DisposableEffect(running) { view.keepScreenOn = running; onDispose { view.keepScreenOn = false } }
+    DisposableEffect(view, running, paused, keepAwake) {
+        val old = view.keepScreenOn
+        view.keepScreenOn = running && !paused && keepAwake
+        onDispose { view.keepScreenOn = old }
+    }
     val total = work * rounds + rest * (rounds - 1)
     fun finish() {
         running = false; phase = "done"; Feedback.success()
@@ -103,6 +108,8 @@ fun IntervalsFs(ui: AppState, goalId: String) {
                 }
             }
             if (!running) {
+                SetToggle("Garder l’écran allumé", "Pendant l’effort et le repos ; en pause, l’écran peut s’éteindre", "sun", p.flame, keepAwake,
+                    { keepAwake = it; ui.prefs.raw.edit().putBoolean("ivKeepAwake", it).apply() })
                 Glass {
                     Text("Effort", fontWeight = FontWeight.ExtraBold)
                     FlowRowCompat(Modifier.padding(top = 6.dp), gap = 6.dp) { listOf(20, 30, 40, 45, 60, 90).forEach { s -> FChip("$s s", work == s, { work = s }) } }

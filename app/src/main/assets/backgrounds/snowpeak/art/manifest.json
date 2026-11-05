@@ -1,0 +1,16 @@
+{
+  "id": "snowpeak",
+  "revision": "v2",
+  "file": "artwork.png",
+  "sha256": "117a46e90ccc34fb4f746aeab445a9028842bfeb86b45f53d834b3f3e5d98113",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Matterhorn"
+  ],
+  "brief": "docs/design/background-reboot/briefs/snowpeak.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

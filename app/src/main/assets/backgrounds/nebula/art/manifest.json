@@ -1,0 +1,17 @@
+{
+  "id": "nebula",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "61274d44b7756a6d55eba75bcbdccccb4c9579691ca097f79bf306b1307ae311",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Orion_Nebula_-_Hubble_2006_mosaic_18000.jpg",
+    "https://commons.wikimedia.org/wiki/File:NGC_3372a-full.jpg"
+  ],
+  "brief": "docs/design/background-reboot/briefs/nebula.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long visually inspected; not device or battery validation."
+}

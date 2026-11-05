@@ -1,0 +1,16 @@
+{
+  "id": "haunted",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "2928a96412bc1291e70e6ef6d532f4bdcde78d0f9d7cb2da0b10eaa941fb0f8c",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Haunted_house"
+  ],
+  "brief": "docs/design/background-reboot/briefs/haunted.md",
+  "review": "accepted",
+  "reviewScope": "Master and targeted Android Canvas portrait long day/night inspected; final parallax overscan review pending."
+}

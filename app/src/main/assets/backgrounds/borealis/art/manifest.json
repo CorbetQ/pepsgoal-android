@@ -1,0 +1,17 @@
+{
+  "id": "borealis",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "7429c5fbfbb8b56d26f3ed1c180ed34561754d681573039891fb1f8c9fdac789",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://en.wikipedia.org/wiki/Aurora",
+    "https://en.wikipedia.org/wiki/Aurora"
+  ],
+  "brief": "docs/design/background-reboot/briefs/borealis.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

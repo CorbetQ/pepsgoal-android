@@ -1,0 +1,21 @@
+{
+  "id": "nebula",
+  "palette": {
+    "saturation": 1.3,
+    "contrast": 1.16
+  },
+  "lighting": {
+    "strength": 1.45,
+    "shadowStrength": 1.25,
+    "lightColor": "#D0A4FF",
+    "shadowColor": "#14092F"
+  },
+  "texture": {
+    "material": "starlight",
+    "strength": 0.8
+  },
+  "compatibility": "artistic",
+  "framing": {
+    "focusY": 0.3
+  }
+}

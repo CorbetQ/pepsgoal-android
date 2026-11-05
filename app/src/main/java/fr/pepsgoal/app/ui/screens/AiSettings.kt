@@ -63,7 +63,10 @@ fun AiSettings(ui: AppState) {
                 }
                 else -> {
                     LocalAi.error?.let { Err(it) }
-                    if (ok) PButton("Installer le coach IA", { LocalAi.install(ctx) }, Modifier.fillMaxWidth(), icon = "down", kind = "primary")
+                    if (ok) PButton("Installer le coach IA", {
+                        if (LocalAi.downloadRecommended(ctx)) LocalAi.install(ctx)
+                        else ui.confirm("Télécharger maintenant ?", "Le modèle pèse environ ${v.approxMb} Mo. Le Wi-Fi et un téléphone en charge sont conseillés pour économiser les données et la batterie.", "Continuer") { LocalAi.install(ctx, allowExpensiveDownload = true) }
+                    }, Modifier.fillMaxWidth(), icon = "down", kind = "primary")
                     else Note("Ce téléphone ne remplit pas toutes les conditions pour ce modèle.${if (model == "advanced" && LocalAi.compatible(ctx, LocalAi.VARIANTS[0])) " Le modèle léger, lui, est compatible." else ""}", "x")
                 }
             }

@@ -1,0 +1,16 @@
+{
+  "id": "rainwindow",
+  "revision": "v2",
+  "file": "artwork.png",
+  "sha256": "526ae434da6f17f2d41446bb75b31fbaf518b53ce96d6305070a893093ede114",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:Raindrops_blur_the_city_skyline.png"
+  ],
+  "brief": "docs/design/background-reboot/briefs/rainwindow.md",
+  "review": "accepted",
+  "reviewScope": "Master and Android Canvas portrait long day/night inspected individually or on labeled contact sheets; not device validation."
+}

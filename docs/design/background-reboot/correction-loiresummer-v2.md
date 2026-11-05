@@ -1,0 +1,15 @@
+# Été sur la Loire — simplification et cadrage v2
+
+Masterv1 réellement inspecté par designer et critique. La plage fluviale avec parasol/panier, le coude du fleuve et l'îlot donnent une identité estivale distincte de Loire. Le détail des feuilles, rides d'eau, panier et château demeure trop proche du traitement peint semi-réaliste de Loire1. La toue et le château sont trop près du bord droit pour les téléphones longs.
+
+## Prompt d'édition ciblée
+
+Edit the supplied LoireSummer v1 image. Preserve this DISTINCT SUMMER COMPOSITION: sandy riverbeach in foreground with striped warmcoral parasol, picnicbasket and foldedblanket; broad Loire curving around a green sandyisland; distant creamtuffeau castle with blueslate roofs high above the bank; a wooden Loire toue/gabareboat on the river; graceful treeframing on the left. Do not replace this scene with the standard Loire illustration. RESTYLE to the same clean BOLD CARTOON language as Loire3/Kopa2: reduce at least70percent of micro-detail, use large intentional rounded shapes and two or three clear colorvalues per material. Trees and islandfoliage become large scalloped clustermasses with warm green litfaces and cool plum shadowfaces, not thousands of small leaves. Water becomes broad blue-green flowing colorplanes with only a few grouped clean reflectionstrokes, not hundreds of realistic ripples. Sand is a few broad sculpted cream/ochre planes with only a handful of footsteps, no grain. Basket uses a few broad wovenbands to indicate wicker, no detailed weave; blanket broad clean folds; flowers few grouped shapes. Castle keeps a believable tuffeau/slate silhouette and raisedhill contact, but windows and roofs simplified into sparse clear groups, not an intricate miniaturepalace. Preserve depth and strong warm/cool light through largefacets, contactshadows under picnicprops and coherent reflections.
+
+CROP CORRECTION: move the entire BOAT independently LEFT to centerx60percent of masterwidth, with hull AND sail all contained between x43and75percent. Move the entire CASTLE and relevant supporting hill LEFT to centerx65percent, with complete castle silhouette inside x54and76percent. Do not move everything as one global translation. Keep the island nearcenterleft and picnicbasket nearx35percent so they survive a center-crop to tall9:19.5phone. Edge tree and decorative parasol fabric may bleed outside as framing, but the boat and castle must be fully readable in the narrowcentralcrop. Keep their believable scales, watercontact and hillgrounding.
+
+Actual alpha-transparent upper sky remains empty: no painted sun moon permanentclouds or colored skybackdrop. No photorealism, no semi-realistic painted filmstill, no detailedgrain, no glossyplastictoy3D, no text logos watermark UI or checkerboard. Portrait1024x1536.
+
+## Critères de sortie
+
+Parasol/pique-nique, îlot sableux et grand fleuve différencient bien le fond de Loire3. La matière rejoint sa simplification cartoon. Le bateau et le château entiers restent visibles dans le rendu natif360×780, sans sacrifice de la profondeur.

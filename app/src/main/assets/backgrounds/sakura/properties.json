@@ -1,0 +1,21 @@
+{
+  "id": "sakura",
+  "palette": {
+    "saturation": 1.17,
+    "contrast": 1.1
+  },
+  "lighting": {
+    "strength": 1.3,
+    "shadowStrength": 1.25,
+    "lightColor": "#FFE8D0",
+    "shadowColor": "#633267"
+  },
+  "texture": {
+    "material": "wood",
+    "strength": 0.8
+  },
+  "compatibility": "outdoor",
+  "framing": {
+    "focusY": 0.3
+  }
+}

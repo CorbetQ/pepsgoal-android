@@ -1,0 +1,17 @@
+{
+  "id": "fcb",
+  "revision": "v1",
+  "file": "artwork.png",
+  "sha256": "ab80c4bb90b10b5e5dd46c35acf2ade8302192fae951aed46ca95c713e444a0f",
+  "width": 1024,
+  "height": 1536,
+  "generator": "image_gen.imagegen",
+  "originalIllustration": true,
+  "referenceSources": [
+    "https://commons.wikimedia.org/wiki/File:CampNouPanorama.jpg",
+    "https://commons.wikimedia.org/wiki/File:Barcelona_vs_Inter_2019_2.jpg"
+  ],
+  "brief": "docs/design/football-packs-8.8/brief.md",
+  "review": "accepted",
+  "reviewScope": "Revue statique indépendante du 2026-11-04 : référence photo /workspace/.pepsgoal/football-packs-8.8/references/fcb/02.jpg, master v1 et composite natif app/build/reports/scenes/candidates/fcb-v1-tall-day.png 360x780 avec surcadrage 8 % réellement ouverts. Architecture, lumière/ombres cartoon, profondeur, absence de lettrage et cadrage acceptés. Sans interface superposée, vignette boutique, animation ni téléphone physique."
+}

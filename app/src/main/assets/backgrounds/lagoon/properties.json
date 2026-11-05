@@ -1,0 +1,21 @@
+{
+  "id": "lagoon",
+  "palette": {
+    "saturation": 1.28,
+    "contrast": 1.1
+  },
+  "lighting": {
+    "strength": 1.25,
+    "shadowStrength": 1.25,
+    "lightColor": "#FFF2B4",
+    "shadowColor": "#154F65"
+  },
+  "texture": {
+    "material": "water",
+    "strength": 0.8
+  },
+  "compatibility": "outdoor",
+  "framing": {
+    "focusY": 0.45
+  }
+}

@@ -95,24 +95,18 @@ fun SearchScreen(ui: AppState, initial: String) {
                     IconTile("sparkle", p.flame2, p.pink, 44.dp, 14.dp)
                     Text(egg.text, Modifier.weight(1f), fontWeight = FontWeight.Bold)
                 }
-                // Surprise « sco » : débloquer ne veut pas dire appliquer ; un bouton l'applique tout de suite
-                if (egg.egg == "sco") {
-                    val on = u.settings.theme == "m:sco" && u.settings.bg == "s:kopa"
-                    PButton(if (on) "Stade et Noir & Blanc appliqués" else "Appliquer le stade et Noir & Blanc", {
-                        if ("sco" !in pg.eggsFound(u)) ui.egg("sco", egg.text, egg.fx, say = false)
-                        pg.applySco(); ui.themeTick++
-                        ui.toast("⚫⚪ Stade Raymond-Kopa et ambiance Noir & Blanc appliqués. À retrouver dans Apparence.", "palette")
-                    }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
-                }
-                // Surprise « srfc » : fond « Écran géant » (OL 4 – 0 SRFC) et ambiance « Rouge & Noir », à appliquer d'un geste
-                if (egg.egg == "srfc") {
-                    val on = u.settings.theme == "m:srfc" && u.settings.bg == "s:ecran"
-                    Muted("Le fond « Écran géant » et l’ambiance « Rouge & Noir » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", Modifier.padding(top = 8.dp), small = true)
-                    PButton(if (on) "Écran géant et Rouge & Noir appliqués" else "Appliquer l’écran géant et Rouge & Noir", {
-                        if ("srfc" !in pg.eggsFound(u)) ui.egg("srfc", egg.text, egg.fx, say = false)
-                        pg.applySrfc(); ui.themeTick++
-                        ui.toast("🔴⚫ Écran géant et ambiance Rouge & Noir appliqués. À retrouver dans Apparence.", "palette")
-                    }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
+                val pack = THEME_PACKS.firstOrNull { it.eggKey != null && it.eggKey == egg.egg }
+                if (pack != null) {
+                    val on = ui.themePackActive(pack.key)
+                    if (pack.key == "srfc") Muted("Le fond « Roazhon Park » et l’ambiance « Rouge & Noir » sont à toi : applique-les maintenant, ou plus tard dans Apparence.", Modifier.padding(top = 8.dp), small = true)
+                    if (pack.discoveryCompletesPack || pg.packQuote(pack, u).owned) {
+                        PButton(if (on) "Pack appliqué" else "Appliquer le pack ${pack.name}", {
+                            if (pack.eggKey !in pg.eggsFound(u)) ui.egg(pack.eggKey, egg.text, egg.fx, say = false)
+                            val error = ui.applyThemePack(pack.key)
+                            ui.toast(error ?: "Pack ${pack.name} appliqué : icône, fond, couleurs et ambiance.", if (error == null) "palette" else "x")
+                        }, Modifier.padding(top = 12.dp), icon = if (on) "check" else "palette", kind = "primary", enabled = !on)
+                    }
+                    PButton("Retrouver le pack dans la boutique", { ui.shopTab = "packs"; ui.push(Screen.Shop) }, Modifier.padding(top = 8.dp), icon = "star", kind = "ghost")
                 }
             }
         }

@@ -23,6 +23,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Tests de la logique (module core)
         run: ./gradlew --no-daemon :core:test
+      - name: Galerie des fonds (Canvas Android natif, sans émulateur)
+        run: ./gradlew --no-daemon :app:testGithubDebugUnitTest --tests '*SceneRenderTest' --tests '*BackgroundAssetTest' --tests '*SceneArtworkTest'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pepsgoal-scene-gallery
+          path: |
+            app/build/reports/scenes/**/*.png
+            app/build/reports/scenes/index.html
+            app/build/test-results/testGithubDebugUnitTest/*.xml
+          if-no-files-found: warn
       - name: Application Android (debug + release)
         run: ./gradlew --no-daemon :app:assembleGithubDebug :app:assembleGithubRelease :app:bundlePlayRelease :wear:assembleRelease :wear:bundleRelease
       - name: Modules de mesure (Macrobenchmark et profil de référence, compilation)
