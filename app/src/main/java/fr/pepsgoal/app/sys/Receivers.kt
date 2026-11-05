@@ -114,5 +114,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Reminders.reschedule(ctx); SyncWorker.schedule(ctx); Poller.schedule(ctx); Poller.startLink(ctx); LiveUpdates.refresh(ctx); WidgetUpdater.update(ctx)
         GeoReminders.register(ctx)
+        // Nouvelle version installée : notification avec ses nouveautés
+        if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) Updater.installedCheck(ctx)
     }
 }

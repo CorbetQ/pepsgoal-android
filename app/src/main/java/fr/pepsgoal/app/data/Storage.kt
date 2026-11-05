@@ -122,6 +122,8 @@ class DevicePrefs(context: Context) : fr.pepsgoal.core.PollState {
     var autoUpdate get() = p.getBoolean("autoUpdate", true); set(v) = p.edit().putBoolean("autoUpdate", v).apply()
     var updateChecked get() = p.getLong("updateChecked", 0L); set(v) = p.edit().putLong("updateChecked", v).apply()
     var updateNotified get() = p.getString("updateNotified", "") ?: ""; set(v) = p.edit().putString("updateNotified", v).apply()
+    /** Dernière version de l'application lancée sur l'appareil (notification « PepsGoal a été mis à jour »). */
+    var lastRunVersion get() = p.getString("lastRunVersion", "") ?: ""; set(v) = p.edit().putString("lastRunVersion", v).apply()
     /** Apparence des widgets : "app" (comme l'application), "light", "dark" ou "you" (Material You). */
     var widgetTheme get() = p.getString("widgetTheme", "app") ?: "app"; set(v) = p.edit().putString("widgetTheme", v).apply()
     var widgetHideDone get() = p.getBoolean("widgetHideDone", false); set(v) = p.edit().putBoolean("widgetHideDone", v).apply()

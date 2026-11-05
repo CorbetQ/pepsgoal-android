@@ -445,6 +445,8 @@ private fun MessageRow(
         // Flou de l'arrière-plan sous la bulle (les calques de messages ne sont jamais floutés, seulement le fond)
         // Aucun flou sous les bulles : aplats seulement
         val frost = Modifier
+        // Encre de la bulle (prune sur l'aplat, encre du thème ailleurs) : tout texte sans couleur explicite la reprend
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides fg) {
         Column(Modifier.widthIn(max = 300.dp).msgEnter(mine)
             .then(if (bare) Modifier else Modifier.drawBehind {
                 // Bord et marche de 3 dp : une forme pleine sous la bulle
@@ -492,6 +494,7 @@ private fun MessageRow(
             }
             Text("${if (b?.get("x") != null && !gone) "⏳ " else ""}${if (editedText != null && !gone) "modifié · " else ""}${hm(m.at)}", Modifier.align(Alignment.End).padding(top = 2.dp, end = if (kind == "photo") 6.dp else 0.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (vivid0 && !bare) fg else p.ink3)
         }
+        }
         val items = reacts?.filter { it.value.isNotEmpty() }
         if (!items.isNullOrEmpty()) Row(Modifier.padding(top = 2.dp, start = 6.dp, end = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             items.forEach { (e, set) ->
@@ -522,7 +525,7 @@ private fun MsgText(ui: AppState, b: JsonObject, members: List<String>?) {
     b.obj("r")?.let { r ->
         Column(Modifier.padding(bottom = 6.dp).clip(RoundedCornerShape(17.dp)).background(p.surface2).padding(horizontal = 10.dp, vertical = 5.dp)) {
             Text(if (r.str("f") == me) "Toi" else first(pg.userById(r.str("f"))?.name ?: "Message"), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
-            Text(r.str("s", "…"), fontSize = 12.sp, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(r.str("s", "…"), fontSize = 12.sp, color = androidx.compose.material3.LocalContentColor.current.copy(alpha = .85f), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
     val t = b.str("t")

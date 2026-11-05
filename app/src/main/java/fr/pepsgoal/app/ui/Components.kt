@@ -804,13 +804,14 @@ fun SetRow(title: String, sub: String? = null, modifier: Modifier = Modifier, ri
     val p = LocalPal.current
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val half = maxWidth * .5f
-        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.ExtraBold, color = p.ink)
-                if (sub != null) Text(sub, fontSize = 13.sp, color = p.ink2)
+        // Titre et commande sur la première ligne, explication dessous sur toute la largeur (jamais écrasée en colonne)
+        Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(title, Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, color = p.ink)
+                // Les commandes ne prennent jamais plus de la moitié de la ligne : le titre n'est pas coupé en plein mot
+                Row(Modifier.widthIn(max = half), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) { right() }
             }
-            // Les commandes de droite ne prennent jamais plus de la moitié de la ligne : le titre n'est plus coupé en plein mot
-            Row(Modifier.widthIn(max = half), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) { right() }
+            if (sub != null) Text(sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2, lineHeight = 17.sp)
         }
     }
 }
