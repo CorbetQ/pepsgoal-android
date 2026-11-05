@@ -131,7 +131,11 @@ fun SetItem(title: String, sub: String? = null, icon: String? = null, tint: Colo
             val indent = if (icon != null) 52.dp else 0.dp
             if (sub != null) Text(sub, Modifier.padding(start = indent), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2, lineHeight = 17.sp)
             if (toggled == null) GapIfContent(Modifier.padding(start = indent)) {
-                FlowRowCompat(gap = 8.dp) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { right() } }
+                // Commandes ancrées à droite : elles s'alignent d'une ligne à l'autre (et sur les interrupteurs seuls)
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { right() }
+                }
             }
         }
     }
