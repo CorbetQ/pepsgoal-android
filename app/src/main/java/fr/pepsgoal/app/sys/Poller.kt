@@ -81,11 +81,16 @@ object Poller {
     suspend fun run(app: PepsApp, src: String) {
         if (!app.store.acct || app.cloud.forceOffline) return
         if (!lock.tryLock()) return
+        // Le verrou est toujours rendu, même si une lecture de l'état système échoue avant la relève
+        try { runLocked(app, src) } finally { lock.unlock() }
+    }
+
+    private suspend fun runLocked(app: PepsApp, src: String) {
         // Relève toute récente (service et alarme qui se croisent) : inutile de recommencer
-        if (lastRun > 0 && SystemClock.elapsedRealtime() - lastRun < (if (app.foreground) 15_000L else 40_000L) && app.prefs.pollTest == 0L) { lock.unlock(); return }
+        if (lastRun > 0 && SystemClock.elapsedRealtime() - lastRun < (if (app.foreground) 15_000L else 40_000L) && app.prefs.pollTest == 0L) return
         // Porte globale : service, alarme et worker ne relèvent qu'une fois par intervalle (80 %), même après la mort du processus
         val wall = System.currentTimeMillis()
-        if (app.prefs.pollTest == 0L && !PollGate.allow(src, wall, app.prefs.lastRunWall, interval(app))) { BgStats.add("poll.gated.$src"); lock.unlock(); return }
+        if (app.prefs.pollTest == 0L && !PollGate.allow(src, wall, app.prefs.lastRunWall, interval(app))) { BgStats.add("poll.gated.$src"); return }
         app.prefs.lastRunWall = wall
         BgStats.add("poll.src.$src")
         val t0 = SystemClock.elapsedRealtime(); val rx0 = BgStats.rxPackets()
@@ -131,7 +136,7 @@ object Poller {
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
             app.cloud.pollStatus = "erreur : ${e::class.simpleName}"
-        } finally { releaseWakeLock(); lock.unlock() }
+        } finally { releaseWakeLock() }
     }
 
     /** Le compte a-t-il une vie sociale (amis, conversations, groupes, ou notifications du serveur depuis 7 jours) ? */
@@ -213,8 +218,10 @@ class LinkService : Service() {
             while (isActive) {
                 // Prochain réveil calé sur la dernière relève (quel qu'en soit l'auteur), pas sur « maintenant + intervalle »
                 val now = System.currentTimeMillis()
-                val due = maxOf(app.prefs.lastRunWall + Poller.nextDelay(app), now)
-                delay((due - now).coerceAtLeast(15_000L))
+                val step = Poller.nextDelay(app)
+                val due = maxOf(app.prefs.lastRunWall + step, now)
+                // Borné à l'intervalle : une horloge reculée (dernière relève « dans le futur ») ne gèle pas la boucle
+                delay((due - now).coerceIn(15_000L, maxOf(15_000L, step)))
                 if (!app.foreground) Poller.run(app, "service")
                 accountTime()
                 // Nuit, cadence lente ou compte devenu calme : le service s'arrête, l'alarme de secours prend le relais
