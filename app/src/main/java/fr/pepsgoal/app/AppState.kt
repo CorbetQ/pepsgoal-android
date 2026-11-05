@@ -281,7 +281,9 @@ class AppState(val app: PepsApp) : Hooks {
         // « social » rouvre le dernier onglet de Social (Feed ou Amis)
         val t = if (t0 == "social") fr.pepsgoal.app.ui.Fx.lastSocial else t0
         if (t == "feed" || t == "friends") fr.pepsgoal.app.ui.Fx.lastSocial = t
-        if (t == tab && screens.isEmpty() && sheet == null) fr.pepsgoal.app.ui.TabReTap.n++; tab = t; sheet = null; screens.clear(); if (t in setOf("feed", "friends", "mod", "today")) cloud.scheduleSocial(50) }
+        if (t == tab && screens.isEmpty() && sheet == null) fr.pepsgoal.app.ui.TabReTap.n++; tab = t; sheet = null; screens.clear(); cloud.moderationVisible = t == "mod"
+        // Rechargement social soumis à sa validité : 60 s (5 min pour « Aujourd'hui », qui n'affiche pas le feed)
+        if (t in setOf("feed", "friends", "mod", "today")) cloud.scheduleSocial(50, maxAgeMs = if (t == "today") 5 * 60_000L else fr.pepsgoal.core.cloud.Cloud.SOCIAL_FRESH_MS) }
 
     /** Bouton retour : ferme ce qui est ouvert, revient à l'accueil, sinon laisse quitter. */
     fun back(): Boolean {

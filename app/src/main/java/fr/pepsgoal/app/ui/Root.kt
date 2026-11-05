@@ -405,7 +405,7 @@ private fun PullRefresh(ui: AppState, top: androidx.compose.ui.unit.Dp, content:
         refreshing = true; fr.pepsgoal.app.ui.Feedback.commit()
         ui.scope.launch {
             try {
-                if (ui.pg.store.acct && ui.pg.store.online) { ui.cloud.syncNow(); ui.cloud.refreshSocial() }
+                if (ui.pg.store.acct && ui.pg.store.online) { ui.cloud.syncNow(force = true); ui.cloud.refreshSocial() }
                 Wx.ensure(ctx, ui, true)
             } catch (e: Exception) {}
             kotlinx.coroutines.delay(500); refreshing = false; ui.bump()

@@ -160,7 +160,11 @@ object Health {
         val date = LocalDate.now()
         val values = mutableMapOf<String, Double?>()
         suspend fun read(key: String): Double? {
-            if (!values.containsKey(key)) values[key] = value(ctx, key, date)
+            if (!values.containsKey(key)) {
+                val t0 = android.os.SystemClock.elapsedRealtime()
+                values[key] = value(ctx, key, date)
+                BgStats.add("health.reads"); BgStats.add("health.ms", android.os.SystemClock.elapsedRealtime() - t0)
+            }
             return values[key]
         }
         val due = pg.todayPlan(u.id).due.associate { it.g.id to it.done }

@@ -78,7 +78,7 @@ class KeystoreSecrets(context: Context) : Secrets {
 }
 
 /** Réglages propres à cet appareil (accessibilité, Material You, image d'arrière-plan…), pour tous les comptes. */
-class DevicePrefs(context: Context) {
+class DevicePrefs(context: Context) : fr.pepsgoal.core.PollState {
     private val p = context.getSharedPreferences("pepsgoal.device", Context.MODE_PRIVATE)
     /** Accès direct, pour les petits états techniques (duo, agenda…). */
     val raw: android.content.SharedPreferences get() = p
@@ -106,6 +106,14 @@ class DevicePrefs(context: Context) {
     var lastPoll get() = p.getLong("lastPoll", 0L); set(v) = p.edit().putLong("lastPoll", v).apply()
     /** Service de connexion en direct (notifications instantanées application fermée). */
     var instantNotifs get() = p.getBoolean("instantNotifs", true); set(v) = p.edit().putBoolean("instantNotifs", v).apply()
+    /** Réactivité des relèves application fermée : 0 Rapide, 1 Équilibré (défaut, valeur absente), 2 Économe. */
+    var pollLevel get() = p.getInt("pollLevel", fr.pepsgoal.core.PollPolicy.BALANCED); set(v) = p.edit().putInt("pollLevel", v).apply()
+    /** Dernier événement utile (notification, message, publication d'ami) : cadence rapide pendant un quart d'heure. */
+    override var lastEventAt get() = p.getLong("lastEventAt", 0L); set(v) { p.edit().putLong("lastEventAt", v).apply() }
+    /** Dernière relève, heure murale (porte globale entre service, alarme et worker). */
+    override var lastRunWall get() = p.getLong("lastRunWall", 0L); set(v) { p.edit().putLong("lastRunWall", v).apply() }
+    /** Configuration des travaux WorkManager déjà enfilée (pas de ré-enfilage identique). */
+    var workConfig get() = p.getString("workConfig", "") ?: ""; set(v) = p.edit().putString("workConfig", v).apply()
     /** Journal des dernières relèves en arrière-plan (diagnostic). */
     var pollLog: List<String> get() = p.getString("pollLog", "")!!.split("\n").filter { it.isNotBlank() }; set(v) = p.edit().putString("pollLog", v.joinToString("\n")).apply()
     /** Test demandé depuis les réglages : la prochaine relève en arrière-plan envoie une notification de confirmation. */

@@ -13,8 +13,14 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import android.net.ConnectivityManager
 import fr.pepsgoal.app.PepsApp
 import fr.pepsgoal.app.peps
+import fr.pepsgoal.core.NetSource
+import fr.pepsgoal.core.PollContext
+import fr.pepsgoal.core.PollGate
+import fr.pepsgoal.core.PollPolicy
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -24,28 +30,33 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Relève des notifications du serveur toutes les minutes, application fermée : le serveur PepsGoal ne parle que
- * Web Push, l'application native interroge donc elle-même les messages, publications, demandes d'amis,
- * encouragements… Une alarme inexacte adaptée à l’activité réveille l’application ;
- * en mode Économie d'énergie / Doze, Android espace de lui-même les réveils (WorkManager reste le filet de sécurité).
+ * Relève des notifications du serveur application fermée : le serveur PepsGoal ne parle que Web Push, l'application
+ * native interroge donc elle-même les messages, publications, demandes d'amis, encouragements… La cadence suit
+ * [PollPolicy] (rapide après un événement utile, plus lente au calme et la nuit, selon le réseau et la batterie) ;
+ * une porte globale ([PollGate]) évite que service, alarme et worker relèvent chacun de leur côté.
  */
 object Poller {
     const val EVERY_MS = 60_000L
-    /** Activité sociale récente (nouveautés relevées) : la relève reste à la minute pendant un quart d'heure. */
-    @Volatile var lastNews = 0L
     @Volatile private var lastRun = 0L
     private var lastHealth = 0L
 
-    /**
-     * Intervalle de relève adapté : à la minute quand ça bouge (nouveautés récentes), toutes les 3 minutes au calme,
-     * toutes les 15 minutes la nuit (00 h – 7 h). Les réveils du processeur coûtent cher en batterie.
-     */
-    fun interval(app: PepsApp): Long {
-        val now = System.currentTimeMillis()
-        if (now - lastNews < 15 * 60_000L) return EVERY_MS
-        val h = java.time.LocalTime.now().hour
-        return if (h < 7) 15 * 60_000L else 3 * 60_000L
+    /** Contexte de décision : dernier événement utile, heure, réseau facturé, économiseur d'énergie, batterie, niveau choisi. */
+    fun context(app: PepsApp): PollContext {
+        val cm = app.getSystemService(ConnectivityManager::class.java)
+        val pm = app.getSystemService(PowerManager::class.java)
+        return PollContext(System.currentTimeMillis(), app.prefs.lastEventAt, java.time.LocalTime.now().hour,
+            metered = try { cm.isActiveNetworkMetered } catch (e: Exception) { false }, powerSave = pm.isPowerSaveMode,
+            batteryLow = EnergyState.batteryLow(app), level = app.prefs.pollLevel)
     }
+
+    /** Intervalle de relève courant (voir [PollPolicy.intervalMs]). */
+    fun interval(app: PepsApp): Long = PollPolicy.intervalMs(context(app))
+
+    /** Délai avant la prochaine relève : l'intervalle, espacé après des échecs consécutifs. */
+    fun nextDelay(app: PepsApp): Long = PollPolicy.backoffMs(interval(app), app.cloud.pollFailures)
+
+    /** Événement utile (notification serveur, message entrant, publication d'ami) : cadence rapide, persistée. */
+    fun onEvent(app: PepsApp) = PollPolicy.recordEvent(app.prefs, System.currentTimeMillis())
     private fun pi(ctx: Context) = PendingIntent.getBroadcast(ctx, 2, Intent(ctx, PollReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
     fun schedule(ctx: Context, delayMs: Long? = null) {
@@ -53,7 +64,7 @@ object Poller {
         val a = ctx.getSystemService(AlarmManager::class.java); val p = pi(ctx)
         if (!app.store.acct || app.cloud.forceOffline) { a.cancel(p); return }
         // Avec la connexion en direct, le service relève lui-même : l'alarme n'est plus qu'un filet de sécurité
-        val d = delayMs ?: if (app.prefs.pollTest > 0) 30_000L else if (app.prefs.instantNotifs) 15 * 60_000L else interval(app)
+        val d = delayMs ?: if (app.prefs.pollTest > 0) 30_000L else if (app.prefs.instantNotifs) PollPolicy.alarmDelayMs(nextDelay(app), LinkService.alive) else nextDelay(app)
         val t = SystemClock.elapsedRealtime() + d
         // Alarme inexacte : Android la regroupe avec les autres réveils (bien moins coûteux qu'une alarme exacte chaque minute)
         try { a.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p) } catch (e: Exception) { a.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, t, p) }
@@ -69,6 +80,13 @@ object Poller {
         if (!lock.tryLock()) return
         // Relève toute récente (service et alarme qui se croisent) : inutile de recommencer
         if (lastRun > 0 && SystemClock.elapsedRealtime() - lastRun < (if (app.foreground) 15_000L else 40_000L) && app.prefs.pollTest == 0L) { lock.unlock(); return }
+        // Porte globale : service, alarme et worker ne relèvent qu'une fois par intervalle (80 %), même après la mort du processus
+        val wall = System.currentTimeMillis()
+        if (app.prefs.pollTest == 0L && !PollGate.allow(src, wall, app.prefs.lastRunWall, interval(app))) { BgStats.add("poll.gated.$src"); lock.unlock(); return }
+        app.prefs.lastRunWall = wall
+        BgStats.add("poll.src.$src")
+        val t0 = SystemClock.elapsedRealtime(); val rx0 = BgStats.rxPackets()
+        val req0 = app.cloud.api.requests.get(); val bytes0 = app.cloud.api.receivedBytes.get()
         var wl: PowerManager.WakeLock? = null
         try {
             if (!app.foreground) {
@@ -77,7 +95,11 @@ object Poller {
             }
             val ok = withTimeoutOrNull(30_000) {
                 app.cloud.navOnline = app.networkUp()
-                if (app.cloud.poll(if (app.foreground) 15_000 else 40_000)) { lastNews = System.currentTimeMillis(); WidgetUpdater.update(app) }
+                // Niveau Rapide : le flux d'amis est relevé à chaque cycle (sinon palier lent en arrière-plan)
+                app.cloud.feedEveryCycle = app.prefs.pollLevel == PollPolicy.FAST
+                // La cadence n'est relancée que par un événement utile (CloudEvents), pas par un simple changement de JSON
+                val fg = app.foreground
+                if (withContext(NetSource(src)) { app.cloud.poll(if (fg) 15_000 else 40_000, foreground = fg) }) WidgetUpdater.update(app)
                 if (!app.foreground) try { SmartReminders.check(app) } catch (e: CancellationException) { throw e } catch (e: Exception) {}
                 // Santé Connect : relu au plus tous les quarts d'heure
                 if (System.currentTimeMillis() - lastHealth > 15 * 60_000L) { lastHealth = System.currentTimeMillis(); try { Health.sync(app) } catch (e: CancellationException) { throw e } catch (e: Exception) {} }
@@ -87,8 +109,11 @@ object Poller {
             if (ok == null) app.cloud.pollStatus = "délai dépassé"
             val now = System.currentTimeMillis(); lastRun = SystemClock.elapsedRealtime()
             if (app.store.online) app.prefs.lastPoll = now
+            val dur = lastRun - t0; val nReq = app.cloud.api.requests.get() - req0; val kb = (app.cloud.api.receivedBytes.get() - bytes0) / 1024
+            BgStats.add("poll.ms", dur); BgStats.max("poll.ms", dur); BgStats.add("poll.rx.pkt", (BgStats.rxPackets() - rx0).coerceAtLeast(0))
+            BgStats.add(when { ok == null -> "poll.timeout"; app.cloud.pollStatus.startsWith("erreur") || app.cloud.pollStatus == "serveur injoignable" -> "poll.fail"; app.cloud.pollStatus == "nouveautés relevées" -> "poll.news"; else -> "poll.ok" })
             val hm = java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE).format(java.util.Date(now))
-            app.prefs.pollLog = (listOf("$hm · $src · ${app.cloud.pollStatus}") + app.prefs.pollLog).take(6)
+            app.prefs.pollLog = (listOf("$hm · $src · ${app.cloud.pollStatus} · $nReq req · $kb ko · ${"%.1f".format(dur / 1000.0)} s") + app.prefs.pollLog).take(6)
             if (app.prefs.pollTest > 0 && now - app.prefs.pollTest > 20_000) {
                 app.prefs.pollTest = 0
                 Notifier.test(app, "✓ Relève en arrière-plan reçue ($src, ${app.cloud.pollStatus}). Les messages t’arriveront aussi application fermée.")
@@ -119,10 +144,11 @@ object Poller {
 class PollReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         val app = ctx.peps
+        BgStats.add("wake.poll")
         // Au premier plan, la boucle de l'application s'en charge déjà
         if (app.foreground) { Poller.schedule(ctx); return }
-        // Le système peut autoriser à (re)lancer le service de connexion, s'il a été arrêté par le système
-        Poller.startLink(ctx)
+        // Le système peut autoriser à (re)lancer le service de connexion, s'il a été arrêté par le système (pas s'il tourne)
+        if (!LinkService.alive) Poller.startLink(ctx)
         val done = goAsync()
         app.scope.launch {
             try { Poller.run(app, "alarme") } finally { Poller.schedule(ctx); done.finish() }
@@ -137,7 +163,14 @@ class PollReceiver : BroadcastReceiver() {
  */
 class LinkService : Service() {
     private var job: Job? = null
+    private var startedAt = 0L
     override fun onBind(intent: Intent?): IBinder? = null
+
+    companion object {
+        /** Le service relève-t-il en ce moment ? (l'alarme de secours s'espace alors, et ne le relance pas) */
+        @Volatile var alive = false
+            private set
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val app = peps
@@ -145,14 +178,26 @@ class LinkService : Service() {
             ServiceCompat.startForeground(this, Notifier.LINK_ID, Notifier.link(this), if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0)
         } catch (e: Exception) { stopSelf(); return START_NOT_STICKY }
         if (!app.store.acct || !app.prefs.instantNotifs || app.cloud.forceOffline) { stopSelf(); return START_NOT_STICKY }
+        if (!alive) { alive = true; startedAt = SystemClock.elapsedRealtime(); BgStats.add("fgs.start") }
         if (job?.isActive != true) job = app.scope.launch {
             while (isActive) {
-                delay(Poller.interval(app))
+                // Prochain réveil calé sur la dernière relève (quel qu'en soit l'auteur), pas sur « maintenant + intervalle »
+                val now = System.currentTimeMillis()
+                val due = maxOf(app.prefs.lastRunWall + Poller.nextDelay(app), now)
+                delay((due - now).coerceAtLeast(15_000L))
                 if (!app.foreground) Poller.run(app, "service")
+                accountTime()
             }
         }
         return START_STICKY
     }
 
-    override fun onDestroy() { job?.cancel(); super.onDestroy() }
+    override fun onDestroy() {
+        job?.cancel()
+        if (alive) { accountTime(); alive = false; BgStats.add("fgs.stop") }
+        super.onDestroy()
+    }
+
+    /** Temps de service compté au fil de l'eau (un processus tué ne perd que la dernière tranche). */
+    private fun accountTime() { val now = SystemClock.elapsedRealtime(); BgStats.add("fgs.ms", now - startedAt); startedAt = now }
 }

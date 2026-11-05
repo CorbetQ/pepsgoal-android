@@ -40,6 +40,9 @@ private fun CloudState.snapshot(): CloudState = CloudState(
     snapGoals = snapGoals.toMutableMap(),
     snapCheckins = snapCheckins.toMutableMap(),
     snapSettings = snapSettings,
+    pollDigests = pollDigests.toList(),
+    convSigs = convSigs.toMutableMap(),
+    socialStale = socialStale,
 )
 
 private fun Avatar.snapshot(): Avatar = Avatar(

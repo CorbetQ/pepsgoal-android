@@ -240,9 +240,9 @@ fun PendingSheet(ui: AppState) {
             Spacer(Modifier.height(12.dp))
             val scope = rememberCoroutineScope()
             when {
-                cloud.forceOffline -> PButton("Repasser en ligne", { cloud.forceOffline = false; ui.bump(); scope.launch { busy = true; try { cloud.syncNow() } finally { busy = false; ui.bump() } } }, Modifier.fillMaxWidth(), icon = "cloud", kind = "primary")
+                cloud.forceOffline -> PButton("Repasser en ligne", { cloud.forceOffline = false; ui.bump(); scope.launch { busy = true; try { cloud.syncNow(force = true) } finally { busy = false; ui.bump() } } }, Modifier.fillMaxWidth(), icon = "cloud", kind = "primary")
                 !pg.store.online -> PButton("Réessayer la connexion", { cloud.pingSoon(); ui.toast("Nouvelle tentative de connexion…", "cloud") }, Modifier.fillMaxWidth(), icon = "repeat")
-                else -> PButton(if (busy) "Envoi…" else "Envoyer maintenant", { if (!busy) scope.launch { busy = true; try { cloud.syncNow() } finally { busy = false; ui.bump() }
+                else -> PButton(if (busy) "Envoi…" else "Envoyer maintenant", { if (!busy) scope.launch { busy = true; try { cloud.syncNow(force = true) } finally { busy = false; ui.bump() }
                     if (cloud.syncError.isEmpty()) { Feedback.success(); ui.toast("Tout est synchronisé.", "check") } else ui.toast("Envoi impossible : ${cloud.syncError}", "x") } }, Modifier.fillMaxWidth(), icon = "send", kind = "primary", enabled = !busy)
             }
         }

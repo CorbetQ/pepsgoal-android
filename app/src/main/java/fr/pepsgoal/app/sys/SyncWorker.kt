@@ -3,6 +3,7 @@ package fr.pepsgoal.app.sys
 import android.content.Context
 import androidx.work.*
 import fr.pepsgoal.app.peps
+import fr.pepsgoal.core.NetSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,6 +15,7 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
     override suspend fun doWork(): Result = try {
         withContext(Dispatchers.Main) {
             val app = applicationContext.peps
+            BgStats.add("wake.sync")
             app.pg.timerTick(); app.pg.checkReminders()
             Health.sync(app)
             LiveUpdates.refresh(app); WidgetUpdater.update(app); Reminders.reschedule(app)
@@ -23,18 +25,32 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
     } catch (e: CancellationException) { throw e } catch (e: Exception) { Result.retry() }
 
     companion object {
+        /** Version de la configuration des travaux : à changer quand les contraintes changent (ré-enfilage UPDATE). */
+        private const val CONFIG = "2"
+
+        /**
+         * Appelé à chaque changement de connexion ou de session et au démarrage : une configuration identique n'est pas
+         * ré-enfilée (KEEP) ; UPDATE seulement quand la période ou les contraintes changent.
+         */
         fun schedule(ctx: Context) {
-            val wm = WorkManager.getInstance(ctx)
-            val local = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES, 5, TimeUnit.MINUTES).build()
-            wm.enqueueUniquePeriodicWork("pepsgoal-sync", ExistingPeriodicWorkPolicy.UPDATE, local)
-            if (!ctx.peps.store.acct || ctx.peps.cloud.forceOffline) {
+            val wm = WorkManager.getInstance(ctx); val app = ctx.peps
+            val localMin = 15L
+            val net = app.store.acct && !app.cloud.forceOffline
+            val sig = "$CONFIG|$localMin|$net"
+            val policy = if (app.prefs.workConfig == sig) ExistingPeriodicWorkPolicy.KEEP else ExistingPeriodicWorkPolicy.UPDATE
+            val local = PeriodicWorkRequestBuilder<SyncWorker>(localMin, TimeUnit.MINUTES, 5, TimeUnit.MINUTES).build()
+            wm.enqueueUniquePeriodicWork("pepsgoal-sync", policy, local)
+            if (!net) {
                 wm.cancelUniqueWork("pepsgoal-network-sync")
+                app.prefs.workConfig = sig
                 return
             }
+            // Filet de sécurité de la relève : 15 min (minimum de WorkManager), réseau disponible et batterie non faible
             val network = PeriodicWorkRequestBuilder<NetworkSyncWorker>(15, TimeUnit.MINUTES, 5, TimeUnit.MINUTES)
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.MINUTES).build()
-            wm.enqueueUniquePeriodicWork("pepsgoal-network-sync", ExistingPeriodicWorkPolicy.UPDATE, network)
+            wm.enqueueUniquePeriodicWork("pepsgoal-network-sync", policy, network)
+            app.prefs.workConfig = sig
         }
     }
 }
@@ -43,10 +59,13 @@ class NetworkSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorke
     override suspend fun doWork(): Result = try {
         val ok = withContext(Dispatchers.Main) {
             val app = applicationContext.peps
+            BgStats.add("wake.netsync")
             if (app.store.acct && !app.cloud.forceOffline) {
                 withTimeout(60_000) {
+                    // Relève soumise à la porte globale : rien si le service ou l'alarme vient de relever
                     Poller.run(app, "worker")
-                    if (app.store.online) app.cloud.syncNow()
+                    // Synchronisation seulement s'il y a des modifications locales ou si le dernier tirage date de plus de 30 min
+                    if (app.store.online && app.cloud.syncDue()) withContext(NetSource("worker")) { app.cloud.syncNow() }
                     app.store.flush()
                 }
                 Poller.schedule(app)

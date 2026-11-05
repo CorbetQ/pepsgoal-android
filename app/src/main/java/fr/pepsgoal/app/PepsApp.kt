@@ -53,6 +53,7 @@ class PepsApp : Application() {
         // Langue de l'interface (Paramètres › Apparence) : français, anglais, ou celle du téléphone
         fr.pepsgoal.app.ui.I18n.apply(this, prefs.raw.getString("lang", "auto") ?: "auto")
         fr.pepsgoal.app.sys.Perf.load(this)
+        fr.pepsgoal.app.sys.BgStats.load(this)
         fr.pepsgoal.app.sys.EnergyState.start(this)
         // Prix des icônes, pour rendre les flammes après la baisse des prix de la boutique
         fr.pepsgoal.core.shopExtraPrices = fr.pepsgoal.app.sys.AppIcons.ALL.associate { "icon:${it.key}" to it.price }
@@ -71,14 +72,16 @@ class PepsApp : Application() {
             }
             override fun sessionChanged() { ui.sessionChanged(); Poller.schedule(this@PepsApp); Poller.startLink(this@PepsApp); SyncWorker.schedule(this@PepsApp) }
             override fun serverNotifications(fresh: List<Notif>) {
+                // Événement utile : la relève repasse en cadence rapide (persisté)
+                Poller.onEvent(this@PepsApp)
                 if (foreground) return
                 // Encouragements sur une même publication : une seule notification « Léa et 3 autres t'encouragent »
                 val (likes, rest) = fresh.partition { it.type == "like" && it.postId != null }
                 rest.forEach { Notifier.server(this@PepsApp, it) }
                 Notifier.likes(this@PepsApp, likes)
             }
-            override fun incomingMessages(fresh: List<Message>) { Notifier.messages(this@PepsApp, fresh); fr.pepsgoal.app.sys.Duo.syncSoon(this@PepsApp) }
-            override fun newPosts(fresh: List<Post>) { if (!foreground) Notifier.posts(this@PepsApp, fresh) }
+            override fun incomingMessages(fresh: List<Message>) { Poller.onEvent(this@PepsApp); Notifier.messages(this@PepsApp, fresh); fr.pepsgoal.app.sys.Duo.syncSoon(this@PepsApp) }
+            override fun newPosts(fresh: List<Post>) { Poller.onEvent(this@PepsApp); if (!foreground) Notifier.posts(this@PepsApp, fresh) }
             override fun synced(pushed: Int) { if (ui.wasOffline) { ui.wasOffline = false; ui.syncedN = pushed; ui.syncedAt = System.currentTimeMillis() } }
         }
         store.onChange = { ui.bump() }
@@ -118,7 +121,8 @@ class PepsApp : Application() {
     private fun onForeground() {
         cloud.setForeground(true)
         cloud.pingSoon()
-        if (store.acct) { cloud.scheduleSync(300); cloud.scheduleSocial(600) }
+        // Synchronisation forcée ; rechargement social complet si une relève allégée a eu lieu, sinon selon sa validité (60 s)
+        cloud.foregroundRefresh()
         pg.checkReminders()
         Notifier.clearReminders(this)
         Poller.startLink(this)
@@ -136,6 +140,7 @@ class PepsApp : Application() {
         LiveUpdates.refresh(this)
         WidgetUpdater.update(this)
         Poller.schedule(this)
+        fr.pepsgoal.app.sys.BgStats.flush()
     }
 
     /** Connexion réseau réelle de l'appareil (relue à chaque réveil : l'état gardé en mémoire peut dater). */

@@ -54,7 +54,8 @@ object WearSync {
     suspend fun push(ctx: Context, urgent: Boolean = false, force: Boolean = false) = lock.withLock {
         try {
             val content = snapshot(ctx)
-            if (!force && content == lastContent) return@withLock
+            if (!force && content == lastContent) { BgStats.add("wear.skip"); return@withLock }
+            BgStats.add("wear.push")
             // Data Layer retains this item for reconnects; a disconnected watch must still receive the latest day.
             val json = JSONObject(content).put("at", nowMs()).toString()
             val req = PutDataMapRequest.create(PATH_TODAY).apply { dataMap.putString("json", json) }.asPutDataRequest()

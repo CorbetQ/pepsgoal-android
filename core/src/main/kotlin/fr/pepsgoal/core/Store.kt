@@ -36,6 +36,9 @@ class Store(private val files: DbFiles, writeScope: CoroutineScope? = null) {
     /** Révision de la base : incrémentée à chaque modification (l'interface s'y abonne). */
     var rev = 0L
         private set
+    /** Nombre d'enregistrements demandés (un rechargement sans donnée nouvelle ni enregistrement entre-temps n'écrit pas). */
+    var saves = 0L
+        private set
     var onChange: (() -> Unit)? = null
     /** Appelé après chaque enregistrement d'un compte connecté : planifie la synchronisation. */
     var onSaved: (() -> Unit)? = null
@@ -57,6 +60,7 @@ class Store(private val files: DbFiles, writeScope: CoroutineScope? = null) {
 
     /** Enregistre la base et prévient l'interface. `sync` : planifie une synchronisation (compte). */
     fun commit(sync: Boolean = true) {
+        saves++
         if (!db.sandbox) save(fileName, db)
         changed()
         if (acct && sync) onSaved?.invoke()
