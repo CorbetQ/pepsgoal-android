@@ -36,6 +36,7 @@ import fr.pepsgoal.core.*
 import fr.pepsgoal.core.model.*
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import kotlinx.coroutines.launch
 
 private val NUM = KeyboardOptions(keyboardType = KeyboardType.Decimal)
@@ -528,11 +529,16 @@ private fun TypeTile(k: String, on: Boolean, modifier: Modifier, onClick: () -> 
     val p = LocalPal.current; val c = vivid(p.type(k).c); val info = typeInfo(k)
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val press = rememberPress(inter)
-    Column(modifier.chunk(c, if (on) p.focusEdge else if (p.contrast) p.ink else c.step(), 22.dp, 4.dp, if (on) 3.dp else 0.dp, press).clip(RoundedCornerShape(20.dp))
-        .springClick(inter, role = androidx.compose.ui.semantics.Role.Button, label = info.desc, onClick = onClick).semantics { contentDescription = "${info.label} : ${info.desc}" }
-        .padding(horizontal = 6.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Emoji(TYPE_EMOJI[k] ?: "🎯", 34.dp)
-        Text(info.label, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 17.sp)
+    // Toutes les tuiles ont la même matière (aplat néon + sa marche) ; la tuile choisie se distingue par une pastille
+    // prune cochée, jamais par un autre bord ou une autre marche
+    Box(modifier.chunk(c, if (p.contrast) p.ink else c.step(), 22.dp, 4.dp, 0.dp, press).clip(RoundedCornerShape(20.dp))
+        .springClick(inter, role = androidx.compose.ui.semantics.Role.Button, label = info.desc, onClick = onClick)
+        .semantics { contentDescription = "${info.label} : ${info.desc}"; selected = on }) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Emoji(TYPE_EMOJI[k] ?: "🎯", 34.dp)
+            Text(info.label, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = PLUM, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 17.sp)
+        }
+        if (on) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(22.dp).background(PLUM, CircleShape), contentAlignment = Alignment.Center) { Pi("check", size = 14.dp, tint = c) }
     }
 }
 
