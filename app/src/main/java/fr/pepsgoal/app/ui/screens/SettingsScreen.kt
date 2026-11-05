@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
@@ -308,12 +309,22 @@ private fun RemindersSettings(ui: AppState, u: User) {
         if (ui.pg.store.acct) {
             var unr by remember { mutableStateOf(Poller.unrestricted(ctx)) }
             var instant by remember { mutableStateOf(ui.prefs.instantNotifs) }
+            var pollLevel by remember { mutableIntStateOf(ui.prefs.pollLevel) }
             var t2 by remember { mutableIntStateOf(0) }
             androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { unr = Poller.unrestricted(ctx); t2++; onPauseOrDispose {} }
             val log = remember(t2) { ui.prefs.pollLog }
             SetGroup("Application fermée", note = "Les relèves en arrière-plan apportent messages, publications et notifications sans ouvrir PepsGoal.") {
-                SetToggle("Notifications instantanées", "PepsGoal reste connecté en arrière-plan (petite notification discrète) pour relever les nouveautés chaque minute.", "bolt", cBg,
+                SetToggle("Connexion en direct", "Relève périodique en arrière-plan : messages, publications et notifications arrivent sans ouvrir PepsGoal, au rythme choisi ci-dessous (petite notification discrète en journée). Ce n’est pas un canal permanent : la nuit et au calme, les relèves s’espacent.", "bolt", cBg,
                     instant, { instant = it; ui.prefs.instantNotifs = it; Poller.startLink(ctx); ui.toast(if (it) "Connexion en direct activée." else "Connexion en direct désactivée.", "bell") })
+                // Réactivité des relèves : Rapide (comportement historique), Équilibré (défaut) ou Économe
+                SetBlock {
+                    Muted("Réactivité des relèves", small = true)
+                    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        POLL_LEVELS.forEach { (k, t, d) ->
+                            PRadioRow(t, d, pollLevel == k, { pollLevel = k; ui.prefs.pollLevel = k; Poller.schedule(ctx); Poller.startLink(ctx) })
+                        }
+                    }
+                }
                 SetItem("Optimisation de batterie", if (unr) "PepsGoal n’est pas limité par Android : les relèves continuent en veille." else "Android peut endormir PepsGoal et retarder les messages.", "gauge", cBg) {
                     if (unr) Chip("Sans limite", "check", p.ok) else PButton("Autoriser", { Poller.askUnrestricted(ctx) }, small = true)
                 }
@@ -618,7 +629,7 @@ private fun DataSettings(ui: AppState, u: User) {
             }
         }
         if (pg.store.acct) SetGroup("Synchronisation") {
-            SetItem("Synchroniser maintenant", "Envoie tes modifications et récupère les nouveautés", "cloud", p.type("challenge").c, onClick = { ui.run("Synchronisé.", "cloud") { cloud.syncNow(); cloud.refreshSocial() } }, enabled = pg.store.online)
+            SetItem("Synchroniser maintenant", "Envoie tes modifications et récupère les nouveautés", "cloud", p.type("challenge").c, onClick = { ui.run("Synchronisé.", "cloud") { cloud.syncNow(force = true); cloud.refreshSocial() } }, enabled = pg.store.online)
             SetToggle("Mode hors ligne", "Aucun échange avec le serveur : tes objectifs restent utilisables et tes modifications partent quand tu repasses en ligne. Les fonctions sociales sont en pause.", "cloudoff", p.type("limit").c,
                 cloud.forceOffline, { cloud.forceOffline = it; if (!it) cloud.pingSoon(); ui.bump() })
         }
@@ -639,6 +650,13 @@ private fun DataSettings(ui: AppState, u: User) {
 }
 
 private val PRETTY = Json { prettyPrint = true }
+
+/** Niveaux de réactivité des relèves application fermée (clé, titre, description). */
+private val POLL_LEVELS = listOf(
+    Triple(fr.pepsgoal.core.PollPolicy.FAST, "Rapide", "Relève chaque minute pendant une conversation, toutes les 3 minutes au calme. Consomme le plus de batterie."),
+    Triple(fr.pepsgoal.core.PollPolicy.BALANCED, "Équilibré", "Toutes les 2 minutes pendant une conversation, toutes les 5 minutes au calme, toutes les 30 minutes la nuit."),
+    Triple(fr.pepsgoal.core.PollPolicy.SAVER, "Économe", "Toutes les 3 minutes pendant une conversation, tous les quarts d’heure au calme, toutes les heures la nuit."),
+)
 
 /** Export du serveur complété par les messages déchiffrés sur l'appareil (portabilité). */
 private fun withMessages(ui: AppState, raw: String): String = try {

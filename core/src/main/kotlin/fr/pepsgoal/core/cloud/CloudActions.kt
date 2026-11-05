@@ -9,10 +9,10 @@ import kotlinx.serialization.json.*
 
 private fun ids(l: List<String>) = JsonArray(l.map(::JsonPrimitive))
 
-suspend fun Cloud.sendFriendRequest(userId: String) { api.post("/v1/friends/requests", buildJsonObject { put("userId", userId) }); scheduleSocial(150) }
-suspend fun Cloud.acceptRequest(fid: String) { api.post("/v1/friends/requests/$fid/accept"); scheduleSocial(150) }
-suspend fun Cloud.declineRequest(fid: String) { api.post("/v1/friends/requests/$fid/decline"); db.friendships.removeAll { it.id == fid }; store.rawSave(); scheduleSocial(150) }
-suspend fun Cloud.unfriend(userId: String) { api.delete("/v1/friends/$userId"); scheduleSocial(150) }
+suspend fun Cloud.sendFriendRequest(userId: String) { api.post("/v1/friends/requests", buildJsonObject { put("userId", userId) }); scheduleSocial(150, force = true) }
+suspend fun Cloud.acceptRequest(fid: String) { api.post("/v1/friends/requests/$fid/accept"); scheduleSocial(150, force = true) }
+suspend fun Cloud.declineRequest(fid: String) { api.post("/v1/friends/requests/$fid/decline"); db.friendships.removeAll { it.id == fid }; store.rawSave(); scheduleSocial(150, force = true) }
+suspend fun Cloud.unfriend(userId: String) { api.delete("/v1/friends/$userId"); scheduleSocial(150, force = true) }
 suspend fun Cloud.searchUsers(q: String): List<User> = api.get("/v1/users/search?q=" + java.net.URLEncoder.encode(q, "UTF-8")).list().mapNotNull { upsertUser(it) }
 suspend fun Cloud.block(userId: String) {
     api.post("/v1/users/$userId/block")
@@ -26,7 +26,7 @@ suspend fun Cloud.toggleLike(p: Post) {
     val u = meId(); val liked = p.likes.contains(u)
     if (liked) { p.likes.remove(u); p.reactions.remove(u) } else { p.likes.add(u); p.reactions[u] = "fire" }
     store.changed()
-    try { if (liked) api.delete("/v1/posts/${p.id}/like") else api.post("/v1/posts/${p.id}/like") } catch (e: ApiError) { scheduleSocial(); throw e }
+    try { if (liked) api.delete("/v1/posts/${p.id}/like") else api.post("/v1/posts/${p.id}/like") } catch (e: ApiError) { scheduleSocial(force = true); throw e }
 }
 /** Réagit à une publication (🔥 💪 👏 🎉) ; la même réaction une seconde fois retire l'encouragement. */
 suspend fun Cloud.react(p: Post, kind: String) {
@@ -34,9 +34,9 @@ suspend fun Cloud.react(p: Post, kind: String) {
     if (cur == kind) { p.likes.remove(u); p.reactions.remove(u) } else { if (!p.likes.contains(u)) p.likes.add(u); p.reactions[u] = kind }
     store.changed()
     try { if (cur == kind) api.delete("/v1/posts/${p.id}/like") else api.post("/v1/posts/${p.id}/like", buildJsonObject { put("reaction", kind) }) }
-    catch (e: ApiError) { scheduleSocial(); throw e }
+    catch (e: ApiError) { scheduleSocial(force = true); throw e }
 }
-suspend fun Cloud.deletePost(id: String) { db.posts.removeAll { it.id == id }; store.rawSave(); api.delete("/v1/posts/$id"); scheduleSocial(150) }
+suspend fun Cloud.deletePost(id: String) { db.posts.removeAll { it.id == id }; store.rawSave(); api.delete("/v1/posts/$id"); scheduleSocial(150, force = true) }
 suspend fun Cloud.vote(p: Post, oid: String) {
     val poll = p.poll ?: return
     val cur = poll.options.filter { it.mine }.map { it.id }
@@ -44,7 +44,7 @@ suspend fun Cloud.vote(p: Post, oid: String) {
     api.post("/v1/posts/${p.id}/vote", buildJsonObject { put("optionIds", ids(next)) })
     poll.options.forEach { o -> val now = o.id in next; o.n = maxOf(0, o.n + (if (now) 1 else 0) - (if (o.mine) 1 else 0)); o.mine = now }
     poll.voters = maxOf(0, poll.voters + (if (next.isNotEmpty()) 1 else 0) - (if (cur.isNotEmpty()) 1 else 0))
-    store.rawSave(); scheduleSocial(1500)
+    store.rawSave(); scheduleSocial(1500, force = true)
 }
 class PollDraft(val options: List<String>, val multi: Boolean, val hours: Int)
 
@@ -67,7 +67,7 @@ suspend fun Cloud.comment(p: Post, text: String) {
 }
 suspend fun Cloud.deleteComment(p: Post, cid: String) { api.delete("/v1/comments/$cid"); p.comments.removeAll { it.id == cid }; store.rawSave() }
 suspend fun Cloud.report(postId: String, reason: String) { api.post("/v1/posts/$postId/report", buildJsonObject { put("reason", reason) }) }
-suspend fun Cloud.appeal(text: String) { api.post("/v1/appeals", buildJsonObject { put("text", text) }); scheduleSocial() }
+suspend fun Cloud.appeal(text: String) { api.post("/v1/appeals", buildJsonObject { put("text", text) }); scheduleSocial(force = true) }
 fun Cloud.readAllNotifications() {
     db.notifs.forEach { if (it.userId == meId()) it.read = true }; store.rawSave()
     scope.launch0 { api.post("/v1/notifications/read-all") }
@@ -168,7 +168,7 @@ suspend fun Cloud.modDeleteUser(id: String) { api.delete("/v1/admin/users/$id");
 suspend fun Cloud.modAppeal(id: String, accept: Boolean, answer: String) { api.post("/v1/admin/appeals/$id/${if (accept) "accept" else "refuse"}", buildJsonObject { put("answer", answer.take(200)) }); refreshSocial() }
 suspend fun Cloud.announce(text: String, tag: String, to: String?): Int {
     val r = api.post("/v1/admin/announcements", buildJsonObject { put("text", text); put("tag", tag); put("toUserId", to?.let(::JsonPrimitive) ?: JsonNull) })
-    scheduleSocial(); return r.int("sent")
+    scheduleSocial(force = true); return r.int("sent")
 }
 suspend fun Cloud.deleteNews(id: String) { api.delete("/v1/admin/announcements/$id"); refreshSocial() }
 suspend fun Cloud.startMaintenance(mode: String, start: Long, until: Long?, message: String, notify: Boolean) {

@@ -45,7 +45,13 @@ class CloudState(
     var socialPulled: Boolean = false,
     var snapGoals: MutableMap<String, String> = mutableMapOf(),
     var snapCheckins: MutableMap<String, String> = mutableMapOf(),
-    var snapSettings: String = ""
+    var snapSettings: String = "",
+    /** Empreintes (SHA-1) des quatre réponses de relève : notifications, conversations, groupes, flux d'amis. */
+    var pollDigests: List<String> = emptyList(),
+    /** Signature du résumé de chaque conversation (« c:pair ») et groupe (« g:id ») : rechargé seulement s'il change. */
+    var convSigs: MutableMap<String, String> = mutableMapOf(),
+    /** Relève allégée faite en arrière-plan : le prochain passage au premier plan recharge tout le social. */
+    var socialStale: Boolean = false
 )
 
 @Serializable

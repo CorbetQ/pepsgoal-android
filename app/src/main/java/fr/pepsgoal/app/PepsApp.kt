@@ -20,6 +20,7 @@ import fr.pepsgoal.app.sys.Reminders
 import fr.pepsgoal.app.sys.SyncWorker
 import fr.pepsgoal.app.sys.WidgetUpdater
 import fr.pepsgoal.core.Pg
+import fr.pepsgoal.core.ScreenPollPolicy
 import fr.pepsgoal.core.Store
 import fr.pepsgoal.core.cloud.Api
 import fr.pepsgoal.core.cloud.Cloud
@@ -45,6 +46,8 @@ class PepsApp : Application() {
     val scope = MainScope()
     /** L'application est-elle visible à l'écran ? (sinon : notifications système) */
     var foreground = false
+    /** Dernière interaction tactile (horloge de démarrage), pour la boucle d'écran adaptative. */
+    @Volatile var lastTouch = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -53,6 +56,7 @@ class PepsApp : Application() {
         // Langue de l'interface (Paramètres › Apparence) : français, anglais, ou celle du téléphone
         fr.pepsgoal.app.ui.I18n.apply(this, prefs.raw.getString("lang", "auto") ?: "auto")
         fr.pepsgoal.app.sys.Perf.load(this)
+        fr.pepsgoal.app.sys.BgStats.load(this)
         fr.pepsgoal.app.sys.EnergyState.start(this)
         // Prix des icônes, pour rendre les flammes après la baisse des prix de la boutique
         fr.pepsgoal.core.shopExtraPrices = fr.pepsgoal.app.sys.AppIcons.ALL.associate { "icon:${it.key}" to it.price }
@@ -71,14 +75,16 @@ class PepsApp : Application() {
             }
             override fun sessionChanged() { ui.sessionChanged(); Poller.schedule(this@PepsApp); Poller.startLink(this@PepsApp); SyncWorker.schedule(this@PepsApp) }
             override fun serverNotifications(fresh: List<Notif>) {
+                // Événement utile : la relève repasse en cadence rapide (persisté)
+                Poller.onEvent(this@PepsApp)
                 if (foreground) return
                 // Encouragements sur une même publication : une seule notification « Léa et 3 autres t'encouragent »
                 val (likes, rest) = fresh.partition { it.type == "like" && it.postId != null }
                 rest.forEach { Notifier.server(this@PepsApp, it) }
                 Notifier.likes(this@PepsApp, likes)
             }
-            override fun incomingMessages(fresh: List<Message>) { Notifier.messages(this@PepsApp, fresh); fr.pepsgoal.app.sys.Duo.syncSoon(this@PepsApp) }
-            override fun newPosts(fresh: List<Post>) { if (!foreground) Notifier.posts(this@PepsApp, fresh) }
+            override fun incomingMessages(fresh: List<Message>) { Poller.onEvent(this@PepsApp); Notifier.messages(this@PepsApp, fresh); fr.pepsgoal.app.sys.Duo.syncSoon(this@PepsApp) }
+            override fun newPosts(fresh: List<Post>) { Poller.onEvent(this@PepsApp); if (!foreground) Notifier.posts(this@PepsApp, fresh) }
             override fun synced(pushed: Int) { if (ui.wasOffline) { ui.wasOffline = false; ui.syncedN = pushed; ui.syncedAt = System.currentTimeMillis() } }
         }
         store.onChange = { ui.bump() }
@@ -104,9 +110,21 @@ class PepsApp : Application() {
         scope.launch {
             ProcessLifecycleOwner.get().lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
+                    // Feed et commentaires : 20 s tant que des nouveautés arrivent, puis ×1,5 par cycle sans changement
+                    // jusqu'à 60 s ; une interaction ramène à 20 s. Ailleurs : 60 s.
+                    var wait = ScreenPollPolicy.FAST; var at = android.os.SystemClock.elapsedRealtime()
                     while (true) {
-                        delay(if (ui.tab == "feed" || ui.screens.lastOrNull() is Screen.Comments) 20_000L else Poller.EVERY_MS)
+                        val social = ui.tab == "feed" || ui.screens.lastOrNull() is Screen.Comments
+                        val target = if (social) wait else Poller.EVERY_MS
+                        var slept = 0L
+                        while (slept < target) {
+                            delay(minOf(5_000L, target - slept)); slept += 5_000L
+                            if (social && lastTouch > at && slept >= ScreenPollPolicy.FAST) break
+                        }
+                        val touched = lastTouch > at
+                        at = android.os.SystemClock.elapsedRealtime()
                         Poller.run(this@PepsApp, "écran")
+                        wait = if (touched) ScreenPollPolicy.FAST else ScreenPollPolicy.next(wait, cloud.pollStatus == "nouveautés relevées")
                     }
                 }
                 launch { while (true) { delay(1000); pg.timerTick(); if (pg.badgeCheckPending) pg.checkBadges() } }
@@ -118,7 +136,8 @@ class PepsApp : Application() {
     private fun onForeground() {
         cloud.setForeground(true)
         cloud.pingSoon()
-        if (store.acct) { cloud.scheduleSync(300); cloud.scheduleSocial(600) }
+        // Synchronisation forcée ; rechargement social complet si une relève allégée a eu lieu, sinon selon sa validité (60 s)
+        cloud.foregroundRefresh()
         pg.checkReminders()
         Notifier.clearReminders(this)
         Poller.startLink(this)
@@ -136,6 +155,7 @@ class PepsApp : Application() {
         LiveUpdates.refresh(this)
         WidgetUpdater.update(this)
         Poller.schedule(this)
+        fr.pepsgoal.app.sys.BgStats.flush()
     }
 
     /** Connexion réseau réelle de l'appareil (relue à chaque réveil : l'état gardé en mémoire peut dater). */

@@ -58,7 +58,8 @@ object LiveUpdates {
         // Notification identique à celle déjà affichée : on ne la republie pas (chaque mise à jour réveille l'interface système)
         shown.forEach { l ->
             val sig = listOf(l.token, l.title, l.text, l.short, l.progress / 10, l.chrono?.div(60_000), l.countDown).hashCode()
-            if (posted[l.id] == sig) return@forEach
+            if (posted[l.id] == sig) { BgStats.add("live.skip"); return@forEach }
+            BgStats.add("live.post")
             try { nm.notify(l.id, if (supported()) promoted(ctx, l) else compat(ctx, l)); posted[l.id] = sig } catch (e: SecurityException) {}
         }
     }

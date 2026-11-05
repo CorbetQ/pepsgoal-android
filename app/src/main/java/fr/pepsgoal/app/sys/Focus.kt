@@ -84,6 +84,7 @@ object Focus {
 /** Fin de la session Focus (alarme) ou bouton « Arrêter » de la notification. */
 class FocusReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
+        BgStats.add("wake.focus")
         if (intent.action == "stop") Focus.stop(ctx, false)
         else if (ctx.peps.prefs.focusEnd != 0L) Focus.stop(ctx, true)
         ctx.peps.ui.bump()

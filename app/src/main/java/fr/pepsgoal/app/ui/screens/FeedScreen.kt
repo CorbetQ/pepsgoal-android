@@ -53,10 +53,8 @@ fun FeedScreen(ui: AppState) {
         if (u.warned != null && !banned) item("warn") { Note("Ton compte est sous avertissement : tes publications sont vérifiées par la modération avant d'être visibles.") }
         if (!banned) item("stories") { StoriesBar(ui, u) }
         item("tabs") {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Seg(listOf("friends" to "Mes amis", "public" to "Découvrir"), ui.feedTab, { ui.feedTab = it; ui.postLimit = 20 }, Modifier.weight(1f), icons = listOf("users", "globe"))
-                if (!banned) PButton("Story", { if (!pg.socialBlocked("de publier une story")) ui.open(Sheet.StoryNew()) }, icon = "image", small = true)
-            }
+            // Pas de bouton Story ici : la carte des stories (« Ta story » +) au-dessus sert déjà à en publier une
+            Seg(listOf("friends" to "Mes amis", "public" to "Découvrir"), ui.feedTab, { ui.feedTab = it; ui.postLimit = 20 }, Modifier.fillMaxWidth(), icons = listOf("users", "globe"))
         }
         item("challenges") { ChallengesCard(ui) }
         item("gel") { GelCard(ui, u, true) }

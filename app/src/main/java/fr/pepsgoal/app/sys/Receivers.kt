@@ -100,6 +100,7 @@ class ActionReceiver : BroadcastReceiver() {
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         val app = ctx.peps
+        BgStats.add("wake.alarm")
         app.pg.timerTick()
         app.pg.checkReminders()
         SmartReminders.check(ctx)

@@ -88,3 +88,28 @@ Génération du profil propre aux parcours sur hôte compatible :
 `./gradlew :app:generateBaselineProfile`, puis revoir le diff des profils,
 construire la variante distribuée et vérifier le profil empaqueté. Ne pas
 committer un profil fictif ni mettre à jour des références visuelles sans revue.
+
+## Campagne 9.0.x : batterie et réseau en arrière-plan (OPT-01 à OPT-13)
+
+Cadence de relève dans `core/PollPolicy.kt` (niveaux Rapide, Équilibré par défaut, Économe), porte globale `PollGate`,
+relève d'arrière-plan allégée et empreintes persistées dans `Cloud.poll(foreground = false)`, requêtes conditionnelles
+et mesure du fil dans `Api`, compteurs `NetStats` (core) et `BgStats` (carte « Réseau et arrière-plan · 24 h » de la page
+Performance, rapport à copier). Tests : `PollPolicyTest`, `SmartTimesTest`, `EnergyRegressionTest` (`./gradlew :core:test`).
+Le compromis accepté : flux d'amis au palier lent en arrière-plan (un cycle sur trois, 10 min d'écart au moins), sauf niveau Rapide.
+
+### Audit des animations et boucles locales (OPT-12)
+
+| Emplacement | Nature | État |
+| --- | --- | --- |
+| `FullscreenHost.kt` (5 transitions infinies) | Célébrations plein écran, temporaires | Inchangé : s'arrêtent avec l'écran plein écran et avec l'activité. |
+| `AiCoachCard.kt` (pulsation « réfléchit ») | Visible pendant une génération seulement | Inchangé. |
+| `Chat59.kt` (autocollants animés) | Écran permanent (conversation), 60 images/s | Corrigé : `slowPhaseState(1600, 30)`, même boucle de 1,6 s, plafonnée à 30 images/s, liée au cycle de vie. |
+| `Gift70.kt`, `Screens60.kt` (balancement des cadeaux) | Écran permanent (conversation), 60 images/s | Corrigé : même aller-retour et même courbe (`giftWiggle`), 30 images/s, liée au cycle de vie. |
+| `Screens56.kt:155` (clin d'œil de l'animal) | Boucle `delay` locale | Corrigé : sous `repeatOnLifecycle(STARTED)`. |
+| `Sheets41.kt:176` (diaporama de preuves) | Boucle `delay` locale | Corrigé : sous `repeatOnLifecycle(STARTED)`. |
+| `Kit81.kt:953` (indicateur de chargement, animations réduites) | `produceState` à 4 Hz | Corrigé : sous `repeatOnLifecycle(STARTED)`. |
+| `IntervalsFs.kt:64` (minuteur d'intervalles) | Fonctionnel : bips de séance, écran éteint compris | Inchangé volontairement : borné à la séance, l'arrêter avec l'activité couperait les bips. |
+| `Media.kt:45` | Boucle de compression d'image, sans minuterie | Hors sujet. |
+| `ModerationScreen.kt` (statistiques 30 s) | Réseau | Corrigé (OPT-08) : sous `repeatOnLifecycle(RESUMED)`. |
+| `PepsApp.kt` (`timerTick` 1 s, rappels 30 s) | Sous `repeatOnLifecycle(STARTED)` du processus | Inchangé, sans travail ajouté. |
+| `Backdrop.kt`, `SceneAtmosphereState.kt`, `FpsMonitor` | Déjà plafonnés et liés au cycle de vie | Inchangés. |

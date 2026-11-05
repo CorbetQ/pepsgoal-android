@@ -91,7 +91,7 @@ object Notifier {
 
     /** Notification permanente et discrète du service de connexion en direct. */
     fun link(ctx: Context): android.app.Notification = NotificationCompat.Builder(ctx, CH_LINK).setSmallIcon(R.drawable.ic_notif).setColor(0xFFFF4A12.toInt())
-        .setContentTitle("PepsGoal reste connecté").setContentText("Messages et notifications reçus même application fermée")
+        .setContentTitle("PepsGoal reste connecté").setContentText("Relève régulière des messages et notifications, application fermée")
         .setOngoing(true).setSilent(true).setShowWhen(false).setPriority(NotificationCompat.PRIORITY_MIN).setCategory(NotificationCompat.CATEGORY_SERVICE)
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFERRED)
         .setContentIntent(open(ctx, LINK_ID) { putExtra(MainActivity.EXTRA_TAB, "friends") }).build()

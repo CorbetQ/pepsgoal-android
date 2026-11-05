@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui
 
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -950,7 +951,9 @@ private val SPIN_COLORS = listOf(Color(0xFFFFB000), Color(0xFFFF4A12), Color(0xF
 @Composable
 fun PSpinner(size: Dp = 10.dp, modifier: Modifier = Modifier, label: String = "Chargement…") {
     val p = LocalPal.current
-    val ph = if (p.motion) produceState(0f) { var t = 0f; while (true) { delay(250); t = (t + .25f) % 1f; value = t } } else slowPhaseState(900, 15)
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    // Animations réduites : pulsation lente, arrêtée avec l'activité
+    val ph = if (p.motion) produceState(0f, lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) { var t = value; while (true) { delay(250); t = (t + .25f) % 1f; value = t } } } else slowPhaseState(900, 15)
     Row(modifier.height(size * 2.2f).semantics { contentDescription = tr(label) }, horizontalArrangement = Arrangement.spacedBy(size * .5f), verticalAlignment = Alignment.Bottom) {
         SPIN_COLORS.forEachIndexed { i, c ->
             val s = size * (.6f + .2f * i)

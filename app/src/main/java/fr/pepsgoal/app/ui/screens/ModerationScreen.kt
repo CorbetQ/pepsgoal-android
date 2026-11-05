@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import fr.pepsgoal.app.ui.Text
 import androidx.compose.runtime.*
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -347,7 +348,9 @@ private fun ModServer(ui: AppState) {
 @Composable
 private fun ModServerStats(ui: AppState) {
     val p = LocalPal.current; val cloud = ui.cloud
-    LaunchedEffect(Unit) { while (true) { cloud.loadStats(); delay(30_000) } }
+    // Statistiques relues toutes les 30 s seulement quand l'écran est au premier plan (le service garde le processus en vie)
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while (true) { cloud.loadStats(); delay(30_000) } } }
     val d = cloud.stats
     if (d == null) { if (cloud.statsError != null) Glass { Muted(cloud.statsError!!) } else Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { SkeletonCard(); SkeletonCard() }; return }
     fun num(o: JsonObject?, k: String) = (o?.get(k) as? JsonPrimitive)?.doubleOrNull

@@ -10,6 +10,8 @@ import androidx.health.connect.client.time.TimeRangeFilter
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.core.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
@@ -60,7 +62,11 @@ object Health {
         val p = l.split('|'); if (p.size < 3) return@mapNotNull null
         Link(p[0], p[1], p[2].toDoubleOrNull() ?: return@mapNotNull null, p.getOrNull(3) ?: metric(p[1])?.op ?: ">=")
     }
-    fun saveLinks(ctx: Context, l: List<Link>) { ctx.peps.prefs.healthLinks = l.joinToString("\n") { "${it.goalId}|${it.metric}|${it.threshold}|${it.op}" } }
+    fun saveLinks(ctx: Context, l: List<Link>) {
+        ctx.peps.prefs.healthLinks = l.joinToString("\n") { "${it.goalId}|${it.metric}|${it.threshold}|${it.op}" }
+        // Période du travail local : 30 min avec un lien Santé, 60 min sinon
+        try { SyncWorker.schedule(ctx) } catch (e: Exception) {}
+    }
 
     /* ------------------------------------------------------------------ format */
 
@@ -150,7 +156,10 @@ object Health {
 
     /** Vérifie les liens (au plus toutes les 10 minutes) et valide les objectifs dont le seuil est atteint. */
     private val syncLock = Mutex()
-    suspend fun sync(ctx: Context, force: Boolean = false): Int = syncLock.withLock { syncLocked(ctx, force) }
+    suspend fun sync(ctx: Context, force: Boolean = false): Int = syncLock.withLock {
+        // État de l'application sur le fil principal ; lectures Health Connect (IPC) hors du fil principal (voir read)
+        withContext(Dispatchers.Main.immediate) { syncLocked(ctx, force) }
+    }
 
     private suspend fun syncLocked(ctx: Context, force: Boolean): Int {
         val app = ctx.peps; val pg = app.pg; val u = pg.me() ?: return 0
@@ -160,7 +169,11 @@ object Health {
         val date = LocalDate.now()
         val values = mutableMapOf<String, Double?>()
         suspend fun read(key: String): Double? {
-            if (!values.containsKey(key)) values[key] = value(ctx, key, date)
+            if (!values.containsKey(key)) {
+                val t0 = android.os.SystemClock.elapsedRealtime()
+                values[key] = withContext(Dispatchers.Default) { value(ctx, key, date) }
+                BgStats.add("health.reads"); BgStats.add("health.ms", android.os.SystemClock.elapsedRealtime() - t0)
+            }
             return values[key]
         }
         val due = pg.todayPlan(u.id).due.associate { it.g.id to it.done }

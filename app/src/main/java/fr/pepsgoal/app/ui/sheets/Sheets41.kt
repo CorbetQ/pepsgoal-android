@@ -1,5 +1,6 @@
 package fr.pepsgoal.app.ui.sheets
 
+import androidx.lifecycle.repeatOnLifecycle
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -173,7 +174,9 @@ fun ProofStory(proofs: List<Proof>) {
                 }
             } else {
                 var i by remember { mutableIntStateOf(0) }
-                LaunchedEffect(Unit) { while (true) { delay(1400); i = (i + 1) % photos.size } }
+                // Diaporama lié au cycle de vie : arrêté avec l'activité
+                val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+                LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) { while (true) { delay(1400); i = (i + 1) % photos.size } } }
                 ProofImage(photos[i], Modifier.fillMaxSize())
                 MiniPlaque("${fmtDate(photos[i].date)} · ${i + 1}/${photos.size}", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(24.dp))
             }
@@ -240,9 +243,9 @@ fun PendingSheet(ui: AppState) {
             Spacer(Modifier.height(12.dp))
             val scope = rememberCoroutineScope()
             when {
-                cloud.forceOffline -> PButton("Repasser en ligne", { cloud.forceOffline = false; ui.bump(); scope.launch { busy = true; try { cloud.syncNow() } finally { busy = false; ui.bump() } } }, Modifier.fillMaxWidth(), icon = "cloud", kind = "primary")
+                cloud.forceOffline -> PButton("Repasser en ligne", { cloud.forceOffline = false; ui.bump(); scope.launch { busy = true; try { cloud.syncNow(force = true) } finally { busy = false; ui.bump() } } }, Modifier.fillMaxWidth(), icon = "cloud", kind = "primary")
                 !pg.store.online -> PButton("Réessayer la connexion", { cloud.pingSoon(); ui.toast("Nouvelle tentative de connexion…", "cloud") }, Modifier.fillMaxWidth(), icon = "repeat")
-                else -> PButton(if (busy) "Envoi…" else "Envoyer maintenant", { if (!busy) scope.launch { busy = true; try { cloud.syncNow() } finally { busy = false; ui.bump() }
+                else -> PButton(if (busy) "Envoi…" else "Envoyer maintenant", { if (!busy) scope.launch { busy = true; try { cloud.syncNow(force = true) } finally { busy = false; ui.bump() }
                     if (cloud.syncError.isEmpty()) { Feedback.success(); ui.toast("Tout est synchronisé.", "check") } else ui.toast("Envoi impossible : ${cloud.syncError}", "x") } }, Modifier.fillMaxWidth(), icon = "send", kind = "primary", enabled = !busy)
             }
         }

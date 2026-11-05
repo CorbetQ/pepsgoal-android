@@ -74,7 +74,9 @@ object WidgetUpdater {
                 pg.db.timers.mapValues { listOf(it.value.goalId, it.value.start) },
                 pg.db.maintLog.map { listOf(it.id, it.mode, it.start, it.until, it.endedAt) })
             val immediate = urgentPending; urgentPending = false
+            if (signature == lastSignature) BgStats.add("widget.skip")
             if (signature != lastSignature) {
+                BgStats.add("widget.update")
                 var ok = true
                 val widgets = listOf(TodayWidget(), StreakWidget(), ProgressWidget(), QuickWidget(), CapWidget(), WeekWidget(), FlameWidget(), TimelineWidget(), QuoteWidget())
                 widgets.forEachIndexed { i, widget ->

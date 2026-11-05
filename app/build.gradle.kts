@@ -15,8 +15,8 @@ android {
         applicationId = "fr.pepsgoal.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 901
-        versionName = "9.0.1"
+        versionCode = 910
+        versionName = "9.1.0"
         // Adresse du serveur PepsGoal (surchargée par -Ppepsgoal.api=… pour un serveur de test)
         resValue("string", "pkg", "fr.pepsgoal.app")
         buildConfigField("boolean", "BENCH", "false")

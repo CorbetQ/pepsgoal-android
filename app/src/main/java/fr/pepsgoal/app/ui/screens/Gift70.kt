@@ -161,7 +161,8 @@ fun GiftItemCard(ui: AppState, m: Message, b: JsonObject, mine: Boolean) {
     val key = b.str("i"); val price = b.int("n").coerceIn(0, 2000); val name = b.str("nm", shopItem(key)?.name ?: "Article de la boutique")
     var opened by remember(m.id, ui.rev) { mutableStateOf(pg.giftOpened(m.id)) }
     val converted = remember(m.id, ui.rev) { pg.me()?.shopClaimed?.any { it.startsWith("giftin:${m.id}:") } == true }
-    val wiggle = if (!mine && !opened && !p.motion) rememberInfiniteTransition(label = "gifti").animateFloat(-5f, 5f, infiniteRepeatable(tween(520, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "giftiW").value else 0f
+    // Balancement identique (aller-retour de 2 × 520 ms, même courbe), plafonné à 30 images/s
+    val wiggle = if (!mine && !opened && !p.motion) giftWiggle(slowPhaseState(1040, 30, followBgPause = false).value, 5f) else 0f
     // Carte cadeau : aplat or à marche, ruban néon, encre prune
     val ink = fr.pepsgoal.app.ui.theme.PLUM; val gold = vivid(p.gold)
     Column(Modifier.widthIn(min = 210.dp, max = 260.dp).chunk(gold, gold.step(), 24.dp, 4.dp, 0.dp).clip(RoundedCornerShape(24.dp))

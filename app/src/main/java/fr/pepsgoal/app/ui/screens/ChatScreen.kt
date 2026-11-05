@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import fr.pepsgoal.app.AppState
+import fr.pepsgoal.core.ChatPollPolicy
 import fr.pepsgoal.app.Sheet
 import fr.pepsgoal.app.peps
 import fr.pepsgoal.app.sys.Notifier
@@ -105,21 +106,25 @@ fun ChatScreen(ui: AppState, with: String?, group: String?) {
     // Do not receive or mark messages read while the activity is stopped.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(key) { onDispose { Voice.release() } }
+    // Dernière activité de la conversation (message envoyé ou reçu) : le résumé est relu toutes les 6 s pendant 2 min,
+    // puis 10 s, puis 20 s après 5 min sans nouveauté ; la réconciliation complète à 30 s reste inchangée.
+    val activityAt = remember(key) { longArrayOf(android.os.SystemClock.elapsedRealtime()) }
     LaunchedEffect(key, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             ChatState.key = key; Notifier.clearChat(ctx, key)
             var first = true
             try {
                 while (true) {
-                    try { ui.cloud.refreshOpenConversation(x?.id, g?.id, force = first); first = false }
+                    try { if (ui.cloud.refreshOpenConversation(x?.id, g?.id, force = first)) activityAt[0] = android.os.SystemClock.elapsedRealtime(); first = false }
                     catch (e: CancellationException) { throw e } catch (e: Exception) {}
-                    // Preserve six-second new-message detection using the existing lightweight summaries.
-                    delay(6000)
+                    delay(ChatPollPolicy.delayMs(android.os.SystemClock.elapsedRealtime() - activityAt[0]))
                 }
             } finally { if (ChatState.key == key) ChatState.key = null }
         }
     }
     val all = if (g != null) Social.groupConvo(ui, g.id) else Social.convo(ui, u.id, x!!.id)
+    // Un message de plus (envoyé ou reçu) : retour au rythme de 6 s
+    LaunchedEffect(all.size) { activityAt[0] = android.os.SystemClock.elapsedRealtime() }
     LaunchedEffect(all.size, ui.rev) {
         if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
         var ch = false

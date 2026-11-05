@@ -113,13 +113,14 @@ fun slowPhase(dur: Int, fps: Int = 12, offset: Int = 0): Float = slowPhaseState(
  * [running] faux : l'horloge s'arrête (fond figé ou caché) puis reprend là où elle en était ; [initial] : phase de départ.
  */
 @Composable
-fun slowPhaseState(dur: Int, fps: Int = 12, offset: Int = 0, running: Boolean = true, initial: Float = 0f): State<Float> {
+fun slowPhaseState(dur: Int, fps: Int = 12, offset: Int = 0, running: Boolean = true, initial: Float = 0f, followBgPause: Boolean = true): State<Float> {
     val p = LocalPal.current
     // Temps écoulé (ms), gardé entre deux arrêts pour reprendre sans saut
     val acc = remember { longArrayOf(offset + (initial * dur).toLong()) }
     val v = remember { mutableFloatStateOf((acc[0] % dur) / dur.toFloat()) }
     // Caché sous une page opaque (LocalBgPaused) : rien à animer
-    if (p.motion || !running || LocalBgPaused.current) return v
+    // [followBgPause] faux : animation de premier plan (autocollant, cadeau) qui reste visible au-dessus d'une page opaque
+    if (p.motion || !running || (followBgPause && LocalBgPaused.current)) return v
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(dur, fps, lifecycle) {
       lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {

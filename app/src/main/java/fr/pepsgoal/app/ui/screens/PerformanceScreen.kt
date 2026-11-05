@@ -24,7 +24,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.repeatOnLifecycle
 import fr.pepsgoal.app.AppState
+import fr.pepsgoal.app.sys.BgStats
 import fr.pepsgoal.app.sys.FpsMonitor
 import fr.pepsgoal.app.sys.Perf
 import fr.pepsgoal.app.ui.*
@@ -65,6 +67,7 @@ fun PerformancePage(ui: AppState) {
     DisposableEffect(Unit) { FpsMonitor.want(FpsMonitor.PAGE, true); onDispose { FpsMonitor.want(FpsMonitor.PAGE, false); Perf.benchRunning = false } }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         LiveCard()
+        NetCard(ui)
         // Régulateur de fluidité
         Glass {
             CardHead("Régulateur de fluidité", emoji = "🎚️")
@@ -116,6 +119,71 @@ fun PerformancePage(ui: AppState) {
             PButton("Revenir aux réglages du mode", { Perf.setMode(ctx, Perf.mode); ui.themeTick++ }, Modifier.padding(top = 6.dp), small = true, kind = "ghost")
             Muted("Ces réglages sont propres à cet appareil. Les animations réduites (Accessibilité) coupent aussi toutes les animations." +
                 if (f != Perf.ceiling) " Le régulateur allège en ce moment certains effets." else "", Modifier.padding(top = 8.dp), small = true)
+        }
+    }
+}
+
+private fun kb(b: Long) = if (b >= 1_048_576) "%.1f Mo".format(b / 1_048_576.0) else "${b / 1024} ko"
+private fun dur(ms: Long) = if (ms >= 3_600_000) "${ms / 3_600_000} h ${ms % 3_600_000 / 60_000} min" else if (ms >= 60_000) "${ms / 60_000} min" else "${ms / 1000} s"
+private val SOURCES = listOf("écran" to "Écran", "service" to "Service", "alarme" to "Alarme", "worker" to "Worker", "application" to "Application")
+
+/**
+ * Réseau et arrière-plan sur 24 heures : requêtes par heure et par source, octets sur le fil et du corps, paquets de
+ * l'application, relèves (et celles refusées par la porte), verrou de réveil, service de premier plan, réveils, dernières
+ * relèves. Relu toutes les 10 secondes tant que la page est au premier plan ; rapport texte à copier pour comparer.
+ */
+@Composable
+private fun NetCard(ui: AppState) {
+    val p = LocalPal.current; val ctx = LocalContext.current
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) { while (isActive) { kotlinx.coroutines.delay(10_000); tick++ } } }
+    val d = remember(tick) { BgStats.last24h() }
+    val hours = remember(tick) { BgStats.perHour("req").map { it.toDouble() } }
+    val log = remember(tick) { ui.prefs.pollLog.take(5) }
+    fun v(k: String) = d[k] ?: 0L
+    Glass {
+        CardHead("Réseau et arrière-plan · 24 h", emoji = "📡") {
+            if (BgStats.alert(d)) Chip("À surveiller", "alert", p.danger)
+        }
+        Muted("Requêtes par heure", small = true)
+        Spacer(Modifier.height(6.dp))
+        SparkBars(hours, 56.dp)
+        Spacer(Modifier.height(12.dp))
+        StatGrid(listOf(
+            v("req").toString() to "Requêtes", v("req.bg").toString() to "En arrière-plan",
+            kb(v("bytes.wire")) to "Reçus sur le fil", kb(v("bytes.body")) to "Corps décompressés",
+            v("pkt.rx").toString() to "Paquets reçus", v("pkt.tx").toString() to "Paquets émis",
+            d.keys.filter { it.startsWith("poll.src.") }.sumOf { d[it] ?: 0 }.toString() to "Relèves", d.keys.filter { it.startsWith("poll.gated.") }.sumOf { d[it] ?: 0 }.toString() to "Relèves évitées",
+            dur(v("wl.ms")) to "Verrou de réveil", dur(v("fgs.ms")) to "Service actif",
+            (v("wake.poll") + v("wake.alarm") + v("wake.focus") + v("wake.sync") + v("wake.netsync")).toString() to "Réveils", v("req.304").toString() to "Réponses 304",
+        ))
+        Spacer(Modifier.height(12.dp))
+        Muted("Requêtes par source", small = true)
+        val max = SOURCES.maxOf { v("req.src.${it.first}") }.coerceAtLeast(1)
+        SOURCES.forEach { (k, l) ->
+            val n = v("req.src.$k")
+            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(l, Modifier.width(96.dp), fontSize = 13.sp, color = p.ink2)
+                Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(p.ink3.copy(alpha = .15f))) {
+                    Box(Modifier.fillMaxWidth(n.toFloat() / max).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(p.flame))
+                }
+                Text(n.toString(), Modifier.width(48.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            }
+        }
+        if (log.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Muted("Dernières relèves", small = true)
+            log.forEach { Text(it, fontSize = 12.sp, color = p.ink3, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+        }
+        if (BgStats.alert(d)) Muted("Plus de 400 requêtes d’arrière-plan ou plus de 5 minutes de verrou de réveil sur 24 heures : choisis le niveau Équilibré ou Économe dans Paramètres › Notifications.", Modifier.padding(top = 8.dp), small = true)
+        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PButton("Copier le rapport", {
+                (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("PepsGoal", BgStats.report(listOf(
+                    "Réactivité : ${listOf("Rapide", "Équilibré", "Économe").getOrElse(ui.prefs.pollLevel) { "?" }} · intervalle actuel ${dur(fr.pepsgoal.app.sys.Poller.interval(ui.app))} · échecs consécutifs ${ui.cloud.pollFailures} · prochaine relève dans ${dur(fr.pepsgoal.app.sys.Poller.nextDelay(ui.app))}"))))
+                ui.toast("Rapport copié.", "check")
+            }, icon = "copy", small = true)
+            PButton("Remettre à zéro", { BgStats.reset(ctx); tick++ }, small = true, kind = "ghost")
         }
     }
 }

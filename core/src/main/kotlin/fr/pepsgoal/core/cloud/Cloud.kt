@@ -47,6 +47,8 @@ interface CloudEvents {
 class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, val scope: CoroutineScope, var events: CloudEvents = object : CloudEvents {}) : CloudBridge {
     val db get() = store.db
     val e2e = E2eKeys(this)
+    /** Horloge monotone en ms (validités, statut, tirages, palier du flux) : injectable dans les tests. */
+    var clock: () -> Long = { System.nanoTime() / 1_000_000 }
 
     var navOnline = true
         set(v) { field = v; updateOnline() }
@@ -73,7 +75,32 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     private val pollLock = Mutex()
     private var lastPollSuccess: Long? = null
     private var pingEnabled = true
-    private var lastStatusAt = System.nanoTime() / 1_000_000
+    private var lastStatusAt = clock()
+    /** Niveau de réactivité « Rapide » : le flux d'amis est relevé à chaque cycle d'arrière-plan. */
+    var feedEveryCycle = false
+    /** Onglet Modération affiché : la modération suit les rechargements du premier plan. */
+    var moderationVisible = false
+    /** Échecs consécutifs de relève : la prochaine est espacée (voir [PollPolicy.backoffMs]). */
+    var pollFailures = 0
+        private set
+    /** Dernier rechargement social complet réussi, dernière modération, dernier tirage de synchronisation (horloge [clock]). */
+    private var lastSocialAt: Long? = null
+    private var lastModAt: Long? = null
+    private var lastPullAt: Long? = null
+    /** Palier lent du flux d'amis en arrière-plan : cycles depuis le dernier relevé, et relevé forcé après une notification sociale. */
+    private var feedCycles = 0
+    private var lastFeedAt: Long? = null
+    private var feedHint = false
+    /** Empreinte des réponses du dernier rechargement complet et nombre d'enregistrements à ce moment (pas d'écriture inutile). */
+    private var socialInputs: Int? = null
+    private var savesAtSocial = -1L
+    private var socialForcePending = false
+    private var syncForcePending = false
+    /** Minuteurs encore dans leur délai (remplaçables) ; une fois lancés, ils vont jusqu'au bout. */
+    private var socialDelaying = false
+    private var syncDelaying = false
+    /** Relève allégée en arrière-plan depuis le dernier rechargement complet (persisté dans [CloudState]). */
+    val socialStale get() = db.cloud?.socialStale == true
     private var syncTimer: Job? = null
     private var socialTimer: Job? = null
     private var pingJob: Job? = null
@@ -135,7 +162,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
             val s = api.status()
             if (!s.bool("ok")) throw ApiError(503, "down", "")
             failures = 0; maintenanceStatus = s.obj("maintenance"); minAppVersion = s.strN("minAppVersion"); applyMaintenanceStatus()
-            lastStatusAt = System.nanoTime() / 1_000_000
+            lastStatusAt = clock()
             setServerOk(true)
             // Healthy status refreshes piggyback on poll(); only outages have a retry timer.
         } catch (e: ApiError) {
@@ -179,7 +206,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     private fun enterAccount(payload: JsonObject, newDb: Db) {
         api.tokens = Tokens(payload.str("accessToken"), payload.str("refreshToken"))
         val user = payload.obj("user")!!
-        pollSnapshot = null; lastPollSuccess = null
+        api.account = user.str("id")
+        resetPollState()
         openConversationSummary.clear(); openConversationFullAt.clear()
         store.use(newDb, true)
         val u = upsertUser(user) { it.bio = user.str("bio"); it.freezes = user.int("freezes") }!!
@@ -193,7 +221,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     fun boot() {
         api.forceOffline = forceOffline
         val cached = store.readAccount()
-        if (api.tokens != null && cached?.session != null) { store.use(cached, true); cloudState() }
+        if (api.tokens != null && cached?.session != null) { store.use(cached, true); cloudState(); api.account = cached.session }
         else store.use(store.readLocal() ?: Db(), false)
         bootKeysPending = store.acct && !pingEnabled
         // An Application can be created solely for an offline/local worker. Do not start network work then.
@@ -201,7 +229,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
             ping()
             if (store.acct) {
                 launch { try { e2e.device(); e2e.shareMissing() } catch (e: CancellationException) { throw e } catch (e: Exception) {} }
-                syncNow(); refreshSocial()
+                syncNow(); guardedSocial { refreshSocial(emptyMap(), false) }
             }
         }
     }
@@ -261,7 +289,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     suspend fun logout(): Boolean {
         if (!store.online) { pg.hooks.toast("Hors ligne : la déconnexion et le changement de compte reviendront avec la connexion.", "cloudoff"); return false }
         if (pg.runningTimer() != null) pg.stopTimer(true)
-        syncNow()
+        syncNow(force = true)
         if (!store.online || syncError.isNotEmpty()) { pg.hooks.toast("Hors ligne : la déconnexion et le changement de compte reviendront avec la connexion.", "cloudoff"); return false }
         if (collectOps().first.isNotEmpty()) { pg.hooks.toast("Des modifications ne sont pas encore synchronisées : réessaie dans un instant.", "cloudoff"); return false }
         leaveAccount(true)
@@ -269,7 +297,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     }
 
     fun leaveAccount(callServer: Boolean) {
-        pollSnapshot = null; lastPollSuccess = null
+        resetPollState(); api.account = null
         openConversationSummary.clear(); openConversationFullAt.clear()
         val rt = api.tokens?.refreshToken
         if (callServer) {
@@ -381,13 +409,36 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         }
     }
 
-    fun scheduleSync(ms: Long = 1500) {
-        if (!store.acct) return
-        syncTimer?.cancel(); syncTimer = scope.launch { delay(ms); syncNow() }
+    /** Mémoires de relève liées au compte : vidées au changement de compte. */
+    private fun resetPollState() {
+        lastPollSuccess = null; lastSocialAt = null; lastModAt = null; lastPullAt = null
+        lastFeedAt = null; feedCycles = 0; feedHint = false; socialInputs = null; savesAtSocial = -1; pollFailures = 0
     }
 
-    suspend fun syncNow() {
+    /** [force] : tirage même si rien n'est à envoyer et que le dernier tirage est récent (ouverture, demande explicite). */
+    fun scheduleSync(ms: Long = 1500, force: Boolean = false) {
+        if (!store.acct) return
+        syncForcePending = syncForcePending || force
+        if (syncDelaying) syncTimer?.cancel()
+        syncDelaying = true
+        syncTimer = scope.launch { delay(ms); syncDelaying = false; val f = syncForcePending; syncForcePending = false; syncNow(f) }
+    }
+
+    /** Fenêtre pendant laquelle un tirage récent suffit : 2 min au premier plan, 30 min en arrière-plan. */
+    private fun pullWindowMs() = if (pingEnabled) 2 * 60_000L else 30 * 60_000L
+
+    /** Une synchronisation est-elle utile ? Modifications locales en attente, ou dernier tirage plus ancien que la fenêtre. */
+    fun syncDue(): Boolean {
+        if (!store.acct) return false
+        val at = lastPullAt ?: return true
+        if (clock() - at >= pullWindowMs()) return true
+        return try { collectOps().first.isNotEmpty() } catch (e: Exception) { true }
+    }
+
+    suspend fun syncNow(force: Boolean = false) {
         if (!store.acct || !store.online) return
+        // Rien à envoyer et tirage récent : aucune requête (les écritures locales sans donnée synchronisée n'en coûtent plus)
+        if (!force && syncing?.isActive != true && !syncDue()) return
         syncing?.let { if (it.isActive) { it.await(); return } }
         coroutineScope {
             val d = async {
@@ -417,6 +468,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     private suspend fun pull() {
         val cs = cloudState(); var changed = false
         for (guard in 0 until 50) {
+            val before = cs.cursor
             val r = api.get("/v1/sync/pull?cursor=${cs.cursor}")
             val mine = meId()
             for (sg in r.arr("goals")) {
@@ -445,48 +497,88 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
             if (st != null) pg.me()?.let { Mapping.applyServerSettings(it, st); pg.applyNicknames(); cs.snapSettings = Mapping.toServerSettings(it).toString(); changed = true }
             cs.cursor = (r as JsonObject)["cursor"]?.jsonPrimitive?.longOrNull ?: cs.cursor
             if (!r.bool("hasMore")) break
+            // Curseur bloqué alors que le serveur annonce une suite : on s'arrête au lieu d'émettre 50 requêtes
+            if (cs.cursor == before) { syncError = ""; NetStats.count("sync.stuck"); break }
         }
-        pulledOnce = true; cs.pulled = true
+        pulledOnce = true; cs.pulled = true; lastPullAt = clock()
         if (changed) store.rawSave()
     }
 
     fun deviceId(): String = secrets.get("pepsgoal.device.v1") ?: uid().also { secrets.set("pepsgoal.device.v1", it) }
 
     /* ------------------------------------------------------------------ fonctions sociales */
-    fun scheduleSocial(ms: Long = 400) {
+    /**
+     * Rechargement social différé. Sans [force], il est ignoré si un rechargement complet a réussi il y a moins de
+     * [maxAgeMs] (navigation entre onglets, retour au premier plan) ; les actions sociales et le retour après une relève
+     * d'arrière-plan ([socialStale]) le forcent.
+     */
+    fun scheduleSocial(ms: Long = 400, force: Boolean = false, maxAgeMs: Long = SOCIAL_FRESH_MS) {
         if (!store.acct) return
-        socialTimer?.cancel(); socialTimer = scope.launch { delay(ms); refreshSocial() }
+        socialForcePending = socialForcePending || force
+        // Seul un minuteur encore en attente est remplacé : un rechargement en cours n'est jamais interrompu
+        if (socialDelaying) socialTimer?.cancel()
+        socialDelaying = true
+        socialTimer = scope.launch {
+            delay(ms)
+            socialDelaying = false
+            val f = socialForcePending; socialForcePending = false
+            guardedSocial { refreshSocial(emptyMap(), f, maxAgeMs) }
+        }
     }
 
-    suspend fun refreshSocial() {
-        try { refreshSocial(emptyMap()) }
+    /** Passage au premier plan : synchronisation et rechargement social, complet si une relève allégée a eu lieu entre-temps. */
+    fun foregroundRefresh() {
+        if (!store.acct) return
+        scheduleSync(300, force = true)
+        scheduleSocial(600, force = socialStale)
+    }
+
+    /** Rechargement social demandé explicitement (tirer pour rafraîchir, action sociale) : jamais ignoré. */
+    suspend fun refreshSocial() = guardedSocial { refreshSocial(emptyMap(), true) }
+
+    private suspend fun guardedSocial(block: suspend () -> Unit) {
+        try { block() }
         catch (e: CancellationException) { throw e }
         catch (e: ApiError) { pollStatus = "erreur serveur ${e.status}"; if (e.status != 0) events.error(e.message ?: "") }
         catch (e: Exception) { pollStatus = "erreur : ${e::class.simpleName}" }
     }
 
-    private suspend fun refreshSocial(seed: Map<String, JsonElement>) {
+    private suspend fun refreshSocial(seed: Map<String, JsonElement>, force: Boolean, maxAgeMs: Long = SOCIAL_FRESH_MS) {
         if (!store.acct || !store.online) return
         // Structured concurrency: cancellation and the poll budget cover all refresh requests.
-        socialLock.withLock { doRefreshSocial(seed) }
+        socialLock.withLock {
+            // Validité vérifiée sous le verrou : un rechargement en cours (démarrage à froid) sert aussi l'appel suivant
+            val now = clock()
+            val fresh = lastSocialAt?.let { now - it < maxAgeMs } == true
+            val modDue = moderationVisible && pingEnabled && pg.isAdmin(pg.me()) && lastModAt?.let { now - it < maxAgeMs } != true
+            if (!force && !socialStale && fresh && !modDue) { NetStats.count("social.skipped"); return@withLock }
+            doRefreshSocial(seed, force)
+        }
     }
 
-    private var pollSnapshot: List<JsonElement>? = null
     /** Résultat de la dernière relève (diagnostic affiché dans les réglages). */
     var pollStatus = ""
 
-    /** Shared exclusion and monotonic successful-window check for every caller. */
-    suspend fun poll(minIntervalMs: Long = 40_000): Boolean {
+    /**
+     * Shared exclusion and monotonic successful-window check for every caller.
+     * [foreground] faux : relève allégée (les quatre réponses seules, sans rechargement complet ni modération), statut au
+     * plus toutes les 10 min, flux d'amis au palier lent (un cycle sur trois, au moins 10 min d'écart).
+     */
+    suspend fun poll(minIntervalMs: Long = 40_000, foreground: Boolean = true): Boolean {
         if (!pollLock.tryLock()) return false
         try {
-            val now = System.nanoTime() / 1_000_000
+            val now = clock()
             if (lastPollSuccess?.let { now - it < minIntervalMs } == true) return false
             if (!store.acct) { pollStatus = "pas de compte"; return false }
-            if (store.online && now - lastStatusAt >= 60_000) ping()
+            // Statut : 60 s au premier plan, 10 min en arrière-plan (les 502/504 signalent déjà une panne)
+            if (store.online && now - lastStatusAt >= (if (foreground) 60_000L else STATUS_BG_MS)) ping()
             if (!store.online) { if (!navOnline) { pollStatus = "pas de réseau"; return false }; failures = 0; ping() }
-            if (!store.online) { pollStatus = "serveur injoignable"; return false }
+            if (!store.online) { pollStatus = "serveur injoignable"; pollFailures++; return false }
             val ownerDb = db
-            val paths = listOf("/v1/notifications", "/v1/conversations", "/v1/groups", "/v1/feed?tab=friends")
+            val previous = cloudState().pollDigests.takeIf { it.size == POLL_PATHS.size }
+            val withFeed = foreground || feedEveryCycle || previous == null || feedHint ||
+                lastFeedAt.let { it == null || (feedCycles >= 2 && now - it >= FEED_BG_MS) }
+            val paths = if (withFeed) POLL_PATHS else POLL_PATHS.take(3)
             val values = coroutineScope {
                 paths.map { path -> async {
                     try { api.get(path) } catch (e: ApiError) {
@@ -495,22 +587,84 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
                 } }.map { it.await() }
             }
             if (db !== ownerDb || !store.acct) return false
-            val changed = values != pollSnapshot
+            val digests = values.map { digest(it) } + if (withFeed) emptyList() else listOf(previous?.getOrNull(3) ?: "")
+            if (withFeed) { feedCycles = 0; lastFeedAt = now; feedHint = false } else feedCycles++
+            val changed = digests != previous
             if (changed) {
-                val previous = pollSnapshot
-                if (previous != null && values[0] == previous[0] && values[3] == previous[3]) refreshInbox(values)
-                else refreshSocial(paths.zip(values).toMap())
+                val seed = paths.zip(values).toMap()
+                if (!foreground) refreshSocialBackground(seed, previous, digests)
+                else if (previous != null && digests[0] == previous[0] && digests[3] == previous[3]) refreshInbox(values, digests)
+                else refreshSocial(seed, true)
             }
             if (db !== ownerDb || !store.acct) return false
-            lastPollSuccess = System.nanoTime() / 1_000_000
+            lastPollSuccess = clock(); pollFailures = 0
             pollStatus = if (changed) "nouveautés relevées" else "à jour"
             return changed
         } catch (e: CancellationException) { throw e
-        } catch (e: Exception) { pollStatus = "erreur : ${e.message ?: e::class.simpleName}"; return false
+        } catch (e: Exception) { pollFailures++; pollStatus = "erreur : ${e.message ?: e::class.simpleName}"; return false
         } finally { pollLock.unlock() }
     }
 
-    private suspend fun doRefreshSocial(seed: Map<String, JsonElement>) = coroutineScope {
+    /**
+     * Relève d'arrière-plan allégée : seules les quatre réponses déjà reçues sont exploitées (notifications, conversations
+     * et groupes, publications d'amis fusionnées). Flux public, stories, profil, amis, blocages, suggestions et modération
+     * attendent le retour au premier plan ([socialStale]).
+     */
+    private suspend fun refreshSocialBackground(seed: Map<String, JsonElement>, previous: List<String>?, digests: List<String>) = socialLock.withLock {
+        val ownerDb = db; val mine = meId()
+        fun moved(i: Int) = previous == null || previous[i] != digests[i]
+        var dirty = false
+        seed["/v1/notifications"]?.takeIf { moved(0) }?.let { n ->
+            val fresh = applyNotifs(n)
+            // Un encouragement, un commentaire ou une demande d'ami : le flux d'amis est relevé au cycle suivant
+            if (fresh.any { it.type in FEED_HINTS }) feedHint = true
+            dirty = true
+        }
+        if (moved(1) || moved(2)) {
+            val known = db.messages.map { it.id }.toSet()
+            applyConversations(seed.getValue("/v1/conversations"), seed.getValue("/v1/groups"))
+            if (db !== ownerDb || !store.acct) return@withLock
+            e2e.decryptAll()
+            val fresh = db.messages.filter { it.id !in known && it.from != mine && !it.read && mine !in it.readBy }
+            if (fresh.isNotEmpty() && db.cloud?.socialPulled == true) events.incomingMessages(fresh)
+            dirty = true
+        }
+        seed["/v1/feed?tab=friends"]?.takeIf { moved(3) }?.let { f ->
+            val oldPosts = db.posts.map { it.id }.toSet()
+            val freshP = mergeFriendPosts(f)
+            if (freshP.isNotEmpty() && (oldPosts.isNotEmpty() || db.cloud?.socialPulled == true) && pulledBefore) events.newPosts(freshP)
+            dirty = true
+        }
+        if (db !== ownerDb || !store.acct) return@withLock
+        val cs = cloudState(); cs.pollDigests = digests; cs.socialStale = true
+        NetStats.count("social.light")
+        if (dirty) store.rawSave()
+    }
+
+    /** Publications d'amis fusionnées dans le cache (les publications publiques et de modération restent) ; renvoie les fraîches. */
+    private fun mergeFriendPosts(feed: JsonElement): List<Post> {
+        val mine = meId()
+        val incoming = feed.arr("posts").map { postFromServer(it) }
+        val byId = incoming.associateBy { it.id }
+        val oldIds = db.posts.map { it.id }.toSet()
+        val added = incoming.filter { it.id !in oldIds }
+        db.posts = (added + db.posts.map { byId[it.id] ?: it }).toMutableList()
+        return added.filter { it.userId != mine && it.userId.isNotEmpty() && it.at > nowMs() - 86_400_000L }
+    }
+
+    /** Notifications du serveur appliquées (les notifications locales restent) ; renvoie les nouvelles non lues, déjà signalées. */
+    private fun applyNotifs(notifs: JsonElement): List<Notif> {
+        val mine = meId()
+        val known = db.notifs.filter { it.srv }.map { it.id }.toSet()
+        val srvN = notifs.list().map { n -> val d = n.obj("data")
+            Notif(n.str("id"), mine, n.str("type"), n.str("text"), msOf(n.strN("createdAt")) ?: 0, n.bool("read"), true, NOTIF_VIEW[n.str("type")], d.strN("goalId"), d.strN("postId"), d.strN("checkinId"), d.strN("groupId"), d.strN("from")) }
+        db.notifs = (db.notifs.filter { !it.srv && it.userId == mine } + srvN).toMutableList()
+        val freshN = srvN.filter { it.id !in known && !it.read }
+        if (freshN.isNotEmpty() && pulledBefore) events.serverNotifications(freshN)
+        return freshN
+    }
+
+    private suspend fun doRefreshSocial(seed: Map<String, JsonElement>, force: Boolean) = coroutineScope {
         val ownerDb = db
         suspend fun fetch(path: String): JsonElement = seed[path] ?: api.get(path)
         val meR = async { fetch("/v1/me") }; val fr = async { fetch("/v1/friends") }
@@ -521,7 +675,7 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         val myStories = async { try { fetch("/v1/me/stories") } catch (e: ApiError) { if (e.status == 404) JsonArray(emptyList()) else throw e } }
         val sugg = async { try { fetch("/v1/friends/suggestions") } catch (e: ApiError) { if (e.status == 404) null else throw e } }
         // Fetch all resources before mutating the model; a failed response must not leave a partial refresh.
-        listOf(meR, fr, feedF, feedP, stories, notifs, convs, groups, blocks, myStories, sugg).forEach { it.await() }
+        val inputs = listOf(meR, fr, feedF, feedP, stories, notifs, convs, groups, blocks, myStories, sugg).map { it.await() }
         if (db !== ownerDb || !store.acct) return@coroutineScope
         val mine = meId()
         val m = meR.await()
@@ -560,20 +714,16 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
             st.add(Story(s.str("id"), mine, s.str("kind"), s.obj("data"), s.strN("mediaUrl"), s.str("text"), msOf(s.strN("createdAt")) ?: 0, MutableList(s.int("viewCount")) { "" }, s.intN("viewCount"), false, s.int("likeCount")))
         db.stories = st
         // Notifications du serveur + notifications locales (rappels)
-        val VIEW = mapOf("like" to "feed", "comment" to "feed", "friend" to "friends", "official" to "friends", "mod" to "feed", "group" to "friends")
-        val known = db.notifs.filter { it.srv }.map { it.id }.toSet()
-        val srvN = notifs.await().list().map { n -> val d = n.obj("data")
-            Notif(n.str("id"), mine, n.str("type"), n.str("text"), msOf(n.strN("createdAt")) ?: 0, n.bool("read"), true, VIEW[n.str("type")], d.strN("goalId"), d.strN("postId"), d.strN("checkinId"), d.strN("groupId"), d.strN("from")) }
-        db.notifs = (db.notifs.filter { !it.srv && it.userId == mine } + srvN).toMutableList()
-        val freshN = srvN.filter { it.id !in known && !it.read }
-        if (freshN.isNotEmpty() && pulledBefore) events.serverNotifications(freshN)
+        applyNotifs(notifs.await())
         val before = db.messages.map { it.id }.toSet()
         applyConversations(convs.await(), groups.await())
         if (db !== ownerDb || !store.acct) return@coroutineScope
         // Comptes bloqués
         db.blocks = blocks.await().list().mapNotNull { b -> val uu = upsertUser(b.obj("user")) ?: return@mapNotNull null; Block(mine, uu.id, msOf(b.strN("blockedAt")) ?: 0) }.toMutableList()
         sugg.await()?.let { s -> suggestions = s.list().onEach { upsertUser(it.obj("user")) } }
-        if (pg.isAdmin(u)) refreshModeration()
+        // Modération : premier plan seulement, onglet affiché, demande explicite, ou données de plus de 5 min (badge de l'onglet)
+        val withMod = pg.isAdmin(u) && pingEnabled && (force || moderationVisible || lastModAt.let { it == null || clock() - it >= MOD_FRESH_MS })
+        if (withMod) { refreshModeration(); lastModAt = clock(); NetStats.count("social.admin") }
         repairRefs()
         e2e.decryptAll()
         val freshM = db.messages.filter { it.id !in before && it.from != mine && !it.read && !it.readBy.contains(mine) }
@@ -582,29 +732,55 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         if (freshM.isNotEmpty() && seenBefore) events.incomingMessages(freshM)
         if (freshP.isNotEmpty() && (oldPosts.isNotEmpty() || db.cloud?.socialPulled == true) && pulledBefore) events.newPosts(freshP)
         db.cloud?.socialPulled = true
-        store.rawSave()
-        pollSnapshot = listOf(notifs.await(), convs.await(), groups.await(), feedF.await())
-        store.changed()
+        val cs = cloudState()
+        cs.pollDigests = listOf(notifs.await(), convs.await(), groups.await(), feedF.await()).map { digest(it) }
+        cs.socialStale = false; lastSocialAt = clock()
+        NetStats.count("social.full")
+        // Écriture et réveil de l'interface seulement si les réponses ont changé, ou si la base a été modifiée entre-temps
+        val sig = inputs.hashCode()
+        if (withMod || sig != socialInputs || store.saves != savesAtSocial || freshM.isNotEmpty()) {
+            store.rawSave(); socialInputs = sig; savesAtSocial = store.saves
+        }
         pg.queueBadgeCheck()
     }
 
+    /** Signature du résumé d'une conversation (sans le profil du correspondant) ou d'un groupe (sans la liste des membres). */
+    private fun convSig(c: JsonObject) = JsonObject(c - "peer").toString()
+    private fun groupSig(g: JsonObject) = JsonObject(g - "members").toString()
+
+    /**
+     * Une conversation n'est rechargée que si son résumé (lastAt, unread, lastE2e…) a changé depuis le dernier
+     * chargement, ou si aucun message local n'existe ; signature absente (mise à jour) : seulement si non lue.
+     */
+    private fun needsLoad(key: String, sig: String, unread: Int, noLocal: Boolean): Boolean {
+        val old = cloudState().convSigs[key]
+        return if (noLocal) old != sig else if (old == null) unread > 0 else old != sig
+    }
+
     private suspend fun applyConversations(conversations: JsonElement, groups: JsonElement) {
-        val mine = meId()
-        // Conversations : conversations non lues (ou jamais chargées) chargées en entier
+        val sigs = cloudState().convSigs; val live = HashSet<String>()
+        // Conversations : rechargées seulement si leur résumé a changé (ou jamais chargées)
         for (c in conversations.list()) {
             val peer = upsertUser(c.obj("peer")) ?: continue
-            if (c.int("unread") > 0 || db.messages.none { it.from == peer.id || it.to == peer.id }) loadConversation(peer.id, true)
+            val key = "c:${peer.id}"; val sig = convSig(c); live.add(key)
+            if (needsLoad(key, sig, c.int("unread"), db.messages.none { it.from == peer.id || it.to == peer.id })) loadConversation(peer.id, true)
+            sigs[key] = sig
         }
         // Groupes de discussion
         val gl = groups.list()
         db.chats = gl.map { g -> g.arr("members").forEach { upsertUser(it) }
             Chat(g.str("id"), g.str("name"), g.str("emoji"), g.strN("ownerId"), g.arr("members").map { it.str("id") }.toMutableList(), msOf(g.strN("createdAt")) ?: nowMs()) }.toMutableList()
-        val live = db.chats.map { it.id }.toSet()
-        db.messages = db.messages.filter { it.chat == null || it.chat in live }.toMutableList()
-        for (g in gl) if (g.int("unread") > 0 || (g.obj("last") != null && db.messages.none { it.chat == g.str("id") })) loadGroup(g.str("id"), true)
+        val liveChats = db.chats.map { it.id }.toSet()
+        db.messages = db.messages.filter { it.chat == null || it.chat in liveChats }.toMutableList()
+        for (g in gl) {
+            val key = "g:${g.str("id")}"; val sig = groupSig(g); live.add(key)
+            if (needsLoad(key, sig, g.int("unread"), g.obj("last") != null && db.messages.none { it.chat == g.str("id") })) loadGroup(g.str("id"), true)
+            sigs[key] = sig
+        }
+        sigs.keys.retainAll(live)
     }
 
-    private suspend fun refreshInbox(values: List<JsonElement>) = socialLock.withLock {
+    private suspend fun refreshInbox(values: List<JsonElement>, digests: List<String>) = socialLock.withLock {
         val ownerDb = db
         val mine = meId()
         val known = db.messages.map { it.id }.toSet()
@@ -613,8 +789,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
         e2e.decryptAll()
         val fresh = db.messages.filter { it.id !in known && it.from != mine && !it.read && mine !in it.readBy }
         if (fresh.isNotEmpty() && db.cloud?.socialPulled == true) events.incomingMessages(fresh)
+        cloudState().pollDigests = digests
         store.rawSave()
-        pollSnapshot = values
     }
 
     fun postFromServer(p: JsonObject): Post {
@@ -644,6 +820,8 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
             val summary = rows.firstOrNull { if (group != null) it.str("id") == group else it.obj("peer").str("id") == peer }
             val previous = openConversationSummary[key]
             openConversationSummary[key] = summary
+            // Le résumé vu ici sert aussi à la relève : pas de second chargement de cette conversation au prochain cycle
+            (summary as? JsonObject)?.let { cloudState().convSigs[if (group != null) "g:$group" else "c:$peer"] = if (group != null) groupSig(it) else convSig(it) }
             if (summary == previous && now - (openConversationFullAt[key] ?: -30_000L) < 30_000L) return false
         }
         val changed = if (group != null) openGroup(group) else openChat(requireNotNull(peer))
@@ -787,11 +965,11 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
     }
     override fun autoPost(g: Goal, text: String) {
         scope.launch {
-            try { api.post("/v1/posts", buildJsonObject { put("text", text.take(500)); put("visibility", if (g.visibility == "public") "public" else "friends"); put("goalId", if (Mapping.UUID_RE.matches(g.id)) JsonPrimitive(g.id) else JsonNull); put("kind", "milestone") }); scheduleSocial(800) } catch (e: ApiError) {}
+            try { api.post("/v1/posts", buildJsonObject { put("text", text.take(500)); put("visibility", if (g.visibility == "public") "public" else "friends"); put("goalId", if (Mapping.UUID_RE.matches(g.id)) JsonPrimitive(g.id) else JsonNull); put("kind", "milestone") }); scheduleSocial(800, force = true) } catch (e: ApiError) {}
         }
     }
     override fun confirmCheck(checkinId: String, ok: Boolean) {
-        scope.launch { try { api.post("/v1/checkins/$checkinId/${if (ok) "confirm" else "refuse"}"); syncNow(); pg.hooks.toast(if (ok) "Réussite confirmée." else "Validation refusée.", if (ok) "check" else "x") } catch (e: ApiError) { pg.hooks.toast(e.message ?: "Action impossible.", "x") } }
+        scope.launch { try { api.post("/v1/checkins/$checkinId/${if (ok) "confirm" else "refuse"}"); syncNow(force = true); pg.hooks.toast(if (ok) "Réussite confirmée." else "Validation refusée.", if (ok) "check" else "x") } catch (e: ApiError) { pg.hooks.toast(e.message ?: "Action impossible.", "x") } }
     }
     override fun freezesUsed(count: Int) {
         scope.launch { try { val r = api.post("/v1/me/freezes/use", buildJsonObject { put("count", count) }); pg.me()?.freezes = r.int("freezes"); store.rawSave() } catch (e: ApiError) {} }
@@ -807,6 +985,31 @@ class Cloud(val store: Store, val pg: Pg, val api: Api, val secrets: Secrets, va
 
     companion object {
         val RETRY = listOf(5000L, 10000L, 20000L, 40000L, 60000L)
+        /** Les quatre ressources de la relève. */
+        val POLL_PATHS = listOf("/v1/notifications", "/v1/conversations", "/v1/groups", "/v1/feed?tab=friends")
+        /** Durée de validité d'un rechargement social complet, et de la modération (premier plan). */
+        const val SOCIAL_FRESH_MS = 60_000L
+        const val MOD_FRESH_MS = 5 * 60_000L
+        /** Statut du serveur et flux d'amis : écarts minimaux en arrière-plan. */
+        const val STATUS_BG_MS = 10 * 60_000L
+        const val FEED_BG_MS = 10 * 60_000L
+        /** Notifications après lesquelles le flux d'amis est relevé au cycle suivant. */
+        val FEED_HINTS = setOf("like", "comment", "friend")
+        private val NOTIF_VIEW = mapOf("like" to "feed", "comment" to "feed", "friend" to "friends", "official" to "friends", "mod" to "feed", "group" to "friends")
+
+        /** Empreinte SHA-1 de la forme canonique (clés triées) d'une réponse JSON. */
+        fun digest(e: JsonElement): String {
+            val sb = StringBuilder()
+            fun canon(x: JsonElement) {
+                when (x) {
+                    is JsonObject -> { sb.append('{'); x.keys.sorted().forEach { k -> sb.append(JsonPrimitive(k)).append(':'); canon(x.getValue(k)); sb.append(',') }; sb.append('}') }
+                    is JsonArray -> { sb.append('['); x.forEach { canon(it); sb.append(',') }; sb.append(']') }
+                    else -> sb.append(x.toString())
+                }
+            }
+            canon(e)
+            return java.security.MessageDigest.getInstance("SHA-1").digest(sb.toString().toByteArray()).joinToString("") { "%02x".format(it) }
+        }
         const val OFF_KEY = "pepsgoal.offline.v1"
     }
 }
