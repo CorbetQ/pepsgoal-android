@@ -141,6 +141,7 @@ class PepsApp : Application() {
         pg.checkReminders()
         Notifier.clearReminders(this)
         Poller.startLink(this)
+        fr.pepsgoal.app.sys.Updater.installedCheck(this)
         scope.launch { fr.pepsgoal.app.sys.Updater.autoCheck(this@PepsApp) }
         scope.launch { try { fr.pepsgoal.app.sys.Health.sync(this@PepsApp) } catch (e: Exception) {} }
         scope.launch { try { fr.pepsgoal.app.sys.Agenda.prune(this@PepsApp) } catch (e: Exception) {} }

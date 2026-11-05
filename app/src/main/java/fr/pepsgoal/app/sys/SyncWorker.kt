@@ -22,6 +22,8 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
             LiveUpdates.refresh(app); WidgetUpdater.update(app); Reminders.reschedule(app)
             app.store.flush()
         }
+        // Nouvelle version publiée : vérifiée aussi application fermée (au plus toutes les 6 h, voir Updater.autoCheck)
+        try { Updater.autoCheck(app) } catch (e: Exception) {}
         Result.success()
     } catch (e: CancellationException) { throw e } catch (e: Exception) { Result.retry() }
 

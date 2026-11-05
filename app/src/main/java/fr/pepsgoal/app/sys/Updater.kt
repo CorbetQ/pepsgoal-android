@@ -104,4 +104,29 @@ object Updater {
             .setStyle(NotificationCompat.BigTextStyle().bigText(r.notes.take(600))).setContentIntent(pi).setAutoCancel(true).build()
         try { NotificationManagerCompat.from(ctx).notify(12, n) } catch (e: SecurityException) {}
     }
+
+    /**
+     * Après l'installation d'une nouvelle version (appelé au remplacement du paquet et au démarrage) : notification
+     * « PepsGoal a été mis à jour » avec les nouveautés de la version, une seule fois par version. Rien à la première
+     * installation.
+     */
+    fun installedCheck(ctx: Context) {
+        val prefs = ctx.peps.prefs
+        val prev = prefs.lastRunVersion; val now = current
+        if (prev == now) return
+        prefs.lastRunVersion = now
+        if (prev.isEmpty() || compare(now, prev) <= 0 || !Notifier.allowed(ctx)) return
+        val notes = try {
+            val arr = org.json.JSONArray(ctx.assets.open("docs/notes.json").bufferedReader().use { it.readText() })
+            val first = (0 until arr.length()).map { arr.getJSONArray(it) }.firstOrNull { it.getString(0) == now }
+            first?.getJSONArray(2)?.let { l -> (0 until l.length()).joinToString("\n") { "• " + fr.pepsgoal.app.ui.I18n.tr(l.getString(it)) } }
+        } catch (e: Exception) { null }
+        val pi = Notifier.open(ctx, 13) { putExtra(MainActivity.EXTRA_SETTINGS, "help") }
+        val title = fr.pepsgoal.app.ui.I18n.tr("PepsGoal a été mis à jour en {0}").replace("{0}", now)
+        val text = notes ?: fr.pepsgoal.app.ui.I18n.tr("Découvre les nouveautés dans Paramètres › Aide › Notes de version.")
+        val n = NotificationCompat.Builder(ctx, Notifier.CH_OFFICIAL).setSmallIcon(R.drawable.ic_notif).setColor(0xFFFF4A12.toInt())
+            .setContentTitle(title).setContentText(text.lineSequence().first().removePrefix("• "))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text.take(900))).setContentIntent(pi).setAutoCancel(true).build()
+        try { NotificationManagerCompat.from(ctx).notify(13, n) } catch (e: SecurityException) {}
+    }
 }

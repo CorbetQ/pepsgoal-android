@@ -110,25 +110,41 @@ fun SetItem(title: String, sub: String? = null, icon: String? = null, tint: Colo
     val p = LocalPal.current
     val c = if (danger) p.type("duel").c else tint ?: p.flame
     val inter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val half = maxWidth * .52f
+    Box(Modifier.fillMaxWidth()) {
         // Ligne d'interrupteur ([toggled]) : toute la ligne est un seul nœud « interrupteur » pour TalkBack (titre, état)
         val act = when {
             onClick == null || !enabled -> if (toggled != null) Modifier.semantics(mergeDescendants = true) { role = Role.Switch; stateDescription = tr(if (toggled) "Activé" else "Désactivé") } else Modifier
             toggled != null -> Modifier.toggleable(toggled, inter, androidx.compose.foundation.LocalIndication.current, role = Role.Switch) { v -> if (v) Feedback.armed() else Feedback.disarmed(); onClick() }
             else -> Modifier.springClick(inter, onClick = onClick)
         }
-        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).then(act)
-            .padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            // Tuile néon de la couleur de l'entrée (grisée quand la ligne est inactive)
-            if (icon != null) { if (enabled) IconTile(icon, c, c, 38.dp, 12.dp) else Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(p.surface2), contentAlignment = Alignment.Center) { Pi(icon, size = 20.dp, tint = p.ink3) } }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = if (danger) p.danger else if (enabled) p.ink else p.ink3)
-                if (sub != null) Text(sub, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2, lineHeight = 17.sp)
+        // Titre et tuile toujours sur la première ligne ; explication et commandes dessous, alignées sur le titre
+        // (jamais un titre écrasé en colonne par une commande large). Seul l'interrupteur d'une ligne [toggled] reste à
+        // droite du titre.
+        Column(Modifier.fillMaxWidth().heightIn(min = 60.dp).then(act).padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Tuile néon de la couleur de l'entrée (grisée quand la ligne est inactive)
+                if (icon != null) { if (enabled) IconTile(icon, c, c, 38.dp, 12.dp) else Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(p.surface2), contentAlignment = Alignment.Center) { Pi(icon, size = 20.dp, tint = p.ink3) } }
+                Text(title, Modifier.weight(1f), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = if (danger) p.danger else if (enabled) p.ink else p.ink3)
+                if (toggled != null) Row(verticalAlignment = Alignment.CenterVertically) { right() }
+                if (chevron) Pi("chevronright", size = 18.dp, tint = p.ink3)
             }
-            Row(Modifier.widthIn(max = half), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) { right() }
-            if (chevron) Pi("chevronright", size = 18.dp, tint = p.ink3)
+            val indent = if (icon != null) 52.dp else 0.dp
+            if (sub != null) Text(sub, Modifier.padding(start = indent), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = p.ink2, lineHeight = 17.sp)
+            if (toggled == null) GapIfContent(Modifier.padding(start = indent)) {
+                FlowRowCompat(gap = 8.dp) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { right() } }
+            }
         }
+    }
+}
+
+/** Contenu facultatif : un écart de 6 dp au-dessus seulement s'il affiche quelque chose (sinon aucune hauteur). */
+@Composable
+private fun GapIfContent(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content, modifier) { ms, cs ->
+        val pl = ms.map { it.measure(cs.copy(minWidth = 0, minHeight = 0)) }
+        val w = pl.maxOfOrNull { it.width } ?: 0; val h = pl.maxOfOrNull { it.height } ?: 0
+        val gap = if (w > 0 && h > 0) 6.dp.roundToPx() else 0
+        layout(if (h > 0) w else 0, if (h > 0) h + gap else 0) { pl.forEach { it.place(0, gap) } }
     }
 }
 
