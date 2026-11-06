@@ -100,5 +100,23 @@ object Packs {
         return if (r.skipped.isEmpty()) "Pack « ${spec.name} » appliqué." else "Pack « ${spec.name} » appliqué, sans : ${r.skipped.joinToString(", ")}."
     }
 
+    /** Fond seul téléchargé : l'image (déjà vérifiée) devient « Mon image ». */
+    suspend fun applyBackground(ui: AppState, image: File): Boolean {
+        val ctx = ui.app
+        val ok = withContext(Dispatchers.IO) {
+            try {
+                val b = BitmapFactory.decodeFile(image.path) ?: return@withContext false
+                image.copyTo(bgFile(ctx), overwrite = true)
+                ui.prefs.bgPalette = Media.palette(b); ui.prefs.bgStamp = nowMs(); true
+            } catch (e: Exception) { false }
+        }
+        if (!ok) return false
+        val u = ui.pg.me() ?: return false
+        u.settings.bg = "custom"; ui.pg.store.commit()
+        ui.prefs.raw.edit().putBoolean("bgSeasonAuto", false).apply()
+        ui.themeTick++; ui.bump()
+        return true
+    }
+
     const val MAX = 40
 }

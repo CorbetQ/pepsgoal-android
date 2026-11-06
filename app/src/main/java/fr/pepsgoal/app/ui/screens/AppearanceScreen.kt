@@ -82,7 +82,8 @@ fun AppearancePage(ui: AppState, u: User) {
             Muted("Retrouve tes styles complets : icône, fond, couleurs et ambiance. Les achats existants et les surprises découvertes sont reconnus.", small = true)
             PButton("Voir mes packs", { ui.shopTab = "packs"; ui.push(Screen.Shop) }, Modifier.padding(top = 10.dp), icon = "palette")
         }
-        MyPacksCard(ui)
+        MyPacksCard(ui, fr.pepsgoal.app.sys.ContentSync.ownedPacks(ui.pg))
+        OnlineBackgroundsCard(ui)
         ThemeSection(ui, u, dynOk)
         ColorSection(ui, u, dynOk)
         BackgroundSection(ui, u)

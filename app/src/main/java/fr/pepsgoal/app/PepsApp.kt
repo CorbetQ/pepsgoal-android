@@ -64,6 +64,8 @@ class PepsApp : Application() {
         fr.pepsgoal.app.ui.FluentEmoji.load(this)
         // Packs de thème personnels : lus avant le premier rendu (le thème « m:@<id> » se résout aussitôt)
         fr.pepsgoal.app.sys.Packs.load(this)
+        // Contenus téléchargés : cache du disque seulement (aucun réseau au démarrage)
+        fr.pepsgoal.app.sys.ContentSync.load(this)
         secrets = KeystoreSecrets(this)
         store = Store(FileDb(this), scope)
         pg = Pg(store)
@@ -107,6 +109,8 @@ class PepsApp : Application() {
             try { SyncWorker.schedule(this@PepsApp) } catch (e: Exception) {}
             try { fr.pepsgoal.app.sys.GeoReminders.register(this@PepsApp) } catch (e: Exception) {}
             try { fr.pepsgoal.app.sys.AutoBackup.schedule(this@PepsApp) } catch (e: Exception) {}
+            // Catalogue des contenus en ligne : une fois par jour, réseau non limité, batterie correcte
+            try { fr.pepsgoal.app.sys.ContentSync.schedule(this@PepsApp) } catch (e: Exception) {}
         }
         // These loops exist only while the process is visible; alarms/workers own background work.
         scope.launch {
