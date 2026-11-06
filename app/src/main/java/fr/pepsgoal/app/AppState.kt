@@ -145,6 +145,10 @@ sealed class Screen {
     class Month(val key: String? = null) : Screen()
     /** Éditeur d'un pack de thème personnel ([id] null : nouveau pack). */
     class PackEditor(val id: String? = null) : Screen()
+    /** Boutique des créateurs (10.0) : mes packs en vente, ventes et gains. */
+    object Creator : Screen()
+    /** Publication d'un pack personnel dans la boutique (prix, description). */
+    class PublishPack(val id: String) : Screen()
 }
 
 /** Message éphémère en bas de l'écran, avec une action facultative (« Annuler »). */

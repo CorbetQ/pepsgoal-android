@@ -326,7 +326,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
         ui.scope.launch {
             val ok = withContext(Dispatchers.IO) {
                 val b = Media.decode(ctx, uri, 1920) ?: return@withContext null
-                file.writeBytes(Media.jpeg(b, 82)); Media.palette(b)
+                file.writeBytes(Media.jpeg(b, 82)); bgFgFile(ctx).delete(); Media.palette(b)
             }
             if (ok == null) { ui.toast("Impossible de lire cette image. Essaie un fichier JPG ou PNG.", "image"); return@launch }
             ui.prefs.bgPalette = ok; ui.prefs.bgStamp = nowMs(); s.bg = "custom"; commit(ui); ui.themeTick++
@@ -384,7 +384,7 @@ private fun BackgroundSection(ui: AppState, u: User) {
         if (has) {
             SetRow("Mon image", "Une photo à toi, gardée sur cet appareil.") {
                 PButton("Changer", { openPicker() }, icon = "image", small = true)
-                PButton("Retirer", { file.delete(); ui.prefs.bgPalette = emptyList(); ui.prefs.bgStamp = nowMs(); if (s.bg == "custom") s.bg = "pop"; commit(ui); ui.toast("Image d’arrière-plan retirée.", "image") }, kind = "ghost", small = true)
+                PButton("Retirer", { file.delete(); bgFgFile(ctx).delete(); ui.prefs.bgPalette = emptyList(); ui.prefs.bgStamp = nowMs(); if (s.bg == "custom") s.bg = "pop"; commit(ui); ui.toast("Image d’arrière-plan retirée.", "image") }, kind = "ghost", small = true)
             }
             if (s.bg == "custom") {
                 // Plus aucun flou : un voile dégradé réglable (Auto = celui de la présence du fond)

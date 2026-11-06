@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit
  */
 object ContentSync {
     /** Un contenu prêt à afficher : entrée du catalogue, détail validé, pack (s'il en est un) et image locale. */
-    class Entry(val item: CatalogItem, val detail: ContentDetail?, val spec: ThemePackSpec?, val image: File?)
+    class Entry(val item: CatalogItem, val detail: ContentDetail?, val spec: ThemePackSpec?, val image: File?, val foreground: File? = null)
 
     private val lock = Mutex()
     var entries by mutableStateOf<List<Entry>>(emptyList())
@@ -67,7 +67,9 @@ object ContentSync {
                 val spec = ContentCatalog.validate(d)
                 val main = ContentCatalog.mainFile(d, spec)
                 val img = main?.let { file(ctx, item.id, it.name) }?.takeIf { it.exists() && it.length() == main.size }
-                Entry(item, d, spec, img)
+                val fgRef = ContentCatalog.foregroundFile(d, spec)
+                val fg = fgRef?.let { file(ctx, item.id, it.name) }?.takeIf { it.exists() && it.length() == fgRef.size }
+                Entry(item, d, spec, img, fg)
             } catch (e: Exception) { null }
         }
         entries = list
@@ -142,7 +144,7 @@ object ContentSync {
             if (d.files.any { !ContentCatalog.safeUrl(it.url, api.base) }) throw PackFormatError(listOf("Adresse de fichier refusée."))
             itemDir(ctx, item.id).mkdirs()
             detailFile(ctx, item.id).writeText(ContentCatalog.encodeDetail(d))
-            if (files) ContentCatalog.mainFile(d, spec)?.let { download(ctx, item.id, it) }
+            if (files) ContentCatalog.neededFiles(d, spec).forEach { download(ctx, item.id, it) }
             true
         } catch (e: PackFormatError) { false } catch (e: kotlinx.serialization.SerializationException) { false } catch (e: IllegalArgumentException) { false }
         s = if (ok) s.copy(local = s.local + (item.id to item.version), etags = s.etags + listOfNotNull(r.etag?.let { item.id to it }))
@@ -165,17 +167,28 @@ object ContentSync {
 
     /** Image d'un contenu, téléchargée à la demande (Obtenir, Appliquer) si elle manque encore. */
     suspend fun ensureImage(ctx: Context, e: Entry): File? {
-        if (e.image != null) return e.image
-        val d = e.detail ?: return null
+        val d = e.detail ?: return e.image
+        val fgRef = ContentCatalog.foregroundFile(d, e.spec)
+        if (e.image != null && (fgRef == null || e.foreground != null)) return e.image
         val ref = ContentCatalog.mainFile(d, e.spec) ?: return null
-        val ok = try { withContext(Dispatchers.IO + NetSource("content")) { download(ctx, e.item.id, ref) } } catch (x: CancellationException) { throw x } catch (x: Exception) { false }
+        val ok = try { withContext(Dispatchers.IO + NetSource("content")) { ContentCatalog.neededFiles(d, e.spec).all { download(ctx, e.item.id, it) } } } catch (x: CancellationException) { throw x } catch (x: Exception) { false }
         if (ok) publish(ctx, readState(ctx))
-        return if (ok) file(ctx, e.item.id, ref.name) else null
+        return if (ok || e.image != null) file(ctx, e.item.id, ref.name) else null
+    }
+
+    /** Premier plan téléchargé d'un contenu (après [ensureImage]). */
+    fun foregroundOf(ctx: Context, e: Entry): File? {
+        val d = e.detail ?: return null
+        val ref = ContentCatalog.foregroundFile(d, e.spec) ?: return null
+        return file(ctx, e.item.id, ref.name)?.takeIf { it.exists() && it.length() == ref.size }
     }
 
     /** Packs téléchargés que l'utilisateur possède (Apparence › Mes packs). */
     fun ownedPacks(pg: Pg): List<Pair<ThemePackSpec, File?>> =
-        entries.filter { it.spec != null && pg.ownsContent(it.item.id) }.map { it.spec!! to it.image }
+        entries.filter { it.spec != null && (pg.ownsContent(it.item.id) || pg.ownsOwnPack(it.item)) }.map { it.spec!! to it.image }
+
+    /** Premier plan d'un pack en ligne possédé (par l'id du pack). */
+    fun foregroundFor(ctx: Context, packId: String): File? = entries.firstOrNull { it.spec?.id == packId }?.let { foregroundOf(ctx, it) }
 
     /** Fonds téléchargés possédés. */
     fun ownedBackgrounds(pg: Pg): List<Entry> = entries.filter { it.item.type == "background" && pg.ownsContent(it.item.id) }

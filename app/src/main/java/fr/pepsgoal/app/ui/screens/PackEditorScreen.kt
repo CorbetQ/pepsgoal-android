@@ -198,6 +198,7 @@ fun PackEditorScreen(ui: AppState, id: String?) {
                 try { Packs.imageFile(ctx, spec.id).writeBytes(Media.jpeg(b, 82)); true } catch (e: Exception) { false }
             }
             if (!ok) { ui.toast("Impossible de lire cette image. Essaie un fichier JPG ou PNG.", "image"); return@launch }
+            fr.pepsgoal.app.sys.Creator.photoChanged(ctx, spec.id)
             stamp = nowMs(); edit(spec.copy(wallpaper = PackWallpaper("image", file = "${spec.id}.jpg")))
         }
     }
@@ -225,7 +226,23 @@ fun PackEditorScreen(ui: AppState, id: String?) {
         else doSave(apply)
     }
 
+    val blocker = fr.pepsgoal.app.sys.Creator.blocker(ui)
     ScreenFrame(ui, if (!saved) "Créer mon pack" else "Modifier le pack", "Retour", { ui.back() }, icon = "palette", emoji = "🎨") {
+        // Tous les calculs (photo, PepsGoal Style, publication) sont faits par le serveur : connexion obligatoire
+        if (blocker != null) {
+            item("offline") {
+                Glass {
+                    CardHead("Connexion nécessaire", emoji = "📡")
+                    Muted(blocker, small = true)
+                    Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PButton("Réessayer", { ui.scope.launch { if (ui.pg.store.acct) ui.cloud.syncNow(force = true) }; ui.bump() }, Modifier.weight(1f), icon = "repeat")
+                        PButton("Retour", { ui.back() }, Modifier.weight(1f), kind = "ghost")
+                    }
+                }
+            }
+            item("help") { Hint("Tes packs déjà créés restent applicables hors ligne depuis Apparence › Mes packs.") }
+            return@ScreenFrame
+        }
         item("preview") {
             Glass {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -254,7 +271,7 @@ fun PackEditorScreen(ui: AppState, id: String?) {
         }
         item("colors") { PackColorsCard(spec) { edit(it) } }
         item("contrast") { ContrastCard(spec, checks) { edit(it); ui.toast("Contrastes corrigés.", "check") } }
-        item("wallpaper") { WallpaperCard(ui, spec, image, stamp, { edit(it) }) { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
+        item("wallpaper") { WallpaperCard(ui, spec, image, stamp, { edit(it) }, { stamp = nowMs() }) { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
         item("extras") { ExtrasCard(ui, spec) { edit(it) } }
         item("actions") {
             Glass {
@@ -262,6 +279,13 @@ fun PackEditorScreen(ui: AppState, id: String?) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     PButton("Enregistrer et appliquer", { save(true) }, Modifier.fillMaxWidth(), icon = "palette", kind = "primary")
                     PButton("Enregistrer", { save(false) }, Modifier.fillMaxWidth(), icon = "check")
+                    // Boutique des créateurs : 100 % du prix revient au créateur
+                    PButton(if (fr.pepsgoal.app.sys.Creator.publishedOf(ctx, spec.id) != null) "Mettre à jour dans la boutique" else "Vendre dans la boutique", {
+                        if (spec.name.isBlank()) { ui.toast("Donne un nom au pack.", "edit"); return@PButton }
+                        if (dirty || !saved) { val s2 = if (PackContrast.allOk(spec)) spec else PackContrast.fix(spec); val err = Packs.save(ui, s2)
+                            if (err != null) { ui.toast(err, "x"); return@PButton }; spec = PackLibrary.personal.first { it.id == s2.id }; saved = true; dirty = false }
+                        ui.push(Screen.PublishPack(spec.id))
+                    }, Modifier.fillMaxWidth(), icon = "star", kind = "ghost")
                     if (saved) {
                         PButton("Dupliquer", {
                             val c = Packs.duplicate(ui, spec)
@@ -271,7 +295,7 @@ fun PackEditorScreen(ui: AppState, id: String?) {
                             PButton("Copier le JSON", { copyText(ctx, PackFormat.encode(PackFormat.exportable(spec))); ui.toast("Pack copié : colle-le dans un message pour le partager.", "copy") }, Modifier.weight(1f), icon = "share")
                             PButton("Fichier", { exportFile.launch("${spec.name.ifBlank { "pack" }.replace(Regex("[^\\p{L}\\p{N} _-]"), "")}.pepsgoal-pack.json") }, Modifier.weight(1f), icon = "archive")
                         }
-                        if (spec.wallpaper.kind == "image") Muted("L’image personnelle reste sur ton téléphone : le pack exporté la remplace par un dégradé de ses couleurs.", small = true)
+                        if (spec.wallpaper.kind == "image") Muted("Le fichier JSON ne contient pas la photo : il la remplace par un dégradé de ses couleurs. Pour partager la photo, vends ou offre le pack dans la boutique.", small = true)
                         PButton("Supprimer", {
                             ui.confirm("Supprimer « ${spec.name} » ?", "Le pack disparaît de cet appareil. S’il est appliqué, l’interface revient au thème clair ou sombre.", "Supprimer") {
                                 Packs.delete(ui, spec.id); ui.back(); ui.toast("Pack supprimé.", "trash")
@@ -281,7 +305,7 @@ fun PackEditorScreen(ui: AppState, id: String?) {
                 }
             }
         }
-        item("help") { Hint("Les packs personnels restent sur cet appareil. Exporte-les en JSON pour les garder ou les partager ; une scène, une icône ou un effet ne s’appliquent que si tu les possèdes.") }
+        item("help") { Hint("Les packs personnels restent sur cet appareil. Exporte-les en JSON, ou publie-les dans la boutique : chaque achat te revient à 100 %. Une scène, une icône ou un effet ne s’appliquent que si tu les possèdes.") }
     }
 }
 
@@ -374,23 +398,34 @@ private fun ContrastCard(spec: ThemePackSpec, checks: List<ContrastCheck>, onFix
     }
 }
 
-/** Fond d'écran du pack : fond gratuit, scène possédée, dégradé ou photo. */
+/** Onglets du fond : « PepsGoal Style » est une photo calculée par le serveur (stylisée, ciel découpé). */
+private val WALL_TABS = listOf("free" to "Gratuit", "scene" to "Scène", "gradient" to "Dégradé", "image" to "Photo", "style" to "PepsGoal Style")
+private val WALL_EMOJI = mapOf("free" to "🎈", "scene" to "🏞️", "gradient" to "🌈", "image" to "📷", "style" to "✨")
+
+private fun PackWallpaper.tab(): String = if (kind == "image" && (styled == true || foreground != null)) "style" else kind
+
+/** Fond d'écran du pack : fond gratuit, scène possédée, dégradé, photo ou PepsGoal Style. */
 @Composable
-private fun WallpaperCard(ui: AppState, spec: ThemePackSpec, image: File, stamp: Long, onChange: (ThemePackSpec) -> Unit, onPick: () -> Unit) {
+private fun WallpaperCard(ui: AppState, spec: ThemePackSpec, image: File, stamp: Long, onChange: (ThemePackSpec) -> Unit, onStamp: () -> Unit, onPick: () -> Unit) {
     val pg = ui.pg; val u = pg.me()
     val w = spec.wallpaper
     val pp = rememberPackPal(spec)
+    var tab by remember(spec.id) { mutableStateOf(w.tab()) }
     Glass {
         CardHead("Fond d’écran", emoji = "🏞️")
-        Seg(listOf("free" to "Gratuit", "scene" to "Scène", "gradient" to "Dégradé", "image" to "Photo"), w.kind, { k ->
-            onChange(spec.copy(wallpaper = when (k) {
-                "scene" -> PackWallpaper("scene", pg.ownedScenes(u).firstOrNull()?.key ?: return@Seg)
-                "gradient" -> PackWallpaper("gradient", colors = listOf(spec.colors.deco.first(), spec.colors.bg))
-                "image" -> if (image.exists()) PackWallpaper("image", file = image.name) else { onPick(); return@Seg }
-                else -> PackWallpaper("free", "pop")
-            }))
+        PTabs(WALL_TABS.map { (k, l) -> l to WALL_EMOJI[k] }, WALL_TABS.indexOfFirst { it.first == tab }.coerceAtLeast(0), { i ->
+            val k = WALL_TABS[i].first
+            tab = k
+            when (k) {
+                "scene" -> pg.ownedScenes(u).firstOrNull()?.key?.let { onChange(spec.copy(wallpaper = PackWallpaper("scene", it))) }
+                "gradient" -> onChange(spec.copy(wallpaper = PackWallpaper("gradient", colors = listOf(spec.colors.deco.first(), spec.colors.bg))))
+                "image" -> if (image.exists()) onChange(spec.copy(wallpaper = PackWallpaper("image", file = image.name))) else onPick()
+                "style" -> {}
+                else -> onChange(spec.copy(wallpaper = PackWallpaper("free", "pop")))
+            }
         }, Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp))
+        if (tab == "style") { StylePanel(ui, spec, image, stamp, onChange, onStamp); return@Glass }
         when (w.kind) {
             "free" -> LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(PACK_FREE_BGS) { k ->
@@ -480,7 +515,7 @@ fun MyPacksCard(ui: AppState, extra: List<Pair<ThemePackSpec, File?>> = emptyLis
                     PackPreview(spec, img, Modifier.fillMaxWidth().height(150.dp), compact = true)
                     Text("${spec.emoji} ${spec.name}", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1)
                     if (!personal) Muted("En ligne", small = true)
-                    PButton(if (active) "Actif" else "Appliquer", { ui.scope.launch { ui.toast(Packs.apply(ui, spec, img), "palette") } }, Modifier.fillMaxWidth(),
+                    PButton(if (active) "Actif" else "Appliquer", { ui.scope.launch { ui.toast(Packs.apply(ui, spec, img, if (personal) null else fr.pepsgoal.app.sys.ContentSync.foregroundFor(ctx, spec.id)), "palette") } }, Modifier.fillMaxWidth(),
                         icon = if (active) "check" else "palette", small = true, kind = if (active) "ghost" else "normal", enabled = !active)
                     if (personal) PButton("Modifier", { ui.push(Screen.PackEditor(spec.id)) }, Modifier.fillMaxWidth(), icon = "edit", small = true, kind = "ghost")
                 }
@@ -490,6 +525,7 @@ fun MyPacksCard(ui: AppState, extra: List<Pair<ThemePackSpec, File?>> = emptyLis
             PButton("Créer mon pack", { ui.push(Screen.PackEditor()) }, Modifier.weight(1f), icon = "plus", kind = "primary")
             PButton("Importer", { importing = !importing; err = null }, Modifier.weight(1f), icon = "archive")
         }
+        PButton("Mes créations en boutique", { ui.push(Screen.Creator) }, Modifier.fillMaxWidth().padding(top = 10.dp), icon = "star", kind = "ghost")
         if (importing) {
             Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(text, { text = it; err = null }, "Pack au format JSON", Modifier.fillMaxWidth(), placeholder = "{\"schemaVersion\": 1, …}", singleLine = false, minLines = 4,

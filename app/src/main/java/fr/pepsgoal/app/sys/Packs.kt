@@ -6,6 +6,7 @@ import android.util.AtomicFile
 import fr.pepsgoal.app.AppState
 import fr.pepsgoal.app.ui.Media
 import fr.pepsgoal.app.ui.bgFile
+import fr.pepsgoal.app.ui.bgFgFile
 import fr.pepsgoal.core.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,7 +55,10 @@ object Packs {
         val copy = spec.duplicate()
         val img = imageFile(ui.app, spec.id)
         if (img.exists()) try { img.copyTo(imageFile(ui.app, copy.id), overwrite = true) } catch (e: Exception) {}
-        return if (save(ui, copy) == null) copy else null
+        Creator.copyExtras(ui.app, spec.id, copy.id)
+        val c = if (copy.wallpaper.kind == "image" && img.exists()) copy.copy(wallpaper = copy.wallpaper.copy(file = imageFile(ui.app, copy.id).name,
+            foreground = copy.wallpaper.foreground?.let { Creator.fgFile(ui.app, copy.id).name })) else copy
+        return if (save(ui, c) == null) c else null
     }
 
     /** Supprime le pack ; s'il était appliqué, l'interface revient au thème de base équivalent. */
@@ -64,6 +68,7 @@ object Packs {
         if (u != null && u.settings.theme == spec.themeSetting()) { u.settings.theme = if (spec.dark) "dark" else "light"; ui.pg.store.commit() }
         try { write(ui.app, PackLibrary.personal.filterNot { it.id == id }) } catch (e: Exception) {}
         imageFile(ui.app, id).delete()
+        Creator.deleteExtras(ui.app, id)
         ui.themeTick++; ui.bump()
     }
 
@@ -80,14 +85,17 @@ object Packs {
      * Comme les packs de la boutique, il coupe Material You et les décors saisonniers automatiques.
      * [image] : fichier image du pack (null : celui du pack personnel). Renvoie le message à afficher.
      */
-    suspend fun apply(ui: AppState, spec: ThemePackSpec, image: File? = null): String {
+    suspend fun apply(ui: AppState, spec: ThemePackSpec, image: File? = null, foreground: File? = null): String {
         val ctx = ui.app
         val src = image ?: imageFile(ctx, spec.id)
+        // Premier plan détouré (PepsGoal Style) : la météo passe entre le ciel et lui, si le pack le demande
+        val fg = (foreground ?: Creator.fgFile(ctx, spec.id)).takeIf { spec.wallpaper.kind == "image" && spec.wallpaper.foreground != null && spec.wallpaper.weather != false }
         val imageReady = spec.wallpaper.kind == "image" && withContext(Dispatchers.IO) {
             try {
                 if (!src.exists()) return@withContext false
                 val b = BitmapFactory.decodeFile(src.path) ?: return@withContext false
                 src.copyTo(bgFile(ctx), overwrite = true)
+                if (fg != null && fg.exists()) fg.copyTo(bgFgFile(ctx), overwrite = true) else bgFgFile(ctx).delete()
                 ui.prefs.bgPalette = Media.palette(b); ui.prefs.bgStamp = nowMs()
                 true
             } catch (e: Exception) { false }
@@ -106,7 +114,7 @@ object Packs {
         val ok = withContext(Dispatchers.IO) {
             try {
                 val b = BitmapFactory.decodeFile(image.path) ?: return@withContext false
-                image.copyTo(bgFile(ctx), overwrite = true)
+                image.copyTo(bgFile(ctx), overwrite = true); bgFgFile(ctx).delete()
                 ui.prefs.bgPalette = Media.palette(b); ui.prefs.bgStamp = nowMs(); true
             } catch (e: Exception) { false }
         }
