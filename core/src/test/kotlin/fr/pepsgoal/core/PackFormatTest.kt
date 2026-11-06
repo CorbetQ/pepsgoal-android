@@ -72,6 +72,7 @@ class PackFormatTest {
         assertEquals(21.0, PackContrast.ratio("#000000", "#FFFFFF"), 1e-6)
         assertEquals(1.0, PackContrast.ratio("#777777", "#777777"), 1e-6)
         assertEquals(4.48, PackContrast.ratio("#777777", "#FFFFFF"), .01)
+        assertEquals("4,4:1", fmtContrast(4.48)); assertEquals("21:1", fmtContrast(21.0)); assertEquals("4,5:1", fmtContrast(4.5))
     }
 
     @Test fun lowContrastIsDetectedAndFixed() {
@@ -165,5 +166,15 @@ class PackFormatTest {
         f.pg.repriceShop(); assertEquals(150, f.user.shopSpent)
         assertNotNull(f.pg.obtainContent("cher", 100_000))
         assertFalse(f.pg.ownsContent("cher"))
+    }
+
+    @Test fun hslRoundTripsThePalette() {
+        for (c in PACK_PALETTE + listOf("#123456", "#7F7F7F", "#00FF00")) {
+            val (h, s, l) = PackColor.toHsl(c).let { Triple(it[0], it[1], it[2]) }
+            val back = PackColor.fromHsl(h, s, l)
+            assertTrue(PackContrast.ratio(c, back) < 1.03, "$c -> $back")
+        }
+        assertEquals("#FF0000", PackColor.fromHsl(0.0, 1.0, .5)); assertEquals("#0000FF", PackColor.fromHsl(240.0, 1.0, .5))
+        assertTrue(PACK_PALETTE.all(PackFormat::isHex))
     }
 }

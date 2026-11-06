@@ -62,6 +62,8 @@ class PepsApp : Application() {
         fr.pepsgoal.core.shopExtraPrices = fr.pepsgoal.app.sys.AppIcons.ALL.associate { "icon:${it.key}" to it.price }
         fr.pepsgoal.core.shopExtraNames = fr.pepsgoal.app.sys.AppIcons.ALL.associate { "icon:${it.key}" to it.label }
         fr.pepsgoal.app.ui.FluentEmoji.load(this)
+        // Packs de thème personnels : lus avant le premier rendu (le thème « m:@<id> » se résout aussitôt)
+        fr.pepsgoal.app.sys.Packs.load(this)
         secrets = KeystoreSecrets(this)
         store = Store(FileDb(this), scope)
         pg = Pg(store)

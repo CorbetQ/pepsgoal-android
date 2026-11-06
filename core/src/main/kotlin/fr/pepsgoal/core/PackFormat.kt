@@ -169,6 +169,9 @@ fun ThemePackSpec.duplicate(id: String = newPackId(), now: Long = nowMs(), suffi
 /** Un contrôle de lisibilité : [ratio] mesuré, [min] exigé. */
 data class ContrastCheck(val label: String, val ratio: Double, val min: Double = 4.5) { val ok: Boolean get() = ratio >= min - 1e-9 }
 
+/** Rapport de contraste affiché « 4,4:1 » : arrondi à l'inférieur, un 4,48 ne s'affiche jamais « 4,5 ». */
+fun fmtContrast(r: Double): String = (Math.floor(r * 10) / 10).let { v -> (if (v % 1.0 == 0.0) "${v.toInt()}" else "%.1f".format(java.util.Locale.FRANCE, v)) + ":1" }
+
 object PackContrast {
     const val PLUM_HEX = "#2A1420"
     const val WHITE_HEX = "#FFFFFF"
@@ -330,3 +333,30 @@ fun Pg.obtainContent(id: String, price: Int): String? {
     if (price <= 0) { u.shopOwned = (u.shopOwned + key).toMutableList(); store.commit(); return null }
     return buy(key, price)
 }
+
+/* ---------------------------------------------------------------- Sélecteur de couleur de l'éditeur */
+
+object PackColor {
+    /** Teinte (0–360), saturation et luminosité (0–1) d'une couleur « #RRGGBB ». */
+    fun toHsl(hex: String): DoubleArray {
+        val v = hex.removePrefix("#").chunked(2).map { it.toInt(16) / 255.0 }
+        val mx = v.max(); val mn = v.min(); val l = (mx + mn) / 2; val d = mx - mn
+        if (d == 0.0) return doubleArrayOf(0.0, 0.0, l)
+        val s = if (l > .5) d / (2 - mx - mn) else d / (mx + mn)
+        val h = when (mx) { v[0] -> ((v[1] - v[2]) / d + (if (v[1] < v[2]) 6 else 0)); v[1] -> (v[2] - v[0]) / d + 2; else -> (v[0] - v[1]) / d + 4 } * 60
+        return doubleArrayOf(h, s, l)
+    }
+
+    fun fromHsl(h: Double, s: Double, l: Double): String {
+        val hh = ((h % 360) + 360) % 360; val ss = s.coerceIn(0.0, 1.0); val ll = l.coerceIn(0.0, 1.0)
+        val a = ss * minOf(ll, 1 - ll)
+        fun f(n: Int): Int { val k = (n + hh / 30) % 12; return Math.round((ll - a * maxOf(-1.0, minOf(k - 3, 9 - k, 1.0))) * 255).toInt() }
+        return "#%02X%02X%02X".format(f(0), f(8), f(4))
+    }
+}
+
+/** Nuancier de l'éditeur : neutres clairs et sombres, puis néons Braise Pop. */
+val PACK_PALETTE: List<String> = listOf(
+    "#FFFFFF", "#FFF7F0", "#FFEDE1", "#F2DED1", "#E8EDF2", "#F6F1E7", "#2A1420", "#170F1C", "#241A2B", "#0A1024", "#121315", "#000000",
+    "#FFB000", "#FF4A12", "#FF3D96", "#FFD23F", "#B6FF2E", "#2EF2B0", "#22D3FF", "#4D9BFF", "#A98BFF", "#FF7AD9", "#FF5A5A", "#00D1B2",
+)

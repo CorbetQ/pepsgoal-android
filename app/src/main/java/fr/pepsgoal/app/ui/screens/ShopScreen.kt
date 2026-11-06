@@ -91,6 +91,7 @@ fun ShopScreen(ui: AppState) {
                     Muted("Icône + fond + couleurs + ambiance assortis. −25 % sur les éléments manquants ; tes achats précédents sont conservés et déduits.", small = true)
                 }
             }
+            item("my-packs") { MyPacksCard(ui) }
             val packs = THEME_PACKS.filter { it.eggKey == null || pg.packUnlocked(it, u) }
                 .sortedWith(compareBy<ThemePack> { if (it.eggKey != null) 0 else if (pg.packQuote(it, u).owned) 1 else 2 }
                     .thenBy { !pg.packQuote(it, u).available })

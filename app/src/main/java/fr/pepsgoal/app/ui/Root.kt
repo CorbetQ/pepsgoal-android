@@ -212,6 +212,7 @@ fun PepsRoot(ui: AppState) {
                         is Screen.Quest -> QuestScreen(ui)
                         is Screen.Season -> SeasonScreen(ui)
                         is Screen.Month -> MonthScreen(ui, sc.key)
+                        is Screen.PackEditor -> PackEditorScreen(ui, sc.id)
                         null -> {}
                     }
                 }
