@@ -188,9 +188,12 @@ fun MomentsCard(ui: AppState) {
         // Réussite par jour de la semaine
         Row(Modifier.fillMaxWidth().height(96.dp).padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
             m.wd.forEachIndexed { i, v ->
-                Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
+                Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                     val f = (v ?: 0.0).toFloat().coerceIn(.04f, 1f)
-                    Box(Modifier.fillMaxWidth().fillMaxHeight(f * .78f).clip(RoundedCornerShape(6.dp)).background(if (i == m.bestWd) vivid(p.flame) else if (v == null) p.surface2 else p.heat(2)))
+                    // La barre occupe l'espace au-dessus de la lettre : toutes les lettres restent sur la même ligne
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                        Box(Modifier.fillMaxWidth().fillMaxHeight(f).clip(RoundedCornerShape(6.dp)).background(if (i == m.bestWd) vivid(p.flame) else if (v == null) p.surface2 else p.heat(2)))
+                    }
                     Text(WD[i], fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3, modifier = Modifier.padding(top = 4.dp))
                 }
             }
@@ -205,7 +208,11 @@ fun MomentsCard(ui: AppState) {
                 drawRoundRect(if (m.hours[h] == 0) track else pal.heat(1 + (f * 3.99f).toInt()), Offset(h * bw + bw * .15f, size.height - bh), Size(bw * .7f, bh), CornerRadius(3.dp.toPx()))
             }
         }
-        Row(Modifier.fillMaxWidth()) { listOf("0 h", "6 h", "12 h", "18 h", "24 h").forEachIndexed { i, l -> Text(l, Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3) } }
+        // Repères sous les barres : 0, 6, 12 et 18 h au début de leur quart, 24 h au bout de l'axe
+        Box(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth()) { listOf("0 h", "6 h", "12 h", "18 h").forEach { l -> Text(l, Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3) } }
+            Text("24 h", Modifier.align(Alignment.CenterEnd), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = p.ink3)
+        }
         if (m.goals.isNotEmpty()) {
             Spacer(Modifier.height(8.dp)); Eyebrow("Tes heures habituelles")
             m.goals.forEach { (g, h) ->

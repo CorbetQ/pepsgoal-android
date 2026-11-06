@@ -102,7 +102,7 @@ object FluentEmoji {
     }
 }
 
-private val NBSP_BEFORE = Regex(" [?!:;»]")
+private val NBSP_BEFORE = Regex(" [?!:;»%]")
 
 /** Texte de l'application : identique au texte Material, avec les emojis remplacés par les Fluent Emoji. */
 @Composable
