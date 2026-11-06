@@ -249,7 +249,8 @@ val SHOP_MODES = listOf(
     ShopMode("linen", "Lin", "Lin naturel, bois clair et sauge", 150, false, "#F2EEE6", "#2A2620", "#FCFAF6", listOf("#E2D8C6", "#D8E0D0", "#EAD6CC"), listOf("#A8865A", "#8A6A44", "#5E7A6A")),
 )
 
-fun shopMode(theme: String?): ShopMode? = if (theme != null && theme.startsWith("m:")) (SHOP_MODES + Eggs.SECRET_MODES).firstOrNull { "m:${it.key}" == theme } else null
+fun shopMode(theme: String?): ShopMode? = if (theme != null && theme.startsWith("m:@")) PackLibrary.forTheme(theme)?.toMode()
+    else if (theme != null && theme.startsWith("m:")) (SHOP_MODES + Eggs.SECRET_MODES).firstOrNull { "m:${it.key}" == theme } else null
 
 /** Nom lisible d'un thème : thème de base ou ambiance. */
 fun themeName(theme: String): String = shopMode(theme)?.name ?: THEMES.firstOrNull { it.first == theme }?.second ?: "Auto"

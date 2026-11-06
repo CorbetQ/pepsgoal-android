@@ -1,6 +1,7 @@
 package fr.pepsgoal.core
 
-val ShopMode.followsDayNight: Boolean get() = key !in setOf("sco", "srfc", "psg", "fcb", "fcn")
+/** Ambiances fixes : clubs et packs personnels (« @… »), qui gardent leurs propres couleurs. */
+val ShopMode.followsDayNight: Boolean get() = !key.startsWith("@") && key !in setOf("sco", "srfc", "psg", "fcb", "fcn")
 
 /** Resolve both daylight variants without changing the owned ambiance key or its price. */
 fun ShopMode.forDark(targetDark: Boolean): ShopMode {
