@@ -143,6 +143,8 @@ sealed class Screen {
     object Season : Screen()
     /** Tableau de bord « Mon mois » ([key] : « AAAA-MM », par défaut le mois en cours). */
     class Month(val key: String? = null) : Screen()
+    /** Éditeur d'un pack de thème personnel ([id] null : nouveau pack). */
+    class PackEditor(val id: String? = null) : Screen()
 }
 
 /** Message éphémère en bas de l'écran, avec une action facultative (« Annuler »). */

@@ -82,6 +82,8 @@ fun AppearancePage(ui: AppState, u: User) {
             Muted("Retrouve tes styles complets : icône, fond, couleurs et ambiance. Les achats existants et les surprises découvertes sont reconnus.", small = true)
             PButton("Voir mes packs", { ui.shopTab = "packs"; ui.push(Screen.Shop) }, Modifier.padding(top = 10.dp), icon = "palette")
         }
+        MyPacksCard(ui, fr.pepsgoal.app.sys.ContentSync.ownedPacks(ui.pg))
+        OnlineBackgroundsCard(ui)
         ThemeSection(ui, u, dynOk)
         ColorSection(ui, u, dynOk)
         BackgroundSection(ui, u)
@@ -238,7 +240,7 @@ private fun ThemeSection(ui: AppState, u: User, dynOk: Boolean) {
         if (s.theme == "system" || shopMode(s.theme)?.followsDayNight == true) SetRow("Suivre le soleil", "Clair du lever au coucher du soleil (à l’heure de ta ville météo), sombre la nuit, au lieu du réglage du téléphone.") {
             PSwitch(ui.prefs.sunTheme, { ui.prefs.sunTheme = it; ui.themeTick++ })
         }
-        SetRow("Couleurs Material You", if (cur?.followsDayNight == false) "Cette ambiance conserve les couleurs de ton club." else if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface." else "Nécessite Android 12 ou plus récent.") {
+        SetRow("Couleurs Material You", if (cur?.key?.startsWith("@") == true) "Ce pack garde ses propres couleurs." else if (cur?.followsDayNight == false) "Cette ambiance conserve les couleurs de ton club." else if (dynOk) "Les couleurs de ton fond d’écran Android sur toute l’interface." else "Nécessite Android 12 ou plus récent.") {
             PSwitch(ui.prefs.materialYou && allowDynamicColors, { ui.prefs.materialYou = it; ui.themeTick++; ui.toast(if (it) "Couleurs Material You activées." else "Couleurs PepsGoal rétablies.", "palette") }, enabled = allowDynamicColors)
         }
         if (ui.prefs.materialYou && allowDynamicColors) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -141,3 +141,31 @@ essai d’ambiance et cadeau. Les mêmes filtres protègent les éléments secre
 la conservation de tous les articles dans le classement. Tests core et compilation
 Kotlin téléphone/Wear exécutés avec succès. Sans appareil connecté, le défilement,
 TalkBack et les grands textes restent à vérifier sur téléphone.
+
+## Packs personnels et contenus en ligne — 9.2
+
+- **Format** : `core/.../PackFormat.kt`, JSON versionné (`schemaVersion` 1,
+  `type` `theme_pack`) : nom, emoji, clair ou sombre, couleurs (`bg`, `ink`,
+  `surface`, `surface2`, `edge`, trois arrêts `accent`, `deco`), fond d'écran
+  (`scene`, `free`, `gradient`, `image`), `icon` et `fx` facultatifs. Champs
+  inconnus ignorés ; une version plus récente est refusée avec un message clair.
+  Le même format sert à l'export, à l'import et aux contenus du serveur
+  (`docs/content-api.md` de pepsgoal-platform).
+- **Éditeur** (Apparence › Mes packs, Boutique › Packs › « Créer mon pack ») :
+  aperçu en direct (carte, ligne d'objectif, bouton, barre d'onglets), contrôle
+  WCAG 4,5:1 (texte sur fond, cartes, creux et flamme) avec correction proposée,
+  enregistrer, appliquer, dupliquer, supprimer, exporter (copie ou fichier),
+  importer (texte collé ou fichier ; toujours une nouvelle copie).
+- **Application** : thème `m:@<id>` (ambiance fixe, sans Material You), accent du
+  pack, fond `s:`, fond gratuit, dégradé `g:#…,#…` ou image copiée en « Mon
+  image ». Une scène, une icône ou un effet non possédés sont ignorés et signalés.
+- **Stockage** : `filesDir/packs/library.json` et une image par pack, sur
+  l'appareil uniquement (40 packs au plus). L'export remplace l'image par un dégradé.
+- **Contenus en ligne** (`ContentSync`, `core/.../ContentCatalog.kt`) : catalogue
+  relevé à l'ouverture de la boutique ou d'Apparence (15 minutes au moins entre
+  deux relèves) et une fois par jour en arrière-plan (réseau non limité, batterie
+  correcte) ; ETag, cache `filesDir/content`, sha256 et taille vérifiés, contenu
+  validé avant usage (rejeté sinon, jusqu'à sa prochaine version). Images
+  téléchargées d'office sur réseau non limité, sinon à la demande. Achat au prix
+  en flammes par `buy` ; possession `content:<id>@<prix>` synchronisée, comptée
+  par le recalcul des prix.

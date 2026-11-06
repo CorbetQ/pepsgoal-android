@@ -54,7 +54,10 @@ fun Backdrop(kind: String, sky: Weather.Sky?, snow: Boolean, bgStamp: Long, fx: 
             "custom" -> CustomBg(bgStamp)
             "plain" -> Canvas(Modifier.fillMaxSize()) { drawRect(if (PLAIN_BACKGROUND_SOURCE == "theme.bg") p.bg else hex(PLAIN_BACKGROUND_SOURCE)) }
             "grid", "stars", "waves", "aurora", "mesh" -> FreeBg(kind)
-            else -> if (kind.startsWith("s:")) SceneBg(kind.removePrefix("s:")) else PopBg()
+            // Dégradé d'un pack personnel (« g:#AAAAAA,#BBBBBB ») : un seul aplat dessiné, aucune animation
+            else -> if (kind.startsWith("s:")) SceneBg(kind.removePrefix("s:"))
+                else if (kind.startsWith("g:")) { val g = remember(kind) { fr.pepsgoal.core.gradientColors(kind)?.map(::hex) }; if (g != null) Canvas(Modifier.fillMaxSize()) { drawRect(Brush.verticalGradient(g)) } else PopBg() }
+                else PopBg()
         }
         // Effets décoratifs : coupés par Paramètres › Performance (ou le mode Économie)
         if (Perf.flags.fx) {

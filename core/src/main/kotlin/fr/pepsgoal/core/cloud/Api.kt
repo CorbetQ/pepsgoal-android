@@ -250,6 +250,24 @@ class Api(var base: String, private val secrets: Secrets, private val userAgent:
         } catch (e: IOException) { throw ApiError(0, "offline", "Connexion impossible") }
     }
 
+    /** Réponse brute d'une lecture publique : code, corps et ETag. */
+    class Raw(val code: Int, val bytes: ByteArray, val etag: String?)
+
+    /**
+     * Lecture publique sans jeton (catalogue des contenus, fichiers associés) : [pathOrUrl] relatif à l'API ou adresse
+     * complète, [etag] envoyé en If-None-Match (304 attendu si rien n'a changé). [long] : délai d'un téléchargement
+     * de fichier (120 s au lieu de 25).
+     */
+    suspend fun publicGet(pathOrUrl: String, etag: String? = null, long: Boolean = false): Raw {
+        if (forceOffline) throw ApiError(0, "offline", "Mode hors ligne activé : repasse en ligne dans Paramètres › Données.")
+        val rb = Request.Builder().url(if (pathOrUrl.startsWith("http")) pathOrUrl else url(pathOrUrl)).header("User-Agent", userAgent)
+        etag?.let { rb.header("If-None-Match", it) }
+        try {
+            val r = request((if (long) uploadHttp else http).newCall(rb.build()))
+            return Raw(r.code, r.bytes, r.etag)
+        } catch (e: IOException) { throw ApiError(0, "offline", "Connexion impossible") }
+    }
+
     /** Requête directe vers un autre service (Open-Meteo, mode sans compte). */
     suspend fun external(fullUrl: String): JsonElement {
         try {

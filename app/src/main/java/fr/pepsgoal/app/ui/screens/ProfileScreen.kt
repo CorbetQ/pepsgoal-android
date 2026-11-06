@@ -131,7 +131,8 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
                     for (t in 1..LEVEL_TIERS.size) Flame(if (t == lv.tier) 26.dp else 18.dp, dim = t > lv.tier, colors = tierColors(t))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Muted(lv.nextTierName?.let { "Palier ${lv.tierName} · ${Math.round(lv.tierPct * 100)} % vers ${it}" } ?: "Dernier palier atteint : ${lv.tierName}", Modifier.weight(1f), small = true, maxLines = 1)
+                    // Une ligne qui rétrécit pour tenir (jamais rognée au début)
+                    FitText(lv.nextTierName?.let { "Palier ${lv.tierName} · ${Math.round(lv.tierPct * 100)} % vers ${it}" } ?: "Dernier palier atteint : ${lv.tierName}", Modifier.weight(1f).padding(end = 8.dp), size = 13, min = 9, color = p.ink2, weight = FontWeight.SemiBold)
                     Text("Paliers", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = p.flameInk)
                     Pi("chevronright", size = 16.dp, tint = p.flameInk)
                 }
@@ -139,7 +140,7 @@ private fun ProfileHero(ui: AppState, u: User, lv: Level) {
             Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (pg.isGuest(u)) PButton("Créer un compte", { ui.push(Screen.Settings("account")) }, icon = "user", kind = "primary", small = true)
                 else PButton("Modifier le profil", { ui.push(Screen.Settings("account")) }, icon = "edit", small = true)
-                PButton("Apparence", { ui.push(Screen.Settings("appearance")) }, icon = "palette", small = true, kind = "ghost")
+                IconBtn("palette", "Apparence", { ui.push(Screen.Settings("appearance")) })
             }
         }
         // Médaillon et couronne, au-dessus de la carte
