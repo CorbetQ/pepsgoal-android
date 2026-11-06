@@ -85,7 +85,7 @@ internal fun PackWallpaperView(spec: ThemePackSpec, image: File?, stamp: Long = 
             "gradient" -> Box(Modifier.fillMaxSize().background(Brush.verticalGradient(w.colors.orEmpty().map(::hex).ifEmpty { listOf(p.bg, p.bg) })))
             "image" -> if (image != null && image.exists()) AsyncImage(ImageRequest.Builder(ctx).data(image).memoryCacheKey("pack:${image.path}:$stamp").build(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 else Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(hex(spec.colors.deco.first()), p.bg))))
-            else -> if (w.key == "pop" || w.key == null) PopBg(still = true) else Backdrop(w.key, null, false, 0L)
+            else -> { val k = w.key; if (k == null || k == "pop") PopBg(still = true) else Backdrop(k, null, false, 0L) }
         }
     }
 }
@@ -225,7 +225,7 @@ fun PackEditorScreen(ui: AppState, id: String?) {
         else doSave(apply)
     }
 
-    ScreenFrame(ui, if (existing == null) "Créer mon pack" else "Modifier le pack", "Retour", { ui.back() }, icon = "palette", emoji = "🎨") {
+    ScreenFrame(ui, if (!saved) "Créer mon pack" else "Modifier le pack", "Retour", { ui.back() }, icon = "palette", emoji = "🎨") {
         item("preview") {
             Glass {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
