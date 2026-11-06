@@ -38,7 +38,7 @@ private suspend fun applyOnline(ui: AppState, e: ContentSync.Entry) {
     val spec = e.spec
     if (spec != null) {
         if (spec.wallpaper.kind == "image" && img == null) { ui.toast("Image du pack indisponible hors ligne : réessaie une fois connecté.", "cloudoff"); return }
-        ui.toast(Packs.apply(ui, spec, img), "palette")
+        ui.toast(Packs.apply(ui, spec, img, ContentSync.foregroundOf(ctx, e)), "palette")
     } else {
         if (img == null) { ui.toast("Image du fond indisponible hors ligne : réessaie une fois connecté.", "cloudoff"); return }
         ui.toast(if (Packs.applyBackground(ui, img)) "Fond « ${e.item.name} » appliqué." else "Ce fond n’a pas pu être appliqué.", "image")
@@ -61,25 +61,32 @@ private fun OnlinePreview(e: ContentSync.Entry, modifier: Modifier) {
 @Composable
 private fun OnlineTile(ui: AppState, e: ContentSync.Entry) {
     val p = LocalPal.current; val pg = ui.pg; val u = pg.me()
-    val owned = pg.ownsContent(e.item.id, u)
+    val own = pg.ownsOwnPack(e.item)
+    val owned = own || pg.ownsContent(e.item.id, u)
     val active = e.spec != null && pg.packSpecActive(e.spec, u)
     val price = e.item.price
     val wallet = pg.wallet(u)
     fun obtain() {
+        // Achat enregistré par le serveur : 100 % du prix revient au créateur du pack
         val run = {
-            val err = pg.obtainContent(e.item.id, price)
-            if (err != null) ui.toast(err, "x")
-            else { ui.toast("« ${e.item.name} » est à toi !", "star"); ui.scope.launch { applyOnline(ui, e) } }
+            ui.scope.launch {
+                val err = fr.pepsgoal.app.sys.Creator.buy(ui, e.item)
+                if (err != null) ui.toast(err, "x")
+                else { ui.toast("« ${e.item.name} » est à toi !", "star"); ui.bump(); applyOnline(ui, e) }
+            }
         }
+        val creator = if (e.item.creatorId != null && e.item.author.isNotBlank()) " Le prix revient entièrement à ${e.item.author}." else ""
         if (price <= 0) run()
-        else ui.confirm("Acheter « ${e.item.name} » ?", "$price flammes seront retirées de ton porte-monnaie ($wallet disponibles). Ton niveau ne baisse pas.", "Acheter $price 🔥", danger = false) { run() }
+        else ui.confirm("Acheter « ${e.item.name} » ?", "$price flammes seront retirées de ton porte-monnaie ($wallet disponibles). Ton niveau ne baisse pas.$creator", "Acheter $price 🔥", danger = false) { run() }
     }
     Column(Modifier.width(150.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         OnlinePreview(e, Modifier.fillMaxWidth().height(170.dp))
         Text(e.spec?.let { "${it.emoji} ${e.item.name}" } ?: e.item.name, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1)
-        if (e.item.author.isNotBlank()) Muted("par ${e.item.author}", small = true, maxLines = 1)
+        if (e.item.author.isNotBlank()) Muted(if (e.item.creatorId != null) "par ${e.item.author} · créateur" else "par ${e.item.author}", small = true, maxLines = 1)
+        if (e.item.sales > 0) Muted(if (e.item.sales == 1) "1 achat" else "${fmtNum(e.item.sales)} achats", small = true, maxLines = 1)
         if (e.item.description.isNotBlank()) Muted(e.item.description, small = true, maxLines = 2)
         when {
+            own && !active -> PButton("Ton pack · Appliquer", { ui.scope.launch { applyOnline(ui, e) } }, Modifier.fillMaxWidth(), icon = "palette", small = true)
             active -> PButton("Actif", {}, Modifier.fillMaxWidth(), icon = "check", small = true, kind = "ghost", enabled = false)
             owned -> PButton("Appliquer", { ui.scope.launch { applyOnline(ui, e) } }, Modifier.fillMaxWidth(), icon = "palette", small = true)
             else -> PButton(if (price <= 0) "Obtenir · gratuit" else "Obtenir · ${fmtNum(price)} 🔥", { obtain() }, Modifier.fillMaxWidth(),
@@ -93,22 +100,25 @@ private fun OnlineTile(ui: AppState, e: ContentSync.Entry) {
 @Composable
 fun OnlineContentCard(ui: AppState) {
     val ctx = LocalContext.current
-    LaunchedEffect(Unit) { ContentSync.refresh(ctx) }
+    LaunchedEffect(Unit) { ContentSync.refresh(ctx); fr.pepsgoal.app.sys.Creator.syncSales(ui); fr.pepsgoal.app.sys.Creator.restorePurchases(ui) }
     val entries = ContentSync.entries
     Glass {
-        CardHead("Nouveautés en ligne", emoji = "🛰️") { if (entries.isNotEmpty()) Count(entries.size) }
+        CardHead("Boutique des créateurs", emoji = "🛰️") { if (entries.isNotEmpty()) Count(entries.size) }
         when {
             entries.isEmpty() && ContentSync.busy -> Muted("Recherche des nouveautés…", small = true)
             entries.isEmpty() && ContentSync.offline -> Muted("Hors ligne : les nouveautés s’afficheront à ta prochaine connexion.", small = true)
             entries.isEmpty() -> Muted("Aucune nouveauté pour le moment. Reviens bientôt !", small = true)
-            else -> Muted("Packs et fonds créés pour PepsGoal, à télécharger. Ceux que tu obtiens restent dans Apparence.", small = true)
+            else -> Muted("Packs et fonds créés par PepsGoal et par la communauté. Chaque achat revient à 100 % à son créateur ; ceux que tu obtiens restent dans Apparence.", small = true)
         }
         if (ContentSync.offline && entries.isNotEmpty()) Chip("Hors ligne · catalogue gardé sur l’appareil", "cloudoff", modifier = Modifier.padding(top = 6.dp))
         if (entries.isNotEmpty()) LazyRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(entries, key = { it.item.id }) { e -> OnlineTile(ui, e) }
         }
-        PButton(if (ContentSync.busy) "Actualisation…" else "Actualiser", { ui.scope.launch { ContentSync.refresh(ctx, force = true) } },
-            Modifier.padding(top = 10.dp), icon = "repeat", small = true, kind = "ghost", enabled = !ContentSync.busy)
+        Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PButton(if (ContentSync.busy) "Actualisation…" else "Actualiser", { ui.scope.launch { ContentSync.refresh(ctx, force = true) } },
+                Modifier.weight(1f), icon = "repeat", small = true, kind = "ghost", enabled = !ContentSync.busy)
+            PButton("Vendre mes packs", { ui.push(fr.pepsgoal.app.Screen.Creator) }, Modifier.weight(1f), icon = "star", small = true)
+        }
     }
 }
 

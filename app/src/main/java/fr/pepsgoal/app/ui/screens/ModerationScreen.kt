@@ -33,9 +33,9 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 
-private val MOD_EMOJI = mapOf("accounts" to "👥", "reports" to "🚩", "appeals" to "⚖️", "maint" to "🛠️", "news" to "📣", "server" to "🖥️")
+private val MOD_EMOJI = mapOf("accounts" to "👥", "reports" to "🚩", "appeals" to "⚖️", "maint" to "🛠️", "news" to "📣", "shop" to "🛍️", "server" to "🖥️")
 val MOD_TABS = listOf(Triple("accounts", "Comptes", "users"), Triple("reports", "Signalements", "flag"), Triple("appeals", "Contestations", "ban"),
-    Triple("maint", "Maintenances", "gauge"), Triple("news", "Annonces", "send"), Triple("server", "Serveur", "server"))
+    Triple("maint", "Maintenances", "gauge"), Triple("news", "Annonces", "send"), Triple("shop", "Boutique", "star"), Triple("server", "Serveur", "server"))
 
 @Composable
 fun ModerationScreen(ui: AppState) {
@@ -53,6 +53,7 @@ fun ModerationScreen(ui: AppState) {
             "appeals" -> item("b") { ModAppeals(ui) }
             "maint" -> item("b") { ModMaint(ui) }
             "news" -> item("b") { ModNews(ui) }
+            "shop" -> item("b") { ModShop(ui) }
             "server" -> item("b") { ModServer(ui) }
             else -> item("b") { ModAccounts(ui) }
         }

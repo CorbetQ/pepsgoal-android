@@ -31,7 +31,15 @@ data class PackColors(
  * « gradient » (dégradé vertical de [colors]), « image » (image personnelle ou fichier [file] du contenu téléchargé).
  */
 @Serializable
-data class PackWallpaper(val kind: String, val key: String? = null, val colors: List<String>? = null, val file: String? = null)
+data class PackWallpaper(
+    val kind: String, val key: String? = null, val colors: List<String>? = null, val file: String? = null,
+    /** 10.0 « PepsGoal Style » : premier plan détouré (WebP avec alpha) ; la météo passe entre le ciel et lui. */
+    val foreground: String? = null,
+    /** Adaptation météo voulue (ciel teinté selon le temps, pluie et neige derrière le premier plan). */
+    val weather: Boolean? = null,
+    /** Image stylisée par le serveur. */
+    val styled: Boolean? = null,
+)
 
 @Serializable
 data class ThemePackSpec(
@@ -71,6 +79,9 @@ const val PACK_JSON_MAX = 16 * 1024
 private val PACK_JSON = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false }
 private val PACK_JSON_PRETTY = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false; prettyPrint = true }
 
+/** Nom de fichier d'un pack : sans chemin, 128 caractères au plus. */
+fun safePackFile(n: String): Boolean = n.isNotBlank() && n.length <= 128 && !n.contains("..") && !n.contains('/') && !n.contains('\\')
+
 object PackFormat {
     fun isHex(s: String?): Boolean = s != null && HEX.matches(s)
 
@@ -96,7 +107,10 @@ object PackFormat {
             "scene" -> if (w.key.isNullOrBlank() || (checkCatalog && ALL_BGS.none { it.key == w.key })) e += "Scène inconnue : ${w.key}."
             "free" -> if (w.key == null || w.key !in PACK_FREE_BGS) e += "Fond gratuit inconnu : ${w.key}."
             "gradient" -> { val g = w.colors.orEmpty(); if (g.size !in 2..4 || !g.all(::isHex)) e += "Le dégradé doit compter deux à quatre couleurs « #RRGGBB »." }
-            "image" -> if (w.file != null && (w.file.isBlank() || w.file.length > 128 || w.file.contains("..") || w.file.contains('/'))) e += "Nom de fichier d’image invalide."
+            "image" -> {
+                if (w.file != null && !safePackFile(w.file)) e += "Nom de fichier d’image invalide."
+                if (w.foreground != null && !safePackFile(w.foreground)) e += "Nom de fichier du premier plan invalide."
+            }
             else -> e += "Type de fond inconnu : ${w.kind}."
         }
         if (p.icon != null && (p.icon.isBlank() || (checkCatalog && p.icon !in SHOP_ICONS))) e += "Icône inconnue : ${p.icon}."

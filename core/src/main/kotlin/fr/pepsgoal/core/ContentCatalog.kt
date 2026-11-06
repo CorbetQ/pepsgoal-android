@@ -25,6 +25,8 @@ data class ContentFileRef(val name: String, val url: String, val sha256: String,
 data class CatalogItem(
     val id: String, val type: String, val slug: String = "", val version: Int = 1, val name: String, val description: String = "",
     val author: String = "", val price: Int = 0, val size: Long = 0, val updatedAt: String? = null, val publishedAt: String? = null,
+    /** 10.0 : créateur (null : contenu officiel PepsGoal), nombre d'achats, image d'aperçu. */
+    val creatorId: String? = null, val sales: Int = 0, val preview: String? = null,
 )
 
 @Serializable
@@ -128,6 +130,7 @@ object ContentCatalog {
                 val content = JsonObject(d.content + ("id" to JsonPrimitive(d.id.lowercase())))
                 val spec = PackFormat.parse(content.toString()).copy(author = d.author.ifBlank { null } ?: (d.content["author"] as? JsonPrimitive)?.content)
                 if (spec.wallpaper.kind == "image" && d.files.none { it.name == spec.wallpaper.file }) throw PackFormatError(listOf("Image du pack absente."))
+                if (spec.wallpaper.foreground != null && d.files.none { it.name == spec.wallpaper.foreground }) throw PackFormatError(listOf("Premier plan du pack absent."))
                 spec
             }
             else -> {
@@ -137,6 +140,15 @@ object ContentCatalog {
             }
         }
     }
+
+    /** Premier plan détouré d'un pack « PepsGoal Style » (10.0), s'il y en a un. */
+    fun foregroundFile(d: ContentDetail, spec: ThemePackSpec?): ContentFileRef? {
+        val n = spec?.wallpaper?.takeIf { it.kind == "image" }?.foreground ?: return null
+        return d.files.firstOrNull { it.name == n }
+    }
+
+    /** Tous les fichiers utiles d'un contenu : image principale et premier plan. */
+    fun neededFiles(d: ContentDetail, spec: ThemePackSpec?): List<ContentFileRef> = listOfNotNull(mainFile(d, spec), foregroundFile(d, spec))
 
     /** Fichier à télécharger pour afficher ou appliquer un contenu (image du pack ou du fond), s'il y en a un. */
     fun mainFile(d: ContentDetail, spec: ThemePackSpec?): ContentFileRef? {
